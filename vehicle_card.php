@@ -205,7 +205,9 @@ if ($action === 'create' || $action === 'edit') {
 	}
 	$description = (string) $object->description;
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>'.(dol_textishtml($description) ? $description : dol_htmlentitiesbr($description)).'</td></tr>';
-	print '</table></div></div>';
+	print '</table></div><div class="fichehalfright">';
+	lmdbVehiclePrintInsuranceBlock($object);
+	print '</div></div>';
 	print '<div class="clearboth"></div>';
 	print dol_get_fiche_end();
 
@@ -247,6 +249,18 @@ if ($action === 'create' || $action === 'edit') {
 		$formActions->showactions($object, $object->element.'@'.$object->module, 0, 1, '', 10, '', $more);
 	}
 	print '</div></div>';
+	print '<script nonce="'.getNonce().'">';
+	print 'jQuery(function($){';
+	print '$(document).on("click", ".lmdb-insurance-modal-open", function(event){event.preventDefault();';
+	print 'var baseUrl=$(this).attr("href"); var modal=$("#lmdb-insurance-modal"); if(!modal.length){modal=$("<div id=\\"lmdb-insurance-modal\\"></div>").appendTo("body");}';
+	print 'var loadUrl=baseUrl+(baseUrl.indexOf("?")>=0?"&":"?")+"mode=modal";';
+	print 'modal.load(loadUrl,function(){modal.dialog({modal:true,width:"90%",maxHeight:$(window).height()*0.9,title:"'.dol_escape_js($langs->trans('InsuranceContract')).'",close:function(){modal.html("");}});});});';
+	print '$(document).on("submit", "#lmdb-insurance-modal .lmdb-insurance-ajax-form", function(event){event.preventDefault(); var form=this; var data=new FormData(form);';
+	print 'var submitter=document.activeElement; if(submitter&&submitter.name&&submitter.form===form){data.set(submitter.name,submitter.value);}';
+	print '$.ajax({url:form.action,type:"POST",data:data,processData:false,contentType:false,dataType:"json"}).done(function(response){';
+	print 'if(response.success){window.location.reload();}else{alert((response.messages||["'.dol_escape_js($langs->trans('Error')).'"]).join("\\n"));}}).fail(function(){alert("'.dol_escape_js($langs->trans('Error')).'");});});';
+	print '$(document).on("click", "#lmdb-insurance-modal a[href*=\\"vehicle_insurance.php\\"]", function(event){if(this.href.indexOf("download_certificate=1")!==-1)return; event.preventDefault(); $("#lmdb-insurance-modal").load(this.href+(this.href.indexOf("?")>=0?"&":"?")+"mode=modal");});';
+	print '});</script>';
 }
 
 llxFooter();

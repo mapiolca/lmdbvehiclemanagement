@@ -36,7 +36,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->descriptionlong = 'ModuleLmdbVehicleManagementDesc';
 		$this->editor_name = 'Pierre Ardoin';
 		$this->editor_url = 'https://github.com/mapiolca';
-		$this->version = '0.2.0';
+		$this->version = '0.3.0';
 		$this->const_name = 'MAIN_MODULE_LMDBVEHICLEMANAGEMENT';
 		$this->picto = 'car';
 
@@ -88,7 +88,22 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'tabhelp' => array(array('code' => $langs->trans('VehicleEnergyCodeHelp'), 'label' => $langs->trans('VehicleEnergyLabelHelp'))),
 		);
 		$this->boxes = array();
-		$this->cronjobs = array();
+		$this->cronjobs = array(
+			0 => array(
+				'label' => 'InsuranceCertificateReminderCronLabel',
+				'jobtype' => 'method',
+				'class' => '/lmdbvehiclemanagement/class/lmdbvehicleinsurancecron.class.php',
+				'objectname' => 'LmdbVehicleInsuranceCron',
+				'method' => 'sendCertificateReminders',
+				'parameters' => '',
+				'comment' => 'InsuranceCertificateReminderCronComment',
+				'frequency' => 1,
+				'unitfrequency' => 86400,
+				'status' => 1,
+				'test' => 'isModEnabled("lmdbvehiclemanagement")',
+				'priority' => 50,
+			),
+		);
 
 		if (!isModEnabled('lmdbvehiclemanagement')) {
 			$conf->lmdbvehiclemanagement = new stdClass();
@@ -153,6 +168,30 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->rights[$r][1] = 'PermissionImportVehicles';
 		$this->rights[$r][4] = 'lmdbvehicle';
 		$this->rights[$r][5] = 'import';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionWriteInsurance';
+		$this->rights[$r][4] = 'insurance';
+		$this->rights[$r][5] = 'write';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionUploadInsuranceCertificate';
+		$this->rights[$r][4] = 'insurance';
+		$this->rights[$r][5] = 'upload';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionValidateInsuranceCertificate';
+		$this->rights[$r][4] = 'insurance';
+		$this->rights[$r][5] = 'validate';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionDeleteInsurance';
+		$this->rights[$r][4] = 'insurance';
+		$this->rights[$r][5] = 'delete';
 
 		$this->menu = array();
 		$r = 0;
@@ -384,10 +423,20 @@ class modLmdbVehicleManagement extends DolibarrModules
 		if ($result <= 0) {
 			return $result;
 		}
+		if ($this->ensureInsuranceEmailTemplates((int) $conf->entity) < 0) {
+			return -1;
+		}
 
 		$defaults = array(
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON' => 'mod_lmdbvehicle_standard',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLEEVENT_ADDON' => 'mod_lmdbvehicleevent_standard',
+			'LMDBVEHICLEMANAGEMENT_INSURANCECONTRACT_ADDON' => 'mod_lmdbinsurancecontract_standard',
+			'LMDBVEHICLEMANAGEMENT_INSURANCE_REMINDERS_ENABLED' => '0',
+			'LMDBVEHICLEMANAGEMENT_INSURANCE_INCLUDE_ASSIGNEES' => '1',
+			'LMDBVEHICLEMANAGEMENT_INSURANCE_ASSIGNMENT_TYPES' => '["driver"]',
+			'LMDBVEHICLEMANAGEMENT_INSURANCE_BEFORE_DAYS' => '[30,15,7,1]',
+			'LMDBVEHICLEMANAGEMENT_INSURANCE_OVERDUE_REPEAT_DAYS' => '7',
+			'LMDBVEHICLEMANAGEMENT_INSURANCE_REVIEW_REPEAT_DAYS' => '3',
 		);
 		foreach ($defaults as $name => $value) {
 			$constantExists = $this->entityConstantExists($name, (int) $conf->entity);
@@ -431,6 +480,71 @@ class modLmdbVehicleManagement extends DolibarrModules
 		if ($fieldExists === 0 && !$this->db->query('ALTER TABLE '.$table.' ADD COLUMN fk_energy integer DEFAULT NULL AFTER vehicle_version')) {
 			$this->error = $this->db->lasterror();
 			return -1;
+		}
+
+		return 1;
+	}
+
+	/**
+	 * Create editable native email templates once and select them only when no
+	 * administrator choice exists yet.
+	 *
+	 * @param int $entity Entity id
+	 * @return int<-1,1>
+	 */
+	private function ensureInsuranceEmailTemplates($entity)
+	{
+		global $langs;
+
+		$langs->loadLangs(array('mails', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		$templates = array(
+			'LMDBVEHICLEMANAGEMENT_INSURANCE_REQUEST_TEMPLATE' => array(
+				'type' => 'lmdbvehicle_insurance_request',
+				'label' => $langs->trans('InsuranceRequestEmailTemplateLabel'),
+				'topic' => $langs->trans('InsuranceRequestEmailSubject'),
+				'content' => $langs->trans('InsuranceRequestEmailContent'),
+				'position' => 10,
+			),
+			'LMDBVEHICLEMANAGEMENT_INSURANCE_REVIEW_TEMPLATE' => array(
+				'type' => 'lmdbvehicle_insurance_review',
+				'label' => $langs->trans('InsuranceReviewEmailTemplateLabel'),
+				'topic' => $langs->trans('InsuranceReviewEmailSubject'),
+				'content' => $langs->trans('InsuranceReviewEmailContent'),
+				'position' => 20,
+			),
+		);
+		foreach ($templates as $constant => $template) {
+			$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'c_email_templates';
+			$sql .= ' WHERE entity = '.((int) $entity)." AND module = 'lmdbvehiclemanagement'";
+			$sql .= " AND type_template = '".$this->db->escape($template['type'])."' ORDER BY rowid LIMIT 1";
+			$resql = $this->db->query($sql);
+			if (!$resql) {
+				$this->error = $this->db->lasterror();
+				return -1;
+			}
+			$row = $this->db->fetch_object($resql);
+			$this->db->free($resql);
+			$templateId = is_object($row) ? (int) $row->rowid : 0;
+			if ($templateId <= 0) {
+				$sql = 'INSERT INTO '.MAIN_DB_PREFIX.'c_email_templates';
+				$sql .= ' (entity, module, type_template, lang, private, fk_user, datec, label, position, enabled, active, topic, content, content_lines, joinfiles) VALUES (';
+				$sql .= ((int) $entity).", 'lmdbvehiclemanagement', '".$this->db->escape($template['type'])."', '', 0, NULL, '".$this->db->idate(dol_now())."', '";
+				$sql .= $this->db->escape($template['label'])."', ".((int) $template['position']).", 1, 1, '".$this->db->escape($template['topic'])."', '";
+				$sql .= $this->db->escape($template['content'])."', NULL, 0)";
+				if (!$this->db->query($sql)) {
+					$this->error = $this->db->lasterror();
+					return -1;
+				}
+				$templateId = (int) $this->db->last_insert_id(MAIN_DB_PREFIX.'c_email_templates');
+			}
+			$constantExists = $this->entityConstantExists($constant, $entity);
+			if ($constantExists < 0) {
+				return -1;
+			}
+			if ($constantExists === 0 && dolibarr_set_const($this->db, $constant, (string) $templateId, 'chaine', 0, '', $entity) <= 0) {
+				$this->error = $this->db->lasterror();
+				return -1;
+			}
 		}
 
 		return 1;

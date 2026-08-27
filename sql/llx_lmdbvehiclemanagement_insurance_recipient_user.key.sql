@@ -1,0 +1,3 @@
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_recipient_user ADD UNIQUE INDEX uk_lmdbvm_insurance_recipient_user (entity, fk_user);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_recipient_user ADD INDEX idx_lmdbvm_insurance_recipient_user_entity (entity);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_recipient_user ADD INDEX idx_lmdbvm_insurance_recipient_user_user (fk_user);

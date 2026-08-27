@@ -193,11 +193,33 @@ class ActionsLmdbVehicleManagement
 			'classfile' => 'lmdbvehicleevent',
 			'classname' => 'LmdbVehicleEvent',
 		);
+		$insuranceContractDefinition = array(
+			'module' => 'lmdbvehiclemanagement',
+			'element' => 'lmdbinsurancecontract',
+			'table_element' => 'lmdbvehiclemanagement_insurance_contract',
+			'subelement' => 'lmdbinsurancecontract',
+			'classpath' => 'lmdbvehiclemanagement/class',
+			'classfile' => 'lmdbvehicleinsurancecontract',
+			'classname' => 'LmdbVehicleInsuranceContract',
+		);
+		$insuranceCertificateDefinition = array(
+			'module' => 'lmdbvehiclemanagement',
+			'element' => 'lmdbinsurancecertificate',
+			'table_element' => 'lmdbvehiclemanagement_insurance_certificate',
+			'subelement' => 'lmdbinsurancecertificate',
+			'classpath' => 'lmdbvehiclemanagement/class',
+			'classfile' => 'lmdbvehicleinsurancecertificate',
+			'classname' => 'LmdbVehicleInsuranceCertificate',
+		);
 		$definitions = array(
 			'lmdbvehicle@lmdbvehiclemanagement' => $vehicleDefinition,
 			'lmdbvehiclemanagement_lmdbvehicle' => $vehicleDefinition,
 			'lmdbvehicleevent@lmdbvehiclemanagement' => $eventDefinition,
 			'lmdbvehiclemanagement_lmdbvehicleevent' => $eventDefinition,
+			'lmdbinsurancecontract@lmdbvehiclemanagement' => $insuranceContractDefinition,
+			'lmdbvehiclemanagement_lmdbinsurancecontract' => $insuranceContractDefinition,
+			'lmdbinsurancecertificate@lmdbvehiclemanagement' => $insuranceCertificateDefinition,
+			'lmdbvehiclemanagement_lmdbinsurancecertificate' => $insuranceCertificateDefinition,
 		);
 		if (isset($definitions[$elementType])) {
 			$this->results = array_replace($this->results, $definitions[$elementType]);

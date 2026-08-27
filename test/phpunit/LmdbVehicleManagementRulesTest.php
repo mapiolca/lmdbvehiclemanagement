@@ -60,4 +60,29 @@ final class LmdbVehicleManagementRulesTest extends TestCase
 		self::assertFalse(LmdbVehicleManagementRules::odometerRemovalPreservesSequence(10000.0, 9999.0, 'standard'));
 		self::assertTrue(LmdbVehicleManagementRules::odometerRemovalPreservesSequence(10000.0, 0.0, 'replacement'));
 	}
+
+	public function testInsuranceContractLifecycleTransitions(): void
+	{
+		self::assertTrue(LmdbVehicleManagementRules::insuranceContractStatusTransitionIsAllowed(0, 1));
+		self::assertTrue(LmdbVehicleManagementRules::insuranceContractStatusTransitionIsAllowed(1, 9));
+		self::assertFalse(LmdbVehicleManagementRules::insuranceContractStatusTransitionIsAllowed(0, 9));
+		self::assertFalse(LmdbVehicleManagementRules::insuranceContractStatusTransitionIsAllowed(9, 1));
+	}
+
+	public function testInsuranceCertificateLifecycleTransitions(): void
+	{
+		self::assertTrue(LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(0, 1));
+		self::assertTrue(LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(1, 2));
+		self::assertTrue(LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(1, 3));
+		self::assertTrue(LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(2, 9));
+		self::assertTrue(LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(3, 9));
+		self::assertFalse(LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(2, 3));
+	}
+
+	public function testInsuranceReminderBucketsAreDeterministic(): void
+	{
+		self::assertSame(0, LmdbVehicleManagementRules::insuranceReminderBucket(0, 7));
+		self::assertSame(1, LmdbVehicleManagementRules::insuranceReminderBucket(8, 7));
+		self::assertSame(2, LmdbVehicleManagementRules::insuranceReminderBucket(14, 7));
+	}
 }

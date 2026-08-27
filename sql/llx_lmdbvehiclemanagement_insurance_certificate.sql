@@ -1,0 +1,20 @@
+CREATE TABLE llx_lmdbvehiclemanagement_insurance_certificate (
+	rowid integer AUTO_INCREMENT PRIMARY KEY,
+	entity integer DEFAULT 1 NOT NULL,
+	fk_contract integer NOT NULL,
+	fk_vehicle integer DEFAULT NULL,
+	validity_start date NOT NULL,
+	validity_end date NOT NULL,
+	file_name varchar(255) DEFAULT NULL,
+	file_mime varchar(128) DEFAULT NULL,
+	status smallint DEFAULT 0 NOT NULL,
+	date_submitted datetime DEFAULT NULL,
+	fk_user_submit integer DEFAULT NULL,
+	date_reviewed datetime DEFAULT NULL,
+	fk_user_review integer DEFAULT NULL,
+	rejection_reason text,
+	date_creation datetime NOT NULL,
+	tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	fk_user_creat integer NOT NULL,
+	fk_user_modif integer DEFAULT NULL
+) ENGINE=innodb;

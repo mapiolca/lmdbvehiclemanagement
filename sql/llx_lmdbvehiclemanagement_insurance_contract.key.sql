@@ -1,0 +1,8 @@
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_contract ADD UNIQUE INDEX uk_lmdbvm_insurance_contract_ref (entity, ref);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_contract ADD INDEX idx_lmdbvm_insurance_policy (entity, fk_soc, policy_number);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_contract ADD INDEX idx_lmdbvm_insurance_contract_entity (entity);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_contract ADD INDEX idx_lmdbvm_insurance_contract_soc (fk_soc);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_contract ADD INDEX idx_lmdbvm_insurance_contract_contact (fk_contact);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_contract ADD INDEX idx_lmdbvm_insurance_contract_status (status);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_contract ADD INDEX idx_lmdbvm_insurance_contract_dates (date_start, date_end);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_contract ADD INDEX idx_lmdbvm_insurance_contract_date_creation (date_creation);

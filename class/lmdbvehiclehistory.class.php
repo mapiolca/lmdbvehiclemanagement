@@ -39,7 +39,7 @@ class LmdbVehicleHistory
 	 * Return a paginated chronology without persisting a mirror history.
 	 *
 	 * @param int $vehicleId Vehicle id
-	 * @param list<string> $sources Allowed sources: event, assignment, odometer
+	 * @param list<string> $sources Allowed sources: event, assignment, odometer, insurance
 	 * @param int $limit Page size
 	 * @param int $offset Offset
 	 * @return array<int,TimelineEntry>|int<-1,-1>
@@ -48,7 +48,7 @@ class LmdbVehicleHistory
 	{
 		global $langs;
 
-		$allowedSources = array('event', 'assignment', 'odometer');
+		$allowedSources = array('event', 'assignment', 'odometer', 'insurance');
 		$sources = array_values(array_intersect($allowedSources, $sources));
 		if (empty($sources)) {
 			$sources = $allowedSources;
@@ -73,6 +73,11 @@ class LmdbVehicleHistory
 		}
 		if (in_array('odometer', $sources, true)) {
 			$queries[] = "SELECT o.reading_date AS event_timestamp, o.reading_kind AS entry_type, 'odometer' AS source_code, 'lmdbvehicleodometerreading' AS source_object, o.rowid AS source_id, '' AS source_label, o.odometer_km, NULL AS driver_id, NULL AS thirdparty_id, 1 AS status, '' AS driver_name, 0 AS document_count FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_odometer_reading AS o WHERE o.fk_vehicle = ".((int) $vehicleId)." AND o.entity IN (".getEntity('lmdbvehicle').")";
+		}
+		if (in_array('insurance', $sources, true)) {
+			$queries[] = "SELECT cv.date_creation AS event_timestamp, 'contract_linked' AS entry_type, 'insurance' AS source_code, 'lmdbinsurancecontract' AS source_object, c.rowid AS source_id, CONCAT(c.ref, ' — ', c.policy_number) AS source_label, NULL AS odometer_km, NULL AS driver_id, c.fk_soc AS thirdparty_id, c.status, '' AS driver_name, 0 AS document_count FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_insurance_contract_vehicle AS cv INNER JOIN ".MAIN_DB_PREFIX."lmdbvehiclemanagement_insurance_contract AS c ON c.rowid = cv.fk_contract AND c.entity = cv.entity WHERE cv.fk_vehicle = ".((int) $vehicleId)." AND cv.entity IN (".getEntity('lmdbvehicle').")";
+			$queries[] = "SELECT cert.date_submitted AS event_timestamp, 'certificate_submitted' AS entry_type, 'insurance' AS source_code, 'lmdbinsurancecertificate' AS source_object, cert.rowid AS source_id, c.policy_number AS source_label, NULL AS odometer_km, cert.fk_user_submit AS driver_id, c.fk_soc AS thirdparty_id, cert.status, '' AS driver_name, IF(cert.file_name IS NULL OR cert.file_name = '', 0, 1) AS document_count FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_insurance_certificate AS cert INNER JOIN ".MAIN_DB_PREFIX."lmdbvehiclemanagement_insurance_contract AS c ON c.rowid = cert.fk_contract AND c.entity = cert.entity INNER JOIN ".MAIN_DB_PREFIX."lmdbvehiclemanagement_insurance_contract_vehicle AS cv ON cv.fk_contract = cert.fk_contract AND cv.entity = cert.entity WHERE cv.fk_vehicle = ".((int) $vehicleId)." AND (cert.fk_vehicle = ".((int) $vehicleId)." OR cert.fk_vehicle IS NULL) AND cert.date_submitted IS NOT NULL AND cert.entity IN (".getEntity('lmdbvehicle').")";
+			$queries[] = "SELECT cert.date_reviewed AS event_timestamp, IF(cert.rejection_reason IS NULL OR cert.rejection_reason = '', 'certificate_validated', 'certificate_rejected') AS entry_type, 'insurance' AS source_code, 'lmdbinsurancecertificate' AS source_object, cert.rowid AS source_id, c.policy_number AS source_label, NULL AS odometer_km, cert.fk_user_review AS driver_id, c.fk_soc AS thirdparty_id, cert.status, '' AS driver_name, IF(cert.file_name IS NULL OR cert.file_name = '', 0, 1) AS document_count FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_insurance_certificate AS cert INNER JOIN ".MAIN_DB_PREFIX."lmdbvehiclemanagement_insurance_contract AS c ON c.rowid = cert.fk_contract AND c.entity = cert.entity INNER JOIN ".MAIN_DB_PREFIX."lmdbvehiclemanagement_insurance_contract_vehicle AS cv ON cv.fk_contract = cert.fk_contract AND cv.entity = cert.entity WHERE cv.fk_vehicle = ".((int) $vehicleId)." AND (cert.fk_vehicle = ".((int) $vehicleId)." OR cert.fk_vehicle IS NULL) AND cert.date_reviewed IS NOT NULL AND cert.entity IN (".getEntity('lmdbvehicle').")";
 		}
 
 		$sql = 'SELECT timeline.* FROM ('.implode(' UNION ALL ', $queries).') AS timeline';
@@ -124,7 +129,7 @@ class LmdbVehicleHistory
 	 */
 	public function countTimeline($vehicleId, $sources = array())
 	{
-		$allowedSources = array('event', 'assignment', 'odometer');
+		$allowedSources = array('event', 'assignment', 'odometer', 'insurance');
 		$sources = array_values(array_intersect($allowedSources, $sources));
 		if (empty($sources)) {
 			$sources = $allowedSources;
@@ -139,6 +144,11 @@ class LmdbVehicleHistory
 		}
 		if (in_array('odometer', $sources, true)) {
 			$queries[] = 'SELECT COUNT(*) AS total FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading WHERE fk_vehicle = '.((int) $vehicleId).' AND entity IN ('.getEntity('lmdbvehicle').')';
+		}
+		if (in_array('insurance', $sources, true)) {
+			$queries[] = 'SELECT COUNT(*) AS total FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle WHERE fk_vehicle = '.((int) $vehicleId).' AND entity IN ('.getEntity('lmdbvehicle').')';
+			$queries[] = 'SELECT COUNT(*) AS total FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_certificate AS cert INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle AS cv ON cv.fk_contract = cert.fk_contract AND cv.entity = cert.entity WHERE cv.fk_vehicle = '.((int) $vehicleId).' AND (cert.fk_vehicle = '.((int) $vehicleId).' OR cert.fk_vehicle IS NULL) AND cert.date_submitted IS NOT NULL AND cert.entity IN ('.getEntity('lmdbvehicle').')';
+			$queries[] = 'SELECT COUNT(*) AS total FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_certificate AS cert INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle AS cv ON cv.fk_contract = cert.fk_contract AND cv.entity = cert.entity WHERE cv.fk_vehicle = '.((int) $vehicleId).' AND (cert.fk_vehicle = '.((int) $vehicleId).' OR cert.fk_vehicle IS NULL) AND cert.date_reviewed IS NOT NULL AND cert.entity IN ('.getEntity('lmdbvehicle').')';
 		}
 		$sql = 'SELECT SUM(source_count.total) AS total FROM ('.implode(' UNION ALL ', $queries).') AS source_count';
 		$resql = $this->db->query($sql);

@@ -91,4 +91,56 @@ class LmdbVehicleManagementRules
 
 		return self::odometerTransitionIsAllowed($previousKm, $nextKm, 'standard', null);
 	}
+
+	/**
+	 * Check a contract lifecycle transition.
+	 *
+	 * @param int $from Current status
+	 * @param int $to Target status
+	 * @return bool
+	 */
+	public static function insuranceContractStatusTransitionIsAllowed($from, $to)
+	{
+		$allowed = array(
+			0 => array(1),
+			1 => array(9),
+			9 => array(),
+		);
+
+		return isset($allowed[$from]) && in_array($to, $allowed[$from], true);
+	}
+
+	/**
+	 * Check an insurance certificate lifecycle transition.
+	 *
+	 * @param int $from Current status
+	 * @param int $to Target status
+	 * @return bool
+	 */
+	public static function insuranceCertificateStatusTransitionIsAllowed($from, $to)
+	{
+		$allowed = array(
+			0 => array(1),
+			1 => array(2, 3),
+			2 => array(9),
+			3 => array(9),
+			9 => array(),
+		);
+
+		return isset($allowed[$from]) && in_array($to, $allowed[$from], true);
+	}
+
+	/**
+	 * Return the deterministic overdue reminder bucket.
+	 *
+	 * @param int $daysOverdue Number of elapsed days
+	 * @param int $repeatDays Repeat interval
+	 * @return int
+	 */
+	public static function insuranceReminderBucket($daysOverdue, $repeatDays)
+	{
+		$repeatDays = max(1, $repeatDays);
+
+		return $daysOverdue < 0 ? -1 : (int) floor($daysOverdue / $repeatDays);
+	}
 }

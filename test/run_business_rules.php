@@ -32,6 +32,17 @@ $checks = array(
 	'qualified_replacement' => LmdbVehicleManagementRules::odometerTransitionIsAllowed(10000.0, 0.0, 'replacement', 'Counter replaced'),
 	'removal_exposing_standard_decrease_rejected' => !LmdbVehicleManagementRules::odometerRemovalPreservesSequence(10000.0, 9999.0, 'standard'),
 	'removal_before_qualified_replacement_allowed' => LmdbVehicleManagementRules::odometerRemovalPreservesSequence(10000.0, 0.0, 'replacement'),
+	'insurance_contract_draft_to_active' => LmdbVehicleManagementRules::insuranceContractStatusTransitionIsAllowed(0, 1),
+	'insurance_contract_active_to_terminated' => LmdbVehicleManagementRules::insuranceContractStatusTransitionIsAllowed(1, 9),
+	'insurance_contract_cannot_skip_to_terminated' => !LmdbVehicleManagementRules::insuranceContractStatusTransitionIsAllowed(0, 9),
+	'insurance_contract_terminated_is_terminal' => !LmdbVehicleManagementRules::insuranceContractStatusTransitionIsAllowed(9, 1),
+	'insurance_certificate_draft_to_review' => LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(0, 1),
+	'insurance_certificate_review_to_validated' => LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(1, 2),
+	'insurance_certificate_review_to_rejected' => LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(1, 3),
+	'insurance_certificate_validated_to_archived' => LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(2, 9),
+	'insurance_certificate_rejected_to_archived' => LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(3, 9),
+	'insurance_certificate_controlled_is_immutable' => !LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(2, 3),
+	'insurance_reminder_bucket_is_stable' => LmdbVehicleManagementRules::insuranceReminderBucket(8, 7) === 1,
 );
 
 $failed = array_keys(array_filter($checks, static function ($result) {

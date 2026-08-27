@@ -52,6 +52,7 @@ function lmdbVehicleManagementAdminPrepareHead()
 	$head = array();
 	$h = 0;
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/setup.php', 1), $langs->trans('Settings'), 'settings');
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/insurance.php', 1), $langs->trans('Insurance'), 'insurance');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/compatibility.php', 1), $langs->trans('Compatibility'), 'compatibility');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/about.php', 1), $langs->trans('About'), 'about');
 
@@ -111,6 +112,73 @@ function lmdbVehiclePrintBanner($object)
 	$moreHtmlRef .= '</div>';
 
 	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $moreHtmlRef);
+}
+
+/**
+ * Print the insurance at-a-glance block for a vehicle.
+ *
+ * @param LmdbVehicle $object Vehicle
+ * @return void
+ */
+function lmdbVehiclePrintInsuranceBlock($object)
+{
+	global $db, $langs;
+
+	dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.class.php');
+	dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecertificate.class.php');
+	dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsuranceconfig.class.php');
+	$contract = LmdbVehicleInsuranceContract::getPrimaryForVehicle($db, (int) $object->id);
+	$manageUrl = dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 1).'?id='.((int) $object->id);
+	$manageButton = dolGetButtonAction('', $langs->trans('Manage'), 'default', $manageUrl, '', true, array('attr' => array('class' => 'lmdb-insurance-modal-open')));
+	print '<div class="underbanner clearboth"></div>';
+	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
+	print '<tr class="liste_titre"><th colspan="2">'.img_picto('', 'shield-alt', 'class="pictofixedwidth"').$langs->trans('InsuranceContract');
+	print '<span class="right">'.$manageButton.'</span></th></tr>';
+	if (!$contract instanceof LmdbVehicleInsuranceContract) {
+		print '<tr class="oddeven"><td colspan="2"><span class="opacitymedium">'.$langs->trans('InsuranceNoActiveContract').'</span></td></tr>';
+		print '</table></div>';
+		return;
+	}
+
+	require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
+	$insurer = new Societe($db);
+	$insurerLink = $insurer->fetch((int) $contract->fk_soc) > 0 ? $insurer->getNomUrl(1) : '';
+	$certificate = LmdbVehicleInsuranceCertificate::getApplicable($db, (int) $contract->id, (int) $object->id);
+	$allContracts = LmdbVehicleInsuranceContract::getForVehicle($db, (int) $object->id);
+	$complementary = 0;
+	foreach ($allContracts as $entry) if ($entry['coverage_type'] === LmdbVehicleInsuranceContract::COVERAGE_COMPLEMENTARY && (int) $entry['contract']->status === LmdbVehicleInsuranceContract::STATUS_ACTIVE) $complementary++;
+
+	print '<tr><td class="titlefield">'.$langs->trans('InsuranceCompany').'</td><td>'.$insurerLink.'</td></tr>';
+	print '<tr><td>'.$langs->trans('InsurancePolicyNumber').'</td><td>'.dol_escape_htmltag($contract->policy_number).'</td></tr>';
+	print '<tr><td>'.$langs->trans('InsuranceCoverageFormula').'</td><td>'.dol_escape_htmltag((string) $contract->coverage_formula).'</td></tr>';
+	print '<tr><td>'.$langs->trans('InsuranceContractPeriod').'</td><td>'.dol_print_date($contract->date_start, 'day').' — '.($contract->date_end ? dol_print_date($contract->date_end, 'day') : $langs->trans('NoLimit')).'</td></tr>';
+	$status = dolGetStatus($langs->trans('InsuranceCertificateMissing'), '', '', 'status8', 5);
+	$certificatePeriod = '';
+	$evidence = '';
+	if ($certificate instanceof LmdbVehicleInsuranceCertificate) {
+		$certificatePeriod = dol_print_date($certificate->validity_start, 'day').' — '.dol_print_date($certificate->validity_end, 'day');
+		if ((int) $certificate->status === LmdbVehicleInsuranceCertificate::STATUS_VALIDATED) {
+			$today = dol_mktime(0, 0, 0, (int) dol_print_date(dol_now(), '%m'), (int) dol_print_date(dol_now(), '%d'), (int) dol_print_date(dol_now(), '%Y'));
+			$days = (int) floor(((int) $certificate->validity_end - $today) / 86400);
+			$reminderDays = LmdbVehicleInsuranceConfig::getBeforeDays();
+			$soonThreshold = empty($reminderDays) ? 30 : max($reminderDays);
+			if ($days < 0) $status = dolGetStatus($langs->trans('InsuranceCertificateExpired'), '', '', 'status8', 5);
+			elseif ($days <= $soonThreshold) $status = dolGetStatus($langs->trans('InsuranceCertificateExpiring', $days), '', '', 'status1', 5);
+			else $status = dolGetStatus($langs->trans('InsuranceCertificateValid'), '', '', 'status4', 5);
+		} else {
+			$status = $certificate->getLibStatut(5);
+		}
+		if (!empty($certificate->file_name)) {
+			$url = dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 1).'?id='.((int) $object->id).'&download_certificate=1&certificate_id='.((int) $certificate->id);
+			$evidence = '<a href="'.$url.'">'.img_picto('', 'paperclip', 'class="pictofixedwidth"').$langs->trans('Download').'</a>';
+		}
+	}
+	print '<tr><td>'.$langs->trans('InsuranceCertificatePeriod').'</td><td>'.$certificatePeriod.'</td></tr>';
+	print '<tr><td>'.$langs->trans('Status').'</td><td>'.$status.'</td></tr>';
+	print '<tr><td>'.$langs->trans('InsuranceEvidence').'</td><td>'.$evidence.'</td></tr>';
+	print '<tr><td>'.$langs->trans('InsuranceComplementaryContracts').'</td><td>'.((int) $complementary).'</td></tr>';
+	print '<tr><td>'.$langs->trans('InsuranceAssistancePhone').'</td><td>'.dol_escape_htmltag((string) $contract->assistance_phone).'</td></tr>';
+	print '</table></div>';
 }
 
 /**

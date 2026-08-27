@@ -1,0 +1,6 @@
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_certificate ADD INDEX idx_lmdbvm_insurance_certificate_entity (entity);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_certificate ADD INDEX idx_lmdbvm_insurance_certificate_contract (fk_contract);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_certificate ADD INDEX idx_lmdbvm_insurance_certificate_vehicle (fk_vehicle);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_certificate ADD INDEX idx_lmdbvm_insurance_certificate_status (status);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_certificate ADD INDEX idx_lmdbvm_insurance_certificate_dates (validity_start, validity_end);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_certificate ADD INDEX idx_lmdbvm_insurance_certificate_date_creation (date_creation);

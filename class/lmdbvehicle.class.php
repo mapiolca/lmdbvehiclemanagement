@@ -159,6 +159,8 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 			'lmdbvehiclemanagement_vehicle_assignment',
 			'lmdbvehiclemanagement_odometer_reading',
 			'lmdbvehiclemanagement_vehicle_event',
+			'lmdbvehiclemanagement_insurance_contract_vehicle',
+			'lmdbvehiclemanagement_insurance_certificate',
 		);
 		foreach ($tables as $table) {
 			$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.$table;

@@ -11,6 +11,8 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicle.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleevent.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleassignment.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleodometerreading.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecertificate.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclehistory.class.php');
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 
@@ -54,10 +56,12 @@ lmdbVehiclePrintBanner($vehicle);
 
 $param = '&id='.$id;
 foreach ($sourceFilter as $source) $param .= '&search_source[]='.urlencode($source);
-$sourceOptions = array('event' => $langs->trans('TimelineSourceEvent'), 'assignment' => $langs->trans('TimelineSourceAssignment'), 'odometer' => $langs->trans('TimelineSourceOdometer'));
+$sourceOptions = array('event' => $langs->trans('TimelineSourceEvent'), 'assignment' => $langs->trans('TimelineSourceAssignment'), 'odometer' => $langs->trans('TimelineSourceOdometer'), 'insurance' => $langs->trans('TimelineSourceInsurance'));
 $eventStatusObject = new LmdbVehicleEvent($db);
 $assignmentStatusObject = new LmdbVehicleAssignment($db);
 $odometerStatusObject = new LmdbVehicleOdometerReading($db);
+$insuranceContractStatusObject = new LmdbVehicleInsuranceContract($db);
+$insuranceCertificateStatusObject = new LmdbVehicleInsuranceCertificate($db);
 $canManageAssignments = $user->hasRight('lmdbvehiclemanagement', 'assignment', 'write');
 $canManageOdometer = $user->hasRight('lmdbvehiclemanagement', 'odometer', 'write');
 $typeTranslations = array(
@@ -73,6 +77,10 @@ $typeTranslations = array(
 	'standard' => 'ReadingKindStandard',
 	'correction' => 'ReadingKindCorrection',
 	'replacement' => 'ReadingKindReplacement',
+	'contract_linked' => 'InsuranceHistoryContractLinked',
+	'certificate_submitted' => 'InsuranceHistoryCertificateSubmitted',
+	'certificate_validated' => 'InsuranceHistoryCertificateValidated',
+	'certificate_rejected' => 'InsuranceHistoryCertificateRejected',
 );
 print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
 print_barre_liste($langs->trans('Timeline'), $page, $_SERVER['PHP_SELF'], $param, 'event_timestamp', 'DESC', '', count($entries), $total, 'history', 0, '', '', $limit, 0, 0, 1);
@@ -88,12 +96,17 @@ foreach ($entries as $entry) {
 	} elseif ($entry['source'] === 'odometer') {
 		$url = dol_buildpath('/lmdbvehiclemanagement/vehicle_odometer.php', 1).'?id='.$id;
 		$url .= ($canManageOdometer ? '&reading_id='.$entry['source_id'].'&action=edit' : '#odometer-'.$entry['source_id']);
+	} elseif ($entry['source'] === 'insurance') {
+		$url = dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 1).'?id='.$id;
+		$url .= $entry['source_object'] === 'lmdbinsurancecontract' ? '&contract_id='.$entry['source_id'] : '&certificate_id='.$entry['source_id'];
 	}
 	$sourceLabel = $sourceOptions[$entry['source']];
 	$typeLabel = isset($typeTranslations[$entry['type']]) ? $langs->trans($typeTranslations[$entry['type']]) : $entry['type'];
 	if ($entry['source'] === 'event') $statusLabel = $eventStatusObject->LibStatut($entry['status'], 5);
 	elseif ($entry['source'] === 'assignment') $statusLabel = $assignmentStatusObject->LibStatut($entry['status'], 5);
-	else $statusLabel = $odometerStatusObject->LibStatut($entry['status'], 5);
+	elseif ($entry['source'] === 'odometer') $statusLabel = $odometerStatusObject->LibStatut($entry['status'], 5);
+	elseif ($entry['source_object'] === 'lmdbinsurancecontract') $statusLabel = $insuranceContractStatusObject->LibStatut($entry['status'], 5);
+	else $statusLabel = $insuranceCertificateStatusObject->LibStatut($entry['status'], 5);
 	print '<tr class="oddeven"><td>'.dol_print_date($entry['date'], 'dayhour').'</td><td>'.$sourceLabel.'</td><td>'.dol_escape_htmltag($typeLabel).'</td>';
 	print '<td>'.($url !== '' ? '<a href="'.$url.'">'.dol_escape_htmltag($entry['label']).'</a>' : dol_escape_htmltag($entry['label'])).'</td>';
 	print '<td class="right">'.($entry['odometer_km'] !== null ? price($entry['odometer_km'], 0, $langs, 1, -1, -1).' km' : '').'</td>';

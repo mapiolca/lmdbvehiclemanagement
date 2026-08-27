@@ -20,6 +20,7 @@ require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicle.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleevent.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.class.php');
 
 /** @var Conf $conf */
 /** @var DoliDB $db */
@@ -48,6 +49,12 @@ $models = array(
 		'class' => 'LmdbVehicleEvent',
 		'model' => 'mod_lmdbvehicleevent_standard',
 		'constant' => 'LMDBVEHICLEMANAGEMENT_LMDBVEHICLEEVENT_ADDON',
+	),
+	'lmdbinsurancecontract' => array(
+		'label' => 'InsuranceContract',
+		'class' => 'LmdbVehicleInsuranceContract',
+		'model' => 'mod_lmdbinsurancecontract_standard',
+		'constant' => 'LMDBVEHICLEMANAGEMENT_INSURANCECONTRACT_ADDON',
 	),
 );
 

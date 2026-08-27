@@ -1,0 +1,6 @@
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_reminder_log ADD UNIQUE INDEX uk_lmdbvm_insurance_reminder_key (entity, reminder_key);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_reminder_log ADD INDEX idx_lmdbvm_insurance_reminder_entity (entity);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_reminder_log ADD INDEX idx_lmdbvm_insurance_reminder_contract (fk_contract);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_reminder_log ADD INDEX idx_lmdbvm_insurance_reminder_vehicle (fk_vehicle);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_reminder_log ADD INDEX idx_lmdbvm_insurance_reminder_certificate (fk_certificate);
+ALTER TABLE llx_lmdbvehiclemanagement_insurance_reminder_log ADD INDEX idx_lmdbvm_insurance_reminder_due (due_date, status);

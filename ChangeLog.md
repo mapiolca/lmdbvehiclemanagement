@@ -1,5 +1,13 @@
 # Historique des versions
 
+## `0.3.0` — 2026-08-27
+
+- Ajout des contrats d’assurance individuels et de flotte, avec contrat principal, couvertures complémentaires et rattachements multivéhicules normalisés.
+- Ajout du bloc récapitulatif HalfRight et d’une gestion complète en modale native avec repli en page complète.
+- Ajout du dépôt, du contrôle, du rejet et de l’archivage des attestations PDF ou image, avec nettoyage des métadonnées et historique synthétique.
+- Ajout des droits assurance, des référents utilisateurs/groupes et des personnels affectés éligibles selon les réglages par entité.
+- Ajout des modèles d’emails natifs et du travail planifié quotidien de relance, avec seuils configurables et journal d’idempotence.
+
 ## `0.2.0` — 2026-08-27
 
 - Repositionnement des boutons d’action sous la fiche avec les conteneurs et helpers natifs Dolibarr.

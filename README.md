@@ -1,6 +1,6 @@
 # Gestion des véhicules pour Dolibarr
 
-`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.2.0` couvre les véhicules, leurs affectations, les relevés kilométriques et les événements métier.
+`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.3.0` couvre les véhicules, leurs affectations, les relevés kilométriques, les événements métier et les contrats d’assurance.
 
 ## Compatibilité
 
@@ -9,8 +9,9 @@
 - MySQL ou MariaDB
 - Module Multicompany facultatif
 - Module Ressources facultatif pour la liaison `fk_resource`
+- Module Travaux planifiés requis pour l’envoi automatique des relances d’assurance
 
-## Fonctionnalités de la version 0.2.0
+## Fonctionnalités de la version 0.3.0
 
 - fiche véhicule avec le cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
 - énergie sélectionnée dans un Select2 alimenté par un dictionnaire configurable, initialisé avec la [nomenclature réglementaire française P.3](https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000049860492/2026-07-27) ;
@@ -24,6 +25,12 @@
 - droits granulaires distincts pour lire, créer/modifier, mettre en ou hors service, supprimer, exporter et importer, contrôlés directement avec la méthode native `$user->hasRight()` ;
 - profils natifs Dolibarr d'import et d'export des véhicules ;
 - partage Multicompany configurable des véhicules, de leur numérotation et du dictionnaire des énergies.
+- contrats d’assurance individuels ou de flotte, avec une couverture principale et des couvertures complémentaires ;
+- résumé du contrat principal directement dans la fiche véhicule et gestion détaillée dans une modale native ;
+- attestations communes ou propres à un véhicule, soumises à validation avant prise en compte ;
+- justificatifs PDF, JPEG ou PNG contrôlés côté serveur, avec suppression des métadonnées EXIF/GPS des images ;
+- référents assurance configurables par utilisateur ou groupe et personnels affectés éligibles selon leur type d’affectation ;
+- relances quotidiennes configurables avant et après échéance au moyen des modèles d’emails et travaux planifiés natifs Dolibarr.
 
 ## Installation
 
@@ -41,7 +48,7 @@ Une suite PHPUnit équivalente est fournie dans le répertoire test/phpunit. Les
 
 ## Hors périmètre de cette version
 
-Quartix, l'export ZIP, les cartes grises, les assurances, les contrôles techniques, les factures, le carburant et les contraventions seront ajoutés dans des lots ultérieurs. Aucun champ fournisseur n'est stocké dans le modèle métier courant.
+Quartix, l'export ZIP, les cartes grises, les contrôles techniques, les sinistres, les primes et franchises, les factures, le carburant et les contraventions seront ajoutés dans des lots ultérieurs. Aucun champ fournisseur n'est dupliqué dans le modèle métier courant.
 
 ## Licence
 
