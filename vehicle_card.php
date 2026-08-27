@@ -153,8 +153,8 @@ if ($action === 'create' || $action === 'edit') {
 	print '<input type="hidden" name="action" value="'.($action === 'create' ? 'add' : 'update').'">';
 	if ($id > 0) print '<input type="hidden" name="id" value="'.$id.'">';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
-	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('RegistrationNumber').'</td><td><input class="flat minwidth200" name="registration_number" maxlength="32" required value="'.dol_escape_htmltag($object->registration_number).'"></td></tr>';
-	print '<tr><td class="fieldrequired">'.$langs->trans('Label').'</td><td><input class="flat minwidth300" name="label" maxlength="255" required value="'.dol_escape_htmltag($object->label).'"></td></tr>';
+	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('RegistrationNumber').'</td><td><input class="flat minwidth200" name="registration_number" maxlength="32" value="'.dol_escape_htmltag($object->registration_number).'"></td></tr>';
+	print '<tr><td class="fieldrequired">'.$langs->trans('Label').'</td><td><input class="flat minwidth300" name="label" maxlength="255" value="'.dol_escape_htmltag($object->label).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('VIN').'</td><td><input class="flat minwidth300" name="vin" maxlength="64" value="'.dol_escape_htmltag((string) $object->vin).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('Brand').'</td><td><input class="flat minwidth200" name="brand" maxlength="128" value="'.dol_escape_htmltag((string) $object->brand).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('VehicleModel').'</td><td><input class="flat minwidth200" name="model" maxlength="128" value="'.dol_escape_htmltag((string) $object->model).'"></td></tr>';
@@ -175,7 +175,7 @@ if ($action === 'create' || $action === 'edit') {
 	}
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td><textarea class="flat centpercent" rows="4" name="description">'.dol_escape_htmltag((string) $object->description).'</textarea></td></tr>';
 	print '</table></div>';
-	print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'"></div>';
+	print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'" formnovalidate></div>';
 	print '</form>';
 } elseif ($id > 0) {
 	$head = lmdbVehiclePrepareHead($object);

@@ -1,5 +1,9 @@
 # Historique des versions
 
+## `0.1.2` — 2026-08-27
+
+- Alignement du formulaire véhicule sur la validation native Dolibarr : contrôle des champs obligatoires côté serveur et annulation possible sans compléter le formulaire.
+
 ## `0.1.1` — 2026-08-27
 
 - Masquage de l’état dans le formulaire de création, le statut `Brouillon` restant imposé côté serveur selon le parcours natif Dolibarr.
