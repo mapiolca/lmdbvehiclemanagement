@@ -136,7 +136,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 2600,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "lmdbvehicle", "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -150,7 +150,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 2601,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "lmdbvehicle", "write")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "lmdbvehicle", "write")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -164,7 +164,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 2602,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "lmdbvehicle", "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);

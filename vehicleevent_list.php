@@ -18,7 +18,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'lmdbvehicle', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 
 $limit = GETPOSTINT('limit') ?: (int) $conf->liste_limit;
 $page = GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page');
@@ -139,7 +139,7 @@ foreach ($searchEntities as $entityId) $param .= '&search_entity[]='.((int) $ent
 print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'">';
 print '<input type="hidden" name="token" value="'.newToken().'">';
 print '<input type="hidden" name="action" value="list"><input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'"><input type="hidden" name="page" value="'.((int) $page).'">';
-$newButton = dolGetButtonTitle($langs->trans('NewVehicleEvent'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create', '', lmdbVehicleManagementCanDo($user, 'event', 'write'));
+$newButton = dolGetButtonTitle($langs->trans('NewVehicleEvent'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create', '', $user->hasRight('lmdbvehiclemanagement', 'event', 'write'));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'calendar-day', 0, $newButton, '', $limit, 0, 0, 1);
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, 'lmdbvehicleeventlist', 0);
 print '<div class="div-table-responsive-no-min"><table class="tagtable nobottomiftotal noborder liste">';

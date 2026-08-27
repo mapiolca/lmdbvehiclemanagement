@@ -23,7 +23,7 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementcompatibilit
 /** @var User $user */
 
 $langs->loadLangs(array('admin', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!lmdbVehicleManagementUserIsFullAdmin($user)) {
+if (empty($user->admin)) {
 	accessforbidden();
 }
 

@@ -20,14 +20,14 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'companies', 'other', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'lmdbvehicle', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09') ?: 'view';
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionToWrite = lmdbVehicleManagementCanDo($user, 'lmdbvehicle', 'write');
-$permissionToDelete = lmdbVehicleManagementCanDo($user, 'lmdbvehicle', 'delete');
+$permissionToWrite = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write');
+$permissionToDelete = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'delete');
 
 $object = new LmdbVehicle($db);
 $hookmanager->initHooks(array('lmdbvehiclecard', 'globalcard'));
@@ -198,7 +198,7 @@ if ($action === 'create' || $action === 'edit') {
 			print '<form class="inline-block" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="action" value="archive"><button class="butAction" type="submit">'.$langs->trans('Archive').'</button></form>';
 		}
 	}
-	if (lmdbVehicleManagementCanDo($user, 'event', 'write')) {
+	if ($user->hasRight('lmdbvehiclemanagement', 'event', 'write')) {
 		print dolGetButtonAction('', $langs->trans('NewVehicleEvent'), 'default', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create&vehicle_id='.$id);
 	}
 	if ($permissionToDelete) print dolGetButtonAction('', $langs->trans('Delete'), 'delete', $_SERVER['PHP_SELF'].'?id='.$id.'&action=delete&token='.newToken());

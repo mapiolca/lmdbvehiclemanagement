@@ -25,7 +25,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'lmdbvehicle', 'read') || !empty($user->socid)) {
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) {
 	accessforbidden();
 }
 
@@ -177,7 +177,7 @@ print '<input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfi
 print '<input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'">';
 print '<input type="hidden" name="page" value="'.((int) $page).'">';
 
-$newButton = dolGetButtonTitle($langs->trans('NewVehicle'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?action=create', '', lmdbVehicleManagementCanDo($user, 'lmdbvehicle', 'write'));
+$newButton = dolGetButtonTitle($langs->trans('NewVehicle'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?action=create', '', $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write'));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'car', 0, $newButton, '', $limit, 0, 0, 1);
 
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, 'lmdbvehiclelist', 0);

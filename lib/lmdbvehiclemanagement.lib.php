@@ -8,60 +8,6 @@
  */
 
 /**
- * Return whether a user has administrator-level functional elevation.
- *
- * @param User|null $user User to check
- * @return bool
- */
-function lmdbVehicleManagementUserIsFullAdmin($user)
-{
-	if (!is_object($user)) {
-		return false;
-	}
-
-	if (!empty($user->admin)) {
-		return true;
-	}
-
-	if (isModEnabled('multicompany')) {
-		return $user->hasRight('multicompany', 'entities', 'write')
-			|| $user->hasRight('multicompany', 'setup', 'write')
-			|| $user->hasRight('multicompany', 'admin', 'write');
-	}
-
-	return false;
-}
-
-/**
- * Apply the central module permission rule.
- *
- * Administrator elevation is intentional business logic. Entity access is
- * checked separately by object fetches and getEntity() filters.
- *
- * @param User|null $user User to check
- * @param string $object Permission object
- * @param string $action Permission action
- * @return bool
- */
-function lmdbVehicleManagementCanDo($user, $object, $action)
-{
-	if (!is_object($user)) {
-		return false;
-	}
-
-	if (lmdbVehicleManagementUserIsFullAdmin($user)) {
-		return true;
-	}
-
-	// The read right is top-level so Dolibarr v20 can keep native Agenda links.
-	if ($object === 'lmdbvehicle' && $action === 'read') {
-		return (bool) $user->hasRight('lmdbvehiclemanagement', 'read');
-	}
-
-	return $user->hasRight('lmdbvehiclemanagement', $object, $action);
-}
-
-/**
  * Translate and display errors returned by a module business object.
  *
  * Object methods may expose either a translated sentence or a stable

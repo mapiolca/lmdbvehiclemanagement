@@ -20,7 +20,7 @@
 - documents natifs Dolibarr sur les véhicules et les événements ;
 - événements Agenda natifs liés au véhicule, conservés séparément des événements métier ;
 - modèles de numérotation distincts pour les véhicules et les événements ;
-- droits granulaires et élévation fonctionnelle des administrateurs ;
+- droits granulaires contrôlés directement avec la méthode native `$user->hasRight()` ;
 - partage Multicompany configurable des véhicules et de leur numérotation.
 
 ## Installation
