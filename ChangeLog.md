@@ -1,5 +1,13 @@
 # Historique des versions
 
+## `0.2.0` — 2026-08-27
+
+- Repositionnement des boutons d’action sous la fiche avec les conteneurs et helpers natifs Dolibarr.
+- Suppression de la ligne d’état redondante dans les informations du véhicule ; le badge de statut reste affiché dans la bannière native.
+- Prise en charge de l’éditeur WYSIWYG natif pour la description, avec repli automatique vers un textarea.
+- Uniformisation de la bannière native sur tous les onglets du véhicule, y compris le badge d’environnement Multicompany.
+- Réorganisation des onglets selon le parcours véhicule : fiche, affectation, kilométrage, historique, notes, fichiers joints, puis événements Agenda.
+
 ## `0.1.2` — 2026-08-27
 
 - Alignement du formulaire véhicule sur la validation native Dolibarr : contrôle des champs obligatoires côté serveur et annulation possible sans compléter le formulaire.

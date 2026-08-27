@@ -73,16 +73,44 @@ function lmdbVehiclePrepareHead($object)
 	$head = array();
 	$h = 0;
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?id='.$id, $langs->trans('Card'), 'card');
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_assignment.php', 1).'?id='.$id, $langs->trans('VehicleAssignments'), 'assignments');
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_odometer.php', 1).'?id='.$id, $langs->trans('OdometerReadings'), 'odometer');
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_history.php', 1).'?id='.$id, $langs->trans('VehicleHistory'), 'history');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_note.php', 1).'?id='.$id, $langs->trans('Notes'), 'notes');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_document.php', 1).'?id='.$id, $langs->trans('Documents'), 'documents');
 	if (isModEnabled('agenda') && ($user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) {
 		$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_agenda.php', 1).'?id='.$id, $langs->trans('EventsAgenda'), 'agenda');
 	}
-	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_assignment.php', 1).'?id='.$id, $langs->trans('VehicleAssignments'), 'assignments');
-	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_odometer.php', 1).'?id='.$id, $langs->trans('OdometerReadings'), 'odometer');
-	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_history.php', 1).'?id='.$id, $langs->trans('VehicleHistory'), 'history');
 
 	return $head;
+}
+
+/**
+ * Print the common native banner used by every vehicle tab.
+ *
+ * @param LmdbVehicle $object Vehicle
+ * @return void
+ */
+function lmdbVehiclePrintBanner($object)
+{
+	global $db, $langs;
+
+	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
+	$moreHtmlRef = '<div class="refidno">'.dol_escape_htmltag($object->registration_number).' — '.dol_escape_htmltag($object->label);
+	if (isModEnabled('multicompany') && !empty($object->entity)) {
+		$entityLabel = (string) $object->entity;
+		$resEntity = $db->query('SELECT label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid = '.((int) $object->entity));
+		if ($resEntity && is_object($entityRow = $db->fetch_object($resEntity)) && !empty($entityRow->label)) {
+			$entityLabel = (string) $entityRow->label;
+		}
+		if ($resEntity) {
+			$db->free($resEntity);
+		}
+		$moreHtmlRef .= '<br><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div>';
+	}
+	$moreHtmlRef .= '</div>';
+
+	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $moreHtmlRef);
 }
 
 /**

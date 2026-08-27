@@ -52,8 +52,7 @@ print dol_get_fiche_head($head, 'documents', $langs->trans('Vehicle'), -1, $obje
 $filearray = dol_dir_list($upload_dir, 'files', 0, '', '(\.meta|_preview.*\.png)$', $sortfield, $sortorder === 'DESC' ? SORT_DESC : SORT_ASC, 1);
 $totalsize = 0;
 foreach ($filearray as $file) $totalsize += (int) $file['size'];
-$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
-dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', '<div class="refidno">'.dol_escape_htmltag($object->registration_number).' — '.dol_escape_htmltag($object->label).'</div>');
+lmdbVehiclePrintBanner($object);
 print '<div class="fichecenter"><div class="underbanner clearboth"></div><table class="border centpercent tableforfield">';
 print '<tr><td class="titlefield">'.$langs->trans('NbOfAttachedFiles').'</td><td>'.count($filearray).'</td></tr>';
 print '<tr><td>'.$langs->trans('TotalSizeOfAttachedFiles').'</td><td>'.$totalsize.' '.$langs->trans('bytes').'</td></tr></table></div>';

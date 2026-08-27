@@ -9,6 +9,7 @@ if (!$res) die('Include of main fails');
 
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.formfile.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/class/doleditor.class.php';
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicle.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleenergy.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementcompatibility.class.php');
@@ -60,7 +61,7 @@ function lmdbVehiclePopulateFromPost($vehicle)
 		$resourceId = GETPOSTINT('fk_resource');
 		$vehicle->fk_resource = $resourceId > 0 ? $resourceId : null;
 	}
-	$vehicle->description = GETPOST('description', 'alphanohtml') ?: null;
+	$vehicle->description = GETPOST('description', 'restricthtml') ?: null;
 }
 
 $parameters = array('id' => $id);
@@ -170,27 +171,17 @@ if ($action === 'create' || $action === 'edit') {
 		$formResource = new FormResource($db);
 		print '<tr><td>'.$langs->trans('LinkedResource').'</td><td>'.$formResource->select_resource_list($object->fk_resource ?: 0, 'fk_resource', array(), 1, 1, 0, array(), array(), 2, 0, 'minwidth300').'</td></tr>';
 	}
-	if ($action === 'edit') {
-		print '<tr><td>'.$langs->trans('Status').'</td><td>'.$object->getLibStatut(5).'</td></tr>';
-	}
-	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td><textarea class="flat centpercent" rows="4" name="description">'.dol_escape_htmltag((string) $object->description).'</textarea></td></tr>';
+	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>';
+	$doleditor = new DolEditor('description', (string) $object->description, '', 160, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '100%');
+	print $doleditor->Create(1);
+	print '</td></tr>';
 	print '</table></div>';
 	print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'" formnovalidate></div>';
 	print '</form>';
 } elseif ($id > 0) {
 	$head = lmdbVehiclePrepareHead($object);
 	print dol_get_fiche_head($head, 'card', $langs->trans('Vehicle'), -1, 'car');
-	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
-	$moreHtmlRef = '<div class="refidno">'.dol_escape_htmltag($object->registration_number).' — '.dol_escape_htmltag($object->label);
-	if (isModEnabled('multicompany') && !empty($object->entity)) {
-		$entityLabel = (string) $object->entity;
-		$resEntity = $db->query('SELECT label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid = '.((int) $object->entity));
-		if ($resEntity && is_object($entityRow = $db->fetch_object($resEntity)) && !empty($entityRow->label)) $entityLabel = (string) $entityRow->label;
-		if ($resEntity) $db->free($resEntity);
-		$moreHtmlRef .= '<br><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div>';
-	}
-	$moreHtmlRef .= '</div>';
-	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $moreHtmlRef);
+	lmdbVehiclePrintBanner($object);
 
 	print '<div class="fichecenter"><div class="fichehalfleft"><div class="underbanner clearboth"></div><table class="border centpercent tableforfield">';
 	print '<tr><td class="titlefield">'.$langs->trans('RegistrationNumber').'</td><td>'.dol_escape_htmltag($object->registration_number).'</td></tr>';
@@ -212,26 +203,29 @@ if ($action === 'create' || $action === 'edit') {
 		$resource = new Dolresource($db);
 		print '<tr><td>'.$langs->trans('LinkedResource').'</td><td>'.($resource->fetch((int) $object->fk_resource) > 0 ? $resource->getNomUrl(1) : '').'</td></tr>';
 	}
-	print '<tr><td>'.$langs->trans('Status').'</td><td>'.$object->getLibStatut(5).'</td></tr>';
-	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>'.dol_htmlentitiesbr((string) $object->description).'</td></tr>';
+	$description = (string) $object->description;
+	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>'.(dol_textishtml($description) ? $description : dol_htmlentitiesbr($description)).'</td></tr>';
 	print '</table></div></div>';
+	print '<div class="clearboth"></div>';
+	print dol_get_fiche_end();
 
+	// Actions buttons
 	print '<div class="tabsAction">';
 	$hookmanager->executeHooks('addMoreActionsButtons', array(), $object, $action);
 	print $hookmanager->resPrint;
 	if ($permissionToWrite) {
 		print dolGetButtonAction('', $langs->trans('Modify'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=edit');
 		if ((int) $object->status === LmdbVehicle::STATUS_DRAFT) {
-			print '<form class="inline-block" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="action" value="validate"><button class="butAction" type="submit">'.$langs->trans('Validate').'</button></form>';
+			print dolGetButtonAction('', $langs->trans('Validate'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=validate&token='.newToken());
 		}
 		if (in_array((int) $object->status, array(LmdbVehicle::STATUS_VALIDATED, LmdbVehicle::STATUS_IN_SERVICE, LmdbVehicle::STATUS_OUT_OF_SERVICE), true)) {
-			print '<form class="inline-block" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="action" value="set_sold"><button class="butAction" type="submit">'.$langs->trans('MarkVehicleSold').'</button></form>';
+			print dolGetButtonAction('', $langs->trans('MarkVehicleSold'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=set_sold&token='.newToken());
 		}
 	}
 	if ($permissionToManageService && ((int) $object->status === LmdbVehicle::STATUS_VALIDATED || (int) $object->status === LmdbVehicle::STATUS_OUT_OF_SERVICE)) {
-		print '<form class="inline-block" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="action" value="set_in_service"><button class="butAction" type="submit">'.$langs->trans('PutInService').'</button></form>';
+		print dolGetButtonAction('', $langs->trans('PutInService'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=set_in_service&token='.newToken());
 	} elseif ($permissionToManageService && (int) $object->status === LmdbVehicle::STATUS_IN_SERVICE) {
-		print '<form class="inline-block" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="action" value="set_out_of_service"><button class="butAction" type="submit">'.$langs->trans('PutOutOfService').'</button></form>';
+		print dolGetButtonAction('', $langs->trans('PutOutOfService'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=set_out_of_service&token='.newToken());
 	}
 	if ($user->hasRight('lmdbvehiclemanagement', 'event', 'write')) {
 		print dolGetButtonAction('', $langs->trans('NewVehicleEvent'), 'default', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create&vehicle_id='.$id);
@@ -253,7 +247,6 @@ if ($action === 'create' || $action === 'edit') {
 		$formActions->showactions($object, $object->element.'@'.$object->module, 0, 1, '', 10, '', $more);
 	}
 	print '</div></div>';
-	print dol_get_fiche_end();
 }
 
 llxFooter();

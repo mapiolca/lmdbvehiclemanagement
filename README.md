@@ -1,6 +1,6 @@
 # Gestion des véhicules pour Dolibarr
 
-`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.1.2` couvre les véhicules, leurs affectations, les relevés kilométriques et les événements métier.
+`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.2.0` couvre les véhicules, leurs affectations, les relevés kilométriques et les événements métier.
 
 ## Compatibilité
 
@@ -10,7 +10,7 @@
 - Module Multicompany facultatif
 - Module Ressources facultatif pour la liaison `fk_resource`
 
-## Fonctionnalités de la version 0.1.2
+## Fonctionnalités de la version 0.2.0
 
 - fiche véhicule avec le cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
 - énergie sélectionnée dans un Select2 alimenté par un dictionnaire configurable, initialisé avec la [nomenclature réglementaire française P.3](https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000049860492/2026-07-27) ;

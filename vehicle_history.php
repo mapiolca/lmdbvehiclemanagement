@@ -50,8 +50,7 @@ $form = new Form($db);
 llxHeader('', $vehicle->ref.' - '.$langs->trans('VehicleHistory'), '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card');
 $head = lmdbVehiclePrepareHead($vehicle);
 print dol_get_fiche_head($head, 'history', $langs->trans('Vehicle'), -1, $vehicle->picto);
-$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
-dol_banner_tab($vehicle, 'ref', $linkback, 1, 'ref', 'ref', '<div class="refidno">'.dol_escape_htmltag($vehicle->registration_number).' — '.dol_escape_htmltag($vehicle->label).'</div>');
+lmdbVehiclePrintBanner($vehicle);
 
 $param = '&id='.$id;
 foreach ($sourceFilter as $source) $param .= '&search_source[]='.urlencode($source);

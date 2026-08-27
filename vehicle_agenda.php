@@ -73,8 +73,7 @@ $form = new Form($db);
 llxHeader('', $object->ref.' - '.$langs->trans('EventsAgenda'), '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card_agenda');
 $head = lmdbVehiclePrepareHead($object);
 print dol_get_fiche_head($head, 'agenda', $langs->trans('Vehicle'), -1, $object->picto);
-$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
-dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', '<div class="refidno">'.dol_escape_htmltag($object->registration_number).' — '.dol_escape_htmltag($object->label).'</div>');
+lmdbVehiclePrintBanner($object);
 
 $param = '&id='.$id.'&search_label='.urlencode($searchLabel);
 $origin = urlencode($object->element.'@'.$object->module);

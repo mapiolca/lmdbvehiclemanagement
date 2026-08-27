@@ -87,8 +87,7 @@ if ($action === 'delete' && $assignmentId > 0) {
 }
 $head = lmdbVehiclePrepareHead($vehicle);
 print dol_get_fiche_head($head, 'assignments', $langs->trans('Vehicle'), -1, $vehicle->picto);
-$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
-dol_banner_tab($vehicle, 'ref', $linkback, 1, 'ref', 'ref', '<div class="refidno">'.dol_escape_htmltag($vehicle->registration_number).' — '.dol_escape_htmltag($vehicle->label).'</div>');
+lmdbVehiclePrintBanner($vehicle);
 
 if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
