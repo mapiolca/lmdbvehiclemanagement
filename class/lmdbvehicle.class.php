@@ -2,6 +2,8 @@
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementobject.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementrules.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleenergy.class.php');
 
 /**
  * Vehicle dossier object.
@@ -9,9 +11,10 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementobject.class
 class LmdbVehicle extends LmdbVehicleManagementObject
 {
 	public const STATUS_DRAFT = 0;
-	public const STATUS_ACTIVE = 1;
-	public const STATUS_UNAVAILABLE = 2;
-	public const STATUS_RETIRED = 9;
+	public const STATUS_VALIDATED = 1;
+	public const STATUS_IN_SERVICE = 2;
+	public const STATUS_OUT_OF_SERVICE = 3;
+	public const STATUS_SOLD = 4;
 
 	/** @var string */
 	public $element = 'lmdbvehicle';
@@ -33,9 +36,9 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		'vin' => array('type' => 'varchar(64)', 'label' => 'VIN', 'position' => 40, 'notnull' => -1, 'visible' => 1, 'index' => 1, 'searchall' => 1),
 		'label' => array('type' => 'varchar(255)', 'label' => 'Label', 'position' => 50, 'notnull' => 1, 'visible' => 1, 'searchall' => 1),
 		'brand' => array('type' => 'varchar(128)', 'label' => 'Brand', 'position' => 60, 'notnull' => -1, 'visible' => 1, 'searchall' => 1),
-		'model' => array('type' => 'varchar(128)', 'label' => 'Model', 'position' => 70, 'notnull' => -1, 'visible' => 1, 'searchall' => 1),
+		'model' => array('type' => 'varchar(128)', 'label' => 'VehicleModel', 'position' => 70, 'notnull' => -1, 'visible' => 1, 'searchall' => 1),
 		'vehicle_version' => array('type' => 'varchar(128)', 'label' => 'VehicleVersion', 'position' => 80, 'notnull' => -1, 'visible' => -1),
-		'energy' => array('type' => 'varchar(32)', 'label' => 'Energy', 'position' => 90, 'notnull' => -1, 'visible' => -1),
+		'fk_energy' => array('type' => 'integer:LmdbVehicleEnergy:lmdbvehiclemanagement/class/lmdbvehicleenergy.class.php', 'label' => 'Energy', 'position' => 90, 'notnull' => -1, 'visible' => -1, 'index' => 1),
 		'first_registration_date' => array('type' => 'date', 'label' => 'FirstRegistrationDate', 'position' => 100, 'notnull' => -1, 'visible' => -1),
 		'commissioning_date' => array('type' => 'date', 'label' => 'CommissioningDate', 'position' => 110, 'notnull' => -1, 'visible' => -1),
 		'ownership_type' => array('type' => 'varchar(32)', 'label' => 'OwnershipType', 'position' => 120, 'notnull' => -1, 'visible' => -1, 'arrayofkeyval' => array('owned' => 'Owned', 'leased' => 'Leased', 'long_term_leased' => 'LongTermLeased', 'short_term_leased' => 'ShortTermLeased')),
@@ -44,7 +47,7 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		'description' => array('type' => 'text', 'label' => 'Description', 'position' => 150, 'notnull' => -1, 'visible' => 3),
 		'note_public' => array('type' => 'html', 'label' => 'NotePublic', 'position' => 160, 'notnull' => -1, 'visible' => 0),
 		'note_private' => array('type' => 'html', 'label' => 'NotePrivate', 'position' => 170, 'notnull' => -1, 'visible' => 0),
-		'status' => array('type' => 'integer', 'label' => 'Status', 'position' => 200, 'notnull' => 1, 'visible' => 1, 'index' => 1, 'default' => 0, 'arrayofkeyval' => array(0 => 'VehicleStatusDraft', 1 => 'VehicleStatusActive', 2 => 'VehicleStatusUnavailable', 9 => 'VehicleStatusRetired')),
+		'status' => array('type' => 'integer', 'label' => 'Status', 'position' => 200, 'notnull' => 1, 'visible' => 1, 'index' => 1, 'default' => 0, 'arrayofkeyval' => array(0 => 'VehicleStatusDraft', 1 => 'VehicleStatusValidated', 2 => 'VehicleStatusInService', 3 => 'VehicleStatusOutOfService', 4 => 'VehicleStatusSold')),
 		'date_creation' => array('type' => 'datetime', 'label' => 'DateCreation', 'position' => 500, 'notnull' => 1, 'visible' => -2),
 		'tms' => array('type' => 'timestamp', 'label' => 'DateModification', 'position' => 501, 'notnull' => 0, 'visible' => -2, 'noteditable' => 1),
 		'fk_user_creat' => array('type' => 'integer:User:user/class/user.class.php', 'label' => 'UserAuthor', 'position' => 510, 'notnull' => 1, 'visible' => -2),
@@ -68,8 +71,8 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	public $model;
 	/** @var ?string */
 	public $vehicle_version;
-	/** @var ?string */
-	public $energy;
+	/** @var ?int */
+	public $fk_energy;
 	/** @var ?int */
 	public $first_registration_date;
 	/** @var ?int */
@@ -91,6 +94,9 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	/** @var ?string */
 	public $last_main_doc;
 
+	/** @var bool Allow one controlled lifecycle update */
+	private $statusTransitionInProgress = false;
+
 	/**
 	 * @param DoliDB $db Database handler
 	 */
@@ -98,6 +104,46 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	{
 		parent::__construct($db);
 		$this->status = self::STATUS_DRAFT;
+	}
+
+	/**
+	 * Always create vehicles as drafts, regardless of submitted data.
+	 *
+	 * @param User $user Author
+	 * @param int<0,1> $notrigger Disable triggers
+	 * @return int<-1,max>
+	 */
+	public function create(User $user, $notrigger = 0)
+	{
+		$this->status = self::STATUS_DRAFT;
+
+		return parent::create($user, $notrigger);
+	}
+
+	/**
+	 * Prevent ordinary form updates from changing lifecycle state.
+	 *
+	 * @param User $user Author
+	 * @param int<0,1> $notrigger Disable triggers
+	 * @return int<-1,max>
+	 */
+	public function update(User $user, $notrigger = 0)
+	{
+		if (!$this->statusTransitionInProgress && !empty($this->id)) {
+			$current = new self($this->db);
+			if ($current->fetch((int) $this->id) <= 0) {
+				$this->error = $current->error !== '' ? $current->error : 'RecordNotFound';
+				$this->errors = $current->errors;
+				return -1;
+			}
+			if ((int) $this->status !== (int) $current->status) {
+				$this->error = 'VehicleStatusMustUseAction';
+				$this->errors[] = $this->error;
+				return -1;
+			}
+		}
+
+		return parent::update($user, $notrigger);
 	}
 
 	/**
@@ -158,17 +204,120 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	}
 
 	/**
-	 * Archive a vehicle through an UPDATE trigger.
+	 * Validate a draft vehicle.
 	 *
 	 * @param User $user Author
 	 * @param int<0,1> $notrigger Disable triggers
 	 * @return int<-1,max>
 	 */
-	public function archive(User $user, $notrigger = 0)
+	public function validate(User $user, $notrigger = 0)
 	{
-		$this->status = self::STATUS_RETIRED;
+		return $this->changeStatus(self::STATUS_VALIDATED, $user, $notrigger);
+	}
+
+	/**
+	 * Put a validated or out-of-service vehicle into service.
+	 *
+	 * @param User $user Author
+	 * @param int<0,1> $notrigger Disable triggers
+	 * @return int<-1,max>
+	 */
+	public function setInService(User $user, $notrigger = 0)
+	{
+		return $this->changeStatus(self::STATUS_IN_SERVICE, $user, $notrigger);
+	}
+
+	/**
+	 * Put an in-service vehicle out of service.
+	 *
+	 * @param User $user Author
+	 * @param int<0,1> $notrigger Disable triggers
+	 * @return int<-1,max>
+	 */
+	public function setOutOfService(User $user, $notrigger = 0)
+	{
+		return $this->changeStatus(self::STATUS_OUT_OF_SERVICE, $user, $notrigger);
+	}
+
+	/**
+	 * Mark a validated, in-service or out-of-service vehicle as transferred or sold.
+	 *
+	 * @param User $user Author
+	 * @param int<0,1> $notrigger Disable triggers
+	 * @return int<-1,max>
+	 */
+	public function setSold(User $user, $notrigger = 0)
+	{
+		return $this->changeStatus(self::STATUS_SOLD, $user, $notrigger);
+	}
+
+	/**
+	 * Apply one lifecycle transition under a row lock and emit one CRUD UPDATE.
+	 *
+	 * @param int $targetStatus Target status
+	 * @param User $user Author
+	 * @param int<0,1> $notrigger Disable triggers
+	 * @return int<-1,max>
+	 */
+	private function changeStatus($targetStatus, User $user, $notrigger = 0)
+	{
+		if (empty($this->id)) {
+			$this->error = 'RecordNotFound';
+			$this->errors[] = $this->error;
+			return -1;
+		}
+
+		$this->db->begin();
+		$sql = 'SELECT status, commissioning_date FROM '.MAIN_DB_PREFIX.$this->table_element;
+		$sql .= ' WHERE rowid = '.((int) $this->id).' AND entity IN ('.getEntity('lmdbvehicle').') FOR UPDATE';
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			$this->error = $this->db->lasterror();
+			$this->errors[] = $this->error;
+			$this->db->rollback();
+			return -1;
+		}
+		$row = $this->db->fetch_object($resql);
+		$this->db->free($resql);
+		if (!is_object($row)) {
+			$this->error = 'RecordNotFound';
+			$this->errors[] = $this->error;
+			$this->db->rollback();
+			return -1;
+		}
+
+		$oldStatus = (int) $row->status;
+		if (!LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed($oldStatus, $targetStatus)) {
+			$this->error = 'InvalidVehicleStatusTransition';
+			$this->errors[] = $this->error;
+			$this->db->rollback();
+			return 0;
+		}
+		$fetchResult = $this->fetch((int) $this->id);
+		if ($fetchResult <= 0) {
+			$this->error = $this->error !== '' ? $this->error : 'RecordNotFound';
+			$this->errors[] = $this->error;
+			$this->db->rollback();
+			return -1;
+		}
+
+		$this->status = $targetStatus;
+		if ($targetStatus === self::STATUS_IN_SERVICE && empty($row->commissioning_date) && empty($this->commissioning_date)) {
+			$this->commissioning_date = dol_now();
+		}
 		$this->context['trigger_reason'] = 'status_change';
-		return $this->update($user, $notrigger);
+		$this->context['old_status'] = $oldStatus;
+		$this->context['new_status'] = $targetStatus;
+		$this->statusTransitionInProgress = true;
+		$result = parent::update($user, $notrigger);
+		$this->statusTransitionInProgress = false;
+		if ($result <= 0) {
+			$this->db->rollback();
+			return $result;
+		}
+		$this->db->commit();
+
+		return $result;
 	}
 
 	/** @inheritdoc */
@@ -188,10 +337,18 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 			$this->errors[] = $this->error;
 			return -1;
 		}
-		if (!in_array((int) $this->status, array(self::STATUS_DRAFT, self::STATUS_ACTIVE, self::STATUS_UNAVAILABLE, self::STATUS_RETIRED), true)) {
+		if (!in_array((int) $this->status, array(self::STATUS_DRAFT, self::STATUS_VALIDATED, self::STATUS_IN_SERVICE, self::STATUS_OUT_OF_SERVICE, self::STATUS_SOLD), true)) {
 			$this->error = 'InvalidStatus';
 			$this->errors[] = $this->error;
 			return -1;
+		}
+		if (!empty($this->fk_energy)) {
+			$energy = new LmdbVehicleEnergy($this->db);
+			if ($energy->fetch((int) $this->fk_energy) <= 0) {
+				$this->error = 'InvalidVehicleEnergy';
+				$this->errors[] = $this->error;
+				return -1;
+			}
 		}
 		$duplicateRegistration = $this->duplicateVehicleFieldExists('registration_number', $this->registration_number);
 		if ($duplicateRegistration < 0) {
@@ -342,15 +499,17 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		global $langs;
 		$labels = array(
 			self::STATUS_DRAFT => 'VehicleStatusDraft',
-			self::STATUS_ACTIVE => 'VehicleStatusActive',
-			self::STATUS_UNAVAILABLE => 'VehicleStatusUnavailable',
-			self::STATUS_RETIRED => 'VehicleStatusRetired',
+			self::STATUS_VALIDATED => 'VehicleStatusValidated',
+			self::STATUS_IN_SERVICE => 'VehicleStatusInService',
+			self::STATUS_OUT_OF_SERVICE => 'VehicleStatusOutOfService',
+			self::STATUS_SOLD => 'VehicleStatusSold',
 		);
 		$types = array(
 			self::STATUS_DRAFT => 'status0',
-			self::STATUS_ACTIVE => 'status4',
-			self::STATUS_UNAVAILABLE => 'status3',
-			self::STATUS_RETIRED => 'status6',
+			self::STATUS_VALIDATED => 'status1',
+			self::STATUS_IN_SERVICE => 'status4',
+			self::STATUS_OUT_OF_SERVICE => 'status3',
+			self::STATUS_SOLD => 'status6',
 		);
 		$label = isset($labels[$status]) ? $langs->trans($labels[$status]) : (string) $status;
 

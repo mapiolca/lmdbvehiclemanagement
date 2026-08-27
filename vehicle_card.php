@@ -10,6 +10,7 @@ if (!$res) die('Include of main fails');
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.formfile.class.php';
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicle.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleenergy.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementcompatibility.class.php');
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 
@@ -28,6 +29,7 @@ $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
 $permissionToWrite = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write');
 $permissionToDelete = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'delete');
+$permissionToManageService = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'service');
 
 $object = new LmdbVehicle($db);
 $hookmanager->initHooks(array('lmdbvehiclecard', 'globalcard'));
@@ -47,7 +49,8 @@ function lmdbVehiclePopulateFromPost($vehicle)
 	$vehicle->brand = trim(GETPOST('brand', 'alphanohtml')) ?: null;
 	$vehicle->model = trim(GETPOST('model', 'alphanohtml')) ?: null;
 	$vehicle->vehicle_version = trim(GETPOST('vehicle_version', 'alphanohtml')) ?: null;
-	$vehicle->energy = trim(GETPOST('energy', 'alphanohtml')) ?: null;
+	$energyId = GETPOSTINT('fk_energy');
+	$vehicle->fk_energy = $energyId > 0 ? $energyId : null;
 	$vehicle->first_registration_date = dol_mktime(12, 0, 0, GETPOSTINT('first_registration_datemonth'), GETPOSTINT('first_registration_dateday'), GETPOSTINT('first_registration_dateyear')) ?: null;
 	$vehicle->commissioning_date = dol_mktime(12, 0, 0, GETPOSTINT('commissioning_datemonth'), GETPOSTINT('commissioning_dateday'), GETPOSTINT('commissioning_dateyear')) ?: null;
 	$vehicle->ownership_type = GETPOST('ownership_type', 'alpha') ?: null;
@@ -58,7 +61,6 @@ function lmdbVehiclePopulateFromPost($vehicle)
 		$vehicle->fk_resource = $resourceId > 0 ? $resourceId : null;
 	}
 	$vehicle->description = GETPOST('description', 'alphanohtml') ?: null;
-	$vehicle->status = GETPOSTINT('status');
 }
 
 $parameters = array('id' => $id);
@@ -92,10 +94,31 @@ if (empty($reshook)) {
 		}
 		lmdbVehicleManagementSetObjectErrors($object);
 		$action = 'edit';
-	} elseif ($action === 'archive') {
+	} elseif ($action === 'validate') {
 		if (!$permissionToWrite || $id <= 0) accessforbidden();
-		$result = $object->archive($user);
-		if ($result > 0) setEventMessages($langs->trans('VehicleArchived'), null, 'mesgs');
+		$result = $object->validate($user);
+		if ($result > 0) setEventMessages($langs->trans('VehicleValidated'), null, 'mesgs');
+		else lmdbVehicleManagementSetObjectErrors($object);
+		header('Location: '.$_SERVER['PHP_SELF'].'?id='.$id);
+		exit;
+	} elseif ($action === 'set_in_service') {
+		if (!$permissionToManageService || $id <= 0) accessforbidden();
+		$result = $object->setInService($user);
+		if ($result > 0) setEventMessages($langs->trans('VehiclePutInService'), null, 'mesgs');
+		else lmdbVehicleManagementSetObjectErrors($object);
+		header('Location: '.$_SERVER['PHP_SELF'].'?id='.$id);
+		exit;
+	} elseif ($action === 'set_out_of_service') {
+		if (!$permissionToManageService || $id <= 0) accessforbidden();
+		$result = $object->setOutOfService($user);
+		if ($result > 0) setEventMessages($langs->trans('VehiclePutOutOfService'), null, 'mesgs');
+		else lmdbVehicleManagementSetObjectErrors($object);
+		header('Location: '.$_SERVER['PHP_SELF'].'?id='.$id);
+		exit;
+	} elseif ($action === 'set_sold') {
+		if (!$permissionToWrite || $id <= 0) accessforbidden();
+		$result = $object->setSold($user);
+		if ($result > 0) setEventMessages($langs->trans('VehicleMarkedSold'), null, 'mesgs');
 		else lmdbVehicleManagementSetObjectErrors($object);
 		header('Location: '.$_SERVER['PHP_SELF'].'?id='.$id);
 		exit;
@@ -114,6 +137,7 @@ if (empty($reshook)) {
 
 $form = new Form($db);
 $formfile = new FormFile($db);
+$energyDictionary = new LmdbVehicleEnergy($db);
 $title = $id > 0 ? $object->ref : $langs->trans('NewVehicle');
 llxHeader('', $title, '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card');
 
@@ -133,9 +157,10 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td class="fieldrequired">'.$langs->trans('Label').'</td><td><input class="flat minwidth300" name="label" maxlength="255" required value="'.dol_escape_htmltag($object->label).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('VIN').'</td><td><input class="flat minwidth300" name="vin" maxlength="64" value="'.dol_escape_htmltag((string) $object->vin).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('Brand').'</td><td><input class="flat minwidth200" name="brand" maxlength="128" value="'.dol_escape_htmltag((string) $object->brand).'"></td></tr>';
-	print '<tr><td>'.$langs->trans('Model').'</td><td><input class="flat minwidth200" name="model" maxlength="128" value="'.dol_escape_htmltag((string) $object->model).'"></td></tr>';
+	print '<tr><td>'.$langs->trans('VehicleModel').'</td><td><input class="flat minwidth200" name="model" maxlength="128" value="'.dol_escape_htmltag((string) $object->model).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('VehicleVersion').'</td><td><input class="flat minwidth200" name="vehicle_version" maxlength="128" value="'.dol_escape_htmltag((string) $object->vehicle_version).'"></td></tr>';
-	print '<tr><td>'.$langs->trans('Energy').'</td><td><input class="flat minwidth200" name="energy" maxlength="32" value="'.dol_escape_htmltag((string) $object->energy).'"></td></tr>';
+	$energyOptions = $energyDictionary->getSelectOptions((int) $object->fk_energy);
+	print '<tr><td>'.$langs->trans('Energy').'</td><td>'.$form->selectarray('fk_energy', $energyOptions, (int) $object->fk_energy, 1, 0, 0, '', 1, 0, 0, '', 'minwidth300', 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('FirstRegistrationDate').'</td><td>'.$form->selectDate($object->first_registration_date ?: -1, 'first_registration_date', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('CommissioningDate').'</td><td>'.$form->selectDate($object->commissioning_date ?: -1, 'commissioning_date', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('OwnershipType').'</td><td>'.$form->selectarray('ownership_type', $object->fields['ownership_type']['arrayofkeyval'], $object->ownership_type, 1, 0, 0, '', 1, 0, 0, '', 'minwidth200', 1).'</td></tr>';
@@ -145,7 +170,7 @@ if ($action === 'create' || $action === 'edit') {
 		$formResource = new FormResource($db);
 		print '<tr><td>'.$langs->trans('LinkedResource').'</td><td>'.$formResource->select_resource_list($object->fk_resource ?: 0, 'fk_resource', array(), 1, 1, 0, array(), array(), 2, 0, 'minwidth300').'</td></tr>';
 	}
-	print '<tr><td>'.$langs->trans('Status').'</td><td>'.$form->selectarray('status', $object->fields['status']['arrayofkeyval'], (int) $object->status, 0, 0, 0, '', 1, 0, 0, '', 'minwidth200', 1).'</td></tr>';
+	print '<tr><td>'.$langs->trans('Status').'</td><td>'.$object->getLibStatut(5).'</td></tr>';
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td><textarea class="flat centpercent" rows="4" name="description">'.dol_escape_htmltag((string) $object->description).'</textarea></td></tr>';
 	print '</table></div>';
 	print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'"></div>';
@@ -169,9 +194,9 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td class="titlefield">'.$langs->trans('RegistrationNumber').'</td><td>'.dol_escape_htmltag($object->registration_number).'</td></tr>';
 	print '<tr><td>'.$langs->trans('VIN').'</td><td>'.dol_escape_htmltag((string) $object->vin).'</td></tr>';
 	print '<tr><td>'.$langs->trans('Brand').'</td><td>'.dol_escape_htmltag((string) $object->brand).'</td></tr>';
-	print '<tr><td>'.$langs->trans('Model').'</td><td>'.dol_escape_htmltag((string) $object->model).'</td></tr>';
+	print '<tr><td>'.$langs->trans('VehicleModel').'</td><td>'.dol_escape_htmltag((string) $object->model).'</td></tr>';
 	print '<tr><td>'.$langs->trans('VehicleVersion').'</td><td>'.dol_escape_htmltag((string) $object->vehicle_version).'</td></tr>';
-	print '<tr><td>'.$langs->trans('Energy').'</td><td>'.dol_escape_htmltag((string) $object->energy).'</td></tr>';
+	print '<tr><td>'.$langs->trans('Energy').'</td><td>'.dol_escape_htmltag($energyDictionary->getDisplayLabel((int) $object->fk_energy)).'</td></tr>';
 	print '<tr><td>'.$langs->trans('FirstRegistrationDate').'</td><td>'.($object->first_registration_date ? dol_print_date($object->first_registration_date, 'day') : '').'</td></tr>';
 	print '<tr><td>'.$langs->trans('CommissioningDate').'</td><td>'.($object->commissioning_date ? dol_print_date($object->commissioning_date, 'day') : '').'</td></tr>';
 	print '<tr><td>'.$langs->trans('OwnershipType').'</td><td>'.(!empty($object->ownership_type) && isset($object->fields['ownership_type']['arrayofkeyval'][$object->ownership_type]) ? $langs->trans($object->fields['ownership_type']['arrayofkeyval'][$object->ownership_type]) : '').'</td></tr>';
@@ -194,9 +219,17 @@ if ($action === 'create' || $action === 'edit') {
 	print $hookmanager->resPrint;
 	if ($permissionToWrite) {
 		print dolGetButtonAction('', $langs->trans('Modify'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=edit');
-		if ((int) $object->status !== LmdbVehicle::STATUS_RETIRED) {
-			print '<form class="inline-block" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="action" value="archive"><button class="butAction" type="submit">'.$langs->trans('Archive').'</button></form>';
+		if ((int) $object->status === LmdbVehicle::STATUS_DRAFT) {
+			print '<form class="inline-block" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="action" value="validate"><button class="butAction" type="submit">'.$langs->trans('Validate').'</button></form>';
 		}
+		if (in_array((int) $object->status, array(LmdbVehicle::STATUS_VALIDATED, LmdbVehicle::STATUS_IN_SERVICE, LmdbVehicle::STATUS_OUT_OF_SERVICE), true)) {
+			print '<form class="inline-block" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="action" value="set_sold"><button class="butAction" type="submit">'.$langs->trans('MarkVehicleSold').'</button></form>';
+		}
+	}
+	if ($permissionToManageService && ((int) $object->status === LmdbVehicle::STATUS_VALIDATED || (int) $object->status === LmdbVehicle::STATUS_OUT_OF_SERVICE)) {
+		print '<form class="inline-block" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="action" value="set_in_service"><button class="butAction" type="submit">'.$langs->trans('PutInService').'</button></form>';
+	} elseif ($permissionToManageService && (int) $object->status === LmdbVehicle::STATUS_IN_SERVICE) {
+		print '<form class="inline-block" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="action" value="set_out_of_service"><button class="butAction" type="submit">'.$langs->trans('PutOutOfService').'</button></form>';
 	}
 	if ($user->hasRight('lmdbvehiclemanagement', 'event', 'write')) {
 		print dolGetButtonAction('', $langs->trans('NewVehicleEvent'), 'default', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create&vehicle_id='.$id);

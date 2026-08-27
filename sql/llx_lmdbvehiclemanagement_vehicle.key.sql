@@ -5,5 +5,6 @@ ALTER TABLE llx_lmdbvehiclemanagement_vehicle ADD INDEX idx_lmdbvm_vehicle_entit
 ALTER TABLE llx_lmdbvehiclemanagement_vehicle ADD INDEX idx_lmdbvm_vehicle_status (status);
 ALTER TABLE llx_lmdbvehiclemanagement_vehicle ADD INDEX idx_lmdbvm_vehicle_owner (fk_soc_owner);
 ALTER TABLE llx_lmdbvehiclemanagement_vehicle ADD INDEX idx_lmdbvm_vehicle_resource (fk_resource);
+ALTER TABLE llx_lmdbvehiclemanagement_vehicle ADD INDEX idx_lmdbvm_vehicle_energy (fk_energy);
 ALTER TABLE llx_lmdbvehiclemanagement_vehicle ADD INDEX idx_lmdbvm_vehicle_created (date_creation);
 

@@ -62,7 +62,7 @@ $arrayfields = array(
 	't.registration_number' => array('label' => 'RegistrationNumber', 'checked' => 1, 'enabled' => 1, 'position' => 20),
 	't.label' => array('label' => 'Label', 'checked' => 1, 'enabled' => 1, 'position' => 30),
 	't.brand' => array('label' => 'Brand', 'checked' => 1, 'enabled' => 1, 'position' => 40),
-	't.model' => array('label' => 'Model', 'checked' => 1, 'enabled' => 1, 'position' => 50),
+	't.model' => array('label' => 'VehicleModel', 'checked' => 1, 'enabled' => 1, 'position' => 50),
 	't.status' => array('label' => 'Status', 'checked' => 1, 'enabled' => 1, 'position' => 60),
 );
 
@@ -199,7 +199,7 @@ if (!empty($arrayfields['t.ref']['checked'])) print getTitleFieldOfList('Ref', 0
 if (!empty($arrayfields['t.registration_number']['checked'])) print getTitleFieldOfList('RegistrationNumber', 0, $_SERVER['PHP_SELF'], 't.registration_number', '', $param, '', $sortfield, $sortorder);
 if (!empty($arrayfields['t.label']['checked'])) print getTitleFieldOfList('Label', 0, $_SERVER['PHP_SELF'], 't.label', '', $param, '', $sortfield, $sortorder);
 if (!empty($arrayfields['t.brand']['checked'])) print getTitleFieldOfList('Brand', 0, $_SERVER['PHP_SELF'], 't.brand', '', $param, '', $sortfield, $sortorder);
-if (!empty($arrayfields['t.model']['checked'])) print getTitleFieldOfList('Model', 0, $_SERVER['PHP_SELF'], 't.model', '', $param, '', $sortfield, $sortorder);
+if (!empty($arrayfields['t.model']['checked'])) print getTitleFieldOfList('VehicleModel', 0, $_SERVER['PHP_SELF'], 't.model', '', $param, '', $sortfield, $sortorder);
 if (!empty($arrayfields['t.status']['checked'])) print getTitleFieldOfList('Status', 0, $_SERVER['PHP_SELF'], 't.status', '', $param, 'class="center"', $sortfield, $sortorder, 'center ');
 if ($showEntityColumn && !empty($arrayfields['t.entity']['checked'])) print getTitleFieldOfList('Environment', 0, $_SERVER['PHP_SELF'], 't.entity', '', $param, 'class="center"', $sortfield, $sortorder, 'center ');
 print '<td class="liste_titre center">'.$selectedfields.'</td>';

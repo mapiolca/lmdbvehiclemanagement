@@ -12,7 +12,8 @@
 
 ## Fonctionnalités de la version 0.1.0
 
-- fiche véhicule et statut de cycle de vie ;
+- fiche véhicule avec le cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
+- énergie sélectionnée dans un Select2 alimenté par un dictionnaire configurable, initialisé avec la [nomenclature réglementaire française P.3](https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000049860492/2026-07-27) ;
 - plusieurs conducteurs simultanés, avec une seule affectation principale sur une période donnée ;
 - relevés kilométriques contrôlés, avec correction et remplacement de compteur explicitement qualifiés ;
 - événements véhicule (incident, panne, entretien ou autre événement opérationnel) ;
@@ -20,8 +21,9 @@
 - documents natifs Dolibarr sur les véhicules et les événements ;
 - événements Agenda natifs liés au véhicule, conservés séparément des événements métier ;
 - modèles de numérotation distincts pour les véhicules et les événements ;
-- droits granulaires contrôlés directement avec la méthode native `$user->hasRight()` ;
-- partage Multicompany configurable des véhicules et de leur numérotation.
+- droits granulaires distincts pour lire, créer/modifier, mettre en ou hors service, supprimer, exporter et importer, contrôlés directement avec la méthode native `$user->hasRight()` ;
+- profils natifs Dolibarr d'import et d'export des véhicules ;
+- partage Multicompany configurable des véhicules, de leur numérotation et du dictionnaire des énergies.
 
 ## Installation
 

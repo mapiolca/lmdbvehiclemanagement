@@ -7,6 +7,26 @@
 class LmdbVehicleManagementRules
 {
 	/**
+	 * Check a vehicle lifecycle transition.
+	 *
+	 * @param int $from Current status
+	 * @param int $to Target status
+	 * @return bool
+	 */
+	public static function vehicleStatusTransitionIsAllowed($from, $to)
+	{
+		$allowed = array(
+			0 => array(1),
+			1 => array(2, 4),
+			2 => array(3, 4),
+			3 => array(2, 4),
+			4 => array(),
+		);
+
+		return isset($allowed[$from]) && in_array($to, $allowed[$from], true);
+	}
+
+	/**
 	 * Check whether two inclusive time ranges overlap.
 	 *
 	 * A null end date represents an open-ended period.

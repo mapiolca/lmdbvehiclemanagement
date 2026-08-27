@@ -4,12 +4,37 @@
 use PHPUnit\Framework\TestCase;
 
 require_once dirname(__DIR__, 2).'/class/lmdbvehiclemanagementrules.class.php';
+require_once dirname(__DIR__, 2).'/class/lmdbvehicleenergy.class.php';
 
 /**
  * Unit tests for persistence-independent fleet rules.
  */
 final class LmdbVehicleManagementRulesTest extends TestCase
 {
+	public function testDefaultEnergyDictionaryUsesTheP3Codes(): void
+	{
+		$energies = LmdbVehicleEnergy::getDefaultDefinitions();
+		self::assertCount(46, $energies);
+		self::assertSame('Essence', $energies['ES']);
+		self::assertSame('Gazole', $energies['GO']);
+		self::assertSame('Électricité', $energies['EL']);
+		self::assertSame('Hydrogène', $energies['H2']);
+	}
+
+	public function testVehicleLifecycleTransitions(): void
+	{
+		self::assertTrue(LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(0, 1));
+		self::assertTrue(LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(1, 2));
+		self::assertTrue(LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(2, 3));
+		self::assertTrue(LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(3, 2));
+		self::assertTrue(LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(1, 4));
+		self::assertTrue(LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(2, 4));
+		self::assertTrue(LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(3, 4));
+		self::assertFalse(LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(0, 2));
+		self::assertFalse(LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(3, 1));
+		self::assertFalse(LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(4, 2));
+	}
+
 	public function testPrimaryAssignmentRangesOverlapAtTheirBoundary(): void
 	{
 		self::assertTrue(LmdbVehicleManagementRules::dateRangesOverlap(100, 200, 200, 300));

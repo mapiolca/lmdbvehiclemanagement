@@ -63,6 +63,16 @@ class ActionsLmdbVehicleManagement
 					'lmdbvehicle' => 'lmdbvehiclemanagement',
 					'lmdbvehiclenumber' => 'lmdbvehiclemanagement',
 				),
+				'dictionary' => array(
+					'c_lmdbvehiclemanagement_energy' => array(
+						'type' => 'dictionary',
+						'icon' => 'car',
+						'transkey' => 'VehicleEnergies',
+						'tooltip' => 'VehicleEnergySharingInfo',
+						'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+						'filepath' => '/lmdbvehiclemanagement/sql/llx_c_lmdbvehiclemanagement_energy.sql',
+					),
+				),
 			),
 		);
 	}
