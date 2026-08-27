@@ -1,0 +1,200 @@
+# Module
+ModuleLmdbVehicleManagementName=Vehicle management
+ModuleLmdbVehicleManagementDesc=Multi-entity management of vehicle records, assignments, odometer readings and events
+LmdbVehicleManagement=Vehicle management
+LmdbVehicleManagementSetup=Vehicle management settings
+BackToModuleList=Back to module list
+
+# Menus and objects
+Vehicles=Vehicles
+Vehicle=Vehicle
+VehicleList=Vehicle list
+NewVehicle=New vehicle
+VehicleEvents=Vehicle events
+VehicleEvent=Vehicle event
+NewVehicleEvent=New vehicle event
+VehicleAssignments=Assignments
+OdometerReadings=Odometer
+VehicleHistory=History
+EventsAgenda=Events/Agenda
+
+# Permissions
+PermissionReadVehicles=Read vehicles
+PermissionWriteVehicles=Create and update vehicles
+PermissionDeleteVehicles=Delete vehicles
+PermissionManageVehicleAssignments=Manage vehicle assignments
+PermissionManageVehicleOdometer=Manage vehicle odometer readings
+PermissionManageVehicleEvents=Manage vehicle events
+
+# Vehicle fields
+RegistrationNumber=Registration number
+VIN=VIN / serial number
+Brand=Brand
+Model=Model
+VehicleVersion=Version
+Energy=Energy
+FirstRegistrationDate=First registration date
+CommissioningDate=Commissioning date
+OwnershipType=Ownership type
+OwnerThirdParty=Owner
+LinkedResource=Linked Dolibarr resource
+Owned=Owned
+Leased=Leased
+LongTermLeased=Long-term lease
+ShortTermLeased=Short-term lease
+VehicleCreated=Vehicle created
+VehicleUpdated=Vehicle updated
+VehicleDeleted=Vehicle deleted
+VehicleArchived=Vehicle archived
+ConfirmDeleteVehicle=Are you sure you want to delete this vehicle?
+VehicleHasRelatedRecords=The vehicle still has assignments, odometer readings or events and cannot be deleted.
+VehicleHasAgendaEvents=The vehicle still has linked Agenda events and cannot be deleted.
+
+# Vehicle statuses
+VehicleStatusDraft=Draft
+VehicleStatusActive=In service
+VehicleStatusUnavailable=Unavailable
+VehicleStatusRetired=Archived
+
+# Assignments
+Driver=Driver
+AssignmentType=Assignment type
+AssignmentTypeDriver=Driver
+AssignmentTypeCustodian=Custodian
+AssignmentTypePool=Shared vehicle
+PrimaryAssignment=Primary assignment
+AssignmentStart=Assignment start
+AssignmentEnd=Assignment end
+AssignmentReason=Reason
+AddAssignment=Add assignment
+AssignmentCreated=Assignment created
+AssignmentUpdated=Assignment updated
+AssignmentDeleted=Assignment deleted
+AssignmentDateRangeInvalid=The end date must be after the start date.
+PrimaryAssignmentOverlap=Another primary assignment already overlaps this period.
+ConfirmDeleteAssignment=Are you sure you want to delete this assignment?
+
+# Odometer
+OdometerReading=Odometer reading
+OdometerKm=Odometer
+ReadingDate=Reading date
+ReadingSource=Source
+ReadingKind=Reading kind
+ReadingKindStandard=Standard
+ReadingKindCorrection=Correction
+ReadingKindReplacement=Odometer replacement
+ReadingReason=Correction or replacement reason
+AddOdometerReading=Add reading
+OdometerReadingCreated=Odometer reading created
+OdometerReadingUpdated=Odometer reading updated
+OdometerReadingDeleted=Odometer reading deleted
+OdometerCannotDecrease=The odometer cannot decrease unless the reading is an explicit correction or replacement.
+OdometerDeletionWouldExposeDecrease=This reading cannot be deleted because it qualifies a decrease between the surrounding readings.
+OdometerMoveWouldExposeDecrease=This reading cannot be moved because it would leave an unqualified decrease between the surrounding readings.
+CannotMoveObjectBetweenEntities=An existing item cannot be moved to a vehicle owned by another environment.
+OdometerReasonRequired=A reason is required for a correction or odometer replacement.
+NumberingLockTimeout=The reference could not be allocated because another creation is in progress. Please try again.
+ErrorNumRefModelNotFound=The configured numbering model could not be loaded.
+Archive=Archive
+OdometerMustBePositive=The odometer must be greater than or equal to zero.
+ConfirmDeleteOdometerReading=Are you sure you want to delete this odometer reading?
+SourceManual=Manual entry
+SourceImport=Import
+SourceExternal=External source
+
+# Events
+EventType=Event type
+EventSubtype=Subtype
+EventDate=Event date
+EventTypeMaintenance=Maintenance
+EventTypeBreakdown=Breakdown
+EventTypeAccident=Accident
+EventTypeInspection=Inspection
+EventTypeAdministrative=Administrative
+EventTypeOther=Other
+Severity=Severity
+SeverityLow=Low
+SeverityMedium=Medium
+SeverityHigh=High
+VehicleImmobilized=Vehicle immobilized
+ImmobilizationStart=Immobilization start
+ImmobilizationEnd=Immobilization end
+VehicleEventCreated=Vehicle event created
+VehicleEventUpdated=Vehicle event updated
+VehicleEventDeleted=Vehicle event deleted
+ConfirmDeleteVehicleEvent=Are you sure you want to delete this vehicle event?
+VehicleEventStatusOpen=Open
+VehicleEventStatusInProgress=In progress
+VehicleEventStatusClosed=Closed
+VehicleEventStatusCancelled=Cancelled
+
+# Timeline
+Timeline=Timeline
+TimelineSource=Source
+TimelineObject=Source object
+TimelineDocuments=Documents
+TimelineSourceEvent=Event
+TimelineSourceAssignment=Assignment
+TimelineSourceOdometer=Odometer reading
+TimelineFilterType=Filter by type
+
+# Settings
+GeneralSettings=General settings
+Compatibility=Compatibility
+About=About
+NumberingModels=Numbering models
+VehicleNumberingModel=Vehicle numbering model
+VehicleEventNumberingModel=Vehicle event numbering model
+SettingsSaved=Settings saved
+ModuleInformation=Module information
+Publisher=Publisher
+License=License
+Dependencies=Dependencies
+MainFeatures=Main features
+NoMandatoryDependency=No mandatory dependency
+OptionalDependencies=Optional dependencies
+CoreVersionAvailability=Core availability
+DetectedVersion=Detected version
+MinimumVersion=Minimum version
+Available=Available
+Unavailable=Unavailable
+UnavailableReason=Reason unavailable
+FeatureNativeDocuments=Native vehicle and event documents
+FeatureNativeAgenda=Native Events/Agenda tab
+FeatureMulticompanySharing=Configurable Multicompany sharing
+FeatureResourceLink=Optional Resources module link
+RequiresAgendaModule=Requires the Agenda module
+RequiresMulticompanyModule=Requires the Multicompany module
+RequiresResourceModule=Requires the Resources module
+RequiresDolibarr20=Requires Dolibarr 20 or later
+RequiresPhp80=Requires PHP 8.0 or later
+
+# Multicompany
+Environment=Environment
+ShareLmdbvehicle=Share vehicles
+ShareLmdbvehiclenumber=Share vehicle numbering
+LMDBVEHICLESharing=Vehicle sharing
+LMDBVEHICLESharingDescription=Allow vehicle records to be shared between selected environments.
+LMDBVEHICLENUMBERSharing=Vehicle numbering sharing
+LMDBVEHICLENUMBERSharingDescription=Use a common vehicle reference sequence for selected environments.
+LmdbVehicleSharingInfo=Share vehicle records between environments.
+LmdbVehicleNumberSharingInfo=Share the vehicle numbering sequence.
+
+# Numbering
+SimpleVehicleNumRefModelDesc=Vehicle references in VEH YYMM-0001 format
+SimpleVehicleEventNumRefModelDesc=Event references in EVT YYMM-0001 format
+
+# Generic validation
+FieldRequired=Field %s is required.
+RecordNotFound=Record not found
+InvalidVehicle=The selected vehicle is invalid or not accessible.
+InvalidDriver=The selected driver is invalid or not accessible.
+InvalidOwnerThirdParty=The selected owner third party is invalid or not accessible.
+InvalidThirdParty=The selected third party is invalid or not accessible.
+InvalidLinkedResource=The selected Dolibarr resource is invalid or not accessible.
+DuplicateRegistrationNumber=A vehicle already uses this registration number in this environment.
+DuplicateVIN=A vehicle already uses this VIN in this environment.
+InvalidStatus=The selected status is invalid.
+InvalidDateRange=The selected date range is invalid.
+AccessDeniedForEntity=You cannot access the entity that owns this object.
+NoTimelineEntry=No history entry found

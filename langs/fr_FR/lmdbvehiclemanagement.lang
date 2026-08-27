@@ -1,0 +1,200 @@
+# Module
+ModuleLmdbVehicleManagementName=Gestion des véhicules
+ModuleLmdbVehicleManagementDesc=Gestion multientité des dossiers véhicule, affectations, kilométrages et événements
+LmdbVehicleManagement=Gestion des véhicules
+LmdbVehicleManagementSetup=Réglages de la gestion des véhicules
+BackToModuleList=Retour vers la liste des modules
+
+# Menus and objects
+Vehicles=Véhicules
+Vehicle=Véhicule
+VehicleList=Liste des véhicules
+NewVehicle=Nouveau véhicule
+VehicleEvents=Événements véhicule
+VehicleEvent=Événement véhicule
+NewVehicleEvent=Nouvel événement véhicule
+VehicleAssignments=Affectations
+OdometerReadings=Kilométrage
+VehicleHistory=Historique
+EventsAgenda=Événements/Agenda
+
+# Permissions
+PermissionReadVehicles=Lire les véhicules
+PermissionWriteVehicles=Créer et modifier les véhicules
+PermissionDeleteVehicles=Supprimer les véhicules
+PermissionManageVehicleAssignments=Gérer les affectations des véhicules
+PermissionManageVehicleOdometer=Gérer le kilométrage des véhicules
+PermissionManageVehicleEvents=Gérer les événements des véhicules
+
+# Vehicle fields
+RegistrationNumber=Immatriculation
+VIN=VIN / numéro de série
+Brand=Marque
+Model=Modèle
+VehicleVersion=Version
+Energy=Énergie
+FirstRegistrationDate=Date de première immatriculation
+CommissioningDate=Date de mise en service
+OwnershipType=Mode de détention
+OwnerThirdParty=Propriétaire
+LinkedResource=Ressource Dolibarr liée
+Owned=Propriété
+Leased=Location
+LongTermLeased=Location longue durée
+ShortTermLeased=Location courte durée
+VehicleCreated=Véhicule créé
+VehicleUpdated=Véhicule mis à jour
+VehicleDeleted=Véhicule supprimé
+VehicleArchived=Véhicule archivé
+ConfirmDeleteVehicle=Confirmez-vous la suppression de ce véhicule ?
+VehicleHasRelatedRecords=Le véhicule possède encore des affectations, relevés kilométriques ou événements et ne peut pas être supprimé.
+VehicleHasAgendaEvents=Le véhicule possède encore des événements Agenda liés et ne peut pas être supprimé.
+
+# Vehicle statuses
+VehicleStatusDraft=Brouillon
+VehicleStatusActive=En service
+VehicleStatusUnavailable=Indisponible
+VehicleStatusRetired=Archivé
+
+# Assignments
+Driver=Conducteur
+AssignmentType=Type d'affectation
+AssignmentTypeDriver=Conducteur
+AssignmentTypeCustodian=Responsable
+AssignmentTypePool=Véhicule partagé
+PrimaryAssignment=Affectation principale
+AssignmentStart=Début d'affectation
+AssignmentEnd=Fin d'affectation
+AssignmentReason=Motif
+AddAssignment=Ajouter une affectation
+AssignmentCreated=Affectation créée
+AssignmentUpdated=Affectation mise à jour
+AssignmentDeleted=Affectation supprimée
+AssignmentDateRangeInvalid=La date de fin doit être postérieure à la date de début.
+PrimaryAssignmentOverlap=Une autre affectation principale chevauche déjà cette période.
+ConfirmDeleteAssignment=Confirmez-vous la suppression de cette affectation ?
+
+# Odometer
+OdometerReading=Relevé kilométrique
+OdometerKm=Kilométrage
+ReadingDate=Date du relevé
+ReadingSource=Source
+ReadingKind=Nature du relevé
+ReadingKindStandard=Standard
+ReadingKindCorrection=Correction
+ReadingKindReplacement=Remplacement de compteur
+ReadingReason=Motif de correction ou de remplacement
+AddOdometerReading=Ajouter un relevé
+OdometerReadingCreated=Relevé kilométrique créé
+OdometerReadingUpdated=Relevé kilométrique mis à jour
+OdometerReadingDeleted=Relevé kilométrique supprimé
+OdometerCannotDecrease=Le kilométrage ne peut pas diminuer sans déclarer une correction ou un remplacement de compteur.
+OdometerDeletionWouldExposeDecrease=Ce relevé ne peut pas être supprimé car il qualifie une baisse entre les relevés qui l’encadrent.
+OdometerMoveWouldExposeDecrease=Ce relevé ne peut pas être déplacé car il laisserait une baisse non qualifiée entre les relevés qui l’encadrent.
+CannotMoveObjectBetweenEntities=Un élément existant ne peut pas être déplacé vers un véhicule appartenant à un autre environnement.
+OdometerReasonRequired=Un motif est obligatoire pour une correction ou un remplacement de compteur.
+NumberingLockTimeout=La référence n’a pas pu être attribuée car une autre création est en cours. Veuillez réessayer.
+ErrorNumRefModelNotFound=Le modèle de numérotation configuré n’a pas pu être chargé.
+Archive=Archiver
+OdometerMustBePositive=Le kilométrage doit être positif ou nul.
+ConfirmDeleteOdometerReading=Confirmez-vous la suppression de ce relevé kilométrique ?
+SourceManual=Saisie manuelle
+SourceImport=Import
+SourceExternal=Source externe
+
+# Events
+EventType=Type d'événement
+EventSubtype=Sous-type
+EventDate=Date de l'événement
+EventTypeMaintenance=Entretien
+EventTypeBreakdown=Panne
+EventTypeAccident=Accident
+EventTypeInspection=Contrôle
+EventTypeAdministrative=Administratif
+EventTypeOther=Autre
+Severity=Gravité
+SeverityLow=Faible
+SeverityMedium=Moyenne
+SeverityHigh=Élevée
+VehicleImmobilized=Véhicule immobilisé
+ImmobilizationStart=Début d'immobilisation
+ImmobilizationEnd=Fin d'immobilisation
+VehicleEventCreated=Événement véhicule créé
+VehicleEventUpdated=Événement véhicule mis à jour
+VehicleEventDeleted=Événement véhicule supprimé
+ConfirmDeleteVehicleEvent=Confirmez-vous la suppression de cet événement véhicule ?
+VehicleEventStatusOpen=Ouvert
+VehicleEventStatusInProgress=En cours
+VehicleEventStatusClosed=Clôturé
+VehicleEventStatusCancelled=Annulé
+
+# Timeline
+Timeline=Chronologie
+TimelineSource=Source
+TimelineObject=Objet source
+TimelineDocuments=Documents
+TimelineSourceEvent=Événement
+TimelineSourceAssignment=Affectation
+TimelineSourceOdometer=Relevé kilométrique
+TimelineFilterType=Filtrer par type
+
+# Settings
+GeneralSettings=Réglages généraux
+Compatibility=Compatibilité
+About=À propos
+NumberingModels=Modèles de numérotation
+VehicleNumberingModel=Modèle de numérotation des véhicules
+VehicleEventNumberingModel=Modèle de numérotation des événements
+SettingsSaved=Réglages enregistrés
+ModuleInformation=Informations du module
+Publisher=Éditeur
+License=Licence
+Dependencies=Dépendances
+MainFeatures=Fonctionnalités principales
+NoMandatoryDependency=Aucune dépendance obligatoire
+OptionalDependencies=Dépendances facultatives
+CoreVersionAvailability=Disponibilité dans le core
+DetectedVersion=Version détectée
+MinimumVersion=Version minimale
+Available=Disponible
+Unavailable=Indisponible
+UnavailableReason=Motif d'indisponibilité
+FeatureNativeDocuments=Documents natifs des véhicules et événements
+FeatureNativeAgenda=Onglet Événements/Agenda natif
+FeatureMulticompanySharing=Partage Multicompany configurable
+FeatureResourceLink=Liaison facultative au module Ressources
+RequiresAgendaModule=Nécessite l'activation du module Agenda
+RequiresMulticompanyModule=Nécessite l'activation du module Multicompany
+RequiresResourceModule=Nécessite l'activation du module Ressources
+RequiresDolibarr20=Nécessite Dolibarr 20 ou supérieur
+RequiresPhp80=Nécessite PHP 8.0 ou supérieur
+
+# Multicompany
+Environment=Environnement
+ShareLmdbvehicle=Partager les véhicules
+ShareLmdbvehiclenumber=Partager la numérotation des véhicules
+LMDBVEHICLESharing=Partage des véhicules
+LMDBVEHICLESharingDescription=Autorise le partage des véhicules entre les environnements sélectionnés.
+LMDBVEHICLENUMBERSharing=Partage de la numérotation des véhicules
+LMDBVEHICLENUMBERSharingDescription=Utilise une séquence commune pour les références véhicule des environnements sélectionnés.
+LmdbVehicleSharingInfo=Partager les dossiers véhicule entre plusieurs environnements.
+LmdbVehicleNumberSharingInfo=Partager la séquence de numérotation des véhicules.
+
+# Numbering
+SimpleVehicleNumRefModelDesc=Références véhicule au format VEH AAMM-0001
+SimpleVehicleEventNumRefModelDesc=Références événement au format EVT AAMM-0001
+
+# Generic validation
+FieldRequired=Le champ %s est obligatoire.
+RecordNotFound=Enregistrement introuvable
+InvalidVehicle=Le véhicule sélectionné est invalide ou inaccessible.
+InvalidDriver=Le conducteur sélectionné est invalide ou inaccessible.
+InvalidOwnerThirdParty=Le tiers propriétaire sélectionné est invalide ou inaccessible.
+InvalidThirdParty=Le tiers sélectionné est invalide ou inaccessible.
+InvalidLinkedResource=La ressource Dolibarr sélectionnée est invalide ou inaccessible.
+DuplicateRegistrationNumber=Un véhicule porte déjà cette immatriculation dans cet environnement.
+DuplicateVIN=Un véhicule porte déjà ce numéro VIN dans cet environnement.
+InvalidStatus=Le statut sélectionné est invalide.
+InvalidDateRange=La période sélectionnée est invalide.
+AccessDeniedForEntity=Vous n'avez pas accès à l'environnement propriétaire de cet objet.
+NoTimelineEntry=Aucune entrée d'historique trouvée
