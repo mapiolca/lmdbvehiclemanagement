@@ -15,6 +15,7 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.clas
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecertificate.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsuranceconfig.class.php');
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
+dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehicleinsurance.lib.php');
 
 /** @var Conf $conf */
 /** @var DoliDB $db */
@@ -32,6 +33,9 @@ $contractId = GETPOSTINT('contract_id');
 $newContract = GETPOSTINT('new_contract');
 $certificateId = GETPOSTINT('certificate_id');
 $downloadCertificate = GETPOSTINT('download_certificate');
+$invalidFields = array();
+$failedContract = null;
+$failedCoverage = null;
 $vehicle = new LmdbVehicle($db);
 if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 
@@ -56,37 +60,26 @@ if ($certificateId > 0 && $contractId <= 0) {
 	}
 }
 
-/** @return ?int */
-function lmdbInsuranceGetDate($prefix)
-{
-	$day = GETPOSTINT($prefix.'day');
-	$month = GETPOSTINT($prefix.'month');
-	$year = GETPOSTINT($prefix.'year');
-	if ($day <= 0 || $month <= 0 || $year <= 0) return null;
-
-	return dol_mktime(12, 0, 0, $month, $day, $year);
-}
-
-/** @return array<int,string> */
-function lmdbInsuranceMessages($object)
+/**
+ * Finish an insurance action with a native page message or a modal JSON payload.
+ *
+ * @param bool $success Success state
+ * @param list<string> $messages Translated messages
+ * @param int $vehicleId Vehicle id
+ * @param bool $modal Modal mode
+ * @param list<string> $invalidFields Invalid controls
+ * @return never
+ */
+function lmdbInsuranceFinish($success, $messages, $vehicleId, $modal, $invalidFields = array())
 {
 	global $langs;
 
-	$messages = array();
-	if (isset($object->error) && is_string($object->error) && $object->error !== '') $messages[] = $langs->trans($object->error);
-	if (isset($object->errors) && is_array($object->errors)) {
-		foreach ($object->errors as $error) if (is_string($error) && $error !== '') $messages[] = $langs->trans($error);
+	if (empty($messages)) {
+		$messages = array($langs->trans('Error'));
 	}
-
-	return array_values(array_unique($messages));
-}
-
-/** @return never */
-function lmdbInsuranceFinish($success, $messages, $vehicleId, $modal)
-{
 	if ($modal) {
 		header('Content-Type: application/json; charset=UTF-8');
-		print json_encode(array('success' => (bool) $success, 'messages' => array_values($messages), 'refresh_parent' => (bool) $success));
+		print json_encode(array('success' => (bool) $success, 'messages' => array_values($messages), 'invalid_fields' => array_values($invalidFields), 'refresh_parent' => (bool) $success));
 		exit;
 	}
 	setEventMessages('', $messages, $success ? 'mesgs' : 'errors');
@@ -137,33 +130,26 @@ if ($action === 'save_contract') {
 	$isNew = $contractId <= 0;
 	if (!$isNew && ($contract->fetch($contractId) <= 0 || !lmdbInsuranceContractCoversVehicle($contract, $id))) accessforbidden();
 	if ($isNew) $contract->entity = (int) $vehicle->entity;
-	$contract->fk_soc = GETPOSTINT('fk_soc');
-	$contactId = GETPOSTINT('fk_contact');
-	$contract->fk_contact = $contactId > 0 ? $contactId : null;
-	$contract->policy_number = trim(GETPOST('policy_number', 'alphanohtml'));
-	$contract->label = trim(GETPOST('contract_label', 'alphanohtml'));
-	$contract->coverage_formula = trim(GETPOST('coverage_formula', 'restricthtml')) ?: null;
-	$contract->date_start = (int) lmdbInsuranceGetDate('contract_start');
-	$contract->date_end = lmdbInsuranceGetDate('contract_end');
-	$contract->renewal_mode = GETPOST('renewal_mode', 'alpha') ?: 'fixed';
-	$contract->notice_date = lmdbInsuranceGetDate('notice_date');
-	$contract->assistance_phone = trim(GETPOST('assistance_phone', 'alphanohtml')) ?: null;
-	$contract->assistance_email = trim(GETPOST('assistance_email', 'alphanohtml')) ?: null;
-	$contract->claim_phone = trim(GETPOST('claim_phone', 'alphanohtml')) ?: null;
-	$contract->claim_email = trim(GETPOST('claim_email', 'alphanohtml')) ?: null;
-	$contract->description = GETPOST('contract_description', 'restricthtml') ?: null;
-	$vehicleIds = GETPOST('vehicle_ids', 'array:int');
-	$vehicleIds = is_array($vehicleIds) ? array_map('intval', $vehicleIds) : array();
+	lmdbInsurancePopulateContractFromPost($contract);
+	$coverage = lmdbInsuranceGetCoverageFromPost($contract);
+	$vehicleIds = $coverage['vehicle_ids'];
 	if ($isNew && !in_array($id, $vehicleIds, true)) $vehicleIds[] = $id;
-	$coverageType = GETPOST('coverage_type', 'alpha');
-	$coverageStart = lmdbInsuranceGetDate('coverage_start') ?: $contract->date_start;
-	$coverageEnd = lmdbInsuranceGetDate('coverage_end');
-	if ($coverageEnd === null) $coverageEnd = $contract->date_end;
+	$coverageType = $coverage['coverage_type'];
+	$coverageStart = $coverage['coverage_start'];
+	$coverageEnd = $coverage['coverage_end'];
 	$result = $contract->saveWithVehicleLinks($vehicleIds, $coverageType, (int) $coverageStart, $coverageEnd, $user);
 	if ($result > 0) {
 		lmdbInsuranceFinish(true, array($langs->trans($isNew ? 'InsuranceContractCreated' : 'InsuranceContractUpdated')), $id, $isModal);
 	}
-	lmdbInsuranceFinish(false, lmdbInsuranceMessages($contract), $id, $isModal);
+	$invalidFields = lmdbInsuranceContractInvalidFields($contract, $vehicleIds, $coverageType, (int) $coverageStart, $coverageEnd);
+	if ($isModal) {
+		lmdbInsuranceFinish(false, lmdbInsuranceMessages($contract), $id, true, $invalidFields);
+	}
+	setEventMessages('', lmdbInsuranceMessages($contract), 'errors');
+	$failedContract = $contract;
+	$failedCoverage = array('vehicle_ids' => $vehicleIds, 'coverage_type' => $coverageType, 'coverage_start' => (int) $coverageStart, 'coverage_end' => $coverageEnd);
+	$contractId = (int) $contract->id;
+	$newContract = $isNew ? 1 : 0;
 }
 
 if (in_array($action, array('activate_contract', 'terminate_contract', 'delete_contract'), true)) {
@@ -224,14 +210,9 @@ foreach ($contracts as $entry) {
 	if ($contractId > 0 && (int) $entry['contract']->id === $contractId) $selectedContract = $entry['contract'];
 }
 if (!$selectedContract && !$newContract && !empty($contracts)) $selectedContract = $contracts[0]['contract'];
-$editContract = $selectedContract instanceof LmdbVehicleInsuranceContract ? $selectedContract : new LmdbVehicleInsuranceContract($db);
+$editContract = $failedContract instanceof LmdbVehicleInsuranceContract ? $failedContract : ($selectedContract instanceof LmdbVehicleInsuranceContract ? $selectedContract : new LmdbVehicleInsuranceContract($db));
 
-$vehicleOptions = array();
-$resql = $db->query('SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle WHERE entity = '.((int) $vehicle->entity).' ORDER BY ref');
-if ($resql) {
-	while (is_object($row = $db->fetch_object($resql))) $vehicleOptions[(int) $row->rowid] = (string) $row->ref.' — '.(string) $row->registration_number.' — '.(string) $row->label;
-	$db->free($resql);
-}
+$vehicleOptions = lmdbInsuranceGetVehicleOptions($db, (int) $vehicle->entity);
 $form = new Form($db);
 $formfile = new FormFile($db);
 
@@ -243,6 +224,7 @@ if (!$isModal) {
 }
 
 print '<div class="lmdb-insurance-content">';
+print '<div class="lmdb-insurance-messages"></div>';
 print load_fiche_titre($langs->trans('InsuranceContracts'), '', 'shield-alt');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 print '<tr class="liste_titre"><th>'.$langs->trans('Ref').'</th><th>'.$langs->trans('InsurancePolicyNumber').'</th><th>'.$langs->trans('InsuranceCoverageType').'</th><th>'.$langs->trans('Period').'</th><th class="center">'.$langs->trans('Status').'</th><th></th></tr>';
@@ -263,35 +245,26 @@ if ($permissionWrite) {
 }
 
 if ($permissionWrite) {
-	$linkedIds = $editContract->id > 0 ? $editContract->getVehicleIds() : array($id);
+	$linkedIds = is_array($failedCoverage) ? $failedCoverage['vehicle_ids'] : ($editContract->id > 0 ? $editContract->getVehicleIds() : array($id));
 	$currentEntry = null;
 	foreach ($contracts as $entry) if ((int) $entry['contract']->id === (int) $editContract->id) $currentEntry = $entry;
 	print load_fiche_titre($editContract->id > 0 ? $langs->trans('ModifyInsuranceContract') : $langs->trans('NewInsuranceContract'), '', 'edit');
 	if (count($linkedIds) > 1) print '<div class="warning">'.$langs->trans('InsuranceSharedContractWarning', count($linkedIds)).'</div>';
-	print '<form class="lmdb-insurance-ajax-form" method="POST" action="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 1).'">';
-	print '<input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="mode" value="'.($isModal ? 'modal' : 'page').'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="contract_id" value="'.((int) $editContract->id).'"><input type="hidden" name="action" value="save_contract">';
-	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
-	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('InsuranceCompany').'</td><td>'.$form->select_company($editContract->fk_soc ?: '', 'fk_soc', '', '-1', 0, 0, array(), 0, 'minwidth300').'</td></tr>';
-	print '<tr><td>'.$langs->trans('InsuranceContact').'</td><td>'.$form->selectcontacts(0, (int) $editContract->fk_contact, 'fk_contact', 1, '', '', 0, 'minwidth300', 0, 1).'</td></tr>';
-	print '<tr><td class="fieldrequired">'.$langs->trans('InsurancePolicyNumber').'</td><td><input class="flat minwidth300" name="policy_number" value="'.dol_escape_htmltag($editContract->policy_number).'"></td></tr>';
-	print '<tr><td class="fieldrequired">'.$langs->trans('Label').'</td><td><input class="flat minwidth500" name="contract_label" value="'.dol_escape_htmltag($editContract->label).'"></td></tr>';
-	print '<tr><td>'.$langs->trans('InsuranceCoverageFormula').'</td><td><input class="flat minwidth500" name="coverage_formula" value="'.dol_escape_htmltag((string) $editContract->coverage_formula).'"></td></tr>';
-	print '<tr><td class="fieldrequired">'.$langs->trans('Period').'</td><td>'.$form->selectDate($editContract->date_start ?: -1, 'contract_start', 0, 0, 1, '', 1, 1).' '.$form->selectDate($editContract->date_end ?: -1, 'contract_end', 0, 0, 1, '', 1, 1).'</td></tr>';
-	print '<tr><td>'.$langs->trans('InsuranceRenewalMode').'</td><td>'.$form->selectarray('renewal_mode', array('fixed' => $langs->trans('InsuranceRenewalFixed'), 'tacit' => $langs->trans('InsuranceRenewalTacit')), $editContract->renewal_mode, 0, 0, 0, '', 1).'</td></tr>';
-	print '<tr><td>'.$langs->trans('InsuranceNoticeDate').'</td><td>'.$form->selectDate($editContract->notice_date ?: -1, 'notice_date', 0, 0, 1, '', 1, 1).'</td></tr>';
-	print '<tr><td>'.$langs->trans('InsuranceAssistancePhone').'</td><td><input class="flat" name="assistance_phone" value="'.dol_escape_htmltag((string) $editContract->assistance_phone).'"></td></tr>';
-	print '<tr><td>'.$langs->trans('InsuranceAssistanceEmail').'</td><td><input class="flat minwidth300" name="assistance_email" value="'.dol_escape_htmltag((string) $editContract->assistance_email).'"></td></tr>';
-	print '<tr><td>'.$langs->trans('InsuranceClaimPhone').'</td><td><input class="flat" name="claim_phone" value="'.dol_escape_htmltag((string) $editContract->claim_phone).'"></td></tr>';
-	print '<tr><td>'.$langs->trans('InsuranceClaimEmail').'</td><td><input class="flat minwidth300" name="claim_email" value="'.dol_escape_htmltag((string) $editContract->claim_email).'"></td></tr>';
-	print '<tr><td class="fieldrequired">'.$langs->trans('Vehicles').'</td><td>'.$form->multiselectarray('vehicle_ids', $vehicleOptions, $linkedIds, 0, 0, 'minwidth500').'</td></tr>';
-	$coverageType = $currentEntry ? $currentEntry['coverage_type'] : LmdbVehicleInsuranceContract::COVERAGE_PRIMARY;
-	print '<tr><td>'.$langs->trans('InsuranceCoverageType').'</td><td>'.$form->selectarray('coverage_type', array('primary' => $langs->trans('InsuranceCoveragePrimary'), 'complementary' => $langs->trans('InsuranceCoverageComplementary')), $coverageType, 0, 0, 0, '', 1).'</td></tr>';
-	print '<tr><td>'.$langs->trans('InsuranceCoveragePeriod').'</td><td>'.$form->selectDate($currentEntry ? $currentEntry['date_start'] : ($editContract->date_start ?: -1), 'coverage_start', 0, 0, 1, '', 1, 1).' '.$form->selectDate($currentEntry && $currentEntry['date_end'] ? $currentEntry['date_end'] : -1, 'coverage_end', 0, 0, 1, '', 1, 1).'</td></tr>';
-	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>';
-	$contractEditor = new DolEditor('contract_description', (string) $editContract->description, '', 100, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '100%');
-	print $contractEditor->Create(1);
-	print '</td></tr>';
-	print '</table></div><div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"></div></form>';
+	$coverageType = is_array($failedCoverage) ? $failedCoverage['coverage_type'] : ($currentEntry ? $currentEntry['coverage_type'] : LmdbVehicleInsuranceContract::COVERAGE_PRIMARY);
+	$coverageStart = is_array($failedCoverage) ? $failedCoverage['coverage_start'] : ($currentEntry ? $currentEntry['date_start'] : ($editContract->date_start ?: 0));
+	$coverageEnd = is_array($failedCoverage) ? $failedCoverage['coverage_end'] : ($currentEntry ? $currentEntry['date_end'] : $editContract->date_end);
+	lmdbInsurancePrintContractForm(
+		$editContract,
+		$form,
+		$vehicleOptions,
+		$linkedIds,
+		$coverageType,
+		(int) $coverageStart,
+		$coverageEnd,
+		dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 1),
+		array('mode' => $isModal ? 'modal' : 'page', 'id' => $id, 'contract_id' => (int) $editContract->id, 'action' => 'save_contract'),
+		$invalidFields
+	);
 }
 
 if ($selectedContract instanceof LmdbVehicleInsuranceContract) {
@@ -349,7 +322,7 @@ if ($selectedContract instanceof LmdbVehicleInsuranceContract) {
 		if ($permissionWrite) {
 			print '<form class="lmdb-insurance-ajax-form" method="POST" enctype="multipart/form-data" action="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 1).'">';
 			print '<input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="mode" value="'.($isModal ? 'modal' : 'page').'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="contract_id" value="'.((int) $selectedContract->id).'"><input type="hidden" name="action" value="upload_contract_document">';
-			print '<div class="center"><input type="file" name="contract_file" required> <input type="submit" class="button" value="'.$langs->trans('AddFile').'"></div></form>';
+			print '<div class="center"><input type="file" name="contract_file"> <input type="submit" class="button" value="'.$langs->trans('AddFile').'"></div></form>';
 		}
 		print $formfile->showdocuments('lmdbvehiclemanagement', dol_sanitizeFileName($selectedContract->ref), $directory, dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 1).'?id='.$id.'&contract_id='.((int) $selectedContract->id), 0, 0, '', 1, 0, 0, 28, 0, '&entity='.((int) $selectedContract->entity));
 	}

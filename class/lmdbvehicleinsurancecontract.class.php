@@ -121,6 +121,10 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 	public function saveWithVehicleLinks($vehicleIds, $coverageType, $dateStart, $dateEnd, User $user)
 	{
 		$isNew = empty($this->id);
+		$createdId = 0;
+		$triggerResult = 0;
+		$triggerError = '';
+		$triggerErrors = array();
 		$vehicleIds = array_values(array_unique(array_filter(array_map('intval', $vehicleIds))));
 		$lockIds = $vehicleIds;
 		if (!$isNew) {
@@ -135,19 +139,36 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 			}
 		}
 		$result = $isNew ? $this->create($user, 1) : $this->update($user, 1);
+		if ($isNew && $result > 0) {
+			$createdId = (int) $this->id;
+		}
 		if ($result > 0) {
 			$result = $this->replaceVehicleLinks($vehicleIds, $coverageType, $dateStart, $dateEnd, $user, 1);
 		}
 		if ($result > 0) {
 			$this->context['trigger_reason'] = $isNew ? 'create_with_coverage' : 'coverage_change';
 			$this->context['changed_fields'] = $isNew ? array_keys($this->fields) : array('vehicle_links');
-			$result = $this->call_trigger($this->TRIGGER_PREFIX.($isNew ? '_CREATE' : '_UPDATE'), $user);
+			$triggerResult = $this->call_trigger($this->TRIGGER_PREFIX.($isNew ? '_CREATE' : '_UPDATE'), $user);
+			if ($triggerResult < 0) {
+				$triggerError = (string) $this->error;
+				$triggerErrors = is_array($this->errors) ? $this->errors : array();
+				$result = -1;
+			}
 		}
 		if ($result > 0) {
 			$this->db->commit();
-			return $result;
+			return 1;
 		}
 		$this->db->rollback();
+		if ($isNew && $createdId > 0) {
+			$this->id = 0;
+			$this->rowid = 0;
+			$this->ref = '';
+		}
+		if ($triggerResult < 0) {
+			$this->error = $triggerError;
+			$this->errors = $triggerErrors;
+		}
 
 		return -1;
 	}
@@ -468,15 +489,13 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 	/** @inheritdoc */
 	protected function getCardPage()
 	{
-		return 'vehicle_insurance.php';
+		return 'insurancecontract_card.php';
 	}
 
 	/** @inheritdoc */
 	protected function getCardUrlParameters()
 	{
-		$vehicleIds = $this->getVehicleIds();
-
-		return 'id='.(empty($vehicleIds) ? 0 : (int) $vehicleIds[0]).'&contract_id='.((int) $this->id);
+		return 'id='.((int) $this->id);
 	}
 
 	/**

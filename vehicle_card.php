@@ -258,7 +258,10 @@ if ($action === 'create' || $action === 'edit') {
 	print '$(document).on("submit", "#lmdb-insurance-modal .lmdb-insurance-ajax-form", function(event){event.preventDefault(); var form=this; var data=new FormData(form);';
 	print 'var submitter=document.activeElement; if(submitter&&submitter.name&&submitter.form===form){data.set(submitter.name,submitter.value);}';
 	print '$.ajax({url:form.action,type:"POST",data:data,processData:false,contentType:false,dataType:"json"}).done(function(response){';
-	print 'if(response.success){window.location.reload();}else{alert((response.messages||["'.dol_escape_js($langs->trans('Error')).'"]).join("\\n"));}}).fail(function(){alert("'.dol_escape_js($langs->trans('Error')).'");});});';
+	print 'if(response.success){window.location.reload();return;} var root=$(form).closest("#lmdb-insurance-modal"); root.find(".error").removeClass("error");';
+	print 'var box=root.find(".lmdb-insurance-messages").empty().addClass("error"); $.each(response.messages||["'.dol_escape_js($langs->trans('Error')).'"],function(_,message){box.append($("<div>").text(message));});';
+	print '$.each(response.invalid_fields||[],function(_,name){var controls=$(form).find("[name=\""+name+"\"],[name=\""+name+"[]\"],[name^=\""+name+"\"]"); controls.addClass("error"); controls.each(function(){$(this).next(".select2-container").find(".select2-selection").addClass("error");});});';
+	print '}).fail(function(xhr){var root=$(form).closest("#lmdb-insurance-modal"); var messages=xhr.responseJSON&&xhr.responseJSON.messages?xhr.responseJSON.messages:["'.dol_escape_js($langs->trans('Error')).'"]; var box=root.find(".lmdb-insurance-messages").empty().addClass("error"); $.each(messages,function(_,message){box.append($("<div>").text(message));});});});';
 	print '$(document).on("click", "#lmdb-insurance-modal a[href*=\\"vehicle_insurance.php\\"]", function(event){if(this.href.indexOf("download_certificate=1")!==-1)return; event.preventDefault(); $("#lmdb-insurance-modal").load(this.href+(this.href.indexOf("?")>=0?"&":"?")+"mode=modal");});';
 	print '});</script>';
 }

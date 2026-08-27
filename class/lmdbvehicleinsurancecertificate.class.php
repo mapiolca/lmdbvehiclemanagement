@@ -187,8 +187,15 @@ class LmdbVehicleInsuranceCertificate extends LmdbVehicleManagementObject
 	 */
 	public function createWithUploadedFile($upload, $submit, User $user)
 	{
+		$createdId = 0;
+		$triggerResult = 0;
+		$triggerError = '';
+		$triggerErrors = array();
 		$this->db->begin();
 		$result = $this->create($user, 1);
+		if ($result > 0) {
+			$createdId = (int) $this->id;
+		}
 		if ($result > 0) {
 			$result = $this->storeUploadedFile($upload, $user, 1);
 		}
@@ -198,16 +205,29 @@ class LmdbVehicleInsuranceCertificate extends LmdbVehicleManagementObject
 		if ($result > 0) {
 			$this->context['trigger_reason'] = $submit ? 'create_and_submit' : 'create_draft';
 			$this->context['changed_fields'] = array_keys($this->fields);
-			$result = $this->call_trigger($this->TRIGGER_PREFIX.'_CREATE', $user);
+			$triggerResult = $this->call_trigger($this->TRIGGER_PREFIX.'_CREATE', $user);
+			if ($triggerResult < 0) {
+				$triggerError = (string) $this->error;
+				$triggerErrors = is_array($this->errors) ? $this->errors : array();
+				$result = -1;
+			}
 		}
 		if ($result > 0) {
 			$this->db->commit();
-			return $result;
+			return 1;
 		}
 		$path = $this->getDocumentPath();
 		$this->db->rollback();
 		if ($path !== '' && is_file($path)) {
 			$this->deleteDocumentFile($path);
+		}
+		if ($createdId > 0) {
+			$this->id = 0;
+			$this->rowid = 0;
+		}
+		if ($triggerResult < 0) {
+			$this->error = $triggerError;
+			$this->errors = $triggerErrors;
 		}
 
 		return -1;

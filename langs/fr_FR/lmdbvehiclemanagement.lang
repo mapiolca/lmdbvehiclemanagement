@@ -276,8 +276,14 @@ NoTimelineEntry=Aucune entrée d'historique trouvée
 
 # Assurance
 Insurance=Assurance
+VehicleManagementTopMenu=Gestion des véhicules
+VehicleMenuSection=Véhicules
 InsuranceContract=Contrat d’assurance
 InsuranceContracts=Contrats d’assurance
+InsuranceContractList=Liste des contrats
+NewInsuranceContractMenu=Nouveau contrat
+InsuranceVehicleCount=Nombre de véhicules
+InsuranceDedicatedNavigation=Navigation dédiée aux véhicules et contrats d’assurance
 InsuranceSettings=Réglages de l’assurance
 InsuranceCompany=Assureur
 InsuranceContact=Contact / courtier
@@ -328,6 +334,9 @@ ModifyInsuranceContract=Modifier le contrat d’assurance
 InsuranceSharedContractWarning=Ce contrat couvre %s véhicules. Toute modification affectera l’ensemble de la flotte liée.
 InsuranceContractCreated=Contrat d’assurance créé
 InsuranceContractUpdated=Contrat d’assurance mis à jour
+InsuranceContractDeleted=Contrat d’assurance supprimé
+ConfirmDeleteInsuranceContract=Voulez-vous supprimer ce contrat d’assurance brouillon ?
+InsuranceNoAccessibleVehicle=Aucun véhicule accessible n’est disponible dans cet environnement. Un contrat doit couvrir au moins un véhicule.
 InsuranceCertificateSaved=Attestation enregistrée en brouillon
 InsuranceCertificateSubmitted=Attestation soumise au contrôle
 InsuranceActionCompleted=Action d’assurance réalisée

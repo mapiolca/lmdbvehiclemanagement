@@ -49,7 +49,7 @@ print '</table></div></div>';
 
 print '<div class="fichehalfright"><div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 print '<tr class="liste_titre"><th>'.$langs->trans('MainFeatures').'</th></tr>';
-foreach (array('Vehicles', 'VehicleAssignments', 'OdometerReadings', 'VehicleEvents', 'VehicleHistory', 'InsuranceContracts', 'InsuranceCertificates', 'InsuranceCertificateReminderCronLabel', 'FeatureMulticompanySharing') as $feature) {
+foreach (array('Vehicles', 'VehicleAssignments', 'OdometerReadings', 'VehicleEvents', 'VehicleHistory', 'InsuranceContracts', 'InsuranceDedicatedNavigation', 'InsuranceCertificates', 'InsuranceCertificateReminderCronLabel', 'FeatureMulticompanySharing') as $feature) {
 	print '<tr class="oddeven"><td>'.img_picto('', 'check', 'class="pictofixedwidth"').$langs->trans($feature).'</td></tr>';
 }
 print '<tr class="liste_titre"><th>'.$langs->trans('Dependencies').'</th></tr>';

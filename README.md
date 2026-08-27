@@ -1,6 +1,6 @@
 # Gestion des véhicules pour Dolibarr
 
-`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.3.0` couvre les véhicules, leurs affectations, les relevés kilométriques, les événements métier et les contrats d’assurance.
+`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.4.0` couvre les véhicules, leurs affectations, les relevés kilométriques, les événements métier et les contrats d’assurance.
 
 ## Compatibilité
 
@@ -11,7 +11,7 @@
 - Module Ressources facultatif pour la liaison `fk_resource`
 - Module Travaux planifiés requis pour l’envoi automatique des relances d’assurance
 
-## Fonctionnalités de la version 0.3.0
+## Fonctionnalités de la version 0.4.0
 
 - fiche véhicule avec le cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
 - énergie sélectionnée dans un Select2 alimenté par un dictionnaire configurable, initialisé avec la [nomenclature réglementaire française P.3](https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000049860492/2026-07-27) ;
@@ -31,10 +31,12 @@
 - justificatifs PDF, JPEG ou PNG contrôlés côté serveur, avec suppression des métadonnées EXIF/GPS des images ;
 - référents assurance configurables par utilisateur ou groupe et personnels affectés éligibles selon leur type d’affectation ;
 - relances quotidiennes configurables avant et après échéance au moyen des modèles d’emails et travaux planifiés natifs Dolibarr.
+- menu haut dédié **Gestion des véhicules**, avec des sections séparées pour les véhicules et les contrats d’assurance ;
+- fiche autonome et liste native des contrats d’assurance, en complément de la gestion contextuelle ouverte depuis une fiche véhicule.
 
 ## Installation
 
-Copier le répertoire `lmdbvehiclemanagement` dans le répertoire des modules externes de Dolibarr, puis activer **Gestion des véhicules** depuis la liste des modules. Les écrans sont ajoutés sous le menu **Outils** ; aucun menu haut supplémentaire n'est créé.
+Copier le répertoire `lmdbvehiclemanagement` dans le répertoire des modules externes de Dolibarr, puis activer **Gestion des véhicules** depuis la liste des modules. Une réactivation conservatrice après mise à jour reconstruit le menu haut dédié sans supprimer les réglages existants.
 
 Les réglages, la compatibilité détectée et les métadonnées du module sont accessibles depuis l'unique roue dentée du module.
 

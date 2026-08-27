@@ -1,5 +1,13 @@
 # Historique des versions
 
+## `0.4.0` — 2026-08-27
+
+- Ajout d’un menu haut dédié « Gestion des véhicules », structuré en sections Véhicules et Contrats d’assurance avec leurs accès de création et de liste.
+- Ajout d’une fiche autonome et d’une liste native Dolibarr pour les contrats, avec filtres SQL, tri, pagination, statuts, rattachements et environnement Multicompany.
+- Correction des transactions de création de contrats et d’attestations afin qu’un trigger natif retournant `0` valide correctement le commit.
+- Mutualisation du formulaire d’assurance entre la fiche et la modale, avec validation serveur, styles obligatoires natifs et conservation des saisies en erreur.
+- Remplacement des alertes JavaScript génériques de la modale par des messages d’erreur au rendu Dolibarr et un marquage des contrôles concernés.
+
 ## `0.3.0` — 2026-08-27
 
 - Ajout des contrats d’assurance individuels et de flotte, avec contrat principal, couvertures complémentaires et rattachements multivéhicules normalisés.

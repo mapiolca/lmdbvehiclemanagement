@@ -36,7 +36,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->descriptionlong = 'ModuleLmdbVehicleManagementDesc';
 		$this->editor_name = 'Pierre Ardoin';
 		$this->editor_url = 'https://github.com/mapiolca';
-		$this->version = '0.3.0';
+		$this->version = '0.4.0';
 		$this->const_name = 'MAIN_MODULE_LMDBVEHICLEMANAGEMENT';
 		$this->picto = 'car';
 
@@ -196,43 +196,115 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->menu = array();
 		$r = 0;
 		$this->menu[$r++] = array(
-			'fk_menu' => 'fk_mainmenu=tools',
-			'type' => 'left',
-			'titre' => 'VehicleList',
+			'fk_menu' => '',
+			'type' => 'top',
+			'titre' => 'VehicleManagementTopMenu',
 			'prefix' => img_picto('', 'car', 'class="pictofixedwidth valignmiddle paddingright"'),
-			'mainmenu' => 'tools',
-			'leftmenu' => 'lmdbvehiclemanagement',
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => '',
 			'url' => '/lmdbvehiclemanagement/vehicle_list.php',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'position' => 2600,
+			'position' => 30,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
 		$this->menu[$r++] = array(
-			'fk_menu' => 'fk_mainmenu=tools,fk_leftmenu=lmdbvehiclemanagement',
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement',
+			'type' => 'left',
+			'titre' => 'VehicleMenuSection',
+			'prefix' => img_picto('', 'car', 'class="pictofixedwidth valignmiddle paddingright"'),
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_vehicles',
+			'url' => '/lmdbvehiclemanagement/vehicle_list.php',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+			'position' => 100,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'target' => '',
+			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement,fk_leftmenu=lmdbvehiclemanagement_vehicles',
 			'type' => 'left',
 			'titre' => 'NewVehicle',
-			'mainmenu' => 'tools',
+			'mainmenu' => 'lmdbvehiclemanagement',
 			'leftmenu' => 'lmdbvehiclemanagement_new',
 			'url' => '/lmdbvehiclemanagement/vehicle_card.php?action=create',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'position' => 2601,
+			'position' => 101,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "lmdbvehicle", "write")',
 			'target' => '',
 			'user' => 0,
 		);
 		$this->menu[$r++] = array(
-			'fk_menu' => 'fk_mainmenu=tools,fk_leftmenu=lmdbvehiclemanagement',
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement,fk_leftmenu=lmdbvehiclemanagement_vehicles',
+			'type' => 'left',
+			'titre' => 'VehicleList',
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_list',
+			'url' => '/lmdbvehiclemanagement/vehicle_list.php',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+			'position' => 102,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'target' => '',
+			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement,fk_leftmenu=lmdbvehiclemanagement_vehicles',
 			'type' => 'left',
 			'titre' => 'VehicleEvents',
-			'mainmenu' => 'tools',
+			'mainmenu' => 'lmdbvehiclemanagement',
 			'leftmenu' => 'lmdbvehiclemanagement_events',
 			'url' => '/lmdbvehiclemanagement/vehicleevent_list.php',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'position' => 2602,
+			'position' => 103,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'target' => '',
+			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement',
+			'type' => 'left',
+			'titre' => 'InsuranceContracts',
+			'prefix' => img_picto('', 'shield-alt', 'class="pictofixedwidth valignmiddle paddingright"'),
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_insurance',
+			'url' => '/lmdbvehiclemanagement/insurancecontract_list.php',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+			'position' => 200,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'target' => '',
+			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement,fk_leftmenu=lmdbvehiclemanagement_insurance',
+			'type' => 'left',
+			'titre' => 'NewInsuranceContractMenu',
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_insurance_new',
+			'url' => '/lmdbvehiclemanagement/insurancecontract_card.php?action=create',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+			'position' => 201,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "insurance", "write")',
+			'target' => '',
+			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement,fk_leftmenu=lmdbvehiclemanagement_insurance',
+			'type' => 'left',
+			'titre' => 'InsuranceContractList',
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_insurance_list',
+			'url' => '/lmdbvehiclemanagement/insurancecontract_list.php',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+			'position' => 202,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
