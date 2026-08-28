@@ -94,38 +94,6 @@ function lmdbInsuranceGetCoverageFromPost($contract)
 }
 
 /**
- * Identify controls to highlight after server-side validation.
- *
- * @param LmdbVehicleInsuranceContract $contract Contract
- * @param list<int> $vehicleIds Vehicle ids
- * @param string $coverageType Coverage type
- * @param int $coverageStart Coverage start
- * @param ?int $coverageEnd Coverage end
- * @return list<string>
- */
-function lmdbInsuranceContractInvalidFields($contract, $vehicleIds, $coverageType, $coverageStart, $coverageEnd)
-{
-	$fields = array();
-	if ((int) $contract->fk_soc <= 0) $fields[] = 'fk_soc';
-	if (trim((string) $contract->policy_number) === '') $fields[] = 'policy_number';
-	if (trim((string) $contract->label) === '') $fields[] = 'contract_label';
-	if ((int) $contract->date_start <= 0) $fields[] = 'contract_start';
-	if (!empty($contract->date_end) && (int) $contract->date_end < (int) $contract->date_start) {
-		$fields[] = 'contract_start';
-		$fields[] = 'contract_end';
-	}
-	if (empty($vehicleIds)) $fields[] = 'vehicle_ids';
-	if (!in_array($coverageType, array(LmdbVehicleInsuranceContract::COVERAGE_PRIMARY, LmdbVehicleInsuranceContract::COVERAGE_COMPLEMENTARY), true)) $fields[] = 'coverage_type';
-	if ($coverageStart <= 0) $fields[] = 'coverage_start';
-	if ($coverageEnd !== null && $coverageEnd < $coverageStart) {
-		$fields[] = 'coverage_start';
-		$fields[] = 'coverage_end';
-	}
-
-	return array_values(array_unique($fields));
-}
-
-/**
  * Build the vehicle options available in one owner entity.
  *
  * @param DoliDB $db Database handler
@@ -166,20 +134,22 @@ function lmdbInsuranceGetVehicleOptions($db, $entity)
  * @param ?int $coverageEnd Coverage end
  * @param string $actionUrl Form target
  * @param array<string,string|int> $hiddenFields Hidden inputs
- * @param list<string> $invalidFields Invalid control names
  * @param bool $showCancel Show the native cancel action
  * @return void
  */
-function lmdbInsurancePrintContractForm($contract, $form, $vehicleOptions, $linkedIds, $coverageType, $coverageStart, $coverageEnd, $actionUrl, $hiddenFields, $invalidFields = array(), $showCancel = false)
+function lmdbInsurancePrintContractForm($contract, $form, $vehicleOptions, $linkedIds, $coverageType, $coverageStart, $coverageEnd, $actionUrl, $hiddenFields, $showCancel = false)
 {
 	global $langs;
 
-	$inputClass = static function ($name, $base) use ($invalidFields) {
-		return $base.(in_array($name, $invalidFields, true) ? ' error' : '');
-	};
-	$dateClass = static function ($name) use ($invalidFields) {
-		return in_array($name, $invalidFields, true) ? ' class="error"' : '';
-	};
+	$contactSocId = (int) $contract->fk_soc > 0 ? (int) $contract->fk_soc : -1;
+	$companyEvents = array(
+		array(
+			'method' => 'getContacts',
+			'url' => dol_buildpath('/core/ajax/contacts.php', 1),
+			'htmlname' => 'fk_contact',
+			'params' => array('add-customer-contact' => 'disabled'),
+		),
+	);
 
 	print '<form class="lmdb-insurance-ajax-form" method="POST" action="'.dol_escape_htmltag($actionUrl).'">';
 	print '<input type="hidden" name="token" value="'.newToken().'">';
@@ -187,21 +157,21 @@ function lmdbInsurancePrintContractForm($contract, $form, $vehicleOptions, $link
 		print '<input type="hidden" name="'.dol_escape_htmltag($name).'" value="'.dol_escape_htmltag((string) $value).'">';
 	}
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
-	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('InsuranceCompany').'</td><td>'.$form->select_company($contract->fk_soc ?: '', 'fk_soc', '', '-1', 0, 0, array(), 0, $inputClass('fk_soc', 'minwidth300')).'</td></tr>';
-	print '<tr><td>'.$langs->trans('InsuranceContact').'</td><td>'.$form->selectcontacts((int) $contract->fk_soc, (int) $contract->fk_contact, 'fk_contact', 1, '', '', 0, $inputClass('fk_contact', 'minwidth300'), 0, 1).'</td></tr>';
-	print '<tr><td class="fieldrequired">'.$langs->trans('InsurancePolicyNumber').'</td><td><input class="'.$inputClass('policy_number', 'flat minwidth300').'" name="policy_number" value="'.dol_escape_htmltag((string) $contract->policy_number).'"></td></tr>';
-	print '<tr><td class="fieldrequired">'.$langs->trans('Label').'</td><td><input class="'.$inputClass('contract_label', 'flat minwidth500').'" name="contract_label" value="'.dol_escape_htmltag((string) $contract->label).'"></td></tr>';
+	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('InsuranceCompany').'</td><td>'.$form->select_company($contract->fk_soc ?: '', 'fk_soc', '', '-1', 0, 0, $companyEvents, 0, 'minwidth300').'</td></tr>';
+	print '<tr><td>'.$langs->trans('InsuranceContact').'</td><td>'.$form->selectcontacts($contactSocId, (int) $contract->fk_contact, 'fk_contact', 1, '', '', 0, 'minwidth300', 0, 0, 0, array(), '', '', false, 1).'</td></tr>';
+	print '<tr><td class="fieldrequired">'.$langs->trans('InsurancePolicyNumber').'</td><td><input class="flat minwidth300" name="policy_number" value="'.dol_escape_htmltag((string) $contract->policy_number).'"></td></tr>';
+	print '<tr><td class="fieldrequired">'.$langs->trans('Label').'</td><td><input class="flat minwidth500" name="contract_label" value="'.dol_escape_htmltag((string) $contract->label).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceCoverageFormula').'</td><td><input class="flat minwidth500" name="coverage_formula" value="'.dol_escape_htmltag((string) $contract->coverage_formula).'"></td></tr>';
-	print '<tr><td class="fieldrequired">'.$langs->trans('Period').'</td><td><span'.$dateClass('contract_start').'>'.$form->selectDate($contract->date_start ?: -1, 'contract_start', 0, 0, 1, '', 1, 1).'</span> <span'.$dateClass('contract_end').'>'.$form->selectDate($contract->date_end ?: -1, 'contract_end', 0, 0, 1, '', 1, 1).'</span></td></tr>';
+	print '<tr><td class="fieldrequired">'.$langs->trans('Period').'</td><td>'.$form->selectDate($contract->date_start ?: -1, 'contract_start', 0, 0, 1, '', 1, 1).' '.$form->selectDate($contract->date_end ?: -1, 'contract_end', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceRenewalMode').'</td><td>'.$form->selectarray('renewal_mode', array('fixed' => $langs->trans('InsuranceRenewalFixed'), 'tacit' => $langs->trans('InsuranceRenewalTacit')), $contract->renewal_mode, 0, 0, 0, '', 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceNoticeDate').'</td><td>'.$form->selectDate($contract->notice_date ?: -1, 'notice_date', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceAssistancePhone').'</td><td><input class="flat" name="assistance_phone" value="'.dol_escape_htmltag((string) $contract->assistance_phone).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceAssistanceEmail').'</td><td><input class="flat minwidth300" name="assistance_email" value="'.dol_escape_htmltag((string) $contract->assistance_email).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceClaimPhone').'</td><td><input class="flat" name="claim_phone" value="'.dol_escape_htmltag((string) $contract->claim_phone).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceClaimEmail').'</td><td><input class="flat minwidth300" name="claim_email" value="'.dol_escape_htmltag((string) $contract->claim_email).'"></td></tr>';
-	print '<tr><td class="fieldrequired">'.$langs->trans('Vehicles').'</td><td>'.$form->multiselectarray('vehicle_ids', $vehicleOptions, $linkedIds, 0, 0, $inputClass('vehicle_ids', 'minwidth500')).'</td></tr>';
-	print '<tr><td>'.$langs->trans('InsuranceCoverageType').'</td><td>'.$form->selectarray('coverage_type', array(LmdbVehicleInsuranceContract::COVERAGE_PRIMARY => $langs->trans('InsuranceCoveragePrimary'), LmdbVehicleInsuranceContract::COVERAGE_COMPLEMENTARY => $langs->trans('InsuranceCoverageComplementary')), $coverageType, 0, 0, 0, '', 1, 0, 0, '', $inputClass('coverage_type', '')).'</td></tr>';
-	print '<tr><td>'.$langs->trans('InsuranceCoveragePeriod').'</td><td><span'.$dateClass('coverage_start').'>'.$form->selectDate($coverageStart ?: -1, 'coverage_start', 0, 0, 1, '', 1, 1).'</span> <span'.$dateClass('coverage_end').'>'.$form->selectDate($coverageEnd ?: -1, 'coverage_end', 0, 0, 1, '', 1, 1).'</span></td></tr>';
+	print '<tr><td class="fieldrequired">'.$langs->trans('Vehicles').'</td><td>'.$form->multiselectarray('vehicle_ids', $vehicleOptions, $linkedIds, 0, 0, 'minwidth500').'</td></tr>';
+	print '<tr><td>'.$langs->trans('InsuranceCoverageType').'</td><td>'.$form->selectarray('coverage_type', array(LmdbVehicleInsuranceContract::COVERAGE_PRIMARY => $langs->trans('InsuranceCoveragePrimary'), LmdbVehicleInsuranceContract::COVERAGE_COMPLEMENTARY => $langs->trans('InsuranceCoverageComplementary')), $coverageType, 0, 0, 0, '', 1).'</td></tr>';
+	print '<tr><td>'.$langs->trans('InsuranceCoveragePeriod').'</td><td>'.$form->selectDate($coverageStart ?: -1, 'coverage_start', 0, 0, 1, '', 1, 1).' '.$form->selectDate($coverageEnd ?: -1, 'coverage_end', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>';
 	$contractEditor = new DolEditor('contract_description', (string) $contract->description, '', 100, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '100%');
 	print $contractEditor->Create(1);

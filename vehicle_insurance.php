@@ -33,7 +33,6 @@ $contractId = GETPOSTINT('contract_id');
 $newContract = GETPOSTINT('new_contract');
 $certificateId = GETPOSTINT('certificate_id');
 $downloadCertificate = GETPOSTINT('download_certificate');
-$invalidFields = array();
 $failedContract = null;
 $failedCoverage = null;
 $vehicle = new LmdbVehicle($db);
@@ -67,10 +66,9 @@ if ($certificateId > 0 && $contractId <= 0) {
  * @param list<string> $messages Translated messages
  * @param int $vehicleId Vehicle id
  * @param bool $modal Modal mode
- * @param list<string> $invalidFields Invalid controls
  * @return never
  */
-function lmdbInsuranceFinish($success, $messages, $vehicleId, $modal, $invalidFields = array())
+function lmdbInsuranceFinish($success, $messages, $vehicleId, $modal)
 {
 	global $langs;
 
@@ -79,7 +77,7 @@ function lmdbInsuranceFinish($success, $messages, $vehicleId, $modal, $invalidFi
 	}
 	if ($modal) {
 		header('Content-Type: application/json; charset=UTF-8');
-		print json_encode(array('success' => (bool) $success, 'messages' => array_values($messages), 'invalid_fields' => array_values($invalidFields), 'refresh_parent' => (bool) $success));
+		print json_encode(array('success' => (bool) $success, 'messages' => array_values($messages), 'refresh_parent' => (bool) $success));
 		exit;
 	}
 	setEventMessages('', $messages, $success ? 'mesgs' : 'errors');
@@ -141,9 +139,8 @@ if ($action === 'save_contract') {
 	if ($result > 0) {
 		lmdbInsuranceFinish(true, array($langs->trans($isNew ? 'InsuranceContractCreated' : 'InsuranceContractUpdated')), $id, $isModal);
 	}
-	$invalidFields = lmdbInsuranceContractInvalidFields($contract, $vehicleIds, $coverageType, (int) $coverageStart, $coverageEnd);
 	if ($isModal) {
-		lmdbInsuranceFinish(false, lmdbInsuranceMessages($contract), $id, true, $invalidFields);
+		lmdbInsuranceFinish(false, lmdbInsuranceMessages($contract), $id, true);
 	}
 	setEventMessages('', lmdbInsuranceMessages($contract), 'errors');
 	$failedContract = $contract;
@@ -262,8 +259,7 @@ if ($permissionWrite) {
 		(int) $coverageStart,
 		$coverageEnd,
 		dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 1),
-		array('mode' => $isModal ? 'modal' : 'page', 'id' => $id, 'contract_id' => (int) $editContract->id, 'action' => 'save_contract'),
-		$invalidFields
+		array('mode' => $isModal ? 'modal' : 'page', 'id' => $id, 'contract_id' => (int) $editContract->id, 'action' => 'save_contract')
 	);
 }
 

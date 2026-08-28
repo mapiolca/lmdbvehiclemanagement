@@ -379,7 +379,7 @@ InsuranceReviewEmailContent=Bonjour __RECIPIENT_NAME__,<br><br>Une attestation d
 # Validation assurance
 InsuranceCoverageInvalid=La couverture sélectionnée est invalide.
 InsurancePrimaryCoverageOverlap=Un autre contrat principal actif couvre déjà ce véhicule sur cette période.
-InsuranceContractRequiredFields=L’assureur, le numéro de police, le libellé et la date de début sont obligatoires.
+InsuranceContractInvalidPeriod=La date de fin du contrat ne peut pas précéder sa date de début.
 InsuranceCompanyInvalid=L’assureur sélectionné est invalide ou inaccessible.
 InsuranceContactInvalid=Le contact sélectionné n’appartient pas à l’assureur indiqué.
 InsuranceContractDocumentUploadFailed=Le document général du contrat n’a pas pu être déposé.

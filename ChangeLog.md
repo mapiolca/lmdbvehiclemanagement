@@ -1,5 +1,12 @@
 # Historique des versions
 
+## `0.4.1` — 2026-08-28
+
+- Correction du pictogramme du menu haut avec l’icône Font Awesome rendue par le helper natif Dolibarr.
+- Filtrage du champ Courtier sur les seuls contacts du tiers assureur sélectionné, au moyen du rafraîchissement Ajax natif Dolibarr.
+- Alignement des champs obligatoires et des couleurs de saisie sur le thème natif, sans classe d’erreur appliquée aux contrôles.
+- Remplacement du contrôle obligatoire spécifique par la validation de champs fournie par `CommonObject`.
+
 ## `0.4.0` — 2026-08-27
 
 - Ajout d’un menu haut dédié « Gestion des véhicules », structuré en sections Véhicules et Contrats d’assurance avec leurs accès de création et de liste.

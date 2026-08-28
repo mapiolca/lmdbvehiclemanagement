@@ -406,8 +406,28 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 	{
 		$this->policy_number = trim($this->policy_number);
 		$this->label = trim($this->label);
-		if ($this->fk_soc <= 0 || $this->policy_number === '' || $this->label === '' || $this->date_start <= 0 || (!empty($this->date_end) && $this->date_end < $this->date_start)) {
-			$this->error = 'InsuranceContractRequiredFields';
+		$validationErrors = array();
+		$requiredFieldValues = array(
+			'fk_soc' => (string) ((int) $this->fk_soc),
+			'policy_number' => $this->policy_number,
+			'label' => $this->label,
+			'date_start' => (string) ((int) $this->date_start),
+		);
+		foreach ($requiredFieldValues as $fieldKey => $fieldValue) {
+			if (!$this->validateField($this->fields, $fieldKey, $fieldValue)) {
+				$fieldError = $this->getFieldError($fieldKey);
+				if ($fieldError !== '') {
+					$validationErrors[] = $fieldError;
+				}
+			}
+		}
+		if (!empty($validationErrors)) {
+			$this->errors = array_merge($this->errors, $validationErrors);
+			$this->error = $validationErrors[0];
+			return -1;
+		}
+		if (!empty($this->date_end) && $this->date_end < $this->date_start) {
+			$this->error = 'InsuranceContractInvalidPeriod';
 			$this->errors[] = $this->error;
 			return -1;
 		}

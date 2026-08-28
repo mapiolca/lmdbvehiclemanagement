@@ -29,7 +29,6 @@ $cancel = GETPOST('cancel', 'alpha');
 $permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write');
 $permissionDelete = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'delete');
 $object = new LmdbVehicleInsuranceContract($db);
-$invalidFields = array();
 $coverage = array(
 	'vehicle_ids' => array(),
 	'coverage_type' => LmdbVehicleInsuranceContract::COVERAGE_PRIMARY,
@@ -60,7 +59,6 @@ if (empty($reshook)) {
 			exit;
 		}
 		setEventMessages('', lmdbInsuranceMessages($object), 'errors');
-		$invalidFields = lmdbInsuranceContractInvalidFields($object, $coverage['vehicle_ids'], $coverage['coverage_type'], $coverage['coverage_start'], $coverage['coverage_end']);
 		$action = $action === 'add' ? 'create' : 'edit';
 	} elseif ($action === 'activate' || $action === 'terminate') {
 		if (!$permissionWrite || $id <= 0) accessforbidden();
@@ -124,7 +122,6 @@ if ($action === 'create' || $action === 'edit') {
 		$coverage['coverage_end'],
 		$_SERVER['PHP_SELF'],
 		array('action' => $action === 'create' ? 'add' : 'update', 'id' => (int) $object->id),
-		$invalidFields,
 		true
 	);
 } elseif ($id > 0) {

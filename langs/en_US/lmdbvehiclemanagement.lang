@@ -379,7 +379,7 @@ InsuranceReviewEmailContent=Hello __RECIPIENT_NAME__,<br><br>An insurance certif
 # Insurance validation
 InsuranceCoverageInvalid=The selected coverage is invalid.
 InsurancePrimaryCoverageOverlap=Another active primary contract already covers this vehicle during this period.
-InsuranceContractRequiredFields=The insurer, policy number, label and start date are required.
+InsuranceContractInvalidPeriod=The contract end date cannot be earlier than its start date.
 InsuranceCompanyInvalid=The selected insurer is invalid or inaccessible.
 InsuranceContactInvalid=The selected contact does not belong to the chosen insurer.
 InsuranceContractDocumentUploadFailed=The general contract document could not be uploaded.

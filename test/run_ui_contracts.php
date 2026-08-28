@@ -93,10 +93,11 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insurancePage, "\$u
 $checks['insurance_download_is_read_only_route'] = strpos($insurancePage, '$downloadCertificate === 1') !== false && strpos($insurancePage, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['insurance_version_is_040'] = strpos($descriptor, "\$this->version = '0.4.0';") !== false;
+$checks['insurance_version_is_041'] = strpos($descriptor, "\$this->version = '0.4.1';") !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;
+$checks['dedicated_top_menu_uses_native_car_icon'] = strpos($descriptor, "img_picto('', 'fa-car'") !== false;
 $checks['insurance_menu_has_create_and_list'] = strpos($descriptor, '/insurancecontract_card.php?action=create') !== false
 	&& strpos($descriptor, '/insurancecontract_list.php') !== false
 	&& strpos($descriptor, '$user->hasRight("lmdbvehiclemanagement", "insurance", "write")') !== false;
@@ -115,9 +116,15 @@ $checks['insurance_required_fields_use_native_style'] = strpos($insuranceLibrary
 	&& substr_count($insuranceLibrary, 'fieldrequired') >= 4
 	&& strpos($insuranceLibrary, ' required') === false;
 $checks['insurance_cancel_bypasses_browser_validation'] = strpos($insuranceLibrary, 'formnovalidate') !== false;
-$checks['insurance_form_preserves_and_marks_errors'] = strpos($insuranceLibrary, 'lmdbInsuranceContractInvalidFields') !== false
-	&& strpos($insuranceLibrary, "' error'") !== false
-	&& strpos($insurancePage, 'invalid_fields') !== false;
+$checks['insurance_required_fields_use_commonobject_validation'] = strpos($insuranceContractClass, '$this->validateField($this->fields, $fieldKey') !== false
+	&& strpos($insuranceLibrary, 'lmdbInsuranceContractInvalidFields') === false;
+$checks['insurance_contact_is_filtered_by_company'] = strpos($insuranceLibrary, "'method' => 'getContacts'") !== false
+	&& strpos($insuranceLibrary, "dol_buildpath('/core/ajax/contacts.php', 1)") !== false
+	&& strpos($insuranceLibrary, "'htmlname' => 'fk_contact'") !== false
+	&& strpos($insuranceLibrary, '$contactSocId') !== false;
+$checks['insurance_controls_keep_native_text_color'] = strpos($insurancePage, 'invalid_fields') === false
+	&& strpos($vehicleCard, 'response.invalid_fields') === false
+	&& strpos($insuranceLibrary, "' error'") === false;
 $checks['insurance_modal_uses_native_error_messages'] = strpos($vehicleCard, '.lmdb-insurance-messages') !== false
 	&& strpos($vehicleCard, 'alert(') === false;
 $checks['contract_trigger_zero_commits'] = strpos($insuranceContractClass, 'if ($triggerResult < 0)') !== false
