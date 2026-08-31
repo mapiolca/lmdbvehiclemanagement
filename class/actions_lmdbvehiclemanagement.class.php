@@ -240,6 +240,15 @@ class ActionsLmdbVehicleManagement
 			'classfile' => 'lmdbvehicle',
 			'classname' => 'LmdbVehicle',
 		);
+		$vehicleAjaxTooltipDefinition = array(
+			'module' => 'lmdbvehiclemanagement',
+			'element' => 'lmdbvehicleajaxtooltip',
+			'table_element' => 'lmdbvehiclemanagement_vehicle',
+			'subelement' => 'lmdbvehicleajaxtooltip',
+			'classpath' => 'lmdbvehiclemanagement/class',
+			'classfile' => 'lmdbvehicle',
+			'classname' => 'LmdbVehicleAjaxTooltip',
+		);
 		$eventDefinition = array(
 			'module' => 'lmdbvehiclemanagement',
 			'element' => 'lmdbvehicleevent',
@@ -297,6 +306,8 @@ class ActionsLmdbVehicleManagement
 		$definitions = array(
 			'lmdbvehicle@lmdbvehiclemanagement' => $vehicleDefinition,
 			'lmdbvehiclemanagement_lmdbvehicle' => $vehicleDefinition,
+			'lmdbvehicleajaxtooltip@lmdbvehiclemanagement' => $vehicleAjaxTooltipDefinition,
+			'lmdbvehiclemanagement_lmdbvehicleajaxtooltip' => $vehicleAjaxTooltipDefinition,
 			'lmdbvehicleevent@lmdbvehiclemanagement' => $eventDefinition,
 			'lmdbvehiclemanagement_lmdbvehicleevent' => $eventDefinition,
 			'lmdbvehicleassignment@lmdbvehiclemanagement' => $assignmentDefinition,

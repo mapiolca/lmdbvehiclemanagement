@@ -1,5 +1,10 @@
 # Historique des versions
 
+## `0.11.3` — 2026-08-31
+
+- Correction de l’accès au tooltip Ajax des véhicules lorsque le sous-espace de droits `lmdbvehicle` ne contient volontairement que les droits d’écriture et de suppression.
+- Conservation du droit général de lecture du module et du périmètre Multicompany du véhicule dans la résolution du tooltip natif.
+
 ## `0.11.2` — 2026-08-31
 
 - Interprétation des options vides des filtres de consommation comme une absence de filtre, y compris lorsque les sélecteurs natifs transmettent `-1`.

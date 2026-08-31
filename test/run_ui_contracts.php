@@ -151,7 +151,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0112'] = strpos($descriptor, "\$this->version = '0.11.2';") !== false;
+$checks['module_version_is_0113'] = strpos($descriptor, "\$this->version = '0.11.3';") !== false;
 $checks['consumption_uses_native_quick_add_hook'] = strpos($descriptor, "'main',") !== false
 	&& strpos($actionsHooks, 'function menuDropdownQuickaddItems(') !== false
 	&& strpos($actionsHooks, "dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1)") !== false
@@ -162,6 +162,11 @@ $checks['module_objects_use_native_ajax_tooltips'] = strpos($baseObjectClass, 'p
 	&& strpos($baseObjectClass, "getDolGlobalInt('MAIN_ENABLE_AJAX_TOOLTIP')") !== false
 	&& strpos($baseObjectClass, "'objecttype' => \$this->element.'@'.\$this->module") !== false
 	&& strpos($baseObjectClass, 'classforajaxtooltip') !== false;
+$checks['vehicle_ajax_tooltip_uses_module_read_alias'] = strpos($vehicleClass, "public \$ajax_tooltip_element = 'lmdbvehicleajaxtooltip';") !== false
+	&& strpos($vehicleClass, 'class LmdbVehicleAjaxTooltip extends LmdbVehicle') !== false
+	&& strpos($vehicleClass, "public \$entity_scope_element = 'lmdbvehicle';") !== false
+	&& strpos($actionsHooks, "'lmdbvehicleajaxtooltip@lmdbvehiclemanagement'") !== false
+	&& strpos($actionsHooks, "'classname' => 'LmdbVehicleAjaxTooltip'") !== false;
 $checks['ajax_tooltips_resolve_all_business_objects'] = strpos($actionsHooks, "'lmdbvehicleassignment@lmdbvehiclemanagement'") !== false
 	&& strpos($actionsHooks, "'lmdbvehicleodometerreading@lmdbvehiclemanagement'") !== false
 	&& strpos($actionsHooks, "'lmdbvehicleconsumption@lmdbvehiclemanagement'") !== false

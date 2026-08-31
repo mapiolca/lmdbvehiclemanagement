@@ -23,6 +23,9 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 	/** @var string Element whose Multicompany scope governs this object */
 	public $entity_scope_element = '';
 
+	/** @var string Alternative element resolved only by the native Ajax tooltip */
+	public $ajax_tooltip_element = '';
+
 	/** @var string Stable prefix used for the object's CRUD triggers */
 	public $TRIGGER_PREFIX = '';
 
@@ -401,6 +404,9 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 			'option' => $option,
 			'nofetch' => 1,
 		);
+		if ($this->ajax_tooltip_element !== '') {
+			$params['objecttype'] = $this->ajax_tooltip_element.'@'.$this->module;
+		}
 		$classForTooltip = 'classfortooltip';
 		$dataParams = '';
 		$tooltipLabel = '';

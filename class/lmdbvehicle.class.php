@@ -20,6 +20,9 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	/** @var string */
 	public $element = 'lmdbvehicle';
 
+	/** @var string Avoid the native tooltip mistaking the vehicle write namespace for a read namespace */
+	public $ajax_tooltip_element = 'lmdbvehicleajaxtooltip';
+
 	/** @var string */
 	public $table_element = 'lmdbvehiclemanagement_vehicle';
 
@@ -679,4 +682,21 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	{
 		return 'vehicle_card.php';
 	}
+}
+
+/**
+ * Read-only identity used by the native Ajax tooltip.
+ *
+ * Dolibarr probes a second-level permission whenever an object's element matches
+ * an existing permission namespace. Vehicles have write/delete permissions below
+ * `lmdbvehicle`, while their read permission deliberately remains at module level.
+ * This alias keeps the native module read check and the vehicle Multicompany scope.
+ */
+class LmdbVehicleAjaxTooltip extends LmdbVehicle
+{
+	/** @var string */
+	public $element = 'lmdbvehicleajaxtooltip';
+
+	/** @var string */
+	public $entity_scope_element = 'lmdbvehicle';
 }
