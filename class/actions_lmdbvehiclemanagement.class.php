@@ -33,6 +33,36 @@ class ActionsLmdbVehicleManagement
 	}
 
 	/**
+	 * Add the consumption card to Dolibarr's native quick-add dropdown.
+	 *
+	 * @param array<string,mixed> $parameters Hook parameters
+	 * @param array<string,mixed> $object Existing quick-add definition
+	 * @param string $action Current action
+	 * @param HookManager $hookmanager Hook manager
+	 * @return int
+	 */
+	public function menuDropdownQuickaddItems($parameters, &$object, &$action, $hookmanager)
+	{
+		global $user;
+
+		$this->results = array();
+		if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')) {
+			return 0;
+		}
+
+		$this->results[] = array(
+			'url' => DOL_URL_ROOT_ALT.'/lmdbvehiclemanagement/consumption_card.php?action=create&mainmenu=lmdbvehiclemanagement',
+			'title' => 'NewConsumption@lmdbvehiclemanagement',
+			'name' => 'ConsumptionEntry@lmdbvehiclemanagement',
+			'picto' => 'gas-pump',
+			'activation' => true,
+			'position' => 450,
+		);
+
+		return 0;
+	}
+
+	/**
 	 * Return the single source of truth for Multicompany sharing.
 	 *
 	 * @return array<string,array<string,mixed>>

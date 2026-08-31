@@ -1,5 +1,10 @@
 # Historique des versions
 
+## `0.9.0` — 2026-08-31
+
+- Ajout de l’entrée native `Plein / Recharge` au menu d’ajout rapide de Dolibarr.
+- Affichage limité aux utilisateurs disposant du droit de création des consommations.
+
 ## `0.8.7` — 2026-08-31
 
 - Période de la synthèse des consommations laissée vide par défaut avec ouverture du sélecteur natif sur la date du jour.
