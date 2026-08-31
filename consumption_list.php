@@ -124,8 +124,9 @@ if ($user->hasRight('lmdbvehiclemanagement', 'consumption', 'import')) $newButto
 $newButton .= dolGetButtonTitle($langs->trans('NewConsumption'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create', '', $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write'));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'gas-pump', 0, $newButton, '', $limit, 0, 0, 1);
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
-$selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, 0);
+$selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, $conf->main_checkbox_left_column);
 print '<div class="div-table-responsive"><table class="tagtable nobottomiftotal noborder liste"><tr class="liste_titre_filter">';
+if ($conf->main_checkbox_left_column) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons('left').'</td>';
 if (!empty($arrayfields['t.ref']['checked'])) print '<td><input class="flat maxwidth100" name="search_ref" value="'.dol_escape_htmltag($searchRef).'"></td>';
 if (!empty($arrayfields['r.reading_date']['checked'])) print '<td></td>';
 if (!empty($arrayfields['v.ref']['checked'])) print '<td>'.$form->selectarray('search_vehicle', $vehicleOptions, $searchVehicle, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth200', 1).'</td>';
@@ -133,18 +134,22 @@ if (!empty($arrayfields['u.lastname']['checked'])) print '<td>'.$form->select_do
 if (!empty($arrayfields['c.label']['checked'])) print '<td>'.$form->selectarray('search_consumable', $consumableOptions, $searchConsumable, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth150', 1).'<br>'.$form->selectarray('search_category', array('fuel' => $langs->trans('FuelOrRecharge'), 'additive' => $langs->trans('Additive')), $searchCategory, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth150', 1).'</td>';
 foreach (array('t.quantity', 'r.odometer_km', 't.total_ttc', 'unit_price', 'capacity_percent') as $field) if (!empty($arrayfields[$field]['checked'])) print '<td></td>';
 if ($showEntityColumn && !empty($arrayfields['t.entity']['checked'])) print '<td class="center">'.$form->multiselectarray('search_entity', $entityOptions, $searchEntities, 0, 0, 'maxwidth150', 1).'</td>';
-print '<td class="liste_titre maxwidthsearch">'.$form->showFilterButtons().'</td></tr><tr class="liste_titre">';
+if (!$conf->main_checkbox_left_column) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons().'</td>';
+print '</tr><tr class="liste_titre">';
+if ($conf->main_checkbox_left_column) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch ');
 foreach (array('t.ref' => 'Ref', 'r.reading_date' => 'Date', 'v.ref' => 'Vehicle', 'u.lastname' => 'Driver', 'c.label' => 'Consumable', 't.quantity' => 'Quantity', 'r.odometer_km' => 'OdometerKm', 't.total_ttc' => 'TotalTTC', 'unit_price' => 'UnitPrice', 'capacity_percent' => 'RecoveredCapacity') as $field => $label) {
 	if (!empty($arrayfields[$field]['checked'])) print getTitleFieldOfList($label, 0, $_SERVER['PHP_SELF'], $field, '', $param, '', $sortfield, $sortorder);
 }
 if ($showEntityColumn && !empty($arrayfields['t.entity']['checked'])) print getTitleFieldOfList('Environment', 0, $_SERVER['PHP_SELF'], 't.entity', '', $param, 'class="center"', $sortfield, $sortorder, 'center ');
-print '<td class="liste_titre center">'.$selectedfields.'</td></tr>';
+if (!$conf->main_checkbox_left_column) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch ');
+print '</tr>';
 $visibleColumns = 1;
 foreach ($arrayfields as $field) if (!empty($field['checked'])) $visibleColumns++;
 $i = 0;
 while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 	$object->id = (int) $row->rowid; $object->ref = (string) $row->ref; $object->entity = (int) $row->entity;
 	print '<tr class="oddeven">';
+	if ($conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn"></td>';
 	if (!empty($arrayfields['t.ref']['checked'])) print '<td class="nowraponall">'.$object->getNomUrl(1).'</td>';
 	if (!empty($arrayfields['r.reading_date']['checked'])) print '<td>'.dol_print_date($db->jdate($row->reading_date), 'dayhour').'</td>';
 	if (!empty($arrayfields['v.ref']['checked'])) print '<td><a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?id='.((int) $row->fk_vehicle).'">'.img_picto('', 'car', 'class="pictofixedwidth"').dol_escape_htmltag(lmdbVehicleDisplayIdentifier((string) $row->vehicle_ref, (string) $row->registration_number, (string) $row->vehicle_label)).'</a></td>';
@@ -159,7 +164,8 @@ while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 		$entityLabel = !empty($row->entity_label) ? (string) $row->entity_label : (string) $row->entity;
 		print '<td class="center"><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div></td>';
 	}
-	print '<td></td></tr>';
+	if (!$conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn"></td>';
+	print '</tr>';
 	$i++;
 }
 if ($i === 0) print '<tr class="oddeven"><td colspan="'.((int) $visibleColumns).'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';

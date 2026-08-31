@@ -137,9 +137,10 @@ $newButton = dolGetButtonTitle($langs->trans('NewInsuranceContract'), '', 'fa fa
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'shield-alt', 0, $newButton, '', $limit, 0, 0, 1);
 
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
-$selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, 0);
+$selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, $conf->main_checkbox_left_column);
 print '<div class="div-table-responsive"><table class="tagtable nobottomiftotal noborder liste">';
 print '<tr class="liste_titre_filter">';
+if ($conf->main_checkbox_left_column) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons('left').'</td>';
 if (!empty($arrayfields['c.ref']['checked'])) print '<td><input class="flat maxwidth100" name="search_ref" value="'.dol_escape_htmltag($searchRef).'"></td>';
 if (!empty($arrayfields['c.policy_number']['checked'])) print '<td><input class="flat maxwidth120" name="search_policy" value="'.dol_escape_htmltag($searchPolicy).'"></td>';
 if (!empty($arrayfields['c.label']['checked'])) print '<td><input class="flat maxwidth150" name="search_label" value="'.dol_escape_htmltag($searchLabel).'"></td>';
@@ -148,9 +149,11 @@ if (!empty($arrayfields['c.date_start']['checked'])) print '<td></td>';
 if (!empty($arrayfields['vehicle_count']['checked'])) print '<td></td>';
 if (!empty($arrayfields['c.status']['checked'])) print '<td class="center">'.$form->selectarray('search_status', $object->fields['status']['arrayofkeyval'], $searchStatus, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth100', 1).'</td>';
 if ($showEntityColumn && !empty($arrayfields['c.entity']['checked'])) print '<td class="center">'.$form->multiselectarray('search_entity', $entityOptions, $searchEntities, 0, 0, 'maxwidth150', 1).'</td>';
-print '<td class="liste_titre maxwidthsearch">'.$form->showFilterButtons().'</td></tr>';
+if (!$conf->main_checkbox_left_column) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons().'</td>';
+print '</tr>';
 
 print '<tr class="liste_titre">';
+if ($conf->main_checkbox_left_column) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch ');
 if (!empty($arrayfields['c.ref']['checked'])) print getTitleFieldOfList('Ref', 0, $_SERVER['PHP_SELF'], 'c.ref', '', $param, '', $sortfield, $sortorder);
 if (!empty($arrayfields['c.policy_number']['checked'])) print getTitleFieldOfList('InsurancePolicyNumber', 0, $_SERVER['PHP_SELF'], 'c.policy_number', '', $param, '', $sortfield, $sortorder);
 if (!empty($arrayfields['c.label']['checked'])) print getTitleFieldOfList('Label', 0, $_SERVER['PHP_SELF'], 'c.label', '', $param, '', $sortfield, $sortorder);
@@ -159,7 +162,8 @@ if (!empty($arrayfields['c.date_start']['checked'])) print getTitleFieldOfList('
 if (!empty($arrayfields['vehicle_count']['checked'])) print getTitleFieldOfList('InsuranceVehicleCount', 0, $_SERVER['PHP_SELF'], 'vehicle_count', '', $param, 'class="center"', $sortfield, $sortorder, 'center ');
 if (!empty($arrayfields['c.status']['checked'])) print getTitleFieldOfList('Status', 0, $_SERVER['PHP_SELF'], 'c.status', '', $param, 'class="center"', $sortfield, $sortorder, 'center ');
 if ($showEntityColumn && !empty($arrayfields['c.entity']['checked'])) print getTitleFieldOfList('Environment', 0, $_SERVER['PHP_SELF'], 'c.entity', '', $param, 'class="center"', $sortfield, $sortorder, 'center ');
-print '<td class="liste_titre center">'.$selectedfields.'</td></tr>';
+if (!$conf->main_checkbox_left_column) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch ');
+print '</tr>';
 
 $visibleColumns = 1;
 foreach ($arrayfields as $field) if (!empty($field['checked'])) $visibleColumns++;
@@ -167,6 +171,7 @@ $i = 0;
 while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 	$object->setVarsFromFetchObj($row);
 	print '<tr class="oddeven">';
+	if ($conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn"></td>';
 	if (!empty($arrayfields['c.ref']['checked'])) print '<td class="nowraponall">'.$object->getNomUrl(1).'</td>';
 	if (!empty($arrayfields['c.policy_number']['checked'])) print '<td>'.dol_escape_htmltag((string) $row->policy_number).'</td>';
 	if (!empty($arrayfields['c.label']['checked'])) print '<td>'.dol_escape_htmltag((string) $row->label).'</td>';
@@ -178,7 +183,8 @@ while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 		$entityLabel = !empty($row->entity_label) ? (string) $row->entity_label : (string) $row->entity;
 		print '<td class="center"><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div></td>';
 	}
-	print '<td></td></tr>';
+	if (!$conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn"></td>';
+	print '</tr>';
 	$i++;
 }
 if ($i === 0) print '<tr class="oddeven"><td colspan="'.((int) $visibleColumns).'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';

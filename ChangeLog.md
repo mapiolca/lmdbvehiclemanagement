@@ -1,5 +1,11 @@
 # Historique des versions
 
+## `0.8.2` — 2026-08-31
+
+- Positionnement du sélecteur de colonnes avec le rendu natif `getTitleFieldOfList()`.
+- Prise en charge du réglage Dolibarr plaçant la colonne d’actions à gauche ou à droite.
+- Alignement des filtres, du sélecteur et des cellules d’action sur le comportement des listes du core.
+
 ## `0.8.1` — 2026-08-31
 
 - Actualisation JavaScript immédiate des champs de capacité lors d’un changement d’énergie.
