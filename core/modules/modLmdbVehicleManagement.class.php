@@ -36,7 +36,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->descriptionlong = 'ModuleLmdbVehicleManagementDesc';
 		$this->editor_name = 'Pierre Ardoin';
 		$this->editor_url = 'https://github.com/mapiolca';
-		$this->version = '0.4.1';
+		$this->version = '0.4.2';
 		$this->const_name = 'MAIN_MODULE_LMDBVEHICLEMANAGEMENT';
 		$this->picto = 'car';
 
@@ -199,7 +199,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'fk_menu' => '',
 			'type' => 'top',
 			'titre' => 'VehicleManagementTopMenu',
-			'prefix' => img_picto('', 'fa-car', 'class="pictofixedwidth valignmiddle paddingright"'),
+			'prefix' => img_picto('', $this->picto, 'class="pictofixedwidth valignmiddle"'),
 			'mainmenu' => 'lmdbvehiclemanagement',
 			'leftmenu' => '',
 			'url' => '/lmdbvehiclemanagement/vehicle_list.php',
@@ -500,6 +500,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		}
 
 		$defaults = array(
+			'MAIN_MODULE_LMDBVEHICLEMANAGEMENT_ICON' => 'fa-car',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON' => 'mod_lmdbvehicle_standard',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLEEVENT_ADDON' => 'mod_lmdbvehicleevent_standard',
 			'LMDBVEHICLEMANAGEMENT_INSURANCECONTRACT_ADDON' => 'mod_lmdbinsurancecontract_standard',

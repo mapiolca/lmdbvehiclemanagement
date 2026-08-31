@@ -1,5 +1,9 @@
 # Historique des versions
 
+## `0.4.2` — 2026-08-31
+
+- Déclaration de l’icône Font Awesome du module dans la constante native utilisée par les thèmes Dolibarr, afin que le menu haut affiche le véhicule au lieu du pictogramme générique de repli.
+
 ## `0.4.1` — 2026-08-28
 
 - Correction du pictogramme du menu haut avec l’icône Font Awesome rendue par le helper natif Dolibarr.
