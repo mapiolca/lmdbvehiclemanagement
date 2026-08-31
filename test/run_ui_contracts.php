@@ -151,7 +151,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0111'] = strpos($descriptor, "\$this->version = '0.11.1';") !== false;
+$checks['module_version_is_0112'] = strpos($descriptor, "\$this->version = '0.11.2';") !== false;
 $checks['consumption_uses_native_quick_add_hook'] = strpos($descriptor, "'main',") !== false
 	&& strpos($actionsHooks, 'function menuDropdownQuickaddItems(') !== false
 	&& strpos($actionsHooks, "dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1)") !== false
@@ -313,15 +313,15 @@ $checks['consumption_creator_is_default_driver'] = strpos($consumptionClass, 'if
 	&& strpos($consumptionCard, 'suggestedDriver') === false;
 $checks['consumption_effective_driver_is_used_everywhere'] = substr_count($consumptionClass, 'fk_user_driver') > 0
 	&& substr_count($consumptionList, 'COALESCE(t.fk_user_driver, t.fk_user_creat)') >= 3
-	&& substr_count($consumptionIndex, "'user_id' => \$driverId") === 1
+	&& strpos($consumptionIndex, "\$statsFilters['user_id'] = \$driverId") !== false
 	&& substr_count($descriptor, 'COALESCE(t.fk_user_driver, t.fk_user_creat)') === 1;
-$checks['consumption_summary_filters_are_server_side'] = strpos($consumptionIndex, "'vehicle_id' => \$vehicleId") !== false
-	&& strpos($consumptionIndex, "'user_id' => \$driverId") !== false
-	&& strpos($consumptionIndex, "'consumable_id' => \$consumableId") !== false
-	&& strpos($consumptionIndex, "'category' => \$category") !== false
-	&& strpos($consumptionIndex, "'date_start' => \$dateStart") !== false
-	&& strpos($consumptionIndex, "'date_end' => \$effectiveDateEnd") !== false
-	&& strpos($consumptionIndex, "'entity_ids' => \$safeEntities") !== false
+$checks['consumption_summary_filters_are_server_side'] = strpos($consumptionIndex, "\$statsFilters['vehicle_id'] = \$vehicleId") !== false
+	&& strpos($consumptionIndex, "\$statsFilters['user_id'] = \$driverId") !== false
+	&& strpos($consumptionIndex, "\$statsFilters['consumable_id'] = \$consumableId") !== false
+	&& strpos($consumptionIndex, "\$statsFilters['category'] = \$category") !== false
+	&& strpos($consumptionIndex, "\$statsFilters['date_start'] = \$dateStart") !== false
+	&& strpos($consumptionIndex, "array('date_end' => \$effectiveDateEnd)") !== false
+	&& strpos($consumptionIndex, "\$statsFilters['entity_ids'] = \$safeEntities") !== false
 	&& strpos($consumptionStats, "t.fk_vehicle = '.((int) \$filters['vehicle_id'])") !== false
 	&& strpos($consumptionStats, "t.fk_consumable = '.((int) \$filters['consumable_id'])") !== false
 	&& strpos($consumptionStats, "t.category_snapshot = '") !== false
@@ -334,8 +334,15 @@ $checks['consumption_summary_filters_use_native_reset_and_safe_dates'] = strpos(
 	&& strpos($consumptionIndex, '$dateEndDay > 0 && $dateEndMonth > 0 && $dateEndYear > 0') !== false;
 $checks['consumption_summary_period_is_empty_and_open_ended'] = substr_count($consumptionIndex, '?: -1') >= 2
 	&& strpos($consumptionIndex, '$effectiveDateEnd = $dateEnd > 0 ? $dateEnd : dol_now();') !== false
-	&& strpos($consumptionIndex, "'date_start' => \$dateStart") !== false
-	&& strpos($consumptionIndex, "'date_end' => \$effectiveDateEnd") !== false;
+	&& strpos($consumptionIndex, "\$statsFilters['date_start'] = \$dateStart") !== false
+	&& strpos($consumptionIndex, "array('date_end' => \$effectiveDateEnd)") !== false;
+$checks['consumption_empty_selectors_do_not_filter'] = substr_count($consumptionIndex, ' <= 0)') >= 3
+	&& strpos($consumptionIndex, "!in_array(\$category, array('fuel', 'additive'), true)") !== false
+	&& substr_count($consumptionIndex, ' > 0 ? $') >= 3
+	&& strpos($consumptionIndex, "select_dolusers(\$driverId > 0 ? \$driverId : -1") !== false
+	&& substr_count($consumptionIndex, 'return $entityId > 0;') >= 1
+	&& substr_count($consumptionStats, "isset(\$filters[") >= 3
+	&& strpos($consumptionStats, "return \$entityId > 0;") !== false;
 $checks['consumption_stats_filter_uses_effective_driver'] = strpos($consumptionClass, '$this->fk_user_driver = (int) $this->fk_user_creat;') !== false
 	&& substr_count($consumptionStats, 'COALESCE(t.fk_user_driver, t.fk_user_creat)') >= 3;
 $checks['consumption_list_is_native'] = strpos($consumptionList, 'print_barre_liste(') !== false

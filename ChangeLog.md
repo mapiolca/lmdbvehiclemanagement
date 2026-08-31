@@ -1,5 +1,11 @@
 # Historique des versions
 
+## `0.11.2` — 2026-08-31
+
+- Interprétation des options vides des filtres de consommation comme une absence de filtre, y compris lorsque les sélecteurs natifs transmettent `-1`.
+- Affichage réellement vide par défaut des sélecteurs véhicule, conducteur et consommable.
+- Construction de la requête de synthèse uniquement avec les critères explicitement renseignés, tout en conservant la date courante comme borne métier supérieure par défaut.
+
 ## `0.11.1` — 2026-08-31
 
 - Conservation de la validation native du navigateur sur les champs obligatoires des événements véhicule.

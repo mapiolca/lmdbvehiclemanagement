@@ -33,15 +33,17 @@ class LmdbVehicleConsumptionStats
 		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity AS cap ON cap.entity = t.entity AND cap.fk_vehicle = t.fk_vehicle AND cap.fk_consumable = t.fk_consumable';
 		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user AS u ON u.rowid = COALESCE(t.fk_user_driver, t.fk_user_creat)';
 		$sql .= ' WHERE t.entity IN ('.getEntity('lmdbvehicleconsumption').')';
-		if (!empty($filters['vehicle_id'])) $sql .= ' AND t.fk_vehicle = '.((int) $filters['vehicle_id']);
-		if (!empty($filters['user_id'])) $sql .= ' AND COALESCE(t.fk_user_driver, t.fk_user_creat) = '.((int) $filters['user_id']);
-		if (!empty($filters['consumable_id'])) $sql .= ' AND t.fk_consumable = '.((int) $filters['consumable_id']);
+		if (isset($filters['vehicle_id']) && (int) $filters['vehicle_id'] > 0) $sql .= ' AND t.fk_vehicle = '.((int) $filters['vehicle_id']);
+		if (isset($filters['user_id']) && (int) $filters['user_id'] > 0) $sql .= ' AND COALESCE(t.fk_user_driver, t.fk_user_creat) = '.((int) $filters['user_id']);
+		if (isset($filters['consumable_id']) && (int) $filters['consumable_id'] > 0) $sql .= ' AND t.fk_consumable = '.((int) $filters['consumable_id']);
 		if (!empty($filters['category']) && in_array($filters['category'], array('fuel', 'additive'), true)) $sql .= " AND t.category_snapshot = '".$this->db->escape($filters['category'])."'";
 		if (!empty($filters['date_start'])) $sql .= " AND r.reading_date >= '".$this->db->idate((int) $filters['date_start'])."'";
 		if (!empty($filters['date_end'])) $sql .= " AND r.reading_date <= '".$this->db->idate((int) $filters['date_end'])."'";
 		if (!empty($filters['entity_ids'])) {
-			$ids = array_map('intval', $filters['entity_ids']);
-			$sql .= ' AND t.entity IN ('.implode(',', $ids).')';
+			$ids = array_values(array_filter(array_map('intval', $filters['entity_ids']), static function ($entityId) {
+				return $entityId > 0;
+			}));
+			if (!empty($ids)) $sql .= ' AND t.entity IN ('.implode(',', $ids).')';
 		}
 		$sql .= ' ORDER BY t.fk_vehicle, t.fk_consumable, t.unit_snapshot, r.reading_date, t.rowid';
 		$resql = $this->db->query($sql);

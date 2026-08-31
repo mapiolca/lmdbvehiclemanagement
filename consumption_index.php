@@ -31,6 +31,15 @@ $dateEndDay = GETPOSTINT('date_endday');
 $dateEndMonth = GETPOSTINT('date_endmonth');
 $dateEndYear = GETPOSTINT('date_endyear');
 $entityIds = GETPOSTISARRAY('entity_ids') ? GETPOST('entity_ids', 'array:int') : array();
+$entityIds = array_values(array_filter(array_map('intval', $entityIds), static function ($entityId) {
+	return $entityId > 0;
+}));
+
+// Native empty options can submit -1. They mean "no filter", not an object identifier.
+if ($vehicleId <= 0) $vehicleId = 0;
+if ($driverId <= 0) $driverId = 0;
+if ($consumableId <= 0) $consumableId = 0;
+if (!in_array($category, array('fuel', 'additive'), true)) $category = '';
 if (GETPOST('button_removefilter', 'alpha')) {
 	$vehicleId = $driverId = $consumableId = 0;
 	$category = '';
@@ -59,10 +68,17 @@ if (isModEnabled('multicompany') && count($allowedEntities) > 1) {
 		$db->free($resql);
 	}
 }
-$safeEntities = array_values(array_intersect($allowedEntities, array_map('intval', $entityIds)));
+$safeEntities = array_values(array_intersect($allowedEntities, $entityIds));
 $invalidEntityFilter = !empty($entityIds) && empty($safeEntities);
 $service = new LmdbVehicleConsumptionStats($db);
-$rows = $invalidEntityFilter ? array() : $service->fetchRows(array('vehicle_id' => $vehicleId, 'user_id' => $driverId, 'consumable_id' => $consumableId, 'category' => $category, 'date_start' => $dateStart, 'date_end' => $effectiveDateEnd, 'entity_ids' => $safeEntities));
+$statsFilters = array('date_end' => $effectiveDateEnd);
+if ($vehicleId > 0) $statsFilters['vehicle_id'] = $vehicleId;
+if ($driverId > 0) $statsFilters['user_id'] = $driverId;
+if ($consumableId > 0) $statsFilters['consumable_id'] = $consumableId;
+if ($category !== '') $statsFilters['category'] = $category;
+if ($dateStart > 0) $statsFilters['date_start'] = $dateStart;
+if (!empty($safeEntities)) $statsFilters['entity_ids'] = $safeEntities;
+$rows = $invalidEntityFilter ? array() : $service->fetchRows($statsFilters);
 if (!is_array($rows)) { setEventMessages($service->error, null, 'errors'); $rows = array(); }
 $groups = $service->summarize($rows);
 
@@ -72,9 +88,9 @@ print '<form method="GET" action="'.$_SERVER['PHP_SELF'].'"><div class="div-tabl
 print '<tr class="liste_titre"><th>'.$langs->trans('Period').'</th><th>'.$langs->trans('Vehicle').'</th><th>'.$langs->trans('Driver').'</th><th>'.$langs->trans('Consumable').'</th><th>'.$langs->trans('ConsumptionNature').'</th>';
 if (!empty($entityOptions)) print '<th>'.$langs->trans('Environment').'</th>';
 print '<th></th></tr><tr class="oddeven"><td>'.$form->selectDate($dateStart ?: -1, 'date_start', 0, 0, 1).' '.$form->selectDate($dateEnd ?: -1, 'date_end', 0, 0, 1).'</td>';
-print '<td>'.$form->selectarray('vehicle_id', $vehicleOptions, $vehicleId, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth250', 1).'</td>';
-print '<td>'.$form->select_dolusers($driverId ?: '', 'driver_id', 1, null, 0, '', '', '', 0, 1, '', 0, '', 'maxwidth200', 0, 0, false, 1).'</td>';
-print '<td>'.$form->selectarray('consumable_id', $dictionary->getOptions(), $consumableId, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth200', 1).'</td>';
+print '<td>'.$form->selectarray('vehicle_id', $vehicleOptions, $vehicleId > 0 ? $vehicleId : -1, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth250', 1).'</td>';
+print '<td>'.$form->select_dolusers($driverId > 0 ? $driverId : -1, 'driver_id', 1, null, 0, '', '', '', 0, 1, '', 0, '', 'maxwidth200', 0, 0, false, 1).'</td>';
+print '<td>'.$form->selectarray('consumable_id', $dictionary->getOptions(), $consumableId > 0 ? $consumableId : -1, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth200', 1).'</td>';
 print '<td>'.$form->selectarray('category', array('fuel' => $langs->trans('FuelOrRecharge'), 'additive' => $langs->trans('Additive')), $category, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth200', 1).'</td>';
 if (!empty($entityOptions)) print '<td>'.$form->multiselectarray('entity_ids', $entityOptions, $safeEntities, 0, 0, 'maxwidth200', 1).'</td>';
 print '<td class="center nowraponall">'.$form->showFilterButtons().'</td></tr></table></div></form>';
