@@ -125,6 +125,14 @@ $checks['insurance_modal_route_is_removed'] = strpos($vehicleCard, 'mode=modal')
 	&& strpos($vehicleCard, 'lmdb-insurance-modal-open') === false
 	&& strpos($insurancePage, 'insurancecontract_certificate.php') !== false;
 $checks['insurance_block_uses_contract_nomurl'] = strpos($library, '$contract->getNomUrl(1)') !== false;
+$checks['insurance_block_title_has_no_redundant_picto'] = strpos($library, "img_picto('', 'shield-alt', 'class=\"pictofixedwidth\"').\$langs->trans('InsuranceContract')") === false
+	&& strpos($library, '<span class="right marginleftonly">') !== false;
+$checks['insurance_contract_nomurl_uses_native_ajax_tooltip'] = strpos($insuranceContractClass, "getDolGlobalInt('MAIN_ENABLE_AJAX_TOOLTIP')") !== false
+	&& strpos($insuranceContractClass, "'objecttype' => \$this->element.'@'.\$this->module") !== false
+	&& strpos($insuranceContractClass, 'classforajaxtooltip') !== false
+	&& strpos($insuranceContractClass, 'public function getTooltipContentArray($params)') !== false
+	&& strpos($insuranceContractClass, "trans('InsurancePolicyNumber')") !== false
+	&& strpos($insuranceContractClass, "trans('InsuranceContractPeriod')") !== false;
 $checks['insurance_block_uses_native_link_and_create_icons'] = strpos($library, "'fa fa-link'") !== false
 	&& strpos($library, "'fa fa-plus-circle'") !== false;
 $checks['insurance_compatibility_route_only_redirects'] = strpos($insurancePage, "header('Location: '") !== false
@@ -138,7 +146,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_083'] = strpos($descriptor, "\$this->version = '0.8.3';") !== false;
+$checks['module_version_is_084'] = strpos($descriptor, "\$this->version = '0.8.4';") !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;

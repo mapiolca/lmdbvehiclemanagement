@@ -410,8 +410,8 @@ function lmdbVehiclePrintInsuranceBlock($object)
 	}
 	print '<div class="underbanner clearboth"></div>';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
-	print '<tr class="liste_titre"><th colspan="2">'.img_picto('', 'shield-alt', 'class="pictofixedwidth"').$langs->trans('InsuranceContract');
-	print '<span class="right">'.$headerActions.'</span></th></tr>';
+	print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('InsuranceContract');
+	print '<span class="right marginleftonly">'.$headerActions.'</span></th></tr>';
 	if (!$contract instanceof LmdbVehicleInsuranceContract) {
 		print '<tr class="oddeven"><td colspan="2"><span class="opacitymedium">'.$langs->trans('InsuranceNoActiveContract').'</span></td></tr>';
 		print '</table></div>';

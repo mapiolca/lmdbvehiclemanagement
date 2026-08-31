@@ -1,5 +1,11 @@
 # Historique des versions
 
+## `0.8.4` — 2026-08-31
+
+- Suppression du pictogramme redondant placé devant le titre du bloc d’assurance de la fiche véhicule.
+- Espacement du lien vers le contrat avec une classe native Dolibarr.
+- Ajout du tooltip Ajax natif au `getNomUrl()` des contrats avec référence, libellé, assureur, police, formule, période, statut et assistance.
+
 ## `0.8.3` — 2026-08-31
 
 - Rétablissement de l’actualisation native des listes à la fermeture du sélecteur de colonnes.

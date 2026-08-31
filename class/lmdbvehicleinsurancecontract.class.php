@@ -85,6 +85,114 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 		$this->status = self::STATUS_DRAFT;
 	}
 
+	/**
+	 * Return the main contract data displayed by native Dolibarr tooltips.
+	 *
+	 * @param array<string,mixed> $params Tooltip parameters
+	 * @return array<string,string>
+	 */
+	public function getTooltipContentArray($params)
+	{
+		global $langs;
+
+		$langs->loadLangs(array('companies', 'other', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		if (getDolGlobalString('MAIN_OPTIMIZEFORTEXTBROWSER')) {
+			return array('optimize' => $langs->trans('InsuranceContract'));
+		}
+
+		$insurerName = '';
+		if ((int) $this->fk_soc > 0) {
+			require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
+			$insurer = new Societe($this->db);
+			if ($insurer->fetch((int) $this->fk_soc) > 0) {
+				$insurerName = (string) $insurer->name;
+			}
+		}
+
+		$datas = array();
+		$datas['picto'] = img_picto('', $this->picto).' <u class="paddingrightonly">'.$langs->trans('InsuranceContract').'</u> '.$this->getLibStatut(5);
+		$datas['ref'] = '<br><b>'.$langs->trans('Ref').':</b> '.dol_escape_htmltag($this->ref);
+		$datas['label'] = '<br><b>'.$langs->trans('Label').':</b> '.dol_escape_htmltag($this->label);
+		if ($insurerName !== '') {
+			$datas['insurer'] = '<br><b>'.$langs->trans('InsuranceCompany').':</b> '.dol_escape_htmltag($insurerName);
+		}
+		$datas['policy'] = '<br><b>'.$langs->trans('InsurancePolicyNumber').':</b> '.dol_escape_htmltag($this->policy_number);
+		if (!empty($this->coverage_formula)) {
+			$datas['coverage'] = '<br><b>'.$langs->trans('InsuranceCoverageFormula').':</b> '.dol_escape_htmltag((string) $this->coverage_formula);
+		}
+		$datas['period'] = '<br><b>'.$langs->trans('InsuranceContractPeriod').':</b> '.dol_print_date($this->date_start, 'day').' — '.($this->date_end ? dol_print_date($this->date_end, 'day') : $langs->trans('NoLimit'));
+		if (!empty($this->assistance_phone)) {
+			$datas['assistance'] = '<br><b>'.$langs->trans('InsuranceAssistancePhone').':</b> '.dol_escape_htmltag((string) $this->assistance_phone);
+		}
+
+		return $datas;
+	}
+
+	/**
+	 * Return the native link to the contract card with Ajax tooltip support.
+	 *
+	 * @param int<0,1> $withpicto Include icon
+	 * @param string $option Link option
+	 * @param int<0,1> $notooltip Disable tooltip
+	 * @param string $morecss Extra CSS class
+	 * @param int<-1,1> $save_lastsearch_value Preserve last search
+	 * @return string
+	 */
+	public function getNomUrl($withpicto = 0, $option = '', $notooltip = 0, $morecss = '', $save_lastsearch_value = -1)
+	{
+		global $conf, $langs;
+
+		if (!empty($conf->dol_no_mouse_hover)) {
+			$notooltip = 1;
+		}
+
+		$params = array(
+			'id' => (int) $this->id,
+			'objecttype' => $this->element.'@'.$this->module,
+			'option' => $option,
+			'nofetch' => 1,
+		);
+		$classForTooltip = 'classfortooltip';
+		$dataParams = '';
+		$label = '';
+		if (getDolGlobalInt('MAIN_ENABLE_AJAX_TOOLTIP')) {
+			$classForTooltip = 'classforajaxtooltip';
+			$dataParams = ' data-params="'.dol_escape_htmltag((string) json_encode($params)).'"';
+		} else {
+			$label = implode($this->getTooltipContentArray($params));
+		}
+
+		$linkAttributes = '';
+		$linkCss = 'nowraponall'.($morecss !== '' ? ' '.$morecss : '');
+		if (empty($notooltip)) {
+			if (getDolGlobalString('MAIN_OPTIMIZEFORTEXTBROWSER')) {
+				$label = $langs->trans('InsuranceContract');
+				$linkAttributes .= ' alt="'.dol_escape_htmltag($label, 1, 1).'"';
+			}
+			$linkAttributes .= $label !== '' ? ' title="'.dol_escape_htmltag($label, 1, 1).'"' : ' title="tocomplete"';
+			$linkAttributes .= $dataParams.' class="'.$linkCss.' '.$classForTooltip.'"';
+		} else {
+			$linkAttributes .= ' class="'.$linkCss.'"';
+		}
+
+		$url = dol_buildpath('/lmdbvehiclemanagement/'.$this->getCardPage(), 1).'?'.$this->getCardUrlParameters();
+		$saveLastSearch = $save_lastsearch_value === 1;
+		if ($save_lastsearch_value === -1 && isset($_SERVER['PHP_SELF']) && preg_match('/list\.php/', $_SERVER['PHP_SELF'])) {
+			$saveLastSearch = true;
+		}
+		if ($saveLastSearch) {
+			$url .= '&save_lastsearch_values=1';
+		}
+
+		$link = '<a href="'.dol_escape_htmltag($url).'"'.$linkAttributes.'>';
+		if ($withpicto) {
+			$link .= img_picto('', $this->picto, 'class="pictofixedwidth"');
+		}
+		$link .= dol_escape_htmltag($this->ref).'</a>';
+
+		return $link;
+	}
+
 	/** @inheritdoc */
 	public function create(User $user, $notrigger = 0)
 	{
