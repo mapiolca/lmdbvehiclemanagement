@@ -203,7 +203,7 @@ class LmdbVehicleInsuranceCron
 					'__VEHICLE_LABEL__' => $vehicleLabel,
 					'__INSURANCE_POLICY__' => (string) $contract->policy_number,
 					'__INSURANCE_EXPIRY_DATE__' => $certificate instanceof LmdbVehicleInsuranceCertificate ? dol_print_date((int) $certificate->validity_end, 'day') : '',
-					'__INSURANCE_URL__' => dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 2).'?id='.$vehicleId,
+					'__INSURANCE_URL__' => dol_buildpath('/lmdbvehiclemanagement/insurancecontract_certificate.php', 2).'?id='.((int) $contract->id),
 				);
 				if ($this->sendMail($recipient['email'], $template, $replacements) > 0) {
 					$success++;

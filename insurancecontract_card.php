@@ -13,6 +13,7 @@ require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
 require_once DOL_DOCUMENT_ROOT.'/contact/class/contact.class.php';
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicle.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementcompatibility.class.php');
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehicleinsurance.lib.php');
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
@@ -27,6 +28,7 @@ $langs->loadLangs(array('main', 'companies', 'contacts', 'other', 'agenda', 'lmd
 if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
+$preselectedVehicleId = GETPOSTINT('vehicle_id');
 $action = GETPOST('action', 'aZ09') ?: ($id > 0 ? 'view' : 'create');
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
@@ -97,6 +99,12 @@ if ($id > 0 && empty($coverage['vehicle_ids'])) {
 		$coverage['coverage_end'] = !empty($coverageRow->date_end) ? (int) $db->jdate($coverageRow->date_end) : null;
 	}
 	if ($resCoverage) $db->free($resCoverage);
+}
+if ($id <= 0 && empty($coverage['vehicle_ids']) && $preselectedVehicleId > 0) {
+	$preselectedVehicle = new LmdbVehicle($db);
+	if ($preselectedVehicle->fetch($preselectedVehicleId) > 0 && (int) $preselectedVehicle->entity === (int) $conf->entity) {
+		$coverage['vehicle_ids'] = array($preselectedVehicleId);
+	}
 }
 if ($coverage['coverage_start'] <= 0) $coverage['coverage_start'] = (int) $object->date_start;
 

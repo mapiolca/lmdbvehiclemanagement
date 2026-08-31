@@ -248,6 +248,86 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 	}
 
 	/**
+	 * Link one vehicle without replacing the contract's existing coverage links.
+	 *
+	 * @param int $vehicleId Vehicle id
+	 * @param string $coverageType primary or complementary
+	 * @param int $dateStart Coverage start
+	 * @param ?int $dateEnd Coverage end
+	 * @param User $user Author
+	 * @param int<0,1> $notrigger Disable trigger
+	 * @return int<-1,1>
+	 */
+	public function linkVehicle($vehicleId, $coverageType, $dateStart, $dateEnd, User $user, $notrigger = 0)
+	{
+		$vehicleId = (int) $vehicleId;
+		$outsideContractPeriod = $dateStart < (int) $this->date_start
+			|| ($dateEnd !== null && $dateEnd < $dateStart)
+			|| (!empty($this->date_end) && ($dateEnd === null || $dateEnd > (int) $this->date_end));
+		if ((int) $this->id <= 0 || !in_array((int) $this->status, array(self::STATUS_DRAFT, self::STATUS_ACTIVE), true)
+			|| $vehicleId <= 0 || !in_array($coverageType, array(self::COVERAGE_PRIMARY, self::COVERAGE_COMPLEMENTARY), true)
+			|| $dateStart <= 0 || $outsideContractPeriod) {
+			$this->error = 'InsuranceCoverageInvalid';
+			$this->errors[] = $this->error;
+			return -1;
+		}
+
+		$this->db->begin();
+		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract';
+		$sql .= ' WHERE rowid = '.((int) $this->id).' AND entity = '.((int) $this->entity).' FOR UPDATE';
+		$resql = $this->db->query($sql);
+		if (!$resql || $this->db->num_rows($resql) !== 1 || $this->lockVehicleRow($vehicleId) < 0) {
+			$this->error = $resql ? ($this->error !== '' ? $this->error : 'RecordNotFound') : $this->db->lasterror();
+			if ($resql) {
+				$this->db->free($resql);
+			}
+			$this->db->rollback();
+			return -1;
+		}
+		$this->db->free($resql);
+
+		if ($this->vehicleBelongsToContractEntity($vehicleId) <= 0) {
+			$this->error = $this->error !== '' ? $this->error : 'InvalidVehicle';
+			$this->errors[] = $this->error;
+			$this->db->rollback();
+			return -1;
+		}
+		if ($coverageType === self::COVERAGE_PRIMARY && (int) $this->status === self::STATUS_ACTIVE && $this->hasPrimaryOverlap($vehicleId, $dateStart, $dateEnd) !== 0) {
+			$this->error = $this->error !== '' ? $this->error : 'InsurancePrimaryCoverageOverlap';
+			$this->errors[] = $this->error;
+			$this->db->rollback();
+			return -1;
+		}
+
+		$sql = 'INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle';
+		$sql .= ' (entity, fk_contract, fk_vehicle, coverage_type, date_start, date_end, date_creation, fk_user_creat, fk_user_modif) VALUES (';
+		$sql .= ((int) $this->entity).', '.((int) $this->id).', '.$vehicleId.", '".$this->db->escape($coverageType)."', '".$this->db->idate($dateStart)."', ";
+		$sql .= $dateEnd !== null ? "'".$this->db->idate($dateEnd)."', " : 'NULL, ';
+		$sql .= "'".$this->db->idate(dol_now())."', ".((int) $user->id).', '.((int) $user->id).')';
+		$sql .= ' ON DUPLICATE KEY UPDATE coverage_type = VALUES(coverage_type), date_start = VALUES(date_start), date_end = VALUES(date_end), fk_user_modif = VALUES(fk_user_modif)';
+		if (!$this->db->query($sql)) {
+			$this->error = $this->db->lasterror();
+			$this->db->rollback();
+			return -1;
+		}
+
+		$this->context['trigger_reason'] = 'vehicle_link';
+		$this->context['changed_fields'] = array('vehicle_links');
+		$this->context['linked_vehicle_id'] = $vehicleId;
+		if (!$notrigger && $this->call_trigger($this->TRIGGER_PREFIX.'_UPDATE', $user) < 0) {
+			$triggerError = (string) $this->error;
+			$triggerErrors = is_array($this->errors) ? $this->errors : array();
+			$this->db->rollback();
+			$this->error = $triggerError;
+			$this->errors = $triggerErrors;
+			return -1;
+		}
+
+		$this->db->commit();
+		return 1;
+	}
+
+	/**
 	 * Activate the contract after checking every primary coverage.
 	 *
 	 * @param User $user Author

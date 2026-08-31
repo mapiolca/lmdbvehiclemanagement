@@ -97,8 +97,11 @@ foreach ($entries as $entry) {
 		$url = dol_buildpath('/lmdbvehiclemanagement/vehicle_odometer.php', 1).'?id='.$id;
 		$url .= ($canManageOdometer ? '&reading_id='.$entry['source_id'].'&action=edit' : '#odometer-'.$entry['source_id']);
 	} elseif ($entry['source'] === 'insurance') {
-		$url = dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 1).'?id='.$id;
-		$url .= $entry['source_object'] === 'lmdbinsurancecontract' ? '&contract_id='.$entry['source_id'] : '&certificate_id='.$entry['source_id'];
+		if ($entry['source_object'] === 'lmdbinsurancecontract') {
+			$url = dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'?id='.$entry['source_id'];
+		} else {
+			$url = dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 1).'?id='.$id.'&certificate_id='.$entry['source_id'];
+		}
 	}
 	$sourceLabel = $sourceOptions[$entry['source']];
 	$typeLabel = isset($typeTranslations[$entry['type']]) ? $langs->trans($typeTranslations[$entry['type']]) : $entry['type'];

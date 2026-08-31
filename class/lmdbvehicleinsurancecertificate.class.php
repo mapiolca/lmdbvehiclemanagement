@@ -380,22 +380,13 @@ class LmdbVehicleInsuranceCertificate extends LmdbVehicleManagementObject
 	/** @inheritdoc */
 	protected function getCardPage()
 	{
-		return 'vehicle_insurance.php';
+		return 'insurancecontract_certificate.php';
 	}
 
 	/** @inheritdoc */
 	protected function getCardUrlParameters()
 	{
-		$vehicleId = (int) $this->fk_vehicle;
-		if ($vehicleId <= 0) {
-			$contract = new LmdbVehicleInsuranceContract($this->db);
-			if ($contract->fetch((int) $this->fk_contract) > 0) {
-				$vehicleIds = $contract->getVehicleIds();
-				$vehicleId = empty($vehicleIds) ? 0 : (int) $vehicleIds[0];
-			}
-		}
-
-		return 'id='.$vehicleId.'&certificate_id='.((int) $this->id);
+		return 'id='.((int) $this->fk_contract).'&certificate_id='.((int) $this->id);
 	}
 
 	/** @return bool */

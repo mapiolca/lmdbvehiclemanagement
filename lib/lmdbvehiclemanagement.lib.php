@@ -200,6 +200,22 @@ function lmdbInsuranceContractPrepareHead($object)
 		$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/insurancecontract_agenda.php', 1).'?id='.$id, $agendaLabel, 'agenda');
 	}
 
+	$certificateCount = 0;
+	$sql = 'SELECT COUNT(*) AS total FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_certificate';
+	$sql .= ' WHERE fk_contract = '.$id.' AND entity = '.((int) $object->entity);
+	$resql = $db->query($sql);
+	if ($resql && is_object($row = $db->fetch_object($resql))) {
+		$certificateCount = (int) $row->total;
+	}
+	if ($resql) {
+		$db->free($resql);
+	}
+	$certificateLabel = $langs->trans('InsuranceCertificates');
+	if ($certificateCount > 0) {
+		$certificateLabel .= '<span class="badge marginleftonlyshort">'.$certificateCount.'</span>';
+	}
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/insurancecontract_certificate.php', 1).'?id='.$id, $certificateLabel, 'certificates');
+
 	return $head;
 }
 
@@ -265,18 +281,28 @@ function lmdbInsuranceContractPrintBanner($object)
  */
 function lmdbVehiclePrintInsuranceBlock($object)
 {
-	global $db, $langs;
+	global $db, $langs, $user;
 
 	dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.class.php');
 	dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecertificate.class.php');
 	dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsuranceconfig.class.php');
+	$allContracts = LmdbVehicleInsuranceContract::getForVehicle($db, (int) $object->id);
 	$contract = LmdbVehicleInsuranceContract::getPrimaryForVehicle($db, (int) $object->id);
-	$manageUrl = dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 1).'?id='.((int) $object->id);
-	$manageButton = dolGetButtonAction('', $langs->trans('Manage'), 'default', $manageUrl, '', true, array('attr' => array('class' => 'lmdb-insurance-modal-open')));
+	$headerActions = '';
+	if ($contract instanceof LmdbVehicleInsuranceContract) {
+		$headerActions = $contract->getNomUrl(1);
+	} elseif (!empty($allContracts)) {
+		$headerActions = $allContracts[0]['contract']->getNomUrl(1);
+	} elseif ($user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')) {
+		$linkUrl = dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance_link.php', 1).'?id='.((int) $object->id);
+		$createUrl = dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'?action=create&vehicle_id='.((int) $object->id);
+		$headerActions = dolGetButtonTitle($langs->trans('LinkInsuranceContract'), '', 'fa fa-link', $linkUrl);
+		$headerActions .= dolGetButtonTitle($langs->trans('NewInsuranceContract'), '', 'fa fa-plus-circle', $createUrl);
+	}
 	print '<div class="underbanner clearboth"></div>';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
 	print '<tr class="liste_titre"><th colspan="2">'.img_picto('', 'shield-alt', 'class="pictofixedwidth"').$langs->trans('InsuranceContract');
-	print '<span class="right">'.$manageButton.'</span></th></tr>';
+	print '<span class="right">'.$headerActions.'</span></th></tr>';
 	if (!$contract instanceof LmdbVehicleInsuranceContract) {
 		print '<tr class="oddeven"><td colspan="2"><span class="opacitymedium">'.$langs->trans('InsuranceNoActiveContract').'</span></td></tr>';
 		print '</table></div>';
@@ -287,7 +313,6 @@ function lmdbVehiclePrintInsuranceBlock($object)
 	$insurer = new Societe($db);
 	$insurerLink = $insurer->fetch((int) $contract->fk_soc) > 0 ? $insurer->getNomUrl(1) : '';
 	$certificate = LmdbVehicleInsuranceCertificate::getApplicable($db, (int) $contract->id, (int) $object->id);
-	$allContracts = LmdbVehicleInsuranceContract::getForVehicle($db, (int) $object->id);
 	$complementary = 0;
 	foreach ($allContracts as $entry) if ($entry['coverage_type'] === LmdbVehicleInsuranceContract::COVERAGE_COMPLEMENTARY && (int) $entry['contract']->status === LmdbVehicleInsuranceContract::STATUS_ACTIVE) $complementary++;
 
@@ -312,7 +337,7 @@ function lmdbVehiclePrintInsuranceBlock($object)
 			$status = $certificate->getLibStatut(5);
 		}
 		if (!empty($certificate->file_name)) {
-			$url = dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance.php', 1).'?id='.((int) $object->id).'&download_certificate=1&certificate_id='.((int) $certificate->id);
+			$url = dol_buildpath('/lmdbvehiclemanagement/insurancecontract_certificate.php', 1).'?id='.((int) $contract->id).'&download_certificate=1&certificate_id='.((int) $certificate->id);
 			$evidence = '<a href="'.$url.'">'.img_picto('', 'paperclip', 'class="pictofixedwidth"').$langs->trans('Download').'</a>';
 		}
 	}

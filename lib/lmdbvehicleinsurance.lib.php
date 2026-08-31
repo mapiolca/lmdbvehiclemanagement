@@ -151,7 +151,7 @@ function lmdbInsurancePrintContractForm($contract, $form, $vehicleOptions, $link
 		),
 	);
 
-	print '<form class="lmdb-insurance-ajax-form" method="POST" action="'.dol_escape_htmltag($actionUrl).'">';
+	print '<form method="POST" action="'.dol_escape_htmltag($actionUrl).'">';
 	print '<input type="hidden" name="token" value="'.newToken().'">';
 	foreach ($hiddenFields as $name => $value) {
 		print '<input type="hidden" name="'.dol_escape_htmltag($name).'" value="'.dol_escape_htmltag((string) $value).'">';

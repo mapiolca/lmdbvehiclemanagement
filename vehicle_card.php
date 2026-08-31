@@ -249,20 +249,6 @@ if ($action === 'create' || $action === 'edit') {
 		$formActions->showactions($object, $object->element.'@'.$object->module, 0, 1, '', 10, '', $more);
 	}
 	print '</div></div>';
-	print '<script nonce="'.getNonce().'">';
-	print 'jQuery(function($){';
-	print '$(document).on("click", ".lmdb-insurance-modal-open", function(event){event.preventDefault();';
-	print 'var baseUrl=$(this).attr("href"); var modal=$("#lmdb-insurance-modal"); if(!modal.length){modal=$("<div id=\\"lmdb-insurance-modal\\"></div>").appendTo("body");}';
-	print 'var loadUrl=baseUrl+(baseUrl.indexOf("?")>=0?"&":"?")+"mode=modal";';
-	print 'modal.load(loadUrl,function(){modal.dialog({modal:true,width:"90%",maxHeight:$(window).height()*0.9,title:"'.dol_escape_js($langs->trans('InsuranceContract')).'",close:function(){modal.html("");}});});});';
-	print '$(document).on("submit", "#lmdb-insurance-modal .lmdb-insurance-ajax-form", function(event){event.preventDefault(); var form=this; var data=new FormData(form);';
-	print 'var submitter=document.activeElement; if(submitter&&submitter.name&&submitter.form===form){data.set(submitter.name,submitter.value);}';
-	print '$.ajax({url:form.action,type:"POST",data:data,processData:false,contentType:false,dataType:"json"}).done(function(response){';
-	print 'if(response.success){window.location.reload();return;} var root=$(form).closest("#lmdb-insurance-modal");';
-	print 'var box=root.find(".lmdb-insurance-messages").empty().addClass("error"); $.each(response.messages||["'.dol_escape_js($langs->trans('Error')).'"],function(_,message){box.append($("<div>").text(message));});';
-	print '}).fail(function(xhr){var root=$(form).closest("#lmdb-insurance-modal"); var messages=xhr.responseJSON&&xhr.responseJSON.messages?xhr.responseJSON.messages:["'.dol_escape_js($langs->trans('Error')).'"]; var box=root.find(".lmdb-insurance-messages").empty().addClass("error"); $.each(messages,function(_,message){box.append($("<div>").text(message));});});});';
-	print '$(document).on("click", "#lmdb-insurance-modal a[href*=\\"vehicle_insurance.php\\"]", function(event){if(this.href.indexOf("download_certificate=1")!==-1)return; event.preventDefault(); $("#lmdb-insurance-modal").load(this.href+(this.href.indexOf("?")>=0?"&":"?")+"mode=modal");});';
-	print '});</script>';
 }
 
 llxFooter();
