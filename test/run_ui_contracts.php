@@ -93,7 +93,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insurancePage, "\$u
 $checks['insurance_download_is_read_only_route'] = strpos($insurancePage, '$downloadCertificate === 1') !== false && strpos($insurancePage, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['insurance_version_is_042'] = strpos($descriptor, "\$this->version = '0.4.2';") !== false;
+$checks['insurance_version_is_043'] = strpos($descriptor, "\$this->version = '0.4.3';") !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;
@@ -113,6 +113,12 @@ $checks['insurance_pages_use_native_permissions'] = strpos($insuranceCard, "\$us
 	&& strpos($insuranceList, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false;
 $checks['insurance_form_is_shared'] = strpos($insurancePage, 'lmdbInsurancePrintContractForm(') !== false
 	&& strpos($insuranceCard, 'lmdbInsurancePrintContractForm(') !== false;
+$insuranceCardClearPosition = strpos($insuranceCard, 'print \'<div class="clearboth"></div>\';');
+$insuranceCardActionsPosition = strpos($insuranceCard, 'print \'<div class="tabsAction">\';');
+$checks['insurance_card_status_row_is_hidden'] = strpos($insuranceCard, "langs->trans('Status')") === false;
+$checks['insurance_card_actions_follow_native_clear'] = $insuranceCardClearPosition !== false
+	&& $insuranceCardActionsPosition !== false
+	&& $insuranceCardClearPosition < $insuranceCardActionsPosition;
 $checks['insurance_required_fields_use_native_style'] = strpos($insuranceLibrary, 'titlefieldcreate fieldrequired') !== false
 	&& substr_count($insuranceLibrary, 'fieldrequired') >= 4
 	&& strpos($insuranceLibrary, ' required') === false;

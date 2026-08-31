@@ -1,6 +1,6 @@
 # Gestion des véhicules pour Dolibarr
 
-`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.4.2` couvre les véhicules, leurs affectations, les relevés kilométriques, les événements métier et les contrats d’assurance.
+`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.4.3` couvre les véhicules, leurs affectations, les relevés kilométriques, les événements métier et les contrats d’assurance.
 
 ## Compatibilité
 
@@ -11,7 +11,7 @@
 - Module Ressources facultatif pour la liaison `fk_resource`
 - Module Travaux planifiés requis pour l’envoi automatique des relances d’assurance
 
-## Fonctionnalités de la version 0.4.2
+## Fonctionnalités de la version 0.4.3
 
 - fiche véhicule avec le cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
 - énergie sélectionnée dans un Select2 alimenté par un dictionnaire configurable, initialisé avec la [nomenclature réglementaire française P.3](https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000049860492/2026-07-27) ;
@@ -35,6 +35,7 @@
 - fiche autonome et liste native des contrats d’assurance, en complément de la gestion contextuelle ouverte depuis une fiche véhicule.
 - pictogramme véhicule natif dans le menu haut, déclaré aussi par la constante d’icône attendue par les thèmes Dolibarr afin d’éviter leur pictogramme générique de repli ;
 - courtier filtré dynamiquement sur l’assureur et validation native des champs obligatoires du contrat.
+- fiche contrat avec actions positionnées sous ses deux colonnes et statut affiché uniquement dans la bannière native.
 
 ## Installation
 

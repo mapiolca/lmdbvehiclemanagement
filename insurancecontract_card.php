@@ -155,7 +155,6 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('InsuranceAssistanceEmail').'</td><td>'.dol_escape_htmltag((string) $object->assistance_email).'</td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceClaimPhone').'</td><td>'.dol_escape_htmltag((string) $object->claim_phone).'</td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceClaimEmail').'</td><td>'.dol_escape_htmltag((string) $object->claim_email).'</td></tr>';
-	print '<tr><td>'.$langs->trans('Status').'</td><td>'.$object->getLibStatut(5).'</td></tr>';
 	$description = (string) $object->description;
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>'.(dol_textishtml($description) ? $description : dol_htmlentitiesbr($description)).'</td></tr>';
 	print '</table></div><div class="fichehalfright"><div class="underbanner clearboth"></div>';
@@ -178,6 +177,9 @@ if ($action === 'create' || $action === 'edit') {
 	}
 	if ($vehicleCount === 0) print '<tr class="oddeven"><td colspan="3"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
 	print '</table></div></div></div>';
+	print '<div class="clearboth"></div>';
+
+	// Actions buttons
 	print '<div class="tabsAction">';
 	if ($permissionWrite) {
 		print dolGetButtonAction('', $langs->trans('Modify'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=edit');

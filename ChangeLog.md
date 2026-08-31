@@ -1,5 +1,10 @@
 # Historique des versions
 
+## `0.4.3` — 2026-08-31
+
+- Repositionnement des boutons d’action de la fiche contrat sous les deux colonnes selon la disposition native Dolibarr.
+- Suppression de la ligne d’état redondante dans les informations du contrat ; le badge de statut reste visible dans la bannière native.
+
 ## `0.4.2` — 2026-08-31
 
 - Déclaration de l’icône Font Awesome du module dans la constante native utilisée par les thèmes Dolibarr, afin que le menu haut affiche le véhicule au lieu du pictogramme générique de repli.
