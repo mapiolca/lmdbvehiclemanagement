@@ -9,6 +9,7 @@ CREATE TABLE llx_lmdbvehiclemanagement_vehicle (
 	model varchar(128) DEFAULT NULL,
 	vehicle_version varchar(128) DEFAULT NULL,
 	fk_energy integer DEFAULT NULL,
+	wltp_range_km double(24,8) DEFAULT NULL,
 	first_registration_date date DEFAULT NULL,
 	commissioning_date date DEFAULT NULL,
 	ownership_type varchar(32) DEFAULT NULL,

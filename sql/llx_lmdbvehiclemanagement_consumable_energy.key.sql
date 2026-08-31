@@ -1,0 +1,4 @@
+ALTER TABLE llx_lmdbvehiclemanagement_consumable_energy ADD UNIQUE INDEX uk_lmdbvm_consumable_energy (entity, fk_consumable, fk_energy);
+ALTER TABLE llx_lmdbvehiclemanagement_consumable_energy ADD INDEX idx_lmdbvm_consumable_energy_entity (entity);
+ALTER TABLE llx_lmdbvehiclemanagement_consumable_energy ADD INDEX idx_lmdbvm_consumable_energy_consumable (fk_consumable);
+ALTER TABLE llx_lmdbvehiclemanagement_consumable_energy ADD INDEX idx_lmdbvm_consumable_energy_energy (fk_energy);

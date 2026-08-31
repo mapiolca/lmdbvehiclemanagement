@@ -3,9 +3,20 @@
 
 require_once dirname(__DIR__).'/class/lmdbvehiclemanagementrules.class.php';
 require_once dirname(__DIR__).'/class/lmdbvehicleenergy.class.php';
+require_once dirname(__DIR__).'/class/lmdbvehicleconsumable.class.php';
+require_once dirname(__DIR__).'/class/lmdbvehicleconsumptionstats.class.php';
 require_once dirname(__DIR__).'/lib/lmdbvehiclemanagement.lib.php';
 
 $defaultEnergies = LmdbVehicleEnergy::getDefaultDefinitions();
+$defaultConsumables = LmdbVehicleConsumable::getDefaultDefinitions();
+$energyCompatibility = LmdbVehicleConsumable::getDefaultEnergyCompatibility();
+$statsService = new LmdbVehicleConsumptionStats(null);
+$stats = $statsService->summarize(array(
+	array('entity' => 1, 'vehicle_id' => 1, 'vehicle_ref' => 'AA-123-BB', 'registration_number' => 'AA-123-BB', 'consumable_id' => 1, 'consumable_label' => 'Essence', 'category' => 'fuel', 'unit' => 'L', 'currency' => 'EUR', 'quantity' => 40.0, 'total_ttc' => 80.0, 'date' => 1000, 'odometer_km' => 10000.0, 'reading_kind' => 'standard', 'capacity' => 50.0, 'wltp_range_km' => 600.0, 'oil_reference' => ''),
+	array('entity' => 1, 'vehicle_id' => 1, 'vehicle_ref' => 'AA-123-BB', 'registration_number' => 'AA-123-BB', 'consumable_id' => 1, 'consumable_label' => 'Essence', 'category' => 'fuel', 'unit' => 'L', 'currency' => 'EUR', 'quantity' => 30.0, 'total_ttc' => 66.0, 'date' => 1000 + 864000, 'odometer_km' => 10500.0, 'reading_kind' => 'standard', 'capacity' => 50.0, 'wltp_range_km' => 600.0, 'oil_reference' => ''),
+	array('entity' => 1, 'vehicle_id' => 1, 'vehicle_ref' => 'AA-123-BB', 'registration_number' => 'AA-123-BB', 'consumable_id' => 1, 'consumable_label' => 'Essence', 'category' => 'fuel', 'unit' => 'L', 'currency' => 'USD', 'quantity' => 10.0, 'total_ttc' => 25.0, 'date' => 1000 + 1728000, 'odometer_km' => 11000.0, 'reading_kind' => 'standard', 'capacity' => 50.0, 'wltp_range_km' => 600.0, 'oil_reference' => ''),
+));
+$fuelStats = $stats['1:1:1:L:EUR'];
 
 $checks = array(
 	'energy_dictionary_has_46_p3_codes' => count($defaultEnergies) === 46,
@@ -13,6 +24,13 @@ $checks = array(
 	'energy_dictionary_contains_diesel' => isset($defaultEnergies['GO']) && $defaultEnergies['GO'] === 'Gazole',
 	'energy_dictionary_contains_electricity' => isset($defaultEnergies['EL']) && $defaultEnergies['EL'] === 'Électricité',
 	'energy_dictionary_contains_hydrogen' => isset($defaultEnergies['H2']) && $defaultEnergies['H2'] === 'Hydrogène',
+	'consumable_dictionary_contains_fuels_and_additives' => isset($defaultConsumables['GASOLINE'], $defaultConsumables['ELECTRICITY'], $defaultConsumables['HYDROGEN'], $defaultConsumables['ADBLUE'], $defaultConsumables['OIL']),
+	'all_46_p3_codes_have_a_compatibility' => count($energyCompatibility) === 46 && !array_diff_key($defaultEnergies, $energyCompatibility),
+	'hybrid_energy_keeps_multiple_compatible_consumables' => count($energyCompatibility['EE']) === 2,
+	'consumption_average_uses_positive_intervals' => abs((float) $fuelStats['consumption_100'] - 6.0) < 0.00001,
+	'consumption_weighted_unit_price' => abs((float) $fuelStats['weighted_unit_price'] - (146.0 / 70.0)) < 0.00001,
+	'consumption_capacity_percentage' => abs((float) $fuelStats['average_capacity_percent'] - 70.0) < 0.00001,
+	'consumption_does_not_mix_historical_currencies' => count($stats) === 2 && isset($stats['1:1:1:L:USD']) && abs((float) $fuelStats['total_cost'] - 146.0) < 0.00001,
 	'vehicle_draft_to_validated' => LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(0, 1),
 	'vehicle_validated_to_in_service' => LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(1, 2),
 	'vehicle_in_service_to_out_of_service' => LmdbVehicleManagementRules::vehicleStatusTransitionIsAllowed(2, 3),

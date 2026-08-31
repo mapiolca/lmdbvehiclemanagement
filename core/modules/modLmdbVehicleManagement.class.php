@@ -36,7 +36,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->descriptionlong = 'ModuleLmdbVehicleManagementDesc';
 		$this->editor_name = 'Pierre Ardoin';
 		$this->editor_url = 'https://github.com/mapiolca';
-		$this->version = '0.6.0';
+		$this->version = '0.7.0';
 		$this->const_name = 'MAIN_MODULE_LMDBVEHICLEMANAGEMENT';
 		$this->picto = 'car';
 
@@ -76,16 +76,22 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->tabs = array();
 		$this->dictionaries = array(
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'tabname' => array('c_lmdbvehiclemanagement_energy'),
-			'tablib' => array('VehicleEnergies'),
-			'tabsql' => array('SELECT f.rowid, f.code, f.label, f.position, f.active, f.entity FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy AS f WHERE f.entity IN ('.getEntity('c_lmdbvehiclemanagement_energy').')'),
-			'tabsqlsort' => array('position ASC, code ASC'),
-			'tabfield' => array('code,label,position'),
-			'tabfieldvalue' => array('code,label,position'),
-			'tabfieldinsert' => array('code,label,position,entity'),
-			'tabrowid' => array('rowid'),
-			'tabcond' => array(isModEnabled('lmdbvehiclemanagement')),
-			'tabhelp' => array(array('code' => $langs->trans('VehicleEnergyCodeHelp'), 'label' => $langs->trans('VehicleEnergyLabelHelp'))),
+			'tabname' => array('c_lmdbvehiclemanagement_energy', 'c_lmdbvehiclemanagement_consumable'),
+			'tablib' => array('VehicleEnergies', 'VehicleConsumables'),
+			'tabsql' => array(
+				'SELECT f.rowid, f.code, f.label, f.position, f.active, f.entity FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy AS f WHERE f.entity IN ('.getEntity('c_lmdbvehiclemanagement_energy').')',
+				'SELECT f.rowid, f.code, f.label, f.category, f.unit, f.requires_oil_reference, f.position, f.active, f.entity FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS f WHERE f.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')',
+			),
+			'tabsqlsort' => array('position ASC, code ASC', 'position ASC, code ASC'),
+			'tabfield' => array('code,label,position', 'code,label,category,unit,requires_oil_reference,position'),
+			'tabfieldvalue' => array('code,label,position', 'code,label,category,unit,requires_oil_reference,position'),
+			'tabfieldinsert' => array('code,label,position,entity', 'code,label,category,unit,requires_oil_reference,position,entity'),
+			'tabrowid' => array('rowid', 'rowid'),
+			'tabcond' => array(isModEnabled('lmdbvehiclemanagement'), isModEnabled('lmdbvehiclemanagement')),
+			'tabhelp' => array(
+				array('code' => $langs->trans('VehicleEnergyCodeHelp'), 'label' => $langs->trans('VehicleEnergyLabelHelp')),
+				array('code' => $langs->trans('ConsumableCodeHelp'), 'category' => $langs->trans('ConsumableCategoryHelp'), 'unit' => $langs->trans('ConsumableUnitHelp')),
+			),
 		);
 		$this->boxes = array();
 		$this->cronjobs = array(
@@ -193,6 +199,30 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->rights[$r][4] = 'insurance';
 		$this->rights[$r][5] = 'delete';
 
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionWriteConsumptions';
+		$this->rights[$r][4] = 'consumption';
+		$this->rights[$r][5] = 'write';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionDeleteConsumptions';
+		$this->rights[$r][4] = 'consumption';
+		$this->rights[$r][5] = 'delete';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionExportConsumptions';
+		$this->rights[$r][4] = 'consumption';
+		$this->rights[$r][5] = 'export';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionImportConsumptions';
+		$this->rights[$r][4] = 'consumption';
+		$this->rights[$r][5] = 'import';
+
 		$this->menu = array();
 		$r = 0;
 		$this->menu[$r++] = array(
@@ -270,13 +300,56 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->menu[$r++] = array(
 			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement',
 			'type' => 'left',
+			'titre' => 'ConsumptionMenuSection',
+			'prefix' => img_picto('', 'gas-pump', 'class="pictofixedwidth valignmiddle paddingright"'),
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_consumption',
+			'url' => '/lmdbvehiclemanagement/consumption_index.php',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+			'position' => 200,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'target' => '',
+			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement,fk_leftmenu=lmdbvehiclemanagement_consumption',
+			'type' => 'left',
+			'titre' => 'NewConsumption',
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_consumption_new',
+			'url' => '/lmdbvehiclemanagement/consumption_card.php?action=create',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+			'position' => 201,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "consumption", "write")',
+			'target' => '',
+			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement,fk_leftmenu=lmdbvehiclemanagement_consumption',
+			'type' => 'left',
+			'titre' => 'ConsumptionList',
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_consumption_list',
+			'url' => '/lmdbvehiclemanagement/consumption_list.php',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+			'position' => 202,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'target' => '',
+			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement',
+			'type' => 'left',
 			'titre' => 'InsuranceContracts',
 			'prefix' => img_picto('', 'shield-alt', 'class="pictofixedwidth valignmiddle paddingright"'),
 			'mainmenu' => 'lmdbvehiclemanagement',
 			'leftmenu' => 'lmdbvehiclemanagement_insurance',
 			'url' => '/lmdbvehiclemanagement/insurancecontract_list.php',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'position' => 200,
+			'position' => 300,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
@@ -290,7 +363,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'leftmenu' => 'lmdbvehiclemanagement_insurance_new',
 			'url' => '/lmdbvehiclemanagement/insurancecontract_card.php?action=create',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'position' => 201,
+			'position' => 301,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "insurance", "write")',
 			'target' => '',
@@ -304,7 +377,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'leftmenu' => 'lmdbvehiclemanagement_insurance_list',
 			'url' => '/lmdbvehiclemanagement/insurancecontract_list.php',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'position' => 202,
+			'position' => 302,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
@@ -337,6 +410,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			't.vehicle_version' => 'VehicleVersion',
 			'energy.code' => 'VehicleEnergyCode',
 			'energy.label' => 'VehicleEnergyLabel',
+			't.wltp_range_km' => 'WltpRangeKm',
 			't.first_registration_date' => 'FirstRegistrationDate',
 			't.commissioning_date' => 'CommissioningDate',
 			't.ownership_type' => 'OwnershipType',
@@ -355,6 +429,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			't.vehicle_version' => 'Text',
 			'energy.code' => 'Text',
 			'energy.label' => 'Text',
+			't.wltp_range_km' => 'Numeric',
 			't.first_registration_date' => 'Date',
 			't.commissioning_date' => 'Date',
 			't.ownership_type' => 'Text',
@@ -372,6 +447,33 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy AS energy ON energy.rowid = t.fk_energy';
 		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'societe AS owner ON owner.rowid = t.fk_soc_owner';
 		$this->export_sql_end[$r] .= ' WHERE t.entity IN ('.getEntity('lmdbvehicle').')';
+
+		$r++;
+		$this->export_code[$r] = 'lmdbvehiclemanagement_consumptions';
+		$this->export_label[$r] = 'ConsumptionExportDataset';
+		$this->export_icon[$r] = 'gas-pump';
+		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && $user->hasRight("lmdbvehiclemanagement", "consumption", "export")';
+		$this->export_permission[$r] = array(array('lmdbvehiclemanagement', 'consumption', 'export'));
+		$this->export_fields_array[$r] = array(
+			't.ref' => 'Ref', 'r.reading_date' => 'Date', 'v.ref' => 'VehicleRef', 'v.registration_number' => 'RegistrationNumber',
+			'u.login' => 'Driver', 'c.code' => 'ConsumableCode', 'c.label' => 'Consumable', 't.category_snapshot' => 'ConsumptionNature',
+			't.quantity' => 'Quantity', 't.unit_snapshot' => 'Unit', 'r.odometer_km' => 'OdometerKm', 't.total_ttc' => 'TotalTTC',
+			't.currency_snapshot' => 'Currency', 't.oil_reference' => 'OilReference', 't.description' => 'Description', 't.entity' => 'Environment',
+		);
+		$this->export_TypeFields_array[$r] = array(
+			't.ref' => 'Text', 'r.reading_date' => 'Date', 'v.ref' => 'Text', 'v.registration_number' => 'Text', 'u.login' => 'Text',
+			'c.code' => 'Text', 'c.label' => 'Text', 't.category_snapshot' => 'Text', 't.quantity' => 'Numeric', 't.unit_snapshot' => 'Text',
+			'r.odometer_km' => 'Numeric', 't.total_ttc' => 'Numeric', 't.currency_snapshot' => 'Text', 't.oil_reference' => 'Text',
+			't.description' => 'Text', 't.entity' => 'Numeric',
+		);
+		$this->export_entities_array[$r] = array_fill_keys(array_keys($this->export_fields_array[$r]), 'lmdbvehicleconsumption');
+		$this->export_sql_start[$r] = 'SELECT DISTINCT ';
+		$this->export_sql_end[$r] = ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption AS t';
+		$this->export_sql_end[$r] .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading AS r ON r.rowid = t.fk_odometer_reading AND r.entity = t.entity';
+		$this->export_sql_end[$r] .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND v.entity = t.entity';
+		$this->export_sql_end[$r] .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c ON c.rowid = t.fk_consumable';
+		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user AS u ON u.rowid = t.fk_user_driver';
+		$this->export_sql_end[$r] .= ' WHERE t.entity IN ('.getEntity('lmdbvehicleconsumption').')';
 
 		$this->import_code = array();
 		$this->import_label = array();
@@ -404,6 +506,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 				't.model' => 'VehicleModel',
 				't.vehicle_version' => 'VehicleVersion',
 				't.fk_energy' => 'VehicleEnergyCode',
+				't.wltp_range_km' => 'WltpRangeKm',
 				't.first_registration_date' => 'FirstRegistrationDate',
 				't.commissioning_date' => 'CommissioningDate',
 				't.ownership_type' => 'OwnershipType',
@@ -419,6 +522,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 				't.model' => 'Text',
 				't.vehicle_version' => 'Text',
 				't.fk_energy' => 'Text',
+				't.wltp_range_km' => 'Numeric',
 				't.first_registration_date' => 'Date',
 				't.commissioning_date' => 'Date',
 				't.ownership_type' => 'Text',
@@ -506,6 +610,12 @@ class modLmdbVehicleManagement extends DolibarrModules
 			$this->error = $energyDictionary->error;
 			return -1;
 		}
+		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumable.class.php');
+		$consumableDictionary = new LmdbVehicleConsumable($this->db);
+		if ($consumableDictionary->seedDefaults() < 0) {
+			$this->error = $consumableDictionary->error;
+			return -1;
+		}
 		if ($this->migrateVehicleData((int) $conf->entity) < 0) {
 			return -1;
 		}
@@ -522,6 +632,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'MAIN_MODULE_LMDBVEHICLEMANAGEMENT_ICON' => 'fa-car',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON' => 'mod_lmdbvehicle_standard',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLEEVENT_ADDON' => 'mod_lmdbvehicleevent_standard',
+			'LMDBVEHICLEMANAGEMENT_CONSUMPTION_ADDON' => 'mod_lmdbvehicleconsumption_standard',
 			'LMDBVEHICLEMANAGEMENT_INSURANCECONTRACT_ADDON' => 'mod_lmdbinsurancecontract_standard',
 			'LMDBVEHICLEMANAGEMENT_INSURANCE_REMINDERS_ENABLED' => '0',
 			'LMDBVEHICLEMANAGEMENT_INSURANCE_INCLUDE_ASSIGNEES' => '1',
@@ -570,6 +681,14 @@ class modLmdbVehicleManagement extends DolibarrModules
 			return -1;
 		}
 		if ($fieldExists === 0 && !$this->db->query('ALTER TABLE '.$table.' ADD COLUMN fk_energy integer DEFAULT NULL AFTER vehicle_version')) {
+			$this->error = $this->db->lasterror();
+			return -1;
+		}
+		$fieldExists = $this->tableFieldExists($table, 'wltp_range_km');
+		if ($fieldExists < 0) {
+			return -1;
+		}
+		if ($fieldExists === 0 && !$this->db->query('ALTER TABLE '.$table.' ADD COLUMN wltp_range_km double(24,8) DEFAULT NULL AFTER fk_energy')) {
 			$this->error = $this->db->lasterror();
 			return -1;
 		}

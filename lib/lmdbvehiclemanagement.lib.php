@@ -76,6 +76,7 @@ function lmdbVehiclePrepareHead($object)
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?id='.$id, $langs->trans('Card'), 'card');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_assignment.php', 1).'?id='.$id, $langs->trans('VehicleAssignments'), 'assignments');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_odometer.php', 1).'?id='.$id, $langs->trans('OdometerReadings'), 'odometer');
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_consumption.php', 1).'?id='.$id, $langs->trans('Consumption'), 'consumption');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_history.php', 1).'?id='.$id, $langs->trans('VehicleHistory'), 'history');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_note.php', 1).'?id='.$id, $langs->trans('Notes'), 'notes');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_document.php', 1).'?id='.$id, $langs->trans('Documents'), 'documents');
@@ -84,6 +85,114 @@ function lmdbVehiclePrepareHead($object)
 	}
 
 	return $head;
+}
+
+/**
+ * Build consumption tabs in native order.
+ *
+ * @param LmdbVehicleConsumption $object Consumption
+ * @return array<int,array{0:string,1:string,2:string}>
+ */
+function lmdbVehicleConsumptionPrepareHead($object)
+{
+	global $db, $langs, $user;
+
+	$langs->loadLangs(array('agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+	$id = (int) $object->id;
+	$head = array();
+	$head[] = array(dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?id='.$id, $langs->trans('Card'), 'card');
+	$noteCount = (!empty($object->note_public) ? 1 : 0) + (!empty($object->note_private) ? 1 : 0);
+	$head[] = array(dol_buildpath('/lmdbvehiclemanagement/consumption_note.php', 1).'?id='.$id, $langs->trans('Notes').($noteCount ? '<span class="badge marginleftonlyshort">'.$noteCount.'</span>' : ''), 'notes');
+	require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
+	$uploadDir = getMultidirOutput($object, 'lmdbvehiclemanagement', 1);
+	$fileCount = is_string($uploadDir) && $uploadDir !== '' && strpos($uploadDir, 'error-diroutput-') !== 0 ? count(dol_dir_list($uploadDir, 'files', 0, '', '(\.meta|_preview.*\.png)$')) : 0;
+	$head[] = array(dol_buildpath('/lmdbvehiclemanagement/consumption_document.php', 1).'?id='.$id, $langs->trans('Documents').($fileCount ? '<span class="badge marginleftonlyshort">'.$fileCount.'</span>' : ''), 'documents');
+	if (isModEnabled('agenda') && ($user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) {
+		$agendaCount = 0;
+		$resql = $db->query('SELECT COUNT(*) AS total FROM '.MAIN_DB_PREFIX.'actioncomm AS a'.lmdbVehicleConsumptionAgendaWhere($object, 'a'));
+		if ($resql && is_object($row = $db->fetch_object($resql))) $agendaCount = (int) $row->total;
+		if ($resql) $db->free($resql);
+		$head[] = array(dol_buildpath('/lmdbvehiclemanagement/consumption_agenda.php', 1).'?id='.$id, $langs->trans('EventsAgenda').($agendaCount ? '<span class="badge marginleftonlyshort">'.$agendaCount.'</span>' : ''), 'agenda');
+	}
+	return $head;
+}
+
+/** @param LmdbVehicleConsumption $object Consumption @param string $alias Alias @return string */
+function lmdbVehicleConsumptionAgendaWhere($object, $alias = 'a')
+{
+	global $user;
+	$alias = preg_match('/^[a-z][a-z0-9_]*$/i', $alias) ? $alias : 'a';
+	$where = " WHERE ".$alias.".elementtype = 'lmdbvehicleconsumption@lmdbvehiclemanagement'";
+	$where .= ' AND '.$alias.'.fk_element = '.((int) $object->id).' AND '.$alias.'.entity IN ('.getEntity('agenda').')';
+	if (!$user->hasRight('agenda', 'allactions', 'read')) {
+		$where .= ' AND ('.$alias.'.fk_user_author = '.((int) $user->id).' OR '.$alias.'.fk_user_action = '.((int) $user->id);
+		$where .= ' OR EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'actioncomm_resources AS lmdbvm_ar WHERE lmdbvm_ar.fk_actioncomm = '.$alias.'.id';
+		$where .= " AND lmdbvm_ar.element_type = 'user' AND lmdbvm_ar.fk_element = ".((int) $user->id).'))';
+	}
+	return $where;
+}
+
+/** @param LmdbVehicleConsumption $object Consumption @return void */
+function lmdbVehicleConsumptionPrintBanner($object)
+{
+	global $db, $langs;
+	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/consumption_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
+	$moreHtmlRef = '<div class="refidno">'.$langs->trans($object->category_snapshot === 'fuel' ? 'FuelOrRecharge' : 'Additive');
+	if (isModEnabled('multicompany')) {
+		$entityLabel = (string) $object->entity;
+		$resql = $db->query('SELECT label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid = '.((int) $object->entity));
+		if ($resql && is_object($row = $db->fetch_object($resql))) $entityLabel = (string) $row->label;
+		if ($resql) $db->free($resql);
+		$moreHtmlRef .= '<br><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div>';
+	}
+	$moreHtmlRef .= '</div>';
+	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $moreHtmlRef);
+}
+
+/**
+ * Render one native DolGraph series for consumption analytics.
+ *
+ * @param array<int,array<string,int|float|string|null>> $seriesRows Rows for one consumable and unit
+ * @param string $metric unit_price, quantity, capacity_percent or consumption_100
+ * @param string $title Graph title
+ * @param string $graphKey Stable cache key
+ * @return string
+ */
+function lmdbVehicleConsumptionRenderGraph($seriesRows, $metric, $title, $graphKey)
+{
+	global $conf, $langs;
+
+	$data = array();
+	$previousKm = null;
+	foreach ($seriesRows as $row) {
+		$value = null;
+		if ($metric === 'unit_price' && (float) $row['quantity'] > 0) $value = (float) $row['total_ttc'] / (float) $row['quantity'];
+		if ($metric === 'quantity') $value = (float) $row['quantity'];
+		if ($metric === 'capacity_percent' && $row['capacity'] !== null && (float) $row['capacity'] > 0) $value = (float) $row['quantity'] / (float) $row['capacity'] * 100;
+		if ($metric === 'consumption_100' && $previousKm !== null) {
+			$distance = (float) $row['odometer_km'] - $previousKm;
+			if ($distance > 0 && (string) $row['reading_kind'] === 'standard') $value = (float) $row['quantity'] / $distance * 100;
+		}
+		$previousKm = (float) $row['odometer_km'];
+		if ($value !== null) $data[] = array(dol_print_date((int) $row['date'], 'day'), price2num($value, 'MU'));
+	}
+	if (empty($data)) return '<span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span>';
+	$tempDir = $conf->lmdbvehiclemanagement->dir_temp.'/consumption';
+	if (dol_mkdir($tempDir) < 0) return '<span class="error">'.$langs->trans('ErrorFailedToCreateDir').'</span>';
+	$fileName = 'graph_'.sha1($graphKey.serialize($data)).'.png';
+	$file = $tempDir.'/'.$fileName;
+	$fileUrl = DOL_URL_ROOT.'/viewimage.php?modulepart=lmdbvehiclemanagement_temp&file=/consumption/'.$fileName;
+	$graph = new DolGraph();
+	$graph->SetData($data);
+	$graph->SetLegend(array($title));
+	$graph->SetTitle($title);
+	$graph->SetWidth(DolGraph::getDefaultGraphSizeForStats('width', '600'));
+	$graph->SetHeight(DolGraph::getDefaultGraphSizeForStats('height', '220'));
+	$graph->SetType(array('lines'));
+	$graph->setBgColor('onglet');
+	$graph->setBgColorGrid(array(255, 255, 255));
+	$graph->draw($file, $fileUrl);
+	return $graph->show();
 }
 
 /**

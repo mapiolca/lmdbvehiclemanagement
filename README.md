@@ -1,6 +1,6 @@
 # Gestion des véhicules pour Dolibarr
 
-`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.6.0` couvre les véhicules, leurs affectations, les relevés kilométriques, les événements métier et les contrats d’assurance.
+`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.7.0` couvre les véhicules, leurs affectations, leurs relevés kilométriques, leurs consommations, leurs événements métier et leurs contrats d’assurance.
 
 ## Compatibilité
 
@@ -11,7 +11,7 @@
 - Module Ressources facultatif pour la liaison `fk_resource`
 - Module Travaux planifiés requis pour l’envoi automatique des relances d’assurance
 
-## Fonctionnalités de la version 0.6.0
+## Fonctionnalités de la version 0.7.0
 
 - fiche véhicule avec le cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
 - énergie sélectionnée dans un Select2 alimenté par un dictionnaire configurable, initialisé avec la [nomenclature réglementaire française P.3](https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000049860492/2026-07-27) ;
@@ -21,24 +21,31 @@
 - chronologie consolidée sans table d'historique dupliquée ;
 - documents natifs Dolibarr sur les véhicules et les événements ;
 - événements Agenda natifs liés au véhicule, conservés séparément des événements métier ;
-- modèles de numérotation distincts pour les véhicules et les événements ;
+- modèles de numérotation distincts pour les véhicules, événements, contrats d’assurance et consommations ;
+- modèle de référence véhicule basé sur l’immatriculation, activable après précontrôle et migration transactionnelle des références, documents et index ECM ;
 - droits granulaires distincts pour lire, créer/modifier, mettre en ou hors service, supprimer, exporter et importer, contrôlés directement avec la méthode native `$user->hasRight()` ;
 - profils natifs Dolibarr d'import et d'export des véhicules ;
 - partage Multicompany configurable des véhicules, de leur numérotation et du dictionnaire des énergies.
 - contrats d’assurance individuels ou de flotte, avec une couverture principale et des couvertures complémentaires ;
-- résumé du contrat principal directement dans la fiche véhicule et gestion détaillée dans une modale native ;
+- résumé du contrat principal directement dans la fiche véhicule avec lien vers sa fiche native ; boutons natifs de liaison et de création lorsqu’aucun contrat n’est rattaché ;
 - attestations communes ou propres à un véhicule, soumises à validation avant prise en compte ;
 - justificatifs PDF, JPEG ou PNG contrôlés côté serveur, avec suppression des métadonnées EXIF/GPS des images ;
 - référents assurance configurables par utilisateur ou groupe et personnels affectés éligibles selon leur type d’affectation ;
 - relances quotidiennes configurables avant et après échéance au moyen des modèles d’emails et travaux planifiés natifs Dolibarr.
 - menu haut dédié **Gestion des véhicules**, avec des sections séparées pour les véhicules et les contrats d’assurance ;
-- fiche autonome et liste native des contrats d’assurance, en complément de la gestion contextuelle ouverte depuis une fiche véhicule.
+- fiche autonome et liste native des contrats d’assurance ; l’ancien parcours modal redirige vers l’onglet `Attestations` de la fiche contrat.
 - pictogramme véhicule natif dans le menu haut, déclaré aussi par la constante d’icône attendue par les thèmes Dolibarr afin d’éviter leur pictogramme générique de repli ;
 - courtier filtré dynamiquement sur l’assureur et validation native des champs obligatoires du contrat.
 - fiche contrat avec actions positionnées sous ses deux colonnes et statut affiché uniquement dans la bannière native.
 - blocs transverses natifs « Fichiers joints », « Objets liés » et « Les X derniers événements » sous les actions de la fiche contrat.
 - onglets natifs « Fiche », « Contacts/Adresses », « Notes », « Fichiers joints » et « Événements/Agenda » sur les contrats d’assurance, avec compteurs et bannière commune.
 - boutons de transition du contrat rendus avec la classe d’action native Dolibarr, sans dimensionnement CSS spécifique.
+- objet `Plein / Recharge` pour les carburants, recharges électriques, hydrogène et additifs, avec unités et devise figées historiquement ;
+- synchronisation transactionnelle entre chaque consommation et son relevé kilométrique source, y compris lors d’une modification, d’un changement de véhicule ou d’une suppression ;
+- dictionnaire Multicompany des consommables et table normalisée de compatibilité avec les 46 codes énergie P.3 ;
+- capacités configurables par véhicule et par consommable, autonomie WLTP et avertissement non bloquant au-delà de 100 % de capacité ;
+- synthèses globale et par véhicule, séparées par consommable et unité, avec moyennes, coûts, distances, pics et graphiques natifs `DolGraph` ;
+- liste native filtrable et paginée, export Dolibarr et import CSV sécurisé passant par l’objet métier.
 
 ## Installation
 
@@ -56,7 +63,7 @@ Une suite PHPUnit équivalente est fournie dans le répertoire test/phpunit. Les
 
 ## Hors périmètre de cette version
 
-Quartix, l'export ZIP, les cartes grises, les contrôles techniques, les sinistres, les primes et franchises, les factures, le carburant et les contraventions seront ajoutés dans des lots ultérieurs. Aucun champ fournisseur n'est dupliqué dans le modèle métier courant.
+Quartix, l'export ZIP, les cartes grises, les contrôles techniques, les sinistres, les primes et franchises, les factures d’achat et les contraventions restent hors périmètre. Aucun champ fournisseur n'est dupliqué dans le modèle métier courant.
 
 ## Licence
 

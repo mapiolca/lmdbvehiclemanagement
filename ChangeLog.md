@@ -1,5 +1,13 @@
 # Historique des versions
 
+## `0.7.0` — 2026-08-31
+
+- Ajout du modèle natif de référence véhicule par immatriculation, avec migration transactionnelle réversible des références, documents et index ECM.
+- Remplacement du parcours modal des assurances par les fiches et onglets natifs, ajout des actions `Lier` et `Créer`, et déplacement du cycle de vie des attestations dans l’onglet dédié.
+- Ajout de l’objet `Plein / Recharge`, de ses droits, de sa numérotation, de son dictionnaire de consommables compatible avec les 46 codes P.3 et de la synchronisation transactionnelle avec les relevés kilométriques.
+- Ajout des capacités par véhicule et consommable, de l’autonomie WLTP, des listes/imports/exports et des synthèses séparées par unité avec graphiques `DolGraph`.
+- Ajout de la navigation Consommation, de l’onglet véhicule et des fiches natives avec Notes, Fichiers joints, Événements/Agenda et blocs transverses.
+
 ## `0.6.0` — 2026-08-31
 
 - Ajout des onglets natifs « Fiche », « Contacts/Adresses », « Notes », « Fichiers joints » et « Événements/Agenda » à la fiche contrat d’assurance.

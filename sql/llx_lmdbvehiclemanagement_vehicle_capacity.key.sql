@@ -1,0 +1,4 @@
+ALTER TABLE llx_lmdbvehiclemanagement_vehicle_capacity ADD UNIQUE INDEX uk_lmdbvm_vehicle_capacity (entity, fk_vehicle, fk_consumable);
+ALTER TABLE llx_lmdbvehiclemanagement_vehicle_capacity ADD INDEX idx_lmdbvm_capacity_entity (entity);
+ALTER TABLE llx_lmdbvehiclemanagement_vehicle_capacity ADD INDEX idx_lmdbvm_capacity_vehicle (fk_vehicle);
+ALTER TABLE llx_lmdbvehiclemanagement_vehicle_capacity ADD INDEX idx_lmdbvm_capacity_consumable (fk_consumable);

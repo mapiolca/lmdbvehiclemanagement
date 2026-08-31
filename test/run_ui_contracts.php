@@ -47,12 +47,19 @@ $vehicleReferenceMigration = readModuleSource('class/lmdbvehiclereferencemigrati
 $vehicleRegistrationNumbering = readModuleSource('core/modules/lmdbvehiclemanagement/mod_lmdbvehicle_registration.php');
 $setupPage = readModuleSource('admin/setup.php');
 $vehicleList = readModuleSource('vehicle_list.php');
+$consumptionClass = readModuleSource('class/lmdbvehicleconsumption.class.php');
+$consumptionCard = readModuleSource('consumption_card.php');
+$consumptionList = readModuleSource('consumption_list.php');
+$consumptionIndex = readModuleSource('consumption_index.php');
+$vehicleConsumption = readModuleSource('vehicle_consumption.php');
+$consumptionSql = readModuleSource('sql/llx_lmdbvehiclemanagement_consumption.sql');
 $checks = array();
 
 $orderedTabs = array(
 	'vehicle_card.php',
 	'vehicle_assignment.php',
 	'vehicle_odometer.php',
+	'vehicle_consumption.php',
 	'vehicle_history.php',
 	'vehicle_note.php',
 	'vehicle_document.php',
@@ -71,6 +78,7 @@ $vehicleTabPages = array(
 	'vehicle_card.php',
 	'vehicle_assignment.php',
 	'vehicle_odometer.php',
+	'vehicle_consumption.php',
 	'vehicle_history.php',
 	'vehicle_note.php',
 	'vehicle_document.php',
@@ -127,7 +135,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['insurance_version_is_060'] = strpos($descriptor, "\$this->version = '0.6.0';") !== false;
+$checks['module_version_is_070'] = strpos($descriptor, "\$this->version = '0.7.0';") !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;
@@ -206,7 +214,8 @@ $checks['insurance_notes_schema_is_migrated'] = strpos($insuranceContractClass, 
 	&& strpos($descriptor, 'prepareInsuranceContractSchema()') !== false;
 $checks['insurance_contact_roles_are_native_and_idempotent'] = strpos($moduleDataSql, "'lmdbinsurancecontract', 'internal', 'CONTRACTMANAGER'") !== false
 	&& strpos($moduleDataSql, "'lmdbinsurancecontract', 'external', 'INSURANCECONTACT'") !== false
-	&& substr_count($moduleDataSql, 'WHERE NOT EXISTS') === 2
+	&& substr_count($moduleDataSql, "WHERE element = 'lmdbinsurancecontract'") === 2
+	&& substr_count($moduleDataSql, 'WHERE NOT EXISTS (') >= 2
 	&& strpos($baseObjectClass, "ctc.element = '") !== false;
 $checks['insurance_post_actions_use_native_button_size'] = strpos($insuranceCard, '<button type="submit" class="butAction">') !== false
 	&& strpos($insuranceCard, "lmdbInsuranceContractPostButton(\$id, 'activate', \$langs->trans('Activate'))") !== false
@@ -240,6 +249,28 @@ $checks['contract_trigger_zero_commits'] = strpos($insuranceContractClass, 'if (
 $checks['certificate_trigger_zero_commits'] = strpos($insuranceCertificateClass, 'if ($triggerResult < 0)') !== false
 	&& strpos($insuranceCertificateClass, '$this->db->commit();') !== false
 	&& strpos($insuranceCertificateClass, 'return 1;') !== false;
+$checks['consumption_menus_use_native_permissions'] = strpos($descriptor, '/consumption_index.php') !== false
+	&& strpos($descriptor, '/consumption_card.php?action=create') !== false
+	&& strpos($descriptor, '$user->hasRight("lmdbvehiclemanagement", "consumption", "write")') !== false;
+$checks['consumption_owns_one_odometer_reading'] = strpos($consumptionSql, 'fk_odometer_reading integer NOT NULL') !== false
+	&& strpos($consumptionSql, 'odometer_km') === false
+	&& strpos($consumptionSql, 'reading_date') === false;
+$checks['consumption_synchronizes_odometer_transactionally'] = strpos($consumptionClass, '$this->db->begin();') !== false
+	&& strpos($consumptionClass, 'createFromConsumption(') !== false
+	&& strpos($consumptionClass, 'updateFromConsumption(') !== false
+	&& strpos($consumptionClass, 'deleteFromConsumption(') !== false;
+$checks['consumption_form_uses_native_required_style'] = strpos($consumptionCard, 'titlefieldcreate fieldrequired') !== false
+	&& substr_count($consumptionCard, 'fieldrequired') >= 6
+	&& strpos($consumptionCard, ' required') === false;
+$checks['consumption_pages_use_direct_rights'] = strpos($consumptionCard, "\$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')") !== false
+	&& strpos($consumptionList, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false;
+$checks['consumption_list_is_native'] = strpos($consumptionList, 'print_barre_liste(') !== false
+	&& strpos($consumptionList, "multiSelectArrayWithCheckbox('selectedfields'") !== false
+	&& strpos($consumptionList, 'multicompany-entity-card-container') !== false
+	&& strpos($consumptionList, "trans('NoRecordFound')") !== false;
+$checks['consumption_analytics_use_dolgraph_only'] = strpos($consumptionIndex, 'lmdbVehicleConsumptionRenderGraph(') !== false
+	&& strpos($vehicleConsumption, 'lmdbVehicleConsumptionRenderGraph(') !== false
+	&& strpos($library, 'new DolGraph()') !== false;
 
 $failed = array_keys(array_filter($checks, static function ($result) {
 	return !$result;

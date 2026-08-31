@@ -22,6 +22,7 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicle.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclereferencemigration.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleevent.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumption.class.php');
 
 /** @var Conf $conf */
 /** @var DoliDB $db */
@@ -56,6 +57,12 @@ $models = array(
 		'class' => 'LmdbVehicleInsuranceContract',
 		'models' => array('mod_lmdbinsurancecontract_standard'),
 		'constant' => 'LMDBVEHICLEMANAGEMENT_INSURANCECONTRACT_ADDON',
+	),
+	'lmdbvehicleconsumption' => array(
+		'label' => 'ConsumptionEntry',
+		'class' => 'LmdbVehicleConsumption',
+		'models' => array('mod_lmdbvehicleconsumption_standard'),
+		'constant' => 'LMDBVEHICLEMANAGEMENT_CONSUMPTION_ADDON',
 	),
 );
 

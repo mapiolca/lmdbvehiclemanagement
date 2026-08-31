@@ -12,6 +12,7 @@ require_once DOL_DOCUMENT_ROOT.'/core/class/html.formfile.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/doleditor.class.php';
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicle.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleenergy.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumable.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementcompatibility.class.php');
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 
@@ -52,6 +53,8 @@ function lmdbVehiclePopulateFromPost($vehicle)
 	$vehicle->vehicle_version = trim(GETPOST('vehicle_version', 'alphanohtml')) ?: null;
 	$energyId = GETPOSTINT('fk_energy');
 	$vehicle->fk_energy = $energyId > 0 ? $energyId : null;
+	$wltpRange = trim(GETPOST('wltp_range_km', 'alphanohtml'));
+	$vehicle->wltp_range_km = $wltpRange === '' ? null : (float) price2num($wltpRange);
 	$vehicle->first_registration_date = dol_mktime(12, 0, 0, GETPOSTINT('first_registration_datemonth'), GETPOSTINT('first_registration_dateday'), GETPOSTINT('first_registration_dateyear')) ?: null;
 	$vehicle->commissioning_date = dol_mktime(12, 0, 0, GETPOSTINT('commissioning_datemonth'), GETPOSTINT('commissioning_dateday'), GETPOSTINT('commissioning_dateyear')) ?: null;
 	$vehicle->ownership_type = GETPOST('ownership_type', 'alpha') ?: null;
@@ -62,6 +65,17 @@ function lmdbVehiclePopulateFromPost($vehicle)
 		$vehicle->fk_resource = $resourceId > 0 ? $resourceId : null;
 	}
 	$vehicle->description = GETPOST('description', 'restricthtml') ?: null;
+}
+
+/** @param array<int,string> $options Consumable options @return array<int,float|null> */
+function lmdbVehicleCapacityValuesFromPost($options)
+{
+	$values = array();
+	foreach (array_keys($options) as $consumableId) {
+		$value = trim(GETPOST('capacity_'.((int) $consumableId), 'alphanohtml'));
+		$values[(int) $consumableId] = $value === '' ? null : (float) price2num($value);
+	}
+	return $values;
 }
 
 $parameters = array('id' => $id);
@@ -76,23 +90,39 @@ if (empty($reshook)) {
 	if ($action === 'add') {
 		if (!$permissionToWrite) accessforbidden();
 		lmdbVehiclePopulateFromPost($object);
+		$db->begin();
 		$result = $object->create($user);
 		if ($result > 0) {
-			setEventMessages($langs->trans('VehicleCreated'), null, 'mesgs');
-			header('Location: '.$_SERVER['PHP_SELF'].'?id='.((int) $object->id));
-			exit;
+			$capacityDictionary = new LmdbVehicleConsumable($db);
+			$capacityResult = $object->saveCapacities($user, lmdbVehicleCapacityValuesFromPost($capacityDictionary->getOptions('', (int) $object->id)));
+			if ($capacityResult > 0) {
+				$db->commit();
+				setEventMessages($langs->trans('VehicleCreated'), null, 'mesgs');
+				header('Location: '.$_SERVER['PHP_SELF'].'?id='.((int) $object->id));
+				exit;
+			}
+			$result = $capacityResult;
 		}
+		$db->rollback();
 		lmdbVehicleManagementSetObjectErrors($object);
 		$action = 'create';
 	} elseif ($action === 'update') {
 		if (!$permissionToWrite || $id <= 0) accessforbidden();
 		lmdbVehiclePopulateFromPost($object);
+		$db->begin();
 		$result = $object->update($user);
 		if ($result > 0) {
-			setEventMessages($langs->trans('VehicleUpdated'), null, 'mesgs');
-			header('Location: '.$_SERVER['PHP_SELF'].'?id='.((int) $object->id));
-			exit;
+			$capacityDictionary = new LmdbVehicleConsumable($db);
+			$capacityResult = $object->saveCapacities($user, lmdbVehicleCapacityValuesFromPost($capacityDictionary->getOptions('', (int) $object->id)));
+			if ($capacityResult > 0) {
+				$db->commit();
+				setEventMessages($langs->trans('VehicleUpdated'), null, 'mesgs');
+				header('Location: '.$_SERVER['PHP_SELF'].'?id='.((int) $object->id));
+				exit;
+			}
+			$result = $capacityResult;
 		}
+		$db->rollback();
 		lmdbVehicleManagementSetObjectErrors($object);
 		$action = 'edit';
 	} elseif ($action === 'validate') {
@@ -139,6 +169,8 @@ if (empty($reshook)) {
 $form = new Form($db);
 $formfile = new FormFile($db);
 $energyDictionary = new LmdbVehicleEnergy($db);
+$consumableDictionary = new LmdbVehicleConsumable($db);
+$capacityOptions = $consumableDictionary->getOptions('', $id > 0 ? $id : 0);
 $title = $id > 0 ? $object->ref : $langs->trans('NewVehicle');
 llxHeader('', $title, '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card');
 
@@ -162,6 +194,12 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('VehicleVersion').'</td><td><input class="flat minwidth200" name="vehicle_version" maxlength="128" value="'.dol_escape_htmltag((string) $object->vehicle_version).'"></td></tr>';
 	$energyOptions = $energyDictionary->getSelectOptions((int) $object->fk_energy);
 	print '<tr><td>'.$langs->trans('Energy').'</td><td>'.$form->selectarray('fk_energy', $energyOptions, (int) $object->fk_energy, 1, 0, 0, '', 1, 0, 0, '', 'minwidth300', 1).'</td></tr>';
+	print '<tr><td>'.$langs->trans('WltpRangeKm').'</td><td><input class="flat width100" name="wltp_range_km" value="'.dol_escape_htmltag($object->wltp_range_km !== null ? price($object->wltp_range_km) : '').'"> '.$langs->trans('UnitKm').'</td></tr>';
+	$storedCapacities = $object->fetchCapacities();
+	foreach ($capacityOptions as $consumableId => $consumableLabel) {
+		$value = isset($storedCapacities[$consumableId]) ? price($storedCapacities[$consumableId]) : '';
+		print '<tr><td>'.$langs->trans('ConsumableCapacity', dol_escape_htmltag($consumableLabel)).'</td><td><input class="flat width100" name="capacity_'.((int) $consumableId).'" value="'.dol_escape_htmltag($value).'"></td></tr>';
+	}
 	print '<tr><td>'.$langs->trans('FirstRegistrationDate').'</td><td>'.$form->selectDate($object->first_registration_date ?: -1, 'first_registration_date', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('CommissioningDate').'</td><td>'.$form->selectDate($object->commissioning_date ?: -1, 'commissioning_date', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('OwnershipType').'</td><td>'.$form->selectarray('ownership_type', $object->fields['ownership_type']['arrayofkeyval'], $object->ownership_type, 1, 0, 0, '', 1, 0, 0, '', 'minwidth200', 1).'</td></tr>';
@@ -190,6 +228,13 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('VehicleModel').'</td><td>'.dol_escape_htmltag((string) $object->model).'</td></tr>';
 	print '<tr><td>'.$langs->trans('VehicleVersion').'</td><td>'.dol_escape_htmltag((string) $object->vehicle_version).'</td></tr>';
 	print '<tr><td>'.$langs->trans('Energy').'</td><td>'.dol_escape_htmltag($energyDictionary->getDisplayLabel((int) $object->fk_energy)).'</td></tr>';
+	print '<tr><td>'.$langs->trans('WltpRangeKm').'</td><td>'.($object->wltp_range_km !== null ? price($object->wltp_range_km).' '.$langs->trans('UnitKm') : '').'</td></tr>';
+	foreach ($object->fetchCapacities() as $consumableId => $capacity) {
+		$dictionary = new LmdbVehicleConsumable($db);
+		if ($dictionary->fetch((int) $consumableId) > 0) {
+			print '<tr><td>'.$langs->trans('ConsumableCapacity', dol_escape_htmltag($dictionary->label)).'</td><td>'.price($capacity).' '.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel($dictionary->unit)).'</td></tr>';
+		}
+	}
 	print '<tr><td>'.$langs->trans('FirstRegistrationDate').'</td><td>'.($object->first_registration_date ? dol_print_date($object->first_registration_date, 'day') : '').'</td></tr>';
 	print '<tr><td>'.$langs->trans('CommissioningDate').'</td><td>'.($object->commissioning_date ? dol_print_date($object->commissioning_date, 'day') : '').'</td></tr>';
 	print '<tr><td>'.$langs->trans('OwnershipType').'</td><td>'.(!empty($object->ownership_type) && isset($object->fields['ownership_type']['arrayofkeyval'][$object->ownership_type]) ? $langs->trans($object->fields['ownership_type']['arrayofkeyval'][$object->ownership_type]) : '').'</td></tr>';

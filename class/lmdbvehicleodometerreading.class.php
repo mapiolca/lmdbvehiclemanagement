@@ -27,7 +27,7 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 		'fk_vehicle' => array('type' => 'integer:LmdbVehicle:lmdbvehiclemanagement/class/lmdbvehicle.class.php:0', 'label' => 'Vehicle', 'position' => 20, 'notnull' => 1, 'visible' => 1, 'index' => 1),
 		'reading_date' => array('type' => 'datetime', 'label' => 'ReadingDate', 'position' => 30, 'notnull' => 1, 'visible' => 1),
 		'odometer_km' => array('type' => 'double(24,8)', 'label' => 'OdometerKm', 'position' => 40, 'notnull' => 1, 'visible' => 1),
-		'source' => array('type' => 'varchar(32)', 'label' => 'ReadingSource', 'position' => 50, 'notnull' => 1, 'visible' => 1, 'default' => 'manual', 'arrayofkeyval' => array('manual' => 'SourceManual', 'import' => 'SourceImport', 'external' => 'SourceExternal')),
+		'source' => array('type' => 'varchar(32)', 'label' => 'ReadingSource', 'position' => 50, 'notnull' => 1, 'visible' => 1, 'default' => 'manual', 'arrayofkeyval' => array('manual' => 'SourceManual', 'import' => 'SourceImport', 'external' => 'SourceExternal', 'consumption' => 'SourceConsumption')),
 		'reading_kind' => array('type' => 'varchar(32)', 'label' => 'ReadingKind', 'position' => 60, 'notnull' => 1, 'visible' => 1, 'default' => 'standard', 'arrayofkeyval' => array('standard' => 'ReadingKindStandard', 'correction' => 'ReadingKindCorrection', 'replacement' => 'ReadingKindReplacement')),
 		'reason' => array('type' => 'text', 'label' => 'ReadingReason', 'position' => 70, 'notnull' => -1, 'visible' => 3),
 		'date_creation' => array('type' => 'datetime', 'label' => 'DateCreation', 'position' => 500, 'notnull' => 1, 'visible' => -2),
@@ -49,6 +49,10 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	public $reading_kind = 'standard';
 	/** @var ?string */
 	public $reason;
+	/** @var bool The caller owns the current database transaction */
+	private $externalTransaction = false;
+	/** @var bool Authorize a change owned by a consumption object */
+	private $consumptionSync = false;
 
 	/** @param DoliDB $db Database handler */
 	public function __construct($db)
@@ -60,7 +64,9 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	/** @inheritdoc */
 	public function create(User $user, $notrigger = 0)
 	{
-		$this->db->begin();
+		if (!$this->externalTransaction) {
+			$this->db->begin();
+		}
 		if ($this->lockVehicleRow((int) $this->fk_vehicle) < 0) {
 			$this->db->rollback();
 			return -1;
@@ -70,7 +76,9 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 			$this->db->rollback();
 			return -1;
 		}
-		$this->db->commit();
+		if (!$this->externalTransaction) {
+			$this->db->commit();
+		}
 
 		return $result;
 	}
@@ -85,7 +93,14 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 			return -1;
 		}
 
-		$this->db->begin();
+		if ((string) $persisted->source === 'consumption' && !$this->consumptionSync) {
+			$this->error = 'ConsumptionOwnsOdometerReading';
+			$this->errors[] = $this->error;
+			return 0;
+		}
+		if (!$this->externalTransaction) {
+			$this->db->begin();
+		}
 		$vehicleIds = array_values(array_unique(array((int) $persisted->fk_vehicle, (int) $this->fk_vehicle)));
 		sort($vehicleIds, SORT_NUMERIC);
 		foreach ($vehicleIds as $vehicleId) {
@@ -118,7 +133,9 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 			$this->db->rollback();
 			return -1;
 		}
-		$this->db->commit();
+		if (!$this->externalTransaction) {
+			$this->db->commit();
+		}
 
 		return $result;
 	}
@@ -132,7 +149,14 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	 */
 	public function delete(User $user, $notrigger = 0)
 	{
-		$this->db->begin();
+		if ((string) $this->source === 'consumption' && !$this->consumptionSync) {
+			$this->error = 'ConsumptionOwnsOdometerReading';
+			$this->errors[] = $this->error;
+			return 0;
+		}
+		if (!$this->externalTransaction) {
+			$this->db->begin();
+		}
 		if ($this->lockVehicleRow((int) $this->fk_vehicle) < 0) {
 			$this->db->rollback();
 			return -1;
@@ -153,8 +177,63 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 			$this->db->rollback();
 			return -1;
 		}
-		$this->db->commit();
+		if (!$this->externalTransaction) {
+			$this->db->commit();
+		}
 
+		return $result;
+	}
+
+	/**
+	 * Create the reading inside a transaction owned by a consumption.
+	 *
+	 * @param User $user Author
+	 * @param int<0,1> $notrigger Disable triggers
+	 * @return int<-1,max>
+	 */
+	public function createFromConsumption(User $user, $notrigger = 0)
+	{
+		$this->source = 'consumption';
+		$this->externalTransaction = true;
+		$this->consumptionSync = true;
+		$result = $this->create($user, $notrigger);
+		$this->externalTransaction = false;
+		$this->consumptionSync = false;
+		return $result;
+	}
+
+	/**
+	 * Update a consumption-owned reading inside the caller transaction.
+	 *
+	 * @param User $user Author
+	 * @param int<0,1> $notrigger Disable triggers
+	 * @return int<-1,max>
+	 */
+	public function updateFromConsumption(User $user, $notrigger = 0)
+	{
+		$this->source = 'consumption';
+		$this->externalTransaction = true;
+		$this->consumptionSync = true;
+		$result = $this->update($user, $notrigger);
+		$this->externalTransaction = false;
+		$this->consumptionSync = false;
+		return $result;
+	}
+
+	/**
+	 * Delete a consumption-owned reading inside the caller transaction.
+	 *
+	 * @param User $user Author
+	 * @param int<0,1> $notrigger Disable triggers
+	 * @return int<-1,1>
+	 */
+	public function deleteFromConsumption(User $user, $notrigger = 0)
+	{
+		$this->externalTransaction = true;
+		$this->consumptionSync = true;
+		$result = $this->delete($user, $notrigger);
+		$this->externalTransaction = false;
+		$this->consumptionSync = false;
 		return $result;
 	}
 
@@ -174,9 +253,14 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 			$this->errors[] = $this->error;
 			return -1;
 		}
-		if (!in_array($this->source, array('manual', 'import', 'external'), true)
+		if (!in_array($this->source, array('manual', 'import', 'external', 'consumption'), true)
 			|| !in_array($this->reading_kind, array('standard', 'correction', 'replacement'), true)) {
 			$this->error = 'ErrorBadValueForParameter';
+			$this->errors[] = $this->error;
+			return -1;
+		}
+		if ($this->source === 'consumption' && !$this->consumptionSync) {
+			$this->error = 'ConsumptionOwnsOdometerReading';
 			$this->errors[] = $this->error;
 			return -1;
 		}

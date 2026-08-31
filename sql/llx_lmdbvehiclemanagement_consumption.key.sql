@@ -1,0 +1,8 @@
+ALTER TABLE llx_lmdbvehiclemanagement_consumption ADD UNIQUE INDEX uk_lmdbvm_consumption_ref (entity, ref);
+ALTER TABLE llx_lmdbvehiclemanagement_consumption ADD UNIQUE INDEX uk_lmdbvm_consumption_reading (entity, fk_odometer_reading);
+ALTER TABLE llx_lmdbvehiclemanagement_consumption ADD INDEX idx_lmdbvm_consumption_entity (entity);
+ALTER TABLE llx_lmdbvehiclemanagement_consumption ADD INDEX idx_lmdbvm_consumption_vehicle (fk_vehicle);
+ALTER TABLE llx_lmdbvehiclemanagement_consumption ADD INDEX idx_lmdbvm_consumption_consumable (fk_consumable);
+ALTER TABLE llx_lmdbvehiclemanagement_consumption ADD INDEX idx_lmdbvm_consumption_driver (fk_user_driver);
+ALTER TABLE llx_lmdbvehiclemanagement_consumption ADD INDEX idx_lmdbvm_consumption_status (status);
+ALTER TABLE llx_lmdbvehiclemanagement_consumption ADD INDEX idx_lmdbvm_consumption_created (date_creation);

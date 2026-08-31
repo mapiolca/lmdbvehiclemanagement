@@ -58,10 +58,28 @@ class ActionsLmdbVehicleManagement
 						'enable' => 'isModEnabled("lmdbvehiclemanagement")',
 						'input' => array('global' => array('showhide' => true, 'hide' => true, 'del' => true)),
 					),
+					'lmdbvehicleconsumption' => array(
+						'type' => 'element',
+						'icon' => 'gas-pump',
+						'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+						'tooltip' => 'LmdbVehicleConsumptionSharingInfo',
+						'enable' => 'isModEnabled("lmdbvehiclemanagement")',
+						'input' => array('global' => array('showhide' => true, 'hide' => true, 'del' => true)),
+					),
+					'lmdbvehicleconsumptionnumber' => array(
+						'type' => 'objectnumber',
+						'icon' => 'hashtag',
+						'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+						'tooltip' => 'LmdbVehicleConsumptionNumberSharingInfo',
+						'enable' => 'isModEnabled("lmdbvehiclemanagement")',
+						'input' => array('global' => array('showhide' => true, 'hide' => true, 'del' => true)),
+					),
 				),
 				'sharingmodulename' => array(
 					'lmdbvehicle' => 'lmdbvehiclemanagement',
 					'lmdbvehiclenumber' => 'lmdbvehiclemanagement',
+					'lmdbvehicleconsumption' => 'lmdbvehiclemanagement',
+					'lmdbvehicleconsumptionnumber' => 'lmdbvehiclemanagement',
 				),
 				'dictionary' => array(
 					'c_lmdbvehiclemanagement_energy' => array(
@@ -71,6 +89,14 @@ class ActionsLmdbVehicleManagement
 						'tooltip' => 'VehicleEnergySharingInfo',
 						'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 						'filepath' => '/lmdbvehiclemanagement/sql/llx_c_lmdbvehiclemanagement_energy.sql',
+					),
+					'c_lmdbvehiclemanagement_consumable' => array(
+						'type' => 'dictionary',
+						'icon' => 'gas-pump',
+						'transkey' => 'VehicleConsumables',
+						'tooltip' => 'VehicleConsumableSharingInfo',
+						'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+						'filepath' => '/lmdbvehiclemanagement/sql/llx_c_lmdbvehiclemanagement_consumable.sql',
 					),
 				),
 			),
@@ -143,7 +169,7 @@ class ActionsLmdbVehicleManagement
 		global $user;
 
 		$elementType = isset($parameters['elementtype']) ? (string) $parameters['elementtype'] : '';
-		if (!in_array($elementType, array('lmdbvehicle@lmdbvehiclemanagement', 'lmdbinsurancecontract@lmdbvehiclemanagement'), true)) {
+		if (!in_array($elementType, array('lmdbvehicle@lmdbvehiclemanagement', 'lmdbinsurancecontract@lmdbvehiclemanagement', 'lmdbvehicleconsumption@lmdbvehiclemanagement'), true)) {
 			return 0;
 		}
 		if ($user->hasRight('agenda', 'allactions', 'read')) {
@@ -211,6 +237,15 @@ class ActionsLmdbVehicleManagement
 			'classfile' => 'lmdbvehicleinsurancecertificate',
 			'classname' => 'LmdbVehicleInsuranceCertificate',
 		);
+		$consumptionDefinition = array(
+			'module' => 'lmdbvehiclemanagement',
+			'element' => 'lmdbvehicleconsumption',
+			'table_element' => 'lmdbvehiclemanagement_consumption',
+			'subelement' => 'lmdbvehicleconsumption',
+			'classpath' => 'lmdbvehiclemanagement/class',
+			'classfile' => 'lmdbvehicleconsumption',
+			'classname' => 'LmdbVehicleConsumption',
+		);
 		$definitions = array(
 			'lmdbvehicle@lmdbvehiclemanagement' => $vehicleDefinition,
 			'lmdbvehiclemanagement_lmdbvehicle' => $vehicleDefinition,
@@ -220,6 +255,8 @@ class ActionsLmdbVehicleManagement
 			'lmdbvehiclemanagement_lmdbinsurancecontract' => $insuranceContractDefinition,
 			'lmdbinsurancecertificate@lmdbvehiclemanagement' => $insuranceCertificateDefinition,
 			'lmdbvehiclemanagement_lmdbinsurancecertificate' => $insuranceCertificateDefinition,
+			'lmdbvehicleconsumption@lmdbvehiclemanagement' => $consumptionDefinition,
+			'lmdbvehiclemanagement_lmdbvehicleconsumption' => $consumptionDefinition,
 		);
 		if (isset($definitions[$elementType])) {
 			$this->results = array_replace($this->results, $definitions[$elementType]);

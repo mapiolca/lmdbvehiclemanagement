@@ -91,8 +91,10 @@ if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
 	print '<input type="hidden" name="reading_id" value="'.((int) $reading->id).'"><input type="hidden" name="action" value="'.($action === 'edit' ? 'update' : 'add').'">';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
 	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('ReadingDate').'</td><td>'.$form->selectDate($reading->reading_date ?: dol_now(), 'reading_date', 1, 1, 0, '', 1, 1).'</td></tr>';
-	print '<tr><td class="fieldrequired">'.$langs->trans('OdometerKm').'</td><td><input class="flat width100 right" inputmode="decimal" name="odometer_km" required value="'.dol_escape_htmltag((string) $reading->odometer_km).'"> km</td></tr>';
-	print '<tr><td>'.$langs->trans('ReadingSource').'</td><td>'.$form->selectarray('source', $reading->fields['source']['arrayofkeyval'], $reading->source, 0, 0, 0, '', 1, 0, 0, '', 'minwidth200', 1).'</td></tr>';
+	print '<tr><td class="fieldrequired">'.$langs->trans('OdometerKm').'</td><td><input class="flat width100 right" inputmode="decimal" name="odometer_km" value="'.dol_escape_htmltag((string) $reading->odometer_km).'"> km</td></tr>';
+	$sourceOptions = $reading->fields['source']['arrayofkeyval'];
+	unset($sourceOptions['consumption']);
+	print '<tr><td>'.$langs->trans('ReadingSource').'</td><td>'.$form->selectarray('source', $sourceOptions, $reading->source, 0, 0, 0, '', 1, 0, 0, '', 'minwidth200', 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('ReadingKind').'</td><td>'.$form->selectarray('reading_kind', $reading->fields['reading_kind']['arrayofkeyval'], $reading->reading_kind, 0, 0, 0, '', 1, 0, 0, '', 'minwidth200', 1).'</td></tr>';
 	print '<tr><td class="tdtop">'.$langs->trans('ReadingReason').'</td><td><textarea class="flat centpercent" rows="3" name="reason">'.dol_escape_htmltag((string) $reading->reason).'</textarea></td></tr>';
 	print '</table></div><div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <a class="button button-cancel" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'">'.$langs->trans('Cancel').'</a></div></form>';
@@ -108,9 +110,11 @@ if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
 	foreach ($records as $record) {
 		print '<tr class="oddeven" id="odometer-'.((int) $record->id).'"><td>'.dol_print_date($record->reading_date, 'dayhour').'</td><td class="right">'.price($record->odometer_km, 0, $langs, 1, -1, -1).' km</td>';
 		print '<td>'.$langs->trans($record->fields['source']['arrayofkeyval'][$record->source]).'</td><td>'.$langs->trans($record->fields['reading_kind']['arrayofkeyval'][$record->reading_kind]).'</td><td>'.dol_htmlentitiesbr((string) $record->reason).'</td><td class="nowraponall">';
-		if ($permissionToManage) {
+		if ($permissionToManage && $record->source !== 'consumption') {
 			print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&reading_id='.$record->id.'&action=edit">'.img_edit().'</a> ';
 			print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&reading_id='.$record->id.'&action=delete&token='.newToken().'">'.img_delete().'</a>';
+		} elseif ($record->source === 'consumption') {
+			print img_info($langs->trans('ConsumptionOwnsOdometerReading'));
 		}
 		print '</td></tr>';
 	}

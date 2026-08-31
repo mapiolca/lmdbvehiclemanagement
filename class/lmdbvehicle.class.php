@@ -40,6 +40,7 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		'model' => array('type' => 'varchar(128)', 'label' => 'VehicleModel', 'position' => 70, 'notnull' => -1, 'visible' => 1, 'searchall' => 1),
 		'vehicle_version' => array('type' => 'varchar(128)', 'label' => 'VehicleVersion', 'position' => 80, 'notnull' => -1, 'visible' => -1),
 		'fk_energy' => array('type' => 'integer:LmdbVehicleEnergy:lmdbvehiclemanagement/class/lmdbvehicleenergy.class.php', 'label' => 'Energy', 'position' => 90, 'notnull' => -1, 'visible' => -1, 'index' => 1),
+		'wltp_range_km' => array('type' => 'double(24,8)', 'label' => 'WltpRangeKm', 'position' => 95, 'notnull' => -1, 'visible' => -1),
 		'first_registration_date' => array('type' => 'date', 'label' => 'FirstRegistrationDate', 'position' => 100, 'notnull' => -1, 'visible' => -1),
 		'commissioning_date' => array('type' => 'date', 'label' => 'CommissioningDate', 'position' => 110, 'notnull' => -1, 'visible' => -1),
 		'ownership_type' => array('type' => 'varchar(32)', 'label' => 'OwnershipType', 'position' => 120, 'notnull' => -1, 'visible' => -1, 'arrayofkeyval' => array('owned' => 'Owned', 'leased' => 'Leased', 'long_term_leased' => 'LongTermLeased', 'short_term_leased' => 'ShortTermLeased')),
@@ -74,6 +75,8 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	public $vehicle_version;
 	/** @var ?int */
 	public $fk_energy;
+	/** @var ?float */
+	public $wltp_range_km;
 	/** @var ?int */
 	public $first_registration_date;
 	/** @var ?int */
@@ -211,6 +214,8 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		$tables = array(
 			'lmdbvehiclemanagement_vehicle_assignment',
 			'lmdbvehiclemanagement_odometer_reading',
+			'lmdbvehiclemanagement_consumption',
+			'lmdbvehiclemanagement_vehicle_capacity',
 			'lmdbvehiclemanagement_vehicle_event',
 			'lmdbvehiclemanagement_insurance_contract_vehicle',
 			'lmdbvehiclemanagement_insurance_certificate',
@@ -405,6 +410,11 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 				return -1;
 			}
 		}
+		if ($this->wltp_range_km !== null && (float) $this->wltp_range_km < 0) {
+			$this->error = 'WltpRangeMustBePositive';
+			$this->errors[] = $this->error;
+			return -1;
+		}
 		$duplicateRegistration = $this->duplicateVehicleFieldExists('registration_number', $this->registration_number);
 		if ($duplicateRegistration < 0) {
 			return -1;
@@ -457,6 +467,76 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 			}
 		}
 
+		return 1;
+	}
+
+	/** @return array<int,float> Consumable id to capacity */
+	public function fetchCapacities()
+	{
+		$capacities = array();
+		if (empty($this->id)) {
+			return $capacities;
+		}
+		$sql = 'SELECT fk_consumable, capacity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity';
+		$sql .= ' WHERE entity = '.((int) $this->entity).' AND fk_vehicle = '.((int) $this->id);
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			return $capacities;
+		}
+		while (is_object($row = $this->db->fetch_object($resql))) {
+			$capacities[(int) $row->fk_consumable] = (float) $row->capacity;
+		}
+		$this->db->free($resql);
+		return $capacities;
+	}
+
+	/**
+	 * Persist configured capacities for this vehicle.
+	 *
+	 * @param User $user Author
+	 * @param array<int,float|null> $capacities Consumable id to capacity, null removes it
+	 * @return int<-1,1>
+	 */
+	public function saveCapacities(User $user, $capacities)
+	{
+		if (empty($this->id) || empty($this->entity)) {
+			$this->error = 'RecordNotFound';
+			return -1;
+		}
+		$this->db->begin();
+		foreach ($capacities as $consumableId => $capacity) {
+			if ($capacity !== null && $capacity < 0) {
+				$this->error = 'ConsumableCapacityMustBePositive';
+				$this->errors[] = $this->error;
+				$this->db->rollback();
+				return -1;
+			}
+			$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable';
+			$sql .= ' WHERE rowid = '.((int) $consumableId).' AND entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
+			$resql = $this->db->query($sql);
+			if (!$resql || $this->db->num_rows($resql) !== 1) {
+				if ($resql) $this->db->free($resql);
+				$this->error = $resql ? 'InvalidConsumable' : $this->db->lasterror();
+				$this->db->rollback();
+				return -1;
+			}
+			$this->db->free($resql);
+			if ($capacity === null || $capacity == 0) {
+				$sql = 'DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity';
+				$sql .= ' WHERE entity = '.((int) $this->entity).' AND fk_vehicle = '.((int) $this->id).' AND fk_consumable = '.((int) $consumableId);
+			} else {
+				$sql = 'INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity';
+				$sql .= ' (entity, fk_vehicle, fk_consumable, capacity, date_creation, fk_user_creat, fk_user_modif) VALUES (';
+				$sql .= ((int) $this->entity).', '.((int) $this->id).', '.((int) $consumableId).', '.((float) $capacity).", '".$this->db->idate(dol_now())."', ".((int) $user->id).', '.((int) $user->id).')';
+				$sql .= ' ON DUPLICATE KEY UPDATE capacity = VALUES(capacity), fk_user_modif = VALUES(fk_user_modif)';
+			}
+			if (!$this->db->query($sql)) {
+				$this->error = $this->db->lasterror();
+				$this->db->rollback();
+				return -1;
+			}
+		}
+		$this->db->commit();
 		return 1;
 	}
 
