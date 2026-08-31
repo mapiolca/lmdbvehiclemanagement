@@ -93,7 +93,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insurancePage, "\$u
 $checks['insurance_download_is_read_only_route'] = strpos($insurancePage, '$downloadCertificate === 1') !== false && strpos($insurancePage, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['insurance_version_is_043'] = strpos($descriptor, "\$this->version = '0.4.3';") !== false;
+$checks['insurance_version_is_050'] = strpos($descriptor, "\$this->version = '0.5.0';") !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;
@@ -119,6 +119,13 @@ $checks['insurance_card_status_row_is_hidden'] = strpos($insuranceCard, "langs->
 $checks['insurance_card_actions_follow_native_clear'] = $insuranceCardClearPosition !== false
 	&& $insuranceCardActionsPosition !== false
 	&& $insuranceCardClearPosition < $insuranceCardActionsPosition;
+$checks['insurance_card_uses_native_transverse_blocks'] = strpos($insuranceCard, "getMultidirOutput(\$object, 'lmdbvehiclemanagement', 1)") !== false
+	&& strpos($insuranceCard, '$formfile->showdocuments(') !== false
+	&& strpos($insuranceCard, '$form->showLinkedObjectBlock($object)') !== false
+	&& strpos($insuranceCard, "\$formActions->showactions(\$object, \$object->element.'@'.\$object->module") !== false;
+$checks['insurance_card_transverse_blocks_follow_actions'] = strpos($insuranceCard, '$formfile->showdocuments(') > $insuranceCardActionsPosition
+	&& strpos($insuranceCard, '$form->showLinkedObjectBlock($object)') > $insuranceCardActionsPosition
+	&& strpos($insuranceCard, '$formActions->showactions(') > $insuranceCardActionsPosition;
 $checks['insurance_required_fields_use_native_style'] = strpos($insuranceLibrary, 'titlefieldcreate fieldrequired') !== false
 	&& substr_count($insuranceLibrary, 'fieldrequired') >= 4
 	&& strpos($insuranceLibrary, ' required') === false;

@@ -8,9 +8,12 @@ if (!$res && file_exists('../main.inc.php')) $res = @include '../main.inc.php';
 if (!$res) die('Include of main fails');
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/doleditor.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/class/html.formfile.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
 require_once DOL_DOCUMENT_ROOT.'/contact/class/contact.class.php';
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementcompatibility.class.php');
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehicleinsurance.lib.php');
 
 /** @var Conf $conf */
@@ -19,7 +22,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehicleinsurance.lib.php');
 /** @var Translate $langs */
 /** @var User $user */
 
-$langs->loadLangs(array('main', 'companies', 'contacts', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+$langs->loadLangs(array('main', 'companies', 'contacts', 'other', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
@@ -97,6 +100,7 @@ if ($id > 0 && empty($coverage['vehicle_ids'])) {
 if ($coverage['coverage_start'] <= 0) $coverage['coverage_start'] = (int) $object->date_start;
 
 $form = new Form($db);
+$formfile = new FormFile($db);
 $title = $id > 0 ? $object->ref : $langs->trans('NewInsuranceContract');
 llxHeader('', $title, '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card');
 
@@ -188,6 +192,21 @@ if ($action === 'create' || $action === 'edit') {
 	}
 	if ($permissionDelete && (int) $object->status === LmdbVehicleInsuranceContract::STATUS_DRAFT) print dolGetButtonAction('', $langs->trans('Delete'), 'delete', $_SERVER['PHP_SELF'].'?id='.$id.'&action=delete&token='.newToken());
 	print '</div>';
+
+	print '<div class="fichecenter"><div class="fichehalfleft">';
+	$uploadDir = getMultidirOutput($object, 'lmdbvehiclemanagement', 1);
+	if (is_string($uploadDir) && $uploadDir !== '' && strpos($uploadDir, 'error-diroutput-') !== 0) {
+		print $formfile->showdocuments('lmdbvehiclemanagement', dol_sanitizeFileName($object->ref), $uploadDir, $_SERVER['PHP_SELF'].'?id='.$id, 0, $permissionWrite, '', 1, 0, 0, 28, 0, '&entity='.((int) $object->entity));
+	}
+	$form->showLinkedObjectBlock($object);
+	print '</div><div class="fichehalfright">';
+	if (LmdbVehicleManagementCompatibility::isFeatureAvailable('native_agenda') && ($user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) {
+		require_once DOL_DOCUMENT_ROOT.'/core/class/html.formactions.class.php';
+		$formActions = new FormActions($db);
+		$formActions->showactions($object, $object->element.'@'.$object->module, 0, 1, '', 10);
+	}
+	print '</div></div>';
+	print '<div class="clearboth"></div>';
 }
 
 llxFooter();

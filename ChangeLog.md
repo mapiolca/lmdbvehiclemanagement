@@ -1,5 +1,10 @@
 # Historique des versions
 
+## `0.5.0` — 2026-08-31
+
+- Ajout sous les actions de la fiche contrat des blocs natifs Dolibarr « Fichiers joints », « Objets liés » et « Les X derniers événements ».
+- Respect du répertoire documentaire de l’entité propriétaire et des droits natifs Agenda lors de l’affichage de ces blocs.
+
 ## `0.4.3` — 2026-08-31
 
 - Repositionnement des boutons d’action de la fiche contrat sous les deux colonnes selon la disposition native Dolibarr.
