@@ -27,8 +27,13 @@ $checks = array(
 	'consumable_dictionary_contains_fuels_and_additives' => isset($defaultConsumables['GASOLINE'], $defaultConsumables['ELECTRICITY'], $defaultConsumables['HYDROGEN'], $defaultConsumables['ADBLUE'], $defaultConsumables['OIL']),
 	'consumable_display_label_decodes_legacy_html_entities' => LmdbVehicleConsumable::displayLabel('&Eacute;lectricit&eacute;') === 'Électricité',
 	'consumable_units_use_readable_symbols' => LmdbVehicleConsumable::unitLabel('M3') === 'm³' && LmdbVehicleConsumable::unitLabel('KWH') === 'kWh',
+	'electric_vehicle_excludes_adblue_and_oil_capacities' => !in_array('ADBLUE', $energyCompatibility['EL'], true) && !in_array('OIL', $energyCompatibility['EL'], true),
+	'diesel_vehicle_includes_adblue_and_oil_capacities' => in_array('ADBLUE', $energyCompatibility['GO'], true) && in_array('OIL', $energyCompatibility['GO'], true),
+	'all_energies_include_transverse_fluid_capacities' => count(array_filter($energyCompatibility, static function ($codes) {
+		return in_array('WASHER_FLUID', $codes, true) && in_array('COOLANT', $codes, true) && in_array('OTHER_ADDITIVE', $codes, true);
+	})) === 46,
 	'all_46_p3_codes_have_a_compatibility' => count($energyCompatibility) === 46 && !array_diff_key($defaultEnergies, $energyCompatibility),
-	'hybrid_energy_keeps_multiple_compatible_consumables' => count($energyCompatibility['EE']) === 2,
+	'hybrid_energy_keeps_multiple_compatible_fuels' => in_array('GASOLINE', $energyCompatibility['EE'], true) && in_array('ELECTRICITY', $energyCompatibility['EE'], true),
 	'consumption_average_uses_positive_intervals' => abs((float) $fuelStats['consumption_100'] - 6.0) < 0.00001,
 	'consumption_weighted_unit_price' => abs((float) $fuelStats['weighted_unit_price'] - (146.0 / 70.0)) < 0.00001,
 	'consumption_capacity_percentage' => abs((float) $fuelStats['average_capacity_percent'] - 70.0) < 0.00001,

@@ -136,7 +136,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_071'] = strpos($descriptor, "\$this->version = '0.7.1';") !== false;
+$checks['module_version_is_080'] = strpos($descriptor, "\$this->version = '0.8.0';") !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;
@@ -276,6 +276,11 @@ $checks['vehicle_capacity_labels_and_units_are_rendered_separately'] = strpos($v
 	&& strpos($vehicleCard, "dol_escape_htmltag(\$capacityLabel)") !== false
 	&& strpos($vehicleCard, "dol_escape_htmltag(\$consumableOption['unit'])") !== false
 	&& strpos($consumableClass, 'html_entity_decode($label, ENT_QUOTES | ENT_HTML5') !== false;
+$checks['vehicle_capacities_follow_selected_energy'] = strpos($vehicleCard, 'data-energy-ids=') !== false
+	&& strpos($vehicleCard, 'energy.addEventListener("change",updateCapacities)') !== false
+	&& substr_count($vehicleCard, 'getCapacityOptions((int) $object->fk_energy)') >= 3
+	&& strpos($vehicleClass, 'DELETE cap FROM') !== false
+	&& strpos($vehicleClass, "AND ce.fk_energy = '.((int) \$this->fk_energy)") !== false;
 
 $failed = array_keys(array_filter($checks, static function ($result) {
 	return !$result;

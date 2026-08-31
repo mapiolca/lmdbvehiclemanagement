@@ -94,7 +94,8 @@ if (empty($reshook)) {
 		$result = $object->create($user);
 		if ($result > 0) {
 			$capacityDictionary = new LmdbVehicleConsumable($db);
-			$capacityResult = $object->saveCapacities($user, lmdbVehicleCapacityValuesFromPost($capacityDictionary->getOptions('', (int) $object->id)));
+			$compatibleCapacityOptions = !empty($object->fk_energy) ? $capacityDictionary->getCapacityOptions((int) $object->fk_energy) : array();
+			$capacityResult = $object->saveCapacities($user, lmdbVehicleCapacityValuesFromPost($compatibleCapacityOptions));
 			if ($capacityResult > 0) {
 				$db->commit();
 				setEventMessages($langs->trans('VehicleCreated'), null, 'mesgs');
@@ -113,7 +114,8 @@ if (empty($reshook)) {
 		$result = $object->update($user);
 		if ($result > 0) {
 			$capacityDictionary = new LmdbVehicleConsumable($db);
-			$capacityResult = $object->saveCapacities($user, lmdbVehicleCapacityValuesFromPost($capacityDictionary->getOptions('', (int) $object->id)));
+			$compatibleCapacityOptions = !empty($object->fk_energy) ? $capacityDictionary->getCapacityOptions((int) $object->fk_energy) : array();
+			$capacityResult = $object->saveCapacities($user, lmdbVehicleCapacityValuesFromPost($compatibleCapacityOptions));
 			if ($capacityResult > 0) {
 				$db->commit();
 				setEventMessages($langs->trans('VehicleUpdated'), null, 'mesgs');
@@ -199,7 +201,9 @@ if ($action === 'create' || $action === 'edit') {
 	foreach ($capacityOptions as $consumableId => $consumableOption) {
 		$value = isset($storedCapacities[$consumableId]) ? price($storedCapacities[$consumableId]) : '';
 		$capacityLabel = $langs->transnoentitiesnoconv('ConsumableCapacity', $consumableOption['label']);
-		print '<tr><td>'.dol_escape_htmltag($capacityLabel).'</td><td><input class="flat width100" name="capacity_'.((int) $consumableId).'" value="'.dol_escape_htmltag($value).'"> '.dol_escape_htmltag($consumableOption['unit']).'</td></tr>';
+		$isCompatible = in_array((int) $object->fk_energy, $consumableOption['energy_ids'], true);
+		print '<tr class="lmdb-capacity-row" data-energy-ids="'.dol_escape_htmltag(implode(',', $consumableOption['energy_ids'])).'"'.($isCompatible ? '' : ' style="display:none"').'>';
+		print '<td>'.dol_escape_htmltag($capacityLabel).'</td><td><input class="flat width100" name="capacity_'.((int) $consumableId).'" value="'.dol_escape_htmltag($value).'"'.($isCompatible ? '' : ' disabled').'> '.dol_escape_htmltag($consumableOption['unit']).'</td></tr>';
 	}
 	print '<tr><td>'.$langs->trans('FirstRegistrationDate').'</td><td>'.$form->selectDate($object->first_registration_date ?: -1, 'first_registration_date', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('CommissioningDate').'</td><td>'.$form->selectDate($object->commissioning_date ?: -1, 'commissioning_date', 0, 0, 1, '', 1, 1).'</td></tr>';
@@ -215,6 +219,11 @@ if ($action === 'create' || $action === 'edit') {
 	print $doleditor->Create(1);
 	print '</td></tr>';
 	print '</table></div>';
+	print '<script>';
+	print 'document.addEventListener("DOMContentLoaded",function(){var energy=document.getElementById("fk_energy");if(!energy){return;}';
+	print 'var updateCapacities=function(){var selected=parseInt(energy.value||"0",10);document.querySelectorAll(".lmdb-capacity-row").forEach(function(row){var ids=(row.getAttribute("data-energy-ids")||"").split(",").map(Number);var visible=selected>0&&ids.indexOf(selected)!==-1;row.style.display=visible?"":"none";var input=row.querySelector("input");if(input){input.disabled=!visible;}});};';
+	print 'energy.addEventListener("change",updateCapacities);updateCapacities();});';
+	print '</script>';
 	print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'" formnovalidate></div>';
 	print '</form>';
 } elseif ($id > 0) {
@@ -230,12 +239,12 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('VehicleVersion').'</td><td>'.dol_escape_htmltag((string) $object->vehicle_version).'</td></tr>';
 	print '<tr><td>'.$langs->trans('Energy').'</td><td>'.dol_escape_htmltag($energyDictionary->getDisplayLabel((int) $object->fk_energy)).'</td></tr>';
 	print '<tr><td>'.$langs->trans('WltpRangeKm').'</td><td>'.($object->wltp_range_km !== null ? price($object->wltp_range_km).' '.$langs->trans('UnitKm') : '').'</td></tr>';
-	foreach ($object->fetchCapacities() as $consumableId => $capacity) {
-		$dictionary = new LmdbVehicleConsumable($db);
-		if ($dictionary->fetch((int) $consumableId) > 0) {
-			$capacityLabel = $langs->transnoentitiesnoconv('ConsumableCapacity', $dictionary->label);
-			print '<tr><td>'.dol_escape_htmltag($capacityLabel).'</td><td>'.price($capacity).' '.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel($dictionary->unit)).'</td></tr>';
-		}
+	$storedCapacities = $object->fetchCapacities();
+	$compatibleCapacityOptions = !empty($object->fk_energy) ? $consumableDictionary->getCapacityOptions((int) $object->fk_energy) : array();
+	foreach ($compatibleCapacityOptions as $consumableId => $consumableOption) {
+		if (!isset($storedCapacities[$consumableId])) continue;
+		$capacityLabel = $langs->transnoentitiesnoconv('ConsumableCapacity', $consumableOption['label']);
+		print '<tr><td>'.dol_escape_htmltag($capacityLabel).'</td><td>'.price($storedCapacities[$consumableId]).' '.dol_escape_htmltag($consumableOption['unit']).'</td></tr>';
 	}
 	print '<tr><td>'.$langs->trans('FirstRegistrationDate').'</td><td>'.($object->first_registration_date ? dol_print_date($object->first_registration_date, 'day') : '').'</td></tr>';
 	print '<tr><td>'.$langs->trans('CommissioningDate').'</td><td>'.($object->commissioning_date ? dol_print_date($object->commissioning_date, 'day') : '').'</td></tr>';

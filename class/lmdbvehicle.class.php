@@ -504,6 +504,27 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 			return -1;
 		}
 		$this->db->begin();
+		if (empty($this->fk_energy)) {
+			$sql = 'DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity';
+			$sql .= ' WHERE entity = '.((int) $this->entity).' AND fk_vehicle = '.((int) $this->id);
+			if (!$this->db->query($sql)) {
+				$this->error = $this->db->lasterror();
+				$this->db->rollback();
+				return -1;
+			}
+			$this->db->commit();
+			return 1;
+		}
+		$sql = 'DELETE cap FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity AS cap';
+		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce';
+		$sql .= ' ON ce.fk_consumable = cap.fk_consumable AND ce.fk_energy = '.((int) $this->fk_energy);
+		$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
+		$sql .= ' WHERE cap.entity = '.((int) $this->entity).' AND cap.fk_vehicle = '.((int) $this->id).' AND ce.rowid IS NULL';
+		if (!$this->db->query($sql)) {
+			$this->error = $this->db->lasterror();
+			$this->db->rollback();
+			return -1;
+		}
 		foreach ($capacities as $consumableId => $capacity) {
 			if ($capacity !== null && $capacity < 0) {
 				$this->error = 'ConsumableCapacityMustBePositive';
@@ -511,8 +532,10 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 				$this->db->rollback();
 				return -1;
 			}
-			$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable';
-			$sql .= ' WHERE rowid = '.((int) $consumableId).' AND entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
+			$sql = 'SELECT c.rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c';
+			$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_consumable = c.rowid AND ce.entity = c.entity';
+			$sql .= ' WHERE c.rowid = '.((int) $consumableId).' AND c.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
+			$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') AND ce.fk_energy = '.((int) $this->fk_energy);
 			$resql = $this->db->query($sql);
 			if (!$resql || $this->db->num_rows($resql) !== 1) {
 				if ($resql) $this->db->free($resql);

@@ -1,5 +1,11 @@
 # Historique des versions
 
+## `0.8.0` — 2026-08-31
+
+- Filtrage dynamique des capacités selon l’énergie P.3 sélectionnée sur le véhicule.
+- Ajout des compatibilités d’additifs : AdBlue pour diesel/B100, huile pour motorisations thermiques et fluides transverses pour toutes les énergies.
+- Suppression transactionnelle des capacités devenues incompatibles après un changement d’énergie.
+
 ## `0.7.1` — 2026-08-31
 
 - Correction du rendu des accents et caractères spéciaux dans les libellés des capacités de consommables.

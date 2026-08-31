@@ -63,7 +63,7 @@ class LmdbVehicleConsumable
 	 */
 	public static function getDefaultEnergyCompatibility()
 	{
-		return array(
+		$compatibility = array(
 			'ES' => array('GASOLINE'), 'EG' => array('GASOLINE', 'LPG'), 'EN' => array('GASOLINE', 'NATURAL_GAS'),
 			'EE' => array('GASOLINE', 'ELECTRICITY'), 'ER' => array('GASOLINE', 'LPG', 'ELECTRICITY'), 'EM' => array('GASOLINE', 'NATURAL_GAS', 'ELECTRICITY'),
 			'EH' => array('GASOLINE', 'ELECTRICITY'), 'EQ' => array('GASOLINE', 'LPG', 'ELECTRICITY'), 'EP' => array('GASOLINE', 'NATURAL_GAS', 'ELECTRICITY'),
@@ -81,6 +81,23 @@ class LmdbVehicleConsumable
 			'H2' => array('HYDROGEN'), 'HE' => array('HYDROGEN', 'ELECTRICITY'), 'HH' => array('HYDROGEN', 'ELECTRICITY'),
 			'AC' => array('COMPRESSED_AIR'),
 		);
+
+		$combustionConsumables = array('GASOLINE', 'DIESEL', 'B100', 'ETHANOL', 'LPG', 'NATURAL_GAS');
+		$adBlueConsumables = array('DIESEL', 'B100');
+		foreach ($compatibility as $energyCode => $consumableCodes) {
+			if (!empty(array_intersect($consumableCodes, $combustionConsumables))) {
+				$consumableCodes[] = 'OIL';
+			}
+			if (!empty(array_intersect($consumableCodes, $adBlueConsumables))) {
+				$consumableCodes[] = 'ADBLUE';
+			}
+			$consumableCodes[] = 'WASHER_FLUID';
+			$consumableCodes[] = 'COOLANT';
+			$consumableCodes[] = 'OTHER_ADDITIVE';
+			$compatibility[$energyCode] = array_values(array_unique($consumableCodes));
+		}
+
+		return $compatibility;
 	}
 
 	/** @return int<-1,1> */
@@ -196,13 +213,20 @@ class LmdbVehicleConsumable
 	/**
 	 * Return consumable labels and units separately for vehicle capacity inputs.
 	 *
-	 * @return array<int,array{label:string,unit:string}>
+	 * @param int $energyId Optional energy dictionary id used to restrict compatible consumables
+	 * @return array<int,array{label:string,unit:string,energy_ids:array<int,int>}>
 	 */
-	public function getCapacityOptions()
+	public function getCapacityOptions($energyId = 0)
 	{
-		$sql = 'SELECT c.rowid, c.label, c.unit';
+		$sql = 'SELECT c.rowid, c.label, c.unit, GROUP_CONCAT(DISTINCT ce.fk_energy ORDER BY ce.fk_energy SEPARATOR \',\') AS energy_ids';
 		$sql .= ' FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c';
+		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_consumable = c.rowid AND ce.entity = c.entity';
 		$sql .= ' WHERE c.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') AND c.active = 1';
+		$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
+		if ($energyId > 0) {
+			$sql .= ' AND ce.fk_energy = '.((int) $energyId);
+		}
+		$sql .= ' GROUP BY c.rowid, c.label, c.unit, c.position, c.code';
 		$sql .= ' ORDER BY c.position, c.code';
 		$resql = $this->db->query($sql);
 		if (!$resql) {
@@ -215,6 +239,7 @@ class LmdbVehicleConsumable
 			$options[(int) $row->rowid] = array(
 				'label' => self::displayLabel((string) $row->label),
 				'unit' => self::unitLabel((string) $row->unit),
+				'energy_ids' => array_values(array_filter(array_map('intval', explode(',', (string) $row->energy_ids)))),
 			);
 		}
 		$this->db->free($resql);
