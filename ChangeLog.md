@@ -1,5 +1,10 @@
 # Historique des versions
 
+## `0.12.3` — 2026-08-31
+
+- Affichage des véhicules de la synthèse et de la liste des consommations avec leur lien natif `getNomUrl()` et leur tooltip Ajax.
+- Réutilisation des données déjà chargées par les requêtes de liste afin de ne pas ajouter de requête SQL par ligne.
+
 ## `0.12.2` — 2026-08-31
 
 - Masquage du badge Environnement sur les fiches lorsque Multicompany est désactivé ou qu’aucune autre entité ne partage l’objet courant.

@@ -84,6 +84,7 @@ class LmdbVehicleConsumptionStats
 			if (!isset($groups[$key])) {
 				$groups[$key] = array(
 					'entity' => $row['entity'], 'vehicle_id' => $row['vehicle_id'], 'vehicle_ref' => $row['vehicle_ref'], 'registration_number' => $row['registration_number'],
+					'vehicle_label' => isset($row['vehicle_label']) ? $row['vehicle_label'] : '',
 					'consumable_id' => $row['consumable_id'], 'consumable_label' => $row['consumable_label'], 'category' => $row['category'], 'unit' => $row['unit'], 'currency' => $row['currency'],
 					'count' => 0, 'total_quantity' => 0.0, 'total_cost' => 0.0, 'total_distance' => 0.0, 'interval_quantity' => 0.0,
 					'interval_days' => 0.0, 'interval_count' => 0, 'peak_quantity' => 0.0, 'peak_unit_price' => 0.0,

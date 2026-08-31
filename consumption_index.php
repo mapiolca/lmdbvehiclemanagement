@@ -96,9 +96,20 @@ print '</div>';
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent"><tr class="liste_titre"><th>'.$langs->trans('Vehicle').'</th><th>'.$langs->trans('Consumable').'</th><th>'.$langs->trans('Unit').'</th><th class="right">'.$langs->trans('Entries').'</th><th class="right">'.$langs->trans('TotalQuantity').'</th><th class="right">'.$langs->trans('TotalCost').'</th><th class="right">'.$langs->trans('AverageConsumption100').'</th><th class="right">'.$langs->trans('WeightedUnitPrice').'</th><th class="right">'.$langs->trans('PeakQuantity').'</th><th class="right">'.$langs->trans('PeakUnitPrice').'</th><th class="right">'.$langs->trans('PeakConsumption100').'</th><th class="right">'.$langs->trans('ExcludedIntervals').'</th>';
 if (!empty($entityOptions)) print '<th class="center">'.$langs->trans('Environment').'</th>';
 print '</tr>';
+$vehicleLinks = array();
 foreach ($groups as $group) {
 	$unit = LmdbVehicleConsumable::unitLabel((string) $group['unit']);
-	print '<tr class="oddeven"><td>'.dol_escape_htmltag(lmdbVehicleDisplayIdentifier((string) $group['vehicle_ref'], (string) $group['registration_number'])).'</td><td>'.dol_escape_htmltag((string) $group['consumable_label']).'</td><td>'.dol_escape_htmltag($unit).'</td><td class="right">'.((int) $group['count']).'</td><td class="right">'.price($group['total_quantity']).'</td><td class="right">'.price($group['total_cost']).' '.dol_escape_htmltag((string) $group['currency']).'</td><td class="right">'.($group['consumption_100'] !== null ? price($group['consumption_100']) : '').'</td><td class="right">'.price($group['weighted_unit_price']).' '.dol_escape_htmltag((string) $group['currency']).'/'.dol_escape_htmltag($unit).'</td><td class="right">'.price($group['peak_quantity']).'</td><td class="right">'.price($group['peak_unit_price']).' '.dol_escape_htmltag((string) $group['currency']).'/'.dol_escape_htmltag($unit).'</td><td class="right">'.($group['peak_consumption_100'] !== null ? price($group['peak_consumption_100']) : '').'</td><td class="right">'.((int) $group['excluded_intervals']).'</td>';
+	$vehicleLinkKey = ((int) $group['entity']).':'.((int) $group['vehicle_id']);
+	if (!isset($vehicleLinks[$vehicleLinkKey])) {
+		$linkedVehicle = new LmdbVehicle($db);
+		$linkedVehicle->id = (int) $group['vehicle_id'];
+		$linkedVehicle->entity = (int) $group['entity'];
+		$linkedVehicle->ref = (string) $group['vehicle_ref'];
+		$linkedVehicle->registration_number = (string) $group['registration_number'];
+		$linkedVehicle->label = (string) $group['vehicle_label'];
+		$vehicleLinks[$vehicleLinkKey] = $linkedVehicle->getNomUrl(1);
+	}
+	print '<tr class="oddeven"><td>'.$vehicleLinks[$vehicleLinkKey].'</td><td>'.dol_escape_htmltag((string) $group['consumable_label']).'</td><td>'.dol_escape_htmltag($unit).'</td><td class="right">'.((int) $group['count']).'</td><td class="right">'.price($group['total_quantity']).'</td><td class="right">'.price($group['total_cost']).' '.dol_escape_htmltag((string) $group['currency']).'</td><td class="right">'.($group['consumption_100'] !== null ? price($group['consumption_100']) : '').'</td><td class="right">'.price($group['weighted_unit_price']).' '.dol_escape_htmltag((string) $group['currency']).'/'.dol_escape_htmltag($unit).'</td><td class="right">'.price($group['peak_quantity']).'</td><td class="right">'.price($group['peak_unit_price']).' '.dol_escape_htmltag((string) $group['currency']).'/'.dol_escape_htmltag($unit).'</td><td class="right">'.($group['peak_consumption_100'] !== null ? price($group['peak_consumption_100']) : '').'</td><td class="right">'.((int) $group['excluded_intervals']).'</td>';
 	if (!empty($entityOptions)) {
 		print '<td class="center">'.lmdbVehicleManagementEntityBadge((int) $group['entity'], $entityOptions).'</td>';
 	}

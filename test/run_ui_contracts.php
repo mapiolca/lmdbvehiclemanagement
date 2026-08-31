@@ -160,7 +160,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0122'] = strpos($descriptor, "\$this->version = '0.12.2';") !== false;
+$checks['module_version_is_0123'] = strpos($descriptor, "\$this->version = '0.12.3';") !== false;
 $checks['odometer_list_calculates_difference_at_render_time'] = strpos($vehicleOdometer, "trans('OdometerDifference')") !== false
 	&& strpos($vehicleOdometer, '$records[$recordIndex + 1]->odometer_km') !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-success';") !== false
@@ -176,6 +176,10 @@ $checks['module_objects_use_native_ajax_tooltips'] = strpos($baseObjectClass, 'p
 	&& strpos($baseObjectClass, "getDolGlobalInt('MAIN_ENABLE_AJAX_TOOLTIP')") !== false
 	&& strpos($baseObjectClass, "'objecttype' => \$this->element.'@'.\$this->module") !== false
 	&& strpos($baseObjectClass, 'classforajaxtooltip') !== false;
+$checks['consumption_tables_use_vehicle_nomurl_tooltips'] = strpos($consumptionIndex, '$linkedVehicle->getNomUrl(1)') !== false
+	&& strpos($consumptionIndex, '$vehicleLinks[$vehicleLinkKey]') !== false
+	&& strpos($consumptionList, '$vehicle->getNomUrl(1)') !== false
+	&& strpos($consumptionList, "dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicle.class.php')") !== false;
 $checks['ajax_tooltips_load_required_translation_catalogs'] = strpos($baseObjectClass, "array('main', 'other', 'companies', 'users', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement')") !== false
 	&& strpos($insuranceContractClass, "array('main', 'other', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement')") !== false;
 $checks['consumption_tooltip_translates_nature_values'] = strpos($consumptionClass, "'arrayofkeyval' => array('fuel' => 'FuelOrRecharge', 'additive' => 'Additive')") !== false

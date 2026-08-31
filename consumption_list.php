@@ -8,6 +8,7 @@ if (!$res && file_exists('../main.inc.php')) $res = @include '../main.inc.php';
 if (!$res) die('Include of main fails');
 
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumption.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicle.class.php');
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 
 /** @var Conf $conf */
@@ -39,6 +40,7 @@ if (GETPOST('button_removefilter', 'alpha')) {
 	$searchEntities = array();
 }
 $object = new LmdbVehicleConsumption($db);
+$vehicle = new LmdbVehicle($db);
 $dictionary = new LmdbVehicleConsumable($db);
 $form = new Form($db);
 $hookmanager->initHooks(array('lmdbvehicleconsumptionlist'));
@@ -143,11 +145,13 @@ foreach ($arrayfields as $field) if (!empty($field['checked'])) $visibleColumns+
 $i = 0;
 while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 	$object->id = (int) $row->rowid; $object->ref = (string) $row->ref; $object->entity = (int) $row->entity;
+	$vehicle->id = (int) $row->fk_vehicle; $vehicle->entity = (int) $row->entity; $vehicle->ref = (string) $row->vehicle_ref;
+	$vehicle->registration_number = (string) $row->registration_number; $vehicle->label = (string) $row->vehicle_label;
 	print '<tr class="oddeven">';
 	if ($conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn"></td>';
 	if (!empty($arrayfields['t.ref']['checked'])) print '<td class="nowraponall">'.$object->getNomUrl(1).'</td>';
 	if (!empty($arrayfields['r.reading_date']['checked'])) print '<td>'.dol_print_date($db->jdate($row->reading_date), 'dayhour').'</td>';
-	if (!empty($arrayfields['v.ref']['checked'])) print '<td><a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?id='.((int) $row->fk_vehicle).'">'.img_picto('', 'car', 'class="pictofixedwidth"').dol_escape_htmltag(lmdbVehicleDisplayIdentifier((string) $row->vehicle_ref, (string) $row->registration_number, (string) $row->vehicle_label)).'</a></td>';
+	if (!empty($arrayfields['v.ref']['checked'])) print '<td>'.$vehicle->getNomUrl(1).'</td>';
 	if (!empty($arrayfields['u.lastname']['checked'])) print '<td>'.dol_escape_htmltag(trim((string) $row->firstname.' '.(string) $row->lastname) ?: (string) $row->login).'</td>';
 	if (!empty($arrayfields['c.label']['checked'])) print '<td>'.dol_escape_htmltag((string) $row->consumable_label).'</td>';
 	if (!empty($arrayfields['t.quantity']['checked'])) print '<td class="right">'.price($row->quantity).' '.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel((string) $row->unit_snapshot)).'</td>';
