@@ -25,6 +25,8 @@ $checks = array(
 	'energy_dictionary_contains_electricity' => isset($defaultEnergies['EL']) && $defaultEnergies['EL'] === 'Électricité',
 	'energy_dictionary_contains_hydrogen' => isset($defaultEnergies['H2']) && $defaultEnergies['H2'] === 'Hydrogène',
 	'consumable_dictionary_contains_fuels_and_additives' => isset($defaultConsumables['GASOLINE'], $defaultConsumables['ELECTRICITY'], $defaultConsumables['HYDROGEN'], $defaultConsumables['ADBLUE'], $defaultConsumables['OIL']),
+	'consumable_display_label_decodes_legacy_html_entities' => LmdbVehicleConsumable::displayLabel('&Eacute;lectricit&eacute;') === 'Électricité',
+	'consumable_units_use_readable_symbols' => LmdbVehicleConsumable::unitLabel('M3') === 'm³' && LmdbVehicleConsumable::unitLabel('KWH') === 'kWh',
 	'all_46_p3_codes_have_a_compatibility' => count($energyCompatibility) === 46 && !array_diff_key($defaultEnergies, $energyCompatibility),
 	'hybrid_energy_keeps_multiple_compatible_consumables' => count($energyCompatibility['EE']) === 2,
 	'consumption_average_uses_positive_intervals' => abs((float) $fuelStats['consumption_100'] - 6.0) < 0.00001,

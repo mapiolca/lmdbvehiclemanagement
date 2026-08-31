@@ -450,6 +450,7 @@ OilReference=Oil reference / type
 Driver=Driver
 RecoveredCapacity=Recovered capacity
 WltpRangeKm=WLTP range
+UnitKm=km
 WltpPassageRatio=Average mileage / WLTP range
 ConsumableCapacity=Capacity — %s
 ConsumableCapacityMustBePositive=A consumable capacity must be positive or zero.

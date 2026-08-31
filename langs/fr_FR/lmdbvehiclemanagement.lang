@@ -450,6 +450,7 @@ OilReference=Référence / type d’huile
 Driver=Conducteur
 RecoveredCapacity=Capacité récupérée
 WltpRangeKm=Autonomie WLTP
+UnitKm=km
 WltpPassageRatio=Kilométrage moyen / autonomie WLTP
 ConsumableCapacity=Capacité — %s
 ConsumableCapacityMustBePositive=La capacité d’un consommable doit être positive ou nulle.

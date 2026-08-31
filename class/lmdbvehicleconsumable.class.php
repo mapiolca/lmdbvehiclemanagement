@@ -150,7 +150,7 @@ class LmdbVehicleConsumable
 		$this->id = (int) $row->rowid;
 		$this->entity = (int) $row->entity;
 		$this->code = (string) $row->code;
-		$this->label = (string) $row->label;
+		$this->label = self::displayLabel((string) $row->label);
 		$this->category = (string) $row->category;
 		$this->unit = (string) $row->unit;
 		$this->requires_oil_reference = (int) $row->requires_oil_reference;
@@ -187,10 +187,45 @@ class LmdbVehicleConsumable
 		}
 		$options = array();
 		while (is_object($row = $this->db->fetch_object($resql))) {
-			$options[(int) $row->rowid] = (string) $row->label.' ('.self::unitLabel((string) $row->unit).')';
+			$options[(int) $row->rowid] = self::displayLabel((string) $row->label).' ('.self::unitLabel((string) $row->unit).')';
 		}
 		$this->db->free($resql);
 		return $options;
+	}
+
+	/**
+	 * Return consumable labels and units separately for vehicle capacity inputs.
+	 *
+	 * @return array<int,array{label:string,unit:string}>
+	 */
+	public function getCapacityOptions()
+	{
+		$sql = 'SELECT c.rowid, c.label, c.unit';
+		$sql .= ' FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c';
+		$sql .= ' WHERE c.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') AND c.active = 1';
+		$sql .= ' ORDER BY c.position, c.code';
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			$this->error = $this->db->lasterror();
+			return array();
+		}
+
+		$options = array();
+		while (is_object($row = $this->db->fetch_object($resql))) {
+			$options[(int) $row->rowid] = array(
+				'label' => self::displayLabel((string) $row->label),
+				'unit' => self::unitLabel((string) $row->unit),
+			);
+		}
+		$this->db->free($resql);
+
+		return $options;
+	}
+
+	/** @param string $label Stored dictionary label @return string */
+	public static function displayLabel($label)
+	{
+		return html_entity_decode($label, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 	}
 
 	/** @param string $unit Unit code @return string */

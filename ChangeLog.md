@@ -1,5 +1,10 @@
 # Historique des versions
 
+## `0.7.1` — 2026-08-31
+
+- Correction du rendu des accents et caractères spéciaux dans les libellés des capacités de consommables.
+- Affichage des unités après chaque champ de capacité, selon le même rendu que l’autonomie WLTP.
+
 ## `0.7.0` — 2026-08-31
 
 - Ajout du modèle natif de référence véhicule par immatriculation, avec migration transactionnelle réversible des références, documents et index ECM.

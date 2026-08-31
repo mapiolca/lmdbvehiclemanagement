@@ -170,7 +170,7 @@ $form = new Form($db);
 $formfile = new FormFile($db);
 $energyDictionary = new LmdbVehicleEnergy($db);
 $consumableDictionary = new LmdbVehicleConsumable($db);
-$capacityOptions = $consumableDictionary->getOptions('', $id > 0 ? $id : 0);
+$capacityOptions = $consumableDictionary->getCapacityOptions();
 $title = $id > 0 ? $object->ref : $langs->trans('NewVehicle');
 llxHeader('', $title, '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card');
 
@@ -196,9 +196,10 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('Energy').'</td><td>'.$form->selectarray('fk_energy', $energyOptions, (int) $object->fk_energy, 1, 0, 0, '', 1, 0, 0, '', 'minwidth300', 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('WltpRangeKm').'</td><td><input class="flat width100" name="wltp_range_km" value="'.dol_escape_htmltag($object->wltp_range_km !== null ? price($object->wltp_range_km) : '').'"> '.$langs->trans('UnitKm').'</td></tr>';
 	$storedCapacities = $object->fetchCapacities();
-	foreach ($capacityOptions as $consumableId => $consumableLabel) {
+	foreach ($capacityOptions as $consumableId => $consumableOption) {
 		$value = isset($storedCapacities[$consumableId]) ? price($storedCapacities[$consumableId]) : '';
-		print '<tr><td>'.$langs->trans('ConsumableCapacity', dol_escape_htmltag($consumableLabel)).'</td><td><input class="flat width100" name="capacity_'.((int) $consumableId).'" value="'.dol_escape_htmltag($value).'"></td></tr>';
+		$capacityLabel = $langs->transnoentitiesnoconv('ConsumableCapacity', $consumableOption['label']);
+		print '<tr><td>'.dol_escape_htmltag($capacityLabel).'</td><td><input class="flat width100" name="capacity_'.((int) $consumableId).'" value="'.dol_escape_htmltag($value).'"> '.dol_escape_htmltag($consumableOption['unit']).'</td></tr>';
 	}
 	print '<tr><td>'.$langs->trans('FirstRegistrationDate').'</td><td>'.$form->selectDate($object->first_registration_date ?: -1, 'first_registration_date', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('CommissioningDate').'</td><td>'.$form->selectDate($object->commissioning_date ?: -1, 'commissioning_date', 0, 0, 1, '', 1, 1).'</td></tr>';
@@ -232,7 +233,8 @@ if ($action === 'create' || $action === 'edit') {
 	foreach ($object->fetchCapacities() as $consumableId => $capacity) {
 		$dictionary = new LmdbVehicleConsumable($db);
 		if ($dictionary->fetch((int) $consumableId) > 0) {
-			print '<tr><td>'.$langs->trans('ConsumableCapacity', dol_escape_htmltag($dictionary->label)).'</td><td>'.price($capacity).' '.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel($dictionary->unit)).'</td></tr>';
+			$capacityLabel = $langs->transnoentitiesnoconv('ConsumableCapacity', $dictionary->label);
+			print '<tr><td>'.dol_escape_htmltag($capacityLabel).'</td><td>'.price($capacity).' '.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel($dictionary->unit)).'</td></tr>';
 		}
 	}
 	print '<tr><td>'.$langs->trans('FirstRegistrationDate').'</td><td>'.($object->first_registration_date ? dol_print_date($object->first_registration_date, 'day') : '').'</td></tr>';

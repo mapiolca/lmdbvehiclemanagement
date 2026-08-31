@@ -48,6 +48,7 @@ $vehicleRegistrationNumbering = readModuleSource('core/modules/lmdbvehiclemanage
 $setupPage = readModuleSource('admin/setup.php');
 $vehicleList = readModuleSource('vehicle_list.php');
 $consumptionClass = readModuleSource('class/lmdbvehicleconsumption.class.php');
+$consumableClass = readModuleSource('class/lmdbvehicleconsumable.class.php');
 $consumptionCard = readModuleSource('consumption_card.php');
 $consumptionList = readModuleSource('consumption_list.php');
 $consumptionIndex = readModuleSource('consumption_index.php');
@@ -135,7 +136,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_070'] = strpos($descriptor, "\$this->version = '0.7.0';") !== false;
+$checks['module_version_is_071'] = strpos($descriptor, "\$this->version = '0.7.1';") !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;
@@ -271,6 +272,10 @@ $checks['consumption_list_is_native'] = strpos($consumptionList, 'print_barre_li
 $checks['consumption_analytics_use_dolgraph_only'] = strpos($consumptionIndex, 'lmdbVehicleConsumptionRenderGraph(') !== false
 	&& strpos($vehicleConsumption, 'lmdbVehicleConsumptionRenderGraph(') !== false
 	&& strpos($library, 'new DolGraph()') !== false;
+$checks['vehicle_capacity_labels_and_units_are_rendered_separately'] = strpos($vehicleCard, '$consumableDictionary->getCapacityOptions()') !== false
+	&& strpos($vehicleCard, "dol_escape_htmltag(\$capacityLabel)") !== false
+	&& strpos($vehicleCard, "dol_escape_htmltag(\$consumableOption['unit'])") !== false
+	&& strpos($consumableClass, 'html_entity_decode($label, ENT_QUOTES | ENT_HTML5') !== false;
 
 $failed = array_keys(array_filter($checks, static function ($result) {
 	return !$result;
