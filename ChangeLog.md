@@ -1,5 +1,12 @@
 # Historique des versions
 
+## `0.11.0` — 2026-08-31
+
+- Ajout des pleins, recharges et additifs à la chronologie consolidée du véhicule.
+- Tri par défaut du plus récent au plus ancien avec tri natif sur chaque colonne pertinente.
+- Ajout des filtres SQL par période, source, type, libellé, kilométrage, état et présence de documents.
+- Conservation des filtres, du tri, de la pagination et de la limite dans les liens natifs de la liste.
+
 ## `0.10.1` — 2026-08-31
 
 - Correction de l’URL de l’ajout rapide `Plein / Recharge` avec le helper natif compatible Dolibarr v20+.

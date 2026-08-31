@@ -56,6 +56,8 @@ $consumptionCard = readModuleSource('consumption_card.php');
 $consumptionList = readModuleSource('consumption_list.php');
 $consumptionIndex = readModuleSource('consumption_index.php');
 $vehicleConsumption = readModuleSource('vehicle_consumption.php');
+$vehicleHistory = readModuleSource('vehicle_history.php');
+$vehicleHistoryClass = readModuleSource('class/lmdbvehiclehistory.class.php');
 $moduleJavascript = readModuleSource('js/lmdbvehiclemanagement.js');
 $consumptionSql = readModuleSource('sql/llx_lmdbvehiclemanagement_consumption.sql');
 $checks = array();
@@ -148,7 +150,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0101'] = strpos($descriptor, "\$this->version = '0.10.1';") !== false;
+$checks['module_version_is_0110'] = strpos($descriptor, "\$this->version = '0.11.0';") !== false;
 $checks['consumption_uses_native_quick_add_hook'] = strpos($descriptor, "'main',") !== false
 	&& strpos($actionsHooks, 'function menuDropdownQuickaddItems(') !== false
 	&& strpos($actionsHooks, "dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1)") !== false
@@ -163,6 +165,17 @@ $checks['ajax_tooltips_resolve_all_business_objects'] = strpos($actionsHooks, "'
 	&& strpos($actionsHooks, "'lmdbvehicleodometerreading@lmdbvehiclemanagement'") !== false
 	&& strpos($actionsHooks, "'lmdbvehicleconsumption@lmdbvehiclemanagement'") !== false
 	&& strpos($actionsHooks, "'lmdbinsurancecertificate@lmdbvehiclemanagement'") !== false;
+$checks['timeline_includes_consumptions'] = strpos($vehicleHistoryClass, "'consumption' AS source_code") !== false
+	&& strpos($vehicleHistoryClass, "MAIN_DB_PREFIX.\"lmdbvehiclemanagement_consumption") !== false
+	&& strpos($vehicleHistory, "'consumption' => \$langs->trans('TimelineSourceConsumption')") !== false;
+$checks['timeline_defaults_to_newest_first'] = strpos($vehicleHistory, "?: 'event_timestamp'") !== false
+	&& strpos($vehicleHistory, "=== 'ASC' ? 'ASC' : 'DESC'") !== false
+	&& strpos($vehicleHistoryClass, "'event_timestamp' => 'timeline.event_timestamp'") !== false;
+$checks['timeline_uses_native_field_filters_and_sorting'] = strpos($vehicleHistory, "selectDate(\$searchDateStart") !== false
+	&& strpos($vehicleHistory, "multiselectarray('search_source'") !== false
+	&& strpos($vehicleHistory, "getTitleFieldOfList('Date'") !== false
+	&& strpos($vehicleHistory, "getTitleFieldOfList('TimelineDocuments'") !== false
+	&& strpos($vehicleHistoryClass, 'private function buildFilterSql($filters)') !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;
