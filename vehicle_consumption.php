@@ -68,11 +68,11 @@ foreach ($groups as $key => $group) {
 	$series = array_values(array_filter($rows, static function ($row) use ($group) {
 		return (int) $row['entity'] === (int) $group['entity'] && (int) $row['consumable_id'] === (int) $group['consumable_id'] && (string) $row['unit'] === (string) $group['unit'] && (string) $row['currency'] === (string) $group['currency'];
 	}));
-	print '<div class="fichecenter"><div class="fichehalfleft">'.lmdbVehicleConsumptionRenderGraph($series, (string) $group['category'] === 'fuel' ? 'consumption_100' : 'quantity', $langs->trans((string) $group['category'] === 'fuel' ? 'AverageConsumption100' : 'Quantity').' - '.dol_escape_htmltag((string) $group['consumable_label']), 'vehicle-'.$id.'-'.$key.'-main').'</div>';
-	print '<div class="fichehalfright">'.lmdbVehicleConsumptionRenderGraph($series, 'unit_price', $langs->trans('UnitPrice').' - '.dol_escape_htmltag((string) $group['consumable_label']), 'vehicle-'.$id.'-'.$key.'-price').'</div></div><div class="clearboth"></div>';
+	print '<div class="fichecenter"><div class="fichehalfleft">'.lmdbVehicleConsumptionRenderGraph($series, (string) $group['category'] === 'fuel' ? 'consumption_100' : 'quantity', $langs->trans((string) $group['category'] === 'fuel' ? 'AverageConsumption100' : 'Quantity').' - '.(string) $group['consumable_label'], 'vehicle-'.$id.'-'.$key.'-main').'</div>';
+	print '<div class="fichehalfright">'.lmdbVehicleConsumptionRenderGraph($series, 'unit_price', $langs->trans('UnitPrice').' - '.(string) $group['consumable_label'], 'vehicle-'.$id.'-'.$key.'-price').'</div></div><div class="clearboth"></div>';
 	if ((string) $group['category'] === 'fuel') {
-		print '<div class="fichecenter"><div class="fichehalfleft">'.lmdbVehicleConsumptionRenderGraph($series, 'quantity', $langs->trans('Quantity').' - '.dol_escape_htmltag((string) $group['consumable_label']), 'vehicle-'.$id.'-'.$key.'-quantity').'</div>';
-		print '<div class="fichehalfright">'.lmdbVehicleConsumptionRenderGraph($series, 'capacity_percent', $langs->trans('RecoveredCapacity').' - '.dol_escape_htmltag((string) $group['consumable_label']), 'vehicle-'.$id.'-'.$key.'-capacity').'</div></div><div class="clearboth"></div>';
+		print '<div class="fichecenter"><div class="fichehalfleft">'.lmdbVehicleConsumptionRenderGraph($series, 'quantity', $langs->trans('Quantity').' - '.(string) $group['consumable_label'], 'vehicle-'.$id.'-'.$key.'-quantity').'</div>';
+		print '<div class="fichehalfright">'.lmdbVehicleConsumptionRenderGraph($series, 'capacity_percent', $langs->trans('RecoveredCapacity').' - '.(string) $group['consumable_label'], 'vehicle-'.$id.'-'.$key.'-capacity').'</div></div><div class="clearboth"></div>';
 	}
 }
 

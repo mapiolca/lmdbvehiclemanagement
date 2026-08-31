@@ -1,5 +1,11 @@
 # Historique des versions
 
+## `0.8.5` — 2026-08-31
+
+- Encadrement de chaque graphique de consommation dans un tableau Dolibarr distinct et de largeur stable.
+- Déplacement du titre dans la ligne d’en-tête native du tableau.
+- Conservation du tableau et de son titre en l’absence de données, avec affichage du message natif d’absence d’enregistrement.
+
 ## `0.8.4` — 2026-08-31
 
 - Suppression du pictogramme redondant placé devant le titre du bloc d’assurance de la fiche véhicule.

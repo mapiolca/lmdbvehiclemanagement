@@ -150,7 +150,7 @@ function lmdbVehicleConsumptionPrintBanner($object)
 }
 
 /**
- * Render one native DolGraph series for consumption analytics.
+ * Render one native DolGraph series in a stable native table.
  *
  * @param array<int,array<string,int|float|string|null>> $seriesRows Rows for one consumable and unit
  * @param string $metric unit_price, quantity, capacity_percent or consumption_100
@@ -176,23 +176,37 @@ function lmdbVehicleConsumptionRenderGraph($seriesRows, $metric, $title, $graphK
 		$previousKm = (float) $row['odometer_km'];
 		if ($value !== null) $data[] = array(dol_print_date((int) $row['date'], 'day'), price2num($value, 'MU'));
 	}
-	if (empty($data)) return '<span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span>';
-	$tempDir = $conf->lmdbvehiclemanagement->dir_temp.'/consumption';
-	if (dol_mkdir($tempDir) < 0) return '<span class="error">'.$langs->trans('ErrorFailedToCreateDir').'</span>';
-	$fileName = 'graph_'.sha1($graphKey.serialize($data)).'.png';
-	$file = $tempDir.'/'.$fileName;
-	$fileUrl = DOL_URL_ROOT.'/viewimage.php?modulepart=lmdbvehiclemanagement_temp&file=/consumption/'.$fileName;
-	$graph = new DolGraph();
-	$graph->SetData($data);
-	$graph->SetLegend(array($title));
-	$graph->SetTitle($title);
-	$graph->SetWidth(DolGraph::getDefaultGraphSizeForStats('width', '600'));
-	$graph->SetHeight(DolGraph::getDefaultGraphSizeForStats('height', '220'));
-	$graph->SetType(array('lines'));
-	$graph->setBgColor('onglet');
-	$graph->setBgColorGrid(array(255, 255, 255));
-	$graph->draw($file, $fileUrl);
-	return $graph->show();
+
+	$content = '<span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span>';
+	if (!empty($data)) {
+		$tempDir = $conf->lmdbvehiclemanagement->dir_temp.'/consumption';
+		if (dol_mkdir($tempDir) < 0) {
+			$content = '<span class="error">'.$langs->trans('ErrorFailedToCreateDir').'</span>';
+		} else {
+			$fileName = 'graph_'.sha1($graphKey.serialize($data)).'.png';
+			$file = $tempDir.'/'.$fileName;
+			$fileUrl = DOL_URL_ROOT.'/viewimage.php?modulepart=lmdbvehiclemanagement_temp&file=/consumption/'.$fileName;
+			$graph = new DolGraph();
+			$graph->SetData($data);
+			$graph->SetLegend(array($title));
+			$graph->SetWidth(DolGraph::getDefaultGraphSizeForStats('width', '600'));
+			$graph->SetHeight(DolGraph::getDefaultGraphSizeForStats('height', '220'));
+			$graph->SetType(array('lines'));
+			$graph->setBgColor('onglet');
+			$graph->setBgColorGrid(array(255, 255, 255));
+			$graph->draw($file, $fileUrl);
+			$content = $graph->show();
+		}
+	}
+
+	$html = '<div class="div-table-responsive-no-min">';
+	$html .= '<table class="noborder centpercent tableforfield" style="table-layout: fixed;">';
+	$html .= '<tr class="liste_titre"><th>'.dol_escape_htmltag($title).'</th></tr>';
+	$html .= '<tr class="oddeven"><td class="center valignmiddle" style="height: 220px;">'.$content.'</td></tr>';
+	$html .= '</table>';
+	$html .= '</div>';
+
+	return $html;
 }
 
 /**

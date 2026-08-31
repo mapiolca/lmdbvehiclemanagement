@@ -146,7 +146,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_084'] = strpos($descriptor, "\$this->version = '0.8.4';") !== false;
+$checks['module_version_is_085'] = strpos($descriptor, "\$this->version = '0.8.5';") !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;
@@ -302,6 +302,12 @@ $checks['main_list_action_column_follows_native_position'] = count(array_filter(
 $checks['consumption_analytics_use_dolgraph_only'] = strpos($consumptionIndex, 'lmdbVehicleConsumptionRenderGraph(') !== false
 	&& strpos($vehicleConsumption, 'lmdbVehicleConsumptionRenderGraph(') !== false
 	&& strpos($library, 'new DolGraph()') !== false;
+$checks['consumption_graphs_use_stable_native_tables'] = strpos($library, '<table class="noborder centpercent tableforfield" style="table-layout: fixed;">') !== false
+	&& strpos($library, '<tr class="liste_titre"><th>') !== false
+	&& strpos($library, '<td class="center valignmiddle" style="height: 220px;">') !== false;
+$checks['consumption_empty_graphs_keep_table_and_title'] = strpos($library, "\$content = '<span class=\"opacitymedium\">'.\$langs->trans('NoRecordFound')") !== false
+	&& strpos($library, "if (empty(\$data)) return") === false
+	&& strpos($library, 'SetTitle($title)') === false;
 $checks['vehicle_capacity_labels_and_units_are_rendered_separately'] = strpos($vehicleCard, '$consumableDictionary->getCapacityOptions()') !== false
 	&& strpos($vehicleCard, "dol_escape_htmltag(\$capacityLabel)") !== false
 	&& strpos($vehicleCard, "dol_escape_htmltag(\$consumableOption['unit'])") !== false
