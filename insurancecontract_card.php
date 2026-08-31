@@ -15,6 +15,7 @@ require_once DOL_DOCUMENT_ROOT.'/contact/class/contact.class.php';
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementcompatibility.class.php');
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehicleinsurance.lib.php');
+dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 
 /** @var Conf $conf */
 /** @var DoliDB $db */
@@ -129,17 +130,9 @@ if ($action === 'create' || $action === 'edit') {
 		true
 	);
 } elseif ($id > 0) {
-	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/insurancecontract_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
-	$moreHtmlRef = '<div class="refidno">'.dol_escape_htmltag($object->label);
-	if (isModEnabled('multicompany') && !empty($object->entity)) {
-		$entityLabel = (string) $object->entity;
-		$resEntity = $db->query('SELECT label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid = '.((int) $object->entity));
-		if ($resEntity && is_object($entityRow = $db->fetch_object($resEntity)) && !empty($entityRow->label)) $entityLabel = (string) $entityRow->label;
-		if ($resEntity) $db->free($resEntity);
-		$moreHtmlRef .= '<br><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div>';
-	}
-	$moreHtmlRef .= '</div>';
-	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $moreHtmlRef);
+	$head = lmdbInsuranceContractPrepareHead($object);
+	print dol_get_fiche_head($head, 'card', $langs->trans('InsuranceContract'), -1, $object->picto);
+	lmdbInsuranceContractPrintBanner($object);
 	$company = new Societe($db);
 	$companyLink = $company->fetch((int) $object->fk_soc) > 0 ? $company->getNomUrl(1) : '';
 	$contactLink = '';
@@ -182,13 +175,14 @@ if ($action === 'create' || $action === 'edit') {
 	if ($vehicleCount === 0) print '<tr class="oddeven"><td colspan="3"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
 	print '</table></div></div></div>';
 	print '<div class="clearboth"></div>';
+	print dol_get_fiche_end();
 
 	// Actions buttons
 	print '<div class="tabsAction">';
 	if ($permissionWrite) {
 		print dolGetButtonAction('', $langs->trans('Modify'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=edit');
-		if ((int) $object->status === LmdbVehicleInsuranceContract::STATUS_DRAFT) print lmdbInsuranceContractPostButton($id, 'activate', $langs->trans('Activate'), 'button');
-		if ((int) $object->status === LmdbVehicleInsuranceContract::STATUS_ACTIVE) print lmdbInsuranceContractPostButton($id, 'terminate', $langs->trans('Terminate'), 'button');
+		if ((int) $object->status === LmdbVehicleInsuranceContract::STATUS_DRAFT) print lmdbInsuranceContractPostButton($id, 'activate', $langs->trans('Activate'));
+		if ((int) $object->status === LmdbVehicleInsuranceContract::STATUS_ACTIVE) print lmdbInsuranceContractPostButton($id, 'terminate', $langs->trans('Terminate'));
 	}
 	if ($permissionDelete && (int) $object->status === LmdbVehicleInsuranceContract::STATUS_DRAFT) print dolGetButtonAction('', $langs->trans('Delete'), 'delete', $_SERVER['PHP_SELF'].'?id='.$id.'&action=delete&token='.newToken());
 	print '</div>';
@@ -218,15 +212,14 @@ $db->close();
  * @param int $contractId Contract id
  * @param string $action Action
  * @param string $label Label
- * @param string $class Button class
  * @return string
  */
-function lmdbInsuranceContractPostButton($contractId, $action, $label, $class)
+function lmdbInsuranceContractPostButton($contractId, $action, $label)
 {
 	$out = '<form class="inline-block" method="POST" action="'.dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'">';
 	$out .= '<input type="hidden" name="token" value="'.newToken().'">';
 	$out .= '<input type="hidden" name="id" value="'.((int) $contractId).'"><input type="hidden" name="action" value="'.dol_escape_htmltag($action).'">';
-	$out .= '<input type="submit" class="'.dol_escape_htmltag($class).'" value="'.dol_escape_htmltag($label).'">';
+	$out .= '<button type="submit" class="butAction">'.dol_escape_htmltag($label).'</button>';
 	$out .= '</form>';
 
 	return $out;

@@ -36,7 +36,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->descriptionlong = 'ModuleLmdbVehicleManagementDesc';
 		$this->editor_name = 'Pierre Ardoin';
 		$this->editor_url = 'https://github.com/mapiolca';
-		$this->version = '0.5.0';
+		$this->version = '0.6.0';
 		$this->const_name = 'MAIN_MODULE_LMDBVEHICLEMANAGEMENT';
 		$this->picto = 'car';
 
@@ -475,6 +475,9 @@ class modLmdbVehicleManagement extends DolibarrModules
 		if ($this->prepareVehicleSchema() < 0) {
 			return -1;
 		}
+		if ($this->prepareInsuranceContractSchema() < 0) {
+			return -1;
+		}
 
 		$result = $this->_load_tables('/lmdbvehiclemanagement/sql/');
 		if ($result < 0) {
@@ -553,6 +556,39 @@ class modLmdbVehicleManagement extends DolibarrModules
 		if ($fieldExists === 0 && !$this->db->query('ALTER TABLE '.$table.' ADD COLUMN fk_energy integer DEFAULT NULL AFTER vehicle_version')) {
 			$this->error = $this->db->lasterror();
 			return -1;
+		}
+
+		return 1;
+	}
+
+	/**
+	 * Add native note fields before loading table scripts on an upgrade.
+	 *
+	 * @return int<-1,1>
+	 */
+	private function prepareInsuranceContractSchema()
+	{
+		$table = MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract';
+		$tableExists = $this->tableExists($table);
+		if ($tableExists < 0) {
+			return -1;
+		}
+		if ($tableExists === 0) {
+			return 1;
+		}
+		$fields = array(
+			'note_public' => 'ALTER TABLE '.$table.' ADD COLUMN note_public text DEFAULT NULL AFTER description',
+			'note_private' => 'ALTER TABLE '.$table.' ADD COLUMN note_private text DEFAULT NULL AFTER note_public',
+		);
+		foreach ($fields as $field => $sql) {
+			$fieldExists = $this->tableFieldExists($table, $field);
+			if ($fieldExists < 0) {
+				return -1;
+			}
+			if ($fieldExists === 0 && !$this->db->query($sql)) {
+				$this->error = $this->db->lasterror();
+				return -1;
+			}
 		}
 
 		return 1;

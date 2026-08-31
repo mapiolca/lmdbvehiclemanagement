@@ -115,6 +115,122 @@ function lmdbVehiclePrintBanner($object)
 }
 
 /**
+ * Build insurance contract tabs in native Dolibarr order.
+ *
+ * @param LmdbVehicleInsuranceContract $object Insurance contract
+ * @return array<int,array{0:string,1:string,2:string}>
+ */
+function lmdbInsuranceContractPrepareHead($object)
+{
+	global $db, $langs, $user;
+
+	$langs->loadLangs(array('companies', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+	$id = (int) $object->id;
+	$head = array();
+	$h = 0;
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'?id='.$id, $langs->trans('Card'), 'card');
+
+	$contacts = array_merge($object->liste_contact(-1, 'internal'), $object->liste_contact(-1, 'external'));
+	$contactLabel = $langs->trans('ContactsAddresses');
+	if (count($contacts) > 0) {
+		$contactLabel .= '<span class="badge marginleftonlyshort">'.count($contacts).'</span>';
+	}
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/insurancecontract_contact.php', 1).'?id='.$id, $contactLabel, 'contacts');
+
+	$noteCount = (!empty($object->note_public) ? 1 : 0) + (!empty($object->note_private) ? 1 : 0);
+	$noteLabel = $langs->trans('Notes');
+	if ($noteCount > 0) {
+		$noteLabel .= '<span class="badge marginleftonlyshort">'.$noteCount.'</span>';
+	}
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/insurancecontract_note.php', 1).'?id='.$id, $noteLabel, 'notes');
+
+	require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
+	$uploadDir = getMultidirOutput($object, 'lmdbvehiclemanagement', 1);
+	$fileCount = 0;
+	if (is_string($uploadDir) && $uploadDir !== '' && strpos($uploadDir, 'error-diroutput-') !== 0) {
+		$fileCount = count(dol_dir_list($uploadDir, 'files', 0, '', '(\.meta|_preview.*\.png)$'));
+	}
+	$documentLabel = $langs->trans('Documents');
+	if ($fileCount > 0) {
+		$documentLabel .= '<span class="badge marginleftonlyshort">'.$fileCount.'</span>';
+	}
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/insurancecontract_document.php', 1).'?id='.$id, $documentLabel, 'documents');
+
+	if (isModEnabled('agenda') && ($user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) {
+		$agendaCount = 0;
+		$sql = 'SELECT COUNT(*) AS total FROM '.MAIN_DB_PREFIX.'actioncomm AS a'.lmdbInsuranceContractAgendaWhere($object, 'a');
+		$resql = $db->query($sql);
+		if ($resql && is_object($row = $db->fetch_object($resql))) {
+			$agendaCount = (int) $row->total;
+		}
+		if ($resql) {
+			$db->free($resql);
+		}
+		$agendaLabel = $langs->trans('EventsAgenda');
+		if ($agendaCount > 0) {
+			$agendaLabel .= '<span class="badge marginleftonlyshort">'.$agendaCount.'</span>';
+		}
+		$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/insurancecontract_agenda.php', 1).'?id='.$id, $agendaLabel, 'agenda');
+	}
+
+	return $head;
+}
+
+/**
+ * Return the native Agenda visibility filter for one insurance contract.
+ *
+ * @param LmdbVehicleInsuranceContract $object Insurance contract
+ * @param string $alias Agenda table alias
+ * @return string SQL WHERE clause
+ */
+function lmdbInsuranceContractAgendaWhere($object, $alias = 'a')
+{
+	global $user;
+
+	$alias = preg_match('/^[a-z][a-z0-9_]*$/i', $alias) ? $alias : 'a';
+	$where = " WHERE ".$alias.".elementtype = 'lmdbinsurancecontract@lmdbvehiclemanagement'";
+	$where .= ' AND '.$alias.'.fk_element = '.((int) $object->id);
+	$where .= ' AND '.$alias.'.entity IN ('.getEntity('agenda').')';
+	if (!$user->hasRight('agenda', 'allactions', 'read')) {
+		$where .= ' AND ('.$alias.'.fk_user_author = '.((int) $user->id);
+		$where .= ' OR '.$alias.'.fk_user_action = '.((int) $user->id);
+		$where .= ' OR EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'actioncomm_resources AS lmdbvm_ar';
+		$where .= ' WHERE lmdbvm_ar.fk_actioncomm = '.$alias.'.id';
+		$where .= " AND lmdbvm_ar.element_type = 'user' AND lmdbvm_ar.fk_element = ".((int) $user->id).'))';
+	}
+
+	return $where;
+}
+
+/**
+ * Print the common native banner used by every insurance contract tab.
+ *
+ * @param LmdbVehicleInsuranceContract $object Insurance contract
+ * @return void
+ */
+function lmdbInsuranceContractPrintBanner($object)
+{
+	global $db, $langs;
+
+	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/insurancecontract_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
+	$moreHtmlRef = '<div class="refidno">'.dol_escape_htmltag($object->label);
+	if (isModEnabled('multicompany') && !empty($object->entity)) {
+		$entityLabel = (string) $object->entity;
+		$resEntity = $db->query('SELECT label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid = '.((int) $object->entity));
+		if ($resEntity && is_object($entityRow = $db->fetch_object($resEntity)) && !empty($entityRow->label)) {
+			$entityLabel = (string) $entityRow->label;
+		}
+		if ($resEntity) {
+			$db->free($resEntity);
+		}
+		$moreHtmlRef .= '<br><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div>';
+	}
+	$moreHtmlRef .= '</div>';
+
+	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $moreHtmlRef);
+}
+
+/**
  * Print the insurance at-a-glance block for a vehicle.
  *
  * @param LmdbVehicle $object Vehicle

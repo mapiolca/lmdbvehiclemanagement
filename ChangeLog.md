@@ -1,5 +1,12 @@
 # Historique des versions
 
+## `0.6.0` — 2026-08-31
+
+- Ajout des onglets natifs « Fiche », « Contacts/Adresses », « Notes », « Fichiers joints » et « Événements/Agenda » à la fiche contrat d’assurance.
+- Ajout des notes publiques et privées, des rôles de contacts internes/externes et de leur migration idempotente sur les installations existantes.
+- Ajout des compteurs d’onglets, du filtrage Agenda selon les droits et de la bannière commune sur chaque onglet.
+- Uniformisation des boutons de transition au format d’action natif Dolibarr, tout en conservant les mutations POST et les tokens CSRF.
+
 ## `0.5.0` — 2026-08-31
 
 - Ajout sous les actions de la fiche contrat des blocs natifs Dolibarr « Fichiers joints », « Objets liés » et « Les X derniers événements ».

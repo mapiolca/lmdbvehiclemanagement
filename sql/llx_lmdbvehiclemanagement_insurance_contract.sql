@@ -16,6 +16,8 @@ CREATE TABLE llx_lmdbvehiclemanagement_insurance_contract (
 	claim_phone varchar(32) DEFAULT NULL,
 	claim_email varchar(255) DEFAULT NULL,
 	description text,
+	note_public text,
+	note_private text,
 	status smallint DEFAULT 0 NOT NULL,
 	date_creation datetime NOT NULL,
 	tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

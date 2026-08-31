@@ -130,7 +130,7 @@ class ActionsLmdbVehicleManagement
 	 *
 	 * FormActions::showactions() delegates its query to the agendadao hooks. This
 	 * filter preserves the native rendering while applying the same ownership and
-	 * assignment rule as the vehicle Agenda tab.
+	 * assignment rule as the vehicle and insurance contract Agenda tabs.
 	 *
 	 * @param array<string,mixed> $parameters Hook parameters
 	 * @param CommonObject|null $object Current object
@@ -143,7 +143,7 @@ class ActionsLmdbVehicleManagement
 		global $user;
 
 		$elementType = isset($parameters['elementtype']) ? (string) $parameters['elementtype'] : '';
-		if ($elementType !== 'lmdbvehicle@lmdbvehiclemanagement') {
+		if (!in_array($elementType, array('lmdbvehicle@lmdbvehiclemanagement', 'lmdbinsurancecontract@lmdbvehiclemanagement'), true)) {
 			return 0;
 		}
 		if ($user->hasRight('agenda', 'allactions', 'read')) {

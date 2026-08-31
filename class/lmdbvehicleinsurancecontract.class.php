@@ -47,6 +47,8 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 		'claim_phone' => array('type' => 'varchar(32)', 'label' => 'InsuranceClaimPhone', 'position' => 140, 'notnull' => -1, 'visible' => 1),
 		'claim_email' => array('type' => 'varchar(255)', 'label' => 'InsuranceClaimEmail', 'position' => 150, 'notnull' => -1, 'visible' => 1),
 		'description' => array('type' => 'text', 'label' => 'Description', 'position' => 160, 'notnull' => -1, 'visible' => 3),
+		'note_public' => array('type' => 'html', 'label' => 'NotePublic', 'position' => 170, 'notnull' => -1, 'visible' => 0),
+		'note_private' => array('type' => 'html', 'label' => 'NotePrivate', 'position' => 180, 'notnull' => -1, 'visible' => 0),
 		'status' => array('type' => 'integer', 'label' => 'Status', 'position' => 200, 'notnull' => 1, 'visible' => 1, 'default' => 0, 'arrayofkeyval' => array(0 => 'InsuranceContractStatusDraft', 1 => 'InsuranceContractStatusActive', 9 => 'InsuranceContractStatusTerminated')),
 		'date_creation' => array('type' => 'datetime', 'label' => 'DateCreation', 'position' => 500, 'notnull' => 1, 'visible' => -2),
 		'tms' => array('type' => 'timestamp', 'label' => 'DateModification', 'position' => 501, 'notnull' => 0, 'visible' => -2, 'noteditable' => 1),
@@ -71,6 +73,8 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 	/** @var ?string */ public $claim_phone;
 	/** @var ?string */ public $claim_email;
 	/** @var ?string */ public $description;
+	/** @var ?string */ public $note_public;
+	/** @var ?string */ public $note_private;
 	/** @var ?string */ public $last_main_doc;
 	/** @var bool */ private $transitionInProgress = false;
 

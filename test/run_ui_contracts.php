@@ -29,10 +29,17 @@ $insuranceLibrary = readModuleSource('lib/lmdbvehicleinsurance.lib.php');
 $insuranceCard = readModuleSource('insurancecontract_card.php');
 $insuranceList = readModuleSource('insurancecontract_list.php');
 $insuranceContractClass = readModuleSource('class/lmdbvehicleinsurancecontract.class.php');
+$baseObjectClass = readModuleSource('class/lmdbvehiclemanagementobject.class.php');
 $insuranceCertificateClass = readModuleSource('class/lmdbvehicleinsurancecertificate.class.php');
 $insuranceAdmin = readModuleSource('admin/insurance.php');
 $descriptor = readModuleSource('core/modules/modLmdbVehicleManagement.class.php');
 $insuranceCron = readModuleSource('class/lmdbvehicleinsurancecron.class.php');
+$insuranceContact = readModuleSource('insurancecontract_contact.php');
+$insuranceNote = readModuleSource('insurancecontract_note.php');
+$insuranceDocument = readModuleSource('insurancecontract_document.php');
+$insuranceAgenda = readModuleSource('insurancecontract_agenda.php');
+$insuranceSql = readModuleSource('sql/llx_lmdbvehiclemanagement_insurance_contract.sql');
+$moduleDataSql = readModuleSource('sql/data.sql');
 $checks = array();
 
 $orderedTabs = array(
@@ -93,7 +100,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insurancePage, "\$u
 $checks['insurance_download_is_read_only_route'] = strpos($insurancePage, '$downloadCertificate === 1') !== false && strpos($insurancePage, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['insurance_version_is_050'] = strpos($descriptor, "\$this->version = '0.5.0';") !== false;
+$checks['insurance_version_is_060'] = strpos($descriptor, "\$this->version = '0.6.0';") !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;
@@ -119,6 +126,54 @@ $checks['insurance_card_status_row_is_hidden'] = strpos($insuranceCard, "langs->
 $checks['insurance_card_actions_follow_native_clear'] = $insuranceCardClearPosition !== false
 	&& $insuranceCardActionsPosition !== false
 	&& $insuranceCardClearPosition < $insuranceCardActionsPosition;
+$insuranceOrderedTabs = array(
+	'insurancecontract_card.php',
+	'insurancecontract_contact.php',
+	'insurancecontract_note.php',
+	'insurancecontract_document.php',
+	'insurancecontract_agenda.php',
+);
+$previousInsuranceTabPosition = strpos($library, 'function lmdbInsuranceContractPrepareHead');
+foreach ($insuranceOrderedTabs as $tabFile) {
+	$position = strpos($library, $tabFile, $previousInsuranceTabPosition);
+	$checks['insurance_tab_order_'.$tabFile] = $position !== false && $position > $previousInsuranceTabPosition;
+	if ($position !== false) $previousInsuranceTabPosition = $position;
+}
+$insuranceTabPages = array(
+	'insurancecontract_card.php' => $insuranceCard,
+	'insurancecontract_contact.php' => $insuranceContact,
+	'insurancecontract_note.php' => $insuranceNote,
+	'insurancecontract_document.php' => $insuranceDocument,
+	'insurancecontract_agenda.php' => $insuranceAgenda,
+);
+foreach ($insuranceTabPages as $pageFile => $pageSource) {
+	$checks['insurance_common_banner_'.$pageFile] = strpos($pageSource, 'lmdbInsuranceContractPrintBanner($object)') !== false;
+}
+$checks['insurance_card_uses_native_tabs'] = strpos($insuranceCard, "dol_get_fiche_head(\$head, 'card'") !== false
+	&& strpos($insuranceCard, 'lmdbInsuranceContractPrepareHead($object)') !== false;
+$checks['insurance_contacts_use_native_template'] = strpos($insuranceContact, '/contacts.tpl.php') !== false
+	&& strpos($insuranceContact, '$object->socid = (int) $object->fk_soc') !== false
+	&& strpos($insuranceContact, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')") !== false;
+$checks['insurance_notes_use_native_actions_and_template'] = strpos($insuranceNote, '/core/actions_setnotes.inc.php') !== false
+	&& strpos($insuranceNote, '/notes.tpl.php') !== false;
+$checks['insurance_documents_use_native_actions_and_template'] = strpos($insuranceDocument, '/core/actions_linkedfiles.inc.php') !== false
+	&& strpos($insuranceDocument, '/core/tpl/document_actions_post_headers.tpl.php') !== false
+	&& strpos($insuranceDocument, "getMultidirOutput(\$object, 'lmdbvehiclemanagement', 1)") !== false;
+$checks['insurance_agenda_uses_native_list_contract'] = strpos($insuranceAgenda, 'print_barre_liste(') !== false
+	&& strpos($insuranceAgenda, "lmdbInsuranceContractAgendaWhere(\$object, 'a')") !== false
+	&& strpos($insuranceAgenda, "\$origin = urlencode(\$object->element.'@'.\$object->module)") !== false;
+$checks['insurance_notes_schema_is_migrated'] = strpos($insuranceContractClass, "'note_public' => array('type' => 'html'") !== false
+	&& strpos($insuranceContractClass, "'note_private' => array('type' => 'html'") !== false
+	&& strpos($insuranceSql, 'note_public text') !== false
+	&& strpos($insuranceSql, 'note_private text') !== false
+	&& strpos($descriptor, 'prepareInsuranceContractSchema()') !== false;
+$checks['insurance_contact_roles_are_native_and_idempotent'] = strpos($moduleDataSql, "'lmdbinsurancecontract', 'internal', 'CONTRACTMANAGER'") !== false
+	&& strpos($moduleDataSql, "'lmdbinsurancecontract', 'external', 'INSURANCECONTACT'") !== false
+	&& substr_count($moduleDataSql, 'WHERE NOT EXISTS') === 2
+	&& strpos($baseObjectClass, "ctc.element = '") !== false;
+$checks['insurance_post_actions_use_native_button_size'] = strpos($insuranceCard, '<button type="submit" class="butAction">') !== false
+	&& strpos($insuranceCard, "lmdbInsuranceContractPostButton(\$id, 'activate', \$langs->trans('Activate'))") !== false
+	&& strpos($insuranceCard, "lmdbInsuranceContractPostButton(\$id, 'terminate', \$langs->trans('Terminate'))") !== false;
 $checks['insurance_card_uses_native_transverse_blocks'] = strpos($insuranceCard, "getMultidirOutput(\$object, 'lmdbvehiclemanagement', 1)") !== false
 	&& strpos($insuranceCard, '$formfile->showdocuments(') !== false
 	&& strpos($insuranceCard, '$form->showLinkedObjectBlock($object)') !== false

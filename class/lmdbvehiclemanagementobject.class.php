@@ -250,6 +250,16 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 				return -1;
 			}
 		}
+		$sql = 'DELETE ec FROM '.MAIN_DB_PREFIX.'element_contact AS ec';
+		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_type_contact AS ctc ON ctc.rowid = ec.fk_c_type_contact';
+		$sql .= ' WHERE ec.element_id = '.((int) $this->id);
+		$sql .= " AND ctc.element = '".$this->db->escape($this->element)."'";
+		if (!$this->db->query($sql)) {
+			$this->error = $this->db->lasterror();
+			$this->errors[] = $this->error;
+			$this->db->rollback();
+			return -1;
+		}
 		$result = $this->deleteObjectLinked();
 		if ($result < 0) {
 			$this->db->rollback();
