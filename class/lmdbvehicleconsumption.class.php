@@ -85,6 +85,9 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 	public function fetch($id, $ref = null)
 	{
 		$result = parent::fetch($id, $ref);
+		if ($result > 0 && empty($this->fk_user_driver) && !empty($this->fk_user_creat)) {
+			$this->fk_user_driver = (int) $this->fk_user_creat;
+		}
 		if ($result > 0 && (int) $this->fk_odometer_reading > 0) {
 			$reading = new LmdbVehicleOdometerReading($this->db);
 			if ($reading->fetch((int) $this->fk_odometer_reading) <= 0) {
@@ -107,6 +110,9 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 
 		$this->entity = (int) $conf->entity;
 		$this->status = self::STATUS_RECORDED;
+		if (empty($this->fk_user_driver)) {
+			$this->fk_user_driver = (int) $user->id;
+		}
 		if ($this->validateBusinessRules() < 0) {
 			return -1;
 		}
@@ -138,6 +144,9 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		$this->entity = (int) $current->entity;
 		$this->fk_odometer_reading = (int) $current->fk_odometer_reading;
 		$this->currency_snapshot = (string) $current->currency_snapshot;
+		if (empty($this->fk_user_driver)) {
+			$this->fk_user_driver = !empty($current->fk_user_driver) ? (int) $current->fk_user_driver : (int) $user->id;
+		}
 		if ($this->validateBusinessRules() < 0) {
 			return -1;
 		}
@@ -410,26 +419,6 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		$dictionary = new LmdbVehicleConsumable($db);
 		$options = $dictionary->getOptions('fuel', $vehicleId);
 		return count($options) === 1 ? (int) array_key_first($options) : 0;
-	}
-
-	/** @param DoliDB $db Database @param int $vehicleId Vehicle @param int $atDate Date @param int $fallbackUserId Fallback @return int */
-	public static function suggestDriver($db, $vehicleId, $atDate, $fallbackUserId)
-	{
-		$sql = 'SELECT DISTINCT fk_user_driver FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_assignment';
-		$sql .= ' WHERE fk_vehicle = '.((int) $vehicleId).' AND entity IN ('.getEntity('lmdbvehicle').')';
-		$sql .= " AND status = 1 AND assignment_type = 'driver'";
-		$sql .= " AND date_start <= '".$db->idate($atDate)."'";
-		$sql .= " AND (date_end IS NULL OR date_end >= '".$db->idate($atDate)."')";
-		$resql = $db->query($sql);
-		if (!$resql) {
-			return $fallbackUserId;
-		}
-		$ids = array();
-		while (is_object($row = $db->fetch_object($resql))) {
-			$ids[] = (int) $row->fk_user_driver;
-		}
-		$db->free($resql);
-		return count($ids) === 1 ? $ids[0] : $fallbackUserId;
 	}
 
 	/** @inheritdoc */

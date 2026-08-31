@@ -24,9 +24,22 @@ $vehicleId = GETPOSTINT('vehicle_id');
 $driverId = GETPOSTINT('driver_id');
 $consumableId = GETPOSTINT('consumable_id');
 $category = GETPOST('category', 'alpha');
-$dateStart = dol_mktime(0, 0, 0, GETPOSTINT('date_startmonth'), GETPOSTINT('date_startday'), GETPOSTINT('date_startyear'));
-$dateEnd = dol_mktime(23, 59, 59, GETPOSTINT('date_endmonth'), GETPOSTINT('date_endday'), GETPOSTINT('date_endyear'));
+$dateStartDay = GETPOSTINT('date_startday');
+$dateStartMonth = GETPOSTINT('date_startmonth');
+$dateStartYear = GETPOSTINT('date_startyear');
+$dateEndDay = GETPOSTINT('date_endday');
+$dateEndMonth = GETPOSTINT('date_endmonth');
+$dateEndYear = GETPOSTINT('date_endyear');
 $entityIds = GETPOSTISARRAY('entity_ids') ? GETPOST('entity_ids', 'array:int') : array();
+if (GETPOST('button_removefilter', 'alpha')) {
+	$vehicleId = $driverId = $consumableId = 0;
+	$category = '';
+	$dateStartDay = $dateStartMonth = $dateStartYear = 0;
+	$dateEndDay = $dateEndMonth = $dateEndYear = 0;
+	$entityIds = array();
+}
+$dateStart = $dateStartDay > 0 && $dateStartMonth > 0 && $dateStartYear > 0 ? dol_mktime(0, 0, 0, $dateStartMonth, $dateStartDay, $dateStartYear) : 0;
+$dateEnd = $dateEndDay > 0 && $dateEndMonth > 0 && $dateEndYear > 0 ? dol_mktime(23, 59, 59, $dateEndMonth, $dateEndDay, $dateEndYear) : 0;
 $form = new Form($db);
 $dictionary = new LmdbVehicleConsumable($db);
 $vehicleOptions = array();
@@ -63,7 +76,7 @@ print '<td>'.$form->select_dolusers($driverId ?: '', 'driver_id', 1, null, 0, ''
 print '<td>'.$form->selectarray('consumable_id', $dictionary->getOptions(), $consumableId, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth200', 1).'</td>';
 print '<td>'.$form->selectarray('category', array('fuel' => $langs->trans('FuelOrRecharge'), 'additive' => $langs->trans('Additive')), $category, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth200', 1).'</td>';
 if (!empty($entityOptions)) print '<td>'.$form->multiselectarray('entity_ids', $entityOptions, $safeEntities, 0, 0, 'maxwidth200', 1).'</td>';
-print '<td><button class="button" type="submit">'.$langs->trans('Search').'</button></td></tr></table></div></form>';
+print '<td class="center nowraponall">'.$form->showFilterButtons().'</td></tr></table></div></form>';
 
 print '<div class="tabsAction">';
 print dolGetButtonAction('', $langs->trans('ConsumptionList'), 'default', dol_buildpath('/lmdbvehiclemanagement/consumption_list.php', 1));

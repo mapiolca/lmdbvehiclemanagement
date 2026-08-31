@@ -1,5 +1,11 @@
 # Historique des versions
 
+## `0.8.6` — 2026-08-31
+
+- Vérification et sécurisation des filtres de la synthèse des consommations, notamment des périodes incomplètes et de la remise à zéro native.
+- Utilisation de l’utilisateur ayant créé le plein ou la recharge comme conducteur lorsqu’aucun autre conducteur n’est explicitement sélectionné.
+- Application du conducteur effectif aux filtres, listes, statistiques et exports, y compris pour les anciennes consommations sans conducteur enregistré.
+
 ## `0.8.5` — 2026-08-31
 
 - Encadrement de chaque graphique de consommation dans un tableau Dolibarr distinct et de largeur stable.

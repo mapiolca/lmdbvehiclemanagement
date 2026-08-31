@@ -80,7 +80,7 @@ include DOL_DOCUMENT_ROOT.'/core/actions_changeselectedfields.inc.php';
 $where = ' WHERE t.entity IN ('.$entityScope.')';
 if ($searchRef !== '') $where .= natural_search('t.ref', $searchRef);
 if ($searchVehicle > 0) $where .= ' AND t.fk_vehicle = '.$searchVehicle;
-if ($searchDriver > 0) $where .= ' AND t.fk_user_driver = '.$searchDriver;
+if ($searchDriver > 0) $where .= ' AND COALESCE(t.fk_user_driver, t.fk_user_creat) = '.$searchDriver;
 if ($searchConsumable > 0) $where .= ' AND t.fk_consumable = '.$searchConsumable;
 if (in_array($searchCategory, array('fuel', 'additive'), true)) $where .= " AND t.category_snapshot = '".$db->escape($searchCategory)."'";
 if (!empty($searchEntities)) {
@@ -91,14 +91,14 @@ $sqlFrom = ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption AS t';
 $sqlFrom .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading AS r ON r.rowid = t.fk_odometer_reading AND r.entity = t.entity';
 $sqlFrom .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND v.entity = t.entity';
 $sqlFrom .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c ON c.rowid = t.fk_consumable';
-$sqlFrom .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user AS u ON u.rowid = t.fk_user_driver';
+$sqlFrom .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user AS u ON u.rowid = COALESCE(t.fk_user_driver, t.fk_user_creat)';
 $sqlFrom .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity AS cap ON cap.entity = t.entity AND cap.fk_vehicle = t.fk_vehicle AND cap.fk_consumable = t.fk_consumable';
 $resCount = $db->query('SELECT COUNT(*) AS total'.$sqlFrom.$where);
 if (!$resCount) { dol_print_error($db); exit; }
 $total = is_object($countRow = $db->fetch_object($resCount)) ? (int) $countRow->total : 0;
 $db->free($resCount);
 if ($offset > $total) { $page = 0; $offset = 0; }
-$sql = 'SELECT t.rowid, t.entity, t.ref, t.fk_vehicle, t.fk_consumable, t.fk_user_driver, t.category_snapshot, t.unit_snapshot, t.quantity, t.total_ttc, t.currency_snapshot, t.status,';
+$sql = 'SELECT t.rowid, t.entity, t.ref, t.fk_vehicle, t.fk_consumable, COALESCE(t.fk_user_driver, t.fk_user_creat) AS fk_user_driver, t.category_snapshot, t.unit_snapshot, t.quantity, t.total_ttc, t.currency_snapshot, t.status,';
 $sql .= ' r.reading_date, r.odometer_km, v.ref AS vehicle_ref, v.registration_number, v.label AS vehicle_label, c.label AS consumable_label,';
 $sql .= ' u.login, u.firstname, u.lastname, CASE WHEN t.quantity > 0 THEN t.total_ttc / t.quantity ELSE 0 END AS unit_price,';
 $sql .= ' CASE WHEN cap.capacity > 0 THEN t.quantity / cap.capacity * 100 ELSE NULL END AS capacity_percent';

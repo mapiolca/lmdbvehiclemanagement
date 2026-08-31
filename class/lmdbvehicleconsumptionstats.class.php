@@ -22,7 +22,7 @@ class LmdbVehicleConsumptionStats
 	public function fetchRows($filters = array())
 	{
 		$sql = 'SELECT t.rowid, t.entity, t.ref, t.fk_vehicle, t.fk_consumable, t.category_snapshot, t.unit_snapshot,';
-		$sql .= ' t.fk_user_driver, t.quantity, t.total_ttc, t.currency_snapshot, t.oil_reference,';
+		$sql .= ' COALESCE(t.fk_user_driver, t.fk_user_creat) AS fk_user_driver, t.quantity, t.total_ttc, t.currency_snapshot, t.oil_reference,';
 		$sql .= ' r.reading_date, r.odometer_km, r.reading_kind, c.code AS consumable_code, c.label AS consumable_label,';
 		$sql .= ' v.ref AS vehicle_ref, v.registration_number, v.label AS vehicle_label, v.wltp_range_km,';
 		$sql .= ' cap.capacity, u.login AS driver_login, u.firstname AS driver_firstname, u.lastname AS driver_lastname';
@@ -31,10 +31,10 @@ class LmdbVehicleConsumptionStats
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c ON c.rowid = t.fk_consumable';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND v.entity = t.entity';
 		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity AS cap ON cap.entity = t.entity AND cap.fk_vehicle = t.fk_vehicle AND cap.fk_consumable = t.fk_consumable';
-		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user AS u ON u.rowid = t.fk_user_driver';
+		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user AS u ON u.rowid = COALESCE(t.fk_user_driver, t.fk_user_creat)';
 		$sql .= ' WHERE t.entity IN ('.getEntity('lmdbvehicleconsumption').')';
 		if (!empty($filters['vehicle_id'])) $sql .= ' AND t.fk_vehicle = '.((int) $filters['vehicle_id']);
-		if (!empty($filters['user_id'])) $sql .= ' AND t.fk_user_driver = '.((int) $filters['user_id']);
+		if (!empty($filters['user_id'])) $sql .= ' AND COALESCE(t.fk_user_driver, t.fk_user_creat) = '.((int) $filters['user_id']);
 		if (!empty($filters['consumable_id'])) $sql .= ' AND t.fk_consumable = '.((int) $filters['consumable_id']);
 		if (!empty($filters['category']) && in_array($filters['category'], array('fuel', 'additive'), true)) $sql .= " AND t.category_snapshot = '".$this->db->escape($filters['category'])."'";
 		if (!empty($filters['date_start'])) $sql .= " AND r.reading_date >= '".$this->db->idate((int) $filters['date_start'])."'";

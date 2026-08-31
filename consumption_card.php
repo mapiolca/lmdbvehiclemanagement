@@ -102,31 +102,6 @@ function lmdbConsumptionSuggestedConsumables($db, $compatibility)
 	return $suggestions;
 }
 
-/** @return array<int,int> Vehicle id to the unique active driver, otherwise current user */
-function lmdbConsumptionSuggestedDrivers($db, $currentUserId)
-{
-	global $conf;
-
-	$suggestions = array();
-	$drivers = array();
-	$now = dol_now();
-	$resql = $db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle WHERE entity = '.((int) $conf->entity).' AND status <> '.LmdbVehicle::STATUS_SOLD);
-	if ($resql) {
-		while (is_object($row = $db->fetch_object($resql))) $suggestions[(int) $row->rowid] = $currentUserId;
-		$db->free($resql);
-	}
-	$sql = 'SELECT fk_vehicle, fk_user_driver FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_assignment';
-	$sql .= " WHERE assignment_type = 'driver' AND status = 1 AND entity = ".((int) $conf->entity);
-	$sql .= " AND date_start <= '".$db->idate($now)."' AND (date_end IS NULL OR date_end >= '".$db->idate($now)."')";
-	$resql = $db->query($sql);
-	if ($resql) {
-		while (is_object($row = $db->fetch_object($resql))) $drivers[(int) $row->fk_vehicle][(int) $row->fk_user_driver] = true;
-		$db->free($resql);
-	}
-	foreach ($drivers as $vehicleId => $ids) $suggestions[(int) $vehicleId] = count($ids) === 1 ? (int) array_key_first($ids) : $currentUserId;
-	return $suggestions;
-}
-
 /** @param LmdbVehicleConsumption $target Target @return void */
 function lmdbConsumptionPopulateFromPost($target)
 {
@@ -187,12 +162,11 @@ $vehicleOptions = lmdbConsumptionVehicleOptions($db);
 if ($action === 'create' && $object->fk_vehicle <= 0 && $vehicleIdFromUrl > 0 && isset($vehicleOptions[$vehicleIdFromUrl])) $object->fk_vehicle = $vehicleIdFromUrl;
 if ($action === 'create' && $object->reading_date <= 0) $object->reading_date = dol_now();
 if ($action === 'create' && $object->fk_vehicle > 0 && $object->fk_consumable <= 0) $object->fk_consumable = LmdbVehicleConsumption::suggestConsumable($db, (int) $object->fk_vehicle);
-if ($action === 'create' && $object->fk_user_driver === null) $object->fk_user_driver = LmdbVehicleConsumption::suggestDriver($db, (int) $object->fk_vehicle, (int) $object->reading_date, (int) $user->id);
+if ($action === 'create' && $object->fk_user_driver === null) $object->fk_user_driver = (int) $user->id;
 $fuelOptions = $dictionary->getOptions('fuel');
 $additiveOptions = $dictionary->getOptions('additive');
 $compatibilityByVehicle = lmdbConsumptionCompatibilityByVehicle($db);
 $suggestedConsumables = lmdbConsumptionSuggestedConsumables($db, $compatibilityByVehicle);
-$suggestedDrivers = lmdbConsumptionSuggestedDrivers($db, (int) $user->id);
 $nature = $object->category_snapshot === 'additive' ? 'additive' : 'fuel';
 $fuelSelected = $nature === 'fuel' ? (int) $object->fk_consumable : 0;
 $additiveSelected = $nature === 'additive' ? (int) $object->fk_consumable : 0;
@@ -228,7 +202,7 @@ if ($action === 'create' || $action === 'edit') {
 		$entry = new LmdbVehicleConsumable($db);
 		if ($entry->fetch((int) $consumableId) > 0) $metadata[(int) $consumableId] = array('unit' => LmdbVehicleConsumable::unitLabel($entry->unit), 'oil' => (int) $entry->requires_oil_reference);
 	}
-	print '<script>jQuery(function($){var meta='.json_encode($metadata).',compatible='.json_encode($compatibilityByVehicle).',suggestedFuel='.json_encode($suggestedConsumables).',suggestedDriver='.json_encode($suggestedDrivers).';function filterFuel(selectSuggestion){var vehicle=String($("#fk_vehicle").val()||""),allowed=(compatible[vehicle]||[]).map(String),$fuel=$("#fuel_consumable_id");$fuel.find("option").each(function(){var value=String(this.value||"");this.disabled=value!==""&&allowed.indexOf(value)===-1;});if($fuel.val()&&allowed.indexOf(String($fuel.val()))===-1)$fuel.val("");if(selectSuggestion&&suggestedFuel[vehicle])$fuel.val(String(suggestedFuel[vehicle]));$fuel.trigger("change.select2");}function refresh(){var additive=$("#nature").val()==="additive";$("#fuel_consumable_row").toggle(!additive);$("#additive_consumable_row").toggle(additive);var id=additive?$("#additive_consumable_id").val():$("#fuel_consumable_id").val(),item=meta[id]||{},oil=additive&&item.oil===1;$("#consumption_unit").text(item.unit||"");$("#oil_reference_row").toggle(oil);$("#oil_reference_label").toggleClass("fieldrequired",oil);}$("#fk_vehicle").on("change",function(){var vehicle=String($(this).val()||"");filterFuel(true);if(suggestedDriver[vehicle])$("#fk_user_driver").val(String(suggestedDriver[vehicle])).trigger("change.select2");refresh();});$("#nature,#fuel_consumable_id,#additive_consumable_id").on("change",refresh);filterFuel(false);refresh();});</script>';
+	print '<script>jQuery(function($){var meta='.json_encode($metadata).',compatible='.json_encode($compatibilityByVehicle).',suggestedFuel='.json_encode($suggestedConsumables).';function filterFuel(selectSuggestion){var vehicle=String($("#fk_vehicle").val()||""),allowed=(compatible[vehicle]||[]).map(String),$fuel=$("#fuel_consumable_id");$fuel.find("option").each(function(){var value=String(this.value||"");this.disabled=value!==""&&allowed.indexOf(value)===-1;});if($fuel.val()&&allowed.indexOf(String($fuel.val()))===-1)$fuel.val("");if(selectSuggestion&&suggestedFuel[vehicle])$fuel.val(String(suggestedFuel[vehicle]));$fuel.trigger("change.select2");}function refresh(){var additive=$("#nature").val()==="additive";$("#fuel_consumable_row").toggle(!additive);$("#additive_consumable_row").toggle(additive);var id=additive?$("#additive_consumable_id").val():$("#fuel_consumable_id").val(),item=meta[id]||{},oil=additive&&item.oil===1;$("#consumption_unit").text(item.unit||"");$("#oil_reference_row").toggle(oil);$("#oil_reference_label").toggleClass("fieldrequired",oil);}$("#fk_vehicle").on("change",function(){filterFuel(true);refresh();});$("#nature,#fuel_consumable_id,#additive_consumable_id").on("change",refresh);filterFuel(false);refresh();});</script>';
 } elseif ($id > 0) {
 	$head = lmdbVehicleConsumptionPrepareHead($object);
 	print dol_get_fiche_head($head, 'card', $langs->trans('ConsumptionEntry'), -1, $object->picto);
