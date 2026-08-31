@@ -8,6 +8,7 @@ if (!$res && file_exists('../main.inc.php')) $res = @include '../main.inc.php';
 if (!$res) die('Include of main fails');
 
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.class.php');
+dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 
 /** @var Conf $conf */
 /** @var DoliDB $db */
@@ -54,17 +55,11 @@ $arrayfields = array(
 
 $entityScope = getEntity('lmdbvehicle');
 $allowedEntityIds = array_values(array_filter(array_map('intval', explode(',', $entityScope))));
-$showEntityColumn = isModEnabled('multicompany') && count($allowedEntityIds) > 1;
-$entityOptions = array();
+$entityOptions = lmdbVehicleManagementGetEntityOptions('lmdbvehicle');
+$showEntityColumn = !empty($entityOptions);
+if (!$showEntityColumn) $searchEntities = array();
 if ($showEntityColumn) {
 	$arrayfields['c.entity'] = array('label' => 'Environment', 'checked' => 1, 'enabled' => 1, 'position' => 80);
-	$resEntity = $db->query('SELECT rowid, label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid IN ('.$entityScope.') ORDER BY label');
-	if (!$resEntity) {
-		dol_print_error($db);
-		exit;
-	}
-	while (is_object($entityRow = $db->fetch_object($resEntity))) $entityOptions[(int) $entityRow->rowid] = (string) $entityRow->label;
-	$db->free($resEntity);
 }
 
 $action = GETPOST('action', 'aZ09');
@@ -79,7 +74,7 @@ if ($searchPolicy !== '') $where .= natural_search('c.policy_number', $searchPol
 if ($searchLabel !== '') $where .= natural_search('c.label', $searchLabel);
 if ($searchCompany !== '') $where .= natural_search('s.nom', $searchCompany);
 if ($searchStatus >= 0) $where .= ' AND c.status = '.((int) $searchStatus);
-if (!empty($searchEntities)) {
+if ($showEntityColumn && !empty($searchEntities)) {
 	$filteredEntities = array_values(array_intersect($allowedEntityIds, array_map('intval', $searchEntities)));
 	if (!empty($filteredEntities)) $where .= ' AND c.entity IN ('.implode(',', $filteredEntities).')';
 }
@@ -105,9 +100,7 @@ if ($offset > $total) {
 
 $vehicleCountSql = '(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle AS cv WHERE cv.fk_contract = c.rowid AND cv.entity = c.entity)';
 $sql = 'SELECT c.rowid, c.entity, c.ref, c.policy_number, c.label, c.fk_soc, c.date_start, c.date_end, c.status, s.nom AS company_name, '.$vehicleCountSql.' AS vehicle_count';
-if ($showEntityColumn) $sql .= ', e.label AS entity_label';
 $sql .= $sqlFrom;
-if ($showEntityColumn) $sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'entity AS e ON e.rowid = c.entity';
 $sql .= $where.$db->order($sortfield, $sortorder).$db->plimit($limit + 1, $offset);
 $resql = $db->query($sql);
 if (!$resql) {
@@ -181,8 +174,7 @@ while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 	if (!empty($arrayfields['vehicle_count']['checked'])) print '<td class="center">'.((int) $row->vehicle_count).'</td>';
 	if (!empty($arrayfields['c.status']['checked'])) print '<td class="center">'.$object->getLibStatut(5).'</td>';
 	if ($showEntityColumn && !empty($arrayfields['c.entity']['checked'])) {
-		$entityLabel = !empty($row->entity_label) ? (string) $row->entity_label : (string) $row->entity;
-		print '<td class="center"><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div></td>';
+		print '<td class="center">'.lmdbVehicleManagementEntityBadge((int) $row->entity, $entityOptions).'</td>';
 	}
 	if (!$conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn"></td>';
 	print '</tr>';

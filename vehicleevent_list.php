@@ -58,17 +58,11 @@ $arrayfields = array(
 );
 $entityScope = getEntity('lmdbvehicle');
 $allowedEntityIds = array_values(array_filter(array_map('intval', explode(',', $entityScope))));
-$showEntityColumn = isModEnabled('multicompany') && count($allowedEntityIds) > 1;
-$entityOptions = array();
+$entityOptions = lmdbVehicleManagementGetEntityOptions('lmdbvehicle');
+$showEntityColumn = !empty($entityOptions);
+if (!$showEntityColumn) $searchEntities = array();
 if ($showEntityColumn) {
 	$arrayfields['e.entity'] = array('label' => 'Environment', 'checked' => 1, 'enabled' => 1, 'position' => 70);
-	$resEntity = $db->query('SELECT rowid, label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid IN ('.$entityScope.') ORDER BY label');
-	if (!$resEntity) {
-		dol_print_error($db);
-		exit;
-	}
-	while (is_object($entityRow = $db->fetch_object($resEntity))) $entityOptions[(int) $entityRow->rowid] = (string) $entityRow->label;
-	$db->free($resEntity);
 }
 $action = GETPOST('action', 'aZ09');
 $parameters = array('arrayfields' => &$arrayfields);
@@ -93,7 +87,7 @@ if ($searchType !== '') $where .= " AND e.event_type = '".$db->escape($searchTyp
 if ($searchDateStart > 0) $where .= " AND e.event_date >= '".$db->idate($searchDateStart)."'";
 if ($searchDateEnd > 0) $where .= " AND e.event_date <= '".$db->idate($searchDateEnd)."'";
 if ($searchStatus >= 0) $where .= ' AND e.status = '.((int) $searchStatus);
-if (!empty($searchEntities)) {
+if ($showEntityColumn && !empty($searchEntities)) {
 	$filteredEntities = array_values(array_intersect($allowedEntityIds, array_map('intval', $searchEntities)));
 	if (!empty($filteredEntities)) $where .= ' AND e.entity IN ('.implode(',', $filteredEntities).')';
 }
@@ -114,10 +108,8 @@ if ($offset > $total) {
 	$offset = 0;
 }
 $sql = 'SELECT e.*, v.ref AS vehicle_ref, v.registration_number';
-if ($showEntityColumn) $sql .= ', en.label AS entity_label';
 $sql .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_event AS e';
 $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = e.fk_vehicle AND v.entity = e.entity';
-if ($showEntityColumn) $sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'entity AS en ON en.rowid = e.entity';
 $sql .= $where.$db->order($sortfield, $sortorder).$db->plimit($limit + 1, $offset);
 $resql = $db->query($sql);
 if (!$resql) {
@@ -188,8 +180,7 @@ while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 	if (!empty($arrayfields['e.event_date']['checked'])) print '<td class="center">'.dol_print_date($object->event_date, 'dayhour').'</td>';
 	if (!empty($arrayfields['e.status']['checked'])) print '<td class="center">'.$object->getLibStatut(5).'</td>';
 	if ($showEntityColumn && !empty($arrayfields['e.entity']['checked'])) {
-		$entityLabel = !empty($row->entity_label) ? (string) $row->entity_label : (string) $row->entity;
-		print '<td class="center"><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div></td>';
+		print '<td class="center">'.lmdbVehicleManagementEntityBadge((int) $row->entity, $entityOptions).'</td>';
 	}
 	if (!$conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn"></td>';
 	print '</tr>';

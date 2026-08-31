@@ -146,12 +146,9 @@ if ($action === 'create' || $action === 'edit') {
 	print dol_get_fiche_head($head, 'card', $langs->trans('VehicleEvent'), -1, $object->picto);
 	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicleevent_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
 	$moreHtmlRef = '<div class="refidno">'.dol_escape_htmltag($object->label);
-	if (isModEnabled('multicompany') && !empty($object->entity)) {
-		$entityLabel = (string) $object->entity;
-		$resEntity = $db->query('SELECT label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid = '.((int) $object->entity));
-		if ($resEntity && is_object($entityRow = $db->fetch_object($resEntity)) && !empty($entityRow->label)) $entityLabel = (string) $entityRow->label;
-		if ($resEntity) $db->free($resEntity);
-		$moreHtmlRef .= '<br><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div>';
+	$entityBadge = lmdbVehicleManagementEntityBadge((int) $object->entity, lmdbVehicleManagementGetEntityOptions('lmdbvehicle'));
+	if ($entityBadge !== '') {
+		$moreHtmlRef .= '<br>'.$entityBadge;
 	}
 	$moreHtmlRef .= '</div>';
 	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $moreHtmlRef);

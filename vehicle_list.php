@@ -69,20 +69,13 @@ $arrayfields = array(
 
 $entityScope = getEntity('lmdbvehicle');
 $allowedEntityIds = array_values(array_filter(array_map('intval', explode(',', $entityScope))));
-$showEntityColumn = isModEnabled('multicompany') && count($allowedEntityIds) > 1;
-$entityOptions = array();
+$entityOptions = lmdbVehicleManagementGetEntityOptions('lmdbvehicle');
+$showEntityColumn = !empty($entityOptions);
+if (!$showEntityColumn) {
+	$searchEntities = array();
+}
 if ($showEntityColumn) {
 	$arrayfields['t.entity'] = array('label' => 'Environment', 'checked' => 1, 'enabled' => 1, 'position' => 70);
-	$sqlEntity = 'SELECT rowid, label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid IN ('.$entityScope.') ORDER BY label';
-	$resEntity = $db->query($sqlEntity);
-	if (!$resEntity) {
-		dol_print_error($db);
-		exit;
-	}
-	while (is_object($entityRow = $db->fetch_object($resEntity))) {
-		$entityOptions[(int) $entityRow->rowid] = (string) $entityRow->label;
-	}
-	$db->free($resEntity);
 }
 
 $action = GETPOST('action', 'aZ09');
@@ -112,7 +105,7 @@ if ($searchModel !== '') {
 if ($searchStatus >= 0) {
 	$where .= ' AND t.status = '.((int) $searchStatus);
 }
-if (!empty($searchEntities)) {
+if ($showEntityColumn && !empty($searchEntities)) {
 	$filteredEntities = array_values(array_intersect($allowedEntityIds, array_map('intval', $searchEntities)));
 	if (!empty($filteredEntities)) {
 		$where .= ' AND t.entity IN ('.implode(',', $filteredEntities).')';
@@ -139,13 +132,7 @@ if ($offset > $total) {
 }
 
 $sql = 'SELECT t.rowid, t.entity, t.ref, t.registration_number, t.label, t.brand, t.model, t.status';
-if ($showEntityColumn) {
-	$sql .= ', e.label AS entity_label';
-}
 $sql .= ' FROM '.MAIN_DB_PREFIX.$object->table_element.' AS t';
-if ($showEntityColumn) {
-	$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'entity AS e ON e.rowid = t.entity';
-}
 $sql .= $where.$db->order($sortfield, $sortorder).$db->plimit($limit + 1, $offset);
 $resql = $db->query($sql);
 if (!$resql) {
@@ -226,8 +213,7 @@ while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 	if (!empty($arrayfields['t.model']['checked'])) print '<td>'.dol_escape_htmltag((string) $object->model).'</td>';
 	if (!empty($arrayfields['t.status']['checked'])) print '<td class="center">'.$object->getLibStatut(5).'</td>';
 	if ($showEntityColumn && !empty($arrayfields['t.entity']['checked'])) {
-		$entityLabel = !empty($row->entity_label) ? (string) $row->entity_label : (string) $row->entity;
-		print '<td class="center"><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div></td>';
+		print '<td class="center">'.lmdbVehicleManagementEntityBadge((int) $row->entity, $entityOptions).'</td>';
 	}
 	if (!$conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn"></td>';
 	print '</tr>';

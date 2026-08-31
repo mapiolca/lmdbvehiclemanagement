@@ -100,7 +100,13 @@ foreach ($vehicleTabPages as $pageFile) {
 }
 
 $checks['banner_uses_native_helper'] = strpos($library, 'dol_banner_tab(') !== false;
-$checks['banner_keeps_multicompany_badge'] = strpos($library, 'multicompany-entity-card-container') !== false;
+$checks['environment_display_uses_actual_sharing_scope'] = strpos($library, 'function lmdbVehicleManagementGetEntityOptions($element)') !== false
+	&& strpos($library, "if (!isModEnabled('multicompany'))") !== false
+	&& strpos($library, 'if (count($entityIds) <= 1)') !== false
+	&& strpos($library, 'function lmdbVehicleManagementEntityBadge($entityId, $entityOptions)') !== false
+	&& strpos($library, 'multicompany-entity-card-container') !== false;
+$checks['card_banners_hide_environment_without_sharing'] = substr_count($library, 'lmdbVehicleManagementGetEntityOptions(') >= 4
+	&& strpos($vehicleEventCard, "lmdbVehicleManagementGetEntityOptions('lmdbvehicle')") !== false;
 $checks['registration_numbering_model_is_native'] = strpos($vehicleRegistrationNumbering, 'extends ModeleNumRefLmdbVehicle') !== false
 	&& strpos($vehicleRegistrationNumbering, 'normalizeRegistrationNumber') !== false;
 $checks['vehicle_ref_is_synchronized_on_create_and_update'] = substr_count($vehicleClass, 'usesRegistrationAsReference()') >= 2
@@ -154,7 +160,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0121'] = strpos($descriptor, "\$this->version = '0.12.1';") !== false;
+$checks['module_version_is_0122'] = strpos($descriptor, "\$this->version = '0.12.2';") !== false;
 $checks['odometer_list_calculates_difference_at_render_time'] = strpos($vehicleOdometer, "trans('OdometerDifference')") !== false
 	&& strpos($vehicleOdometer, '$records[$recordIndex + 1]->odometer_km') !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-success';") !== false
@@ -211,7 +217,7 @@ $checks['insurance_contract_has_dedicated_card'] = strpos($insuranceContractClas
 $checks['insurance_list_uses_native_pattern'] = strpos($insuranceList, 'print_barre_liste(') !== false
 	&& strpos($insuranceList, "multiSelectArrayWithCheckbox('selectedfields'") !== false
 	&& strpos($insuranceList, 'div-table-responsive') !== false
-	&& strpos($insuranceList, 'multicompany-entity-card-container') !== false;
+	&& strpos($insuranceList, 'lmdbVehicleManagementEntityBadge(') !== false;
 $checks['insurance_list_bar_is_inside_form'] = strpos($insuranceList, "print '<form method=\"POST\"") < strpos($insuranceList, 'print_barre_liste(');
 $checks['insurance_pages_use_native_permissions'] = strpos($insuranceCard, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false
 	&& strpos($insuranceCard, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')") !== false
@@ -367,9 +373,17 @@ $checks['consumption_stats_filter_uses_effective_driver'] = strpos($consumptionC
 	&& substr_count($consumptionStats, 'COALESCE(t.fk_user_driver, t.fk_user_creat)') >= 3;
 $checks['consumption_list_is_native'] = strpos($consumptionList, 'print_barre_liste(') !== false
 	&& strpos($consumptionList, "multiSelectArrayWithCheckbox('selectedfields'") !== false
-	&& strpos($consumptionList, 'multicompany-entity-card-container') !== false
+	&& strpos($consumptionList, 'lmdbVehicleManagementEntityBadge(') !== false
 	&& strpos($consumptionList, "trans('NoRecordFound')") !== false;
 $mainListSources = array($vehicleList, $vehicleEventList, $insuranceList, $consumptionList);
+$checks['main_lists_show_environment_only_for_shared_scopes'] = count(array_filter($mainListSources, static function ($source) {
+	return strpos($source, 'lmdbVehicleManagementGetEntityOptions(') !== false
+		&& strpos($source, '$showEntityColumn = !empty($entityOptions);') !== false
+		&& strpos($source, 'if (!$showEntityColumn)') !== false
+		&& strpos($source, 'if ($showEntityColumn && !empty($searchEntities))') !== false;
+})) === count($mainListSources);
+$checks['consumption_summary_hides_environment_without_sharing'] = strpos($consumptionIndex, "lmdbVehicleManagementGetEntityOptions('lmdbvehicleconsumption')") !== false
+	&& strpos($consumptionIndex, 'if (empty($entityOptions)) $entityIds = array();') !== false;
 $checks['main_lists_reserve_native_height'] = count(array_filter($mainListSources, static function ($source) {
 	return strpos($source, 'div-table-responsive') !== false
 		&& strpos($source, 'div-table-responsive-no-min') === false;

@@ -1,5 +1,10 @@
 # Historique des versions
 
+## `0.12.2` — 2026-08-31
+
+- Masquage du badge Environnement sur les fiches lorsque Multicompany est désactivé ou qu’aucune autre entité ne partage l’objet courant.
+- Application de la même règle aux colonnes et filtres Environnement des listes de véhicules, événements, consommations et contrats d’assurance.
+
 ## `0.12.1` — 2026-08-31
 
 - Traduction des valeurs techniques `fuel` et `additive` dans le champ Nature des tooltips Ajax des pleins et recharges.

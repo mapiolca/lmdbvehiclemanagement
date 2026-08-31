@@ -56,14 +56,11 @@ $arrayfields = array(
 );
 $entityScope = getEntity('lmdbvehicleconsumption');
 $allowedEntityIds = array_values(array_filter(array_map('intval', explode(',', $entityScope))));
-$showEntityColumn = isModEnabled('multicompany') && count($allowedEntityIds) > 1;
-$entityOptions = array();
+$entityOptions = lmdbVehicleManagementGetEntityOptions('lmdbvehicleconsumption');
+$showEntityColumn = !empty($entityOptions);
+if (!$showEntityColumn) $searchEntities = array();
 if ($showEntityColumn) {
 	$arrayfields['t.entity'] = array('label' => 'Environment', 'checked' => 1, 'enabled' => 1, 'position' => 110);
-	$resEntity = $db->query('SELECT rowid, label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid IN ('.$entityScope.') ORDER BY label');
-	if (!$resEntity) { dol_print_error($db); exit; }
-	while (is_object($row = $db->fetch_object($resEntity))) $entityOptions[(int) $row->rowid] = (string) $row->label;
-	$db->free($resEntity);
 }
 $vehicleOptions = array();
 $resOptions = $db->query('SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle WHERE entity IN ('.getEntity('lmdbvehicle').') ORDER BY ref');
@@ -83,7 +80,7 @@ if ($searchVehicle > 0) $where .= ' AND t.fk_vehicle = '.$searchVehicle;
 if ($searchDriver > 0) $where .= ' AND COALESCE(t.fk_user_driver, t.fk_user_creat) = '.$searchDriver;
 if ($searchConsumable > 0) $where .= ' AND t.fk_consumable = '.$searchConsumable;
 if (in_array($searchCategory, array('fuel', 'additive'), true)) $where .= " AND t.category_snapshot = '".$db->escape($searchCategory)."'";
-if (!empty($searchEntities)) {
+if ($showEntityColumn && !empty($searchEntities)) {
 	$filtered = array_values(array_intersect($allowedEntityIds, array_map('intval', $searchEntities)));
 	$where .= !empty($filtered) ? ' AND t.entity IN ('.implode(',', $filtered).')' : ' AND 1 = 0';
 }
@@ -102,9 +99,7 @@ $sql = 'SELECT t.rowid, t.entity, t.ref, t.fk_vehicle, t.fk_consumable, COALESCE
 $sql .= ' r.reading_date, r.odometer_km, v.ref AS vehicle_ref, v.registration_number, v.label AS vehicle_label, c.label AS consumable_label,';
 $sql .= ' u.login, u.firstname, u.lastname, CASE WHEN t.quantity > 0 THEN t.total_ttc / t.quantity ELSE 0 END AS unit_price,';
 $sql .= ' CASE WHEN cap.capacity > 0 THEN t.quantity / cap.capacity * 100 ELSE NULL END AS capacity_percent';
-if ($showEntityColumn) $sql .= ', e.label AS entity_label';
 $sql .= $sqlFrom;
-if ($showEntityColumn) $sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'entity AS e ON e.rowid = t.entity';
 $sql .= $where.$db->order($sortfield, $sortorder).$db->plimit($limit + 1, $offset);
 $resql = $db->query($sql);
 if (!$resql) { dol_print_error($db); exit; }
@@ -161,8 +156,7 @@ while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 	if (!empty($arrayfields['unit_price']['checked'])) print '<td class="right">'.price($row->unit_price).' '.dol_escape_htmltag((string) $row->currency_snapshot).'/'.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel((string) $row->unit_snapshot)).'</td>';
 	if (!empty($arrayfields['capacity_percent']['checked'])) print '<td class="right">'.($row->capacity_percent !== null ? price($row->capacity_percent).' %'.((float) $row->capacity_percent > 100 ? ' '.img_warning() : '') : '').'</td>';
 	if ($showEntityColumn && !empty($arrayfields['t.entity']['checked'])) {
-		$entityLabel = !empty($row->entity_label) ? (string) $row->entity_label : (string) $row->entity;
-		print '<td class="center"><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div></td>';
+		print '<td class="center">'.lmdbVehicleManagementEntityBadge((int) $row->entity, $entityOptions).'</td>';
 	}
 	if (!$conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn"></td>';
 	print '</tr>';

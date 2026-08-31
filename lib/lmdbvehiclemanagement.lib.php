@@ -88,6 +88,65 @@ function lmdbVehiclePrepareHead($object)
 }
 
 /**
+ * Return accessible entity labels only when an element is actually shared.
+ *
+ * An empty result means that the environment badge, column and filter are not
+ * useful: Multicompany is disabled or the current entity has no sharing scope
+ * with another accessible entity for this element.
+ *
+ * @param string $element Multicompany sharing element
+ * @return array<int,string>
+ */
+function lmdbVehicleManagementGetEntityOptions($element)
+{
+	global $db;
+
+	if (!isModEnabled('multicompany')) {
+		return array();
+	}
+
+	$entityIds = array_values(array_unique(array_filter(array_map('intval', explode(',', getEntity($element))), static function ($entityId) {
+		return $entityId > 0;
+	})));
+	if (count($entityIds) <= 1) {
+		return array();
+	}
+
+	$options = array();
+	$sql = 'SELECT rowid, label FROM '.MAIN_DB_PREFIX.'entity';
+	$sql .= ' WHERE rowid IN ('.implode(',', $entityIds).') ORDER BY label';
+	$resql = $db->query($sql);
+	if (!$resql) {
+		dol_syslog(__FUNCTION__.': '.$db->lasterror(), LOG_ERR);
+		return array();
+	}
+	while (is_object($row = $db->fetch_object($resql))) {
+		$options[(int) $row->rowid] = (string) $row->label;
+	}
+	$db->free($resql);
+
+	return count($options) > 1 ? $options : array();
+}
+
+/**
+ * Render the native Multicompany badge for an entity.
+ *
+ * @param int $entityId Entity identifier
+ * @param array<int,string> $entityOptions Accessible entity labels
+ * @return string
+ */
+function lmdbVehicleManagementEntityBadge($entityId, $entityOptions)
+{
+	if ($entityId <= 0 || count($entityOptions) <= 1) {
+		return '';
+	}
+
+	$entityLabel = isset($entityOptions[$entityId]) ? $entityOptions[$entityId] : (string) $entityId;
+
+	return '<div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div>';
+}
+
+/**
  * Build consumption tabs in native order.
  *
  * @param LmdbVehicleConsumption $object Consumption
@@ -135,15 +194,12 @@ function lmdbVehicleConsumptionAgendaWhere($object, $alias = 'a')
 /** @param LmdbVehicleConsumption $object Consumption @return void */
 function lmdbVehicleConsumptionPrintBanner($object)
 {
-	global $db, $langs;
+	global $langs;
 	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/consumption_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
 	$moreHtmlRef = '<div class="refidno">'.$langs->trans($object->category_snapshot === 'fuel' ? 'FuelOrRecharge' : 'Additive');
-	if (isModEnabled('multicompany')) {
-		$entityLabel = (string) $object->entity;
-		$resql = $db->query('SELECT label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid = '.((int) $object->entity));
-		if ($resql && is_object($row = $db->fetch_object($resql))) $entityLabel = (string) $row->label;
-		if ($resql) $db->free($resql);
-		$moreHtmlRef .= '<br><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div>';
+	$entityBadge = lmdbVehicleManagementEntityBadge((int) $object->entity, lmdbVehicleManagementGetEntityOptions('lmdbvehicleconsumption'));
+	if ($entityBadge !== '') {
+		$moreHtmlRef .= '<br>'.$entityBadge;
 	}
 	$moreHtmlRef .= '</div>';
 	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $moreHtmlRef);
@@ -241,23 +297,16 @@ function lmdbVehicleDisplayIdentifier($ref, $registration, $label = '')
  */
 function lmdbVehiclePrintBanner($object)
 {
-	global $db, $langs;
+	global $langs;
 
 	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
 	$secondaryIdentifier = strcasecmp((string) $object->ref, (string) $object->registration_number) === 0
 		? (string) $object->label
 		: (string) $object->registration_number.' — '.(string) $object->label;
 	$moreHtmlRef = '<div class="refidno">'.dol_escape_htmltag($secondaryIdentifier);
-	if (isModEnabled('multicompany') && !empty($object->entity)) {
-		$entityLabel = (string) $object->entity;
-		$resEntity = $db->query('SELECT label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid = '.((int) $object->entity));
-		if ($resEntity && is_object($entityRow = $db->fetch_object($resEntity)) && !empty($entityRow->label)) {
-			$entityLabel = (string) $entityRow->label;
-		}
-		if ($resEntity) {
-			$db->free($resEntity);
-		}
-		$moreHtmlRef .= '<br><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div>';
+	$entityBadge = lmdbVehicleManagementEntityBadge((int) $object->entity, lmdbVehicleManagementGetEntityOptions('lmdbvehicle'));
+	if ($entityBadge !== '') {
+		$moreHtmlRef .= '<br>'.$entityBadge;
 	}
 	$moreHtmlRef .= '</div>';
 
@@ -376,20 +425,13 @@ function lmdbInsuranceContractAgendaWhere($object, $alias = 'a')
  */
 function lmdbInsuranceContractPrintBanner($object)
 {
-	global $db, $langs;
+	global $langs;
 
 	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/insurancecontract_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
 	$moreHtmlRef = '<div class="refidno">'.dol_escape_htmltag($object->label);
-	if (isModEnabled('multicompany') && !empty($object->entity)) {
-		$entityLabel = (string) $object->entity;
-		$resEntity = $db->query('SELECT label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid = '.((int) $object->entity));
-		if ($resEntity && is_object($entityRow = $db->fetch_object($resEntity)) && !empty($entityRow->label)) {
-			$entityLabel = (string) $entityRow->label;
-		}
-		if ($resEntity) {
-			$db->free($resEntity);
-		}
-		$moreHtmlRef .= '<br><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div>';
+	$entityBadge = lmdbVehicleManagementEntityBadge((int) $object->entity, lmdbVehicleManagementGetEntityOptions('lmdbvehicle'));
+	if ($entityBadge !== '') {
+		$moreHtmlRef .= '<br>'.$entityBadge;
 	}
 	$moreHtmlRef .= '</div>';
 

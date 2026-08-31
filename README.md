@@ -1,6 +1,6 @@
 # Gestion des véhicules pour Dolibarr
 
-`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.12.1` couvre les véhicules, leurs affectations, leurs relevés kilométriques, leurs consommations, leurs événements métier et leurs contrats d’assurance.
+`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.12.2` couvre les véhicules, leurs affectations, leurs relevés kilométriques, leurs consommations, leurs événements métier et leurs contrats d’assurance.
 
 ## Compatibilité
 
@@ -11,7 +11,7 @@
 - Module Ressources facultatif pour la liaison `fk_resource`
 - Module Travaux planifiés requis pour l’envoi automatique des relances d’assurance
 
-## Fonctionnalités de la version 0.12.1
+## Fonctionnalités de la version 0.12.2
 
 - fiche véhicule avec le cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
 - énergie sélectionnée dans un Select2 alimenté par un dictionnaire configurable, initialisé avec la [nomenclature réglementaire française P.3](https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000049860492/2026-07-27) ;
@@ -45,6 +45,7 @@
 - ajout rapide natif `Plein / Recharge` dans le menu `+` de Dolibarr pour les utilisateurs disposant du droit de création ;
 - tooltips Ajax natifs et traduits sur les liens `getNomUrl()` des véhicules, affectations, relevés kilométriques, événements, consommations, contrats et attestations d’assurance ;
 - résolution Ajax dédiée des véhicules conservant le droit général de lecture et le périmètre Multicompany natif ;
+- affichage des badges, colonnes et filtres Environnement uniquement lorsqu’un partage donne réellement accès à plusieurs entités ;
 - synchronisation transactionnelle entre chaque consommation et son relevé kilométrique source, y compris lors d’une modification, d’un changement de véhicule ou d’une suppression ;
 - dictionnaire Multicompany des consommables et table normalisée de compatibilité avec les 46 codes énergie P.3 ;
 - capacités configurables par véhicule et par consommable, autonomie WLTP et avertissement non bloquant au-delà de 100 % de capacité ;

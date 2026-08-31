@@ -60,14 +60,8 @@ if ($resql) {
 }
 $entityScope = getEntity('lmdbvehicleconsumption');
 $allowedEntities = array_values(array_filter(array_map('intval', explode(',', $entityScope))));
-$entityOptions = array();
-if (isModEnabled('multicompany') && count($allowedEntities) > 1) {
-	$resql = $db->query('SELECT rowid, label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid IN ('.$entityScope.') ORDER BY label');
-	if ($resql) {
-		while (is_object($row = $db->fetch_object($resql))) $entityOptions[(int) $row->rowid] = (string) $row->label;
-		$db->free($resql);
-	}
-}
+$entityOptions = lmdbVehicleManagementGetEntityOptions('lmdbvehicleconsumption');
+if (empty($entityOptions)) $entityIds = array();
 $safeEntities = array_values(array_intersect($allowedEntities, $entityIds));
 $invalidEntityFilter = !empty($entityIds) && empty($safeEntities);
 $service = new LmdbVehicleConsumptionStats($db);
@@ -106,8 +100,7 @@ foreach ($groups as $group) {
 	$unit = LmdbVehicleConsumable::unitLabel((string) $group['unit']);
 	print '<tr class="oddeven"><td>'.dol_escape_htmltag(lmdbVehicleDisplayIdentifier((string) $group['vehicle_ref'], (string) $group['registration_number'])).'</td><td>'.dol_escape_htmltag((string) $group['consumable_label']).'</td><td>'.dol_escape_htmltag($unit).'</td><td class="right">'.((int) $group['count']).'</td><td class="right">'.price($group['total_quantity']).'</td><td class="right">'.price($group['total_cost']).' '.dol_escape_htmltag((string) $group['currency']).'</td><td class="right">'.($group['consumption_100'] !== null ? price($group['consumption_100']) : '').'</td><td class="right">'.price($group['weighted_unit_price']).' '.dol_escape_htmltag((string) $group['currency']).'/'.dol_escape_htmltag($unit).'</td><td class="right">'.price($group['peak_quantity']).'</td><td class="right">'.price($group['peak_unit_price']).' '.dol_escape_htmltag((string) $group['currency']).'/'.dol_escape_htmltag($unit).'</td><td class="right">'.($group['peak_consumption_100'] !== null ? price($group['peak_consumption_100']) : '').'</td><td class="right">'.((int) $group['excluded_intervals']).'</td>';
 	if (!empty($entityOptions)) {
-		$entityLabel = isset($entityOptions[(int) $group['entity']]) ? $entityOptions[(int) $group['entity']] : (string) $group['entity'];
-		print '<td class="center"><div class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entityLabel).'</span></div></td>';
+		print '<td class="center">'.lmdbVehicleManagementEntityBadge((int) $group['entity'], $entityOptions).'</td>';
 	}
 	print '</tr>';
 }
