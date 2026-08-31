@@ -147,7 +147,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_086'] = strpos($descriptor, "\$this->version = '0.8.6';") !== false;
+$checks['module_version_is_087'] = strpos($descriptor, "\$this->version = '0.8.7';") !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;
@@ -289,7 +289,7 @@ $checks['consumption_summary_filters_are_server_side'] = strpos($consumptionInde
 	&& strpos($consumptionIndex, "'consumable_id' => \$consumableId") !== false
 	&& strpos($consumptionIndex, "'category' => \$category") !== false
 	&& strpos($consumptionIndex, "'date_start' => \$dateStart") !== false
-	&& strpos($consumptionIndex, "'date_end' => \$dateEnd") !== false
+	&& strpos($consumptionIndex, "'date_end' => \$effectiveDateEnd") !== false
 	&& strpos($consumptionIndex, "'entity_ids' => \$safeEntities") !== false
 	&& strpos($consumptionStats, "t.fk_vehicle = '.((int) \$filters['vehicle_id'])") !== false
 	&& strpos($consumptionStats, "t.fk_consumable = '.((int) \$filters['consumable_id'])") !== false
@@ -301,6 +301,10 @@ $checks['consumption_summary_filters_use_native_reset_and_safe_dates'] = strpos(
 	&& strpos($consumptionIndex, '$form->showFilterButtons()') !== false
 	&& strpos($consumptionIndex, '$dateStartDay > 0 && $dateStartMonth > 0 && $dateStartYear > 0') !== false
 	&& strpos($consumptionIndex, '$dateEndDay > 0 && $dateEndMonth > 0 && $dateEndYear > 0') !== false;
+$checks['consumption_summary_period_is_empty_and_open_ended'] = substr_count($consumptionIndex, '?: -1') >= 2
+	&& strpos($consumptionIndex, '$effectiveDateEnd = $dateEnd > 0 ? $dateEnd : dol_now();') !== false
+	&& strpos($consumptionIndex, "'date_start' => \$dateStart") !== false
+	&& strpos($consumptionIndex, "'date_end' => \$effectiveDateEnd") !== false;
 $checks['consumption_stats_filter_uses_effective_driver'] = strpos($consumptionClass, '$this->fk_user_driver = (int) $this->fk_user_creat;') !== false
 	&& substr_count($consumptionStats, 'COALESCE(t.fk_user_driver, t.fk_user_creat)') >= 3;
 $checks['consumption_list_is_native'] = strpos($consumptionList, 'print_barre_liste(') !== false

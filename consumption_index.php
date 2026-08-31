@@ -40,6 +40,7 @@ if (GETPOST('button_removefilter', 'alpha')) {
 }
 $dateStart = $dateStartDay > 0 && $dateStartMonth > 0 && $dateStartYear > 0 ? dol_mktime(0, 0, 0, $dateStartMonth, $dateStartDay, $dateStartYear) : 0;
 $dateEnd = $dateEndDay > 0 && $dateEndMonth > 0 && $dateEndYear > 0 ? dol_mktime(23, 59, 59, $dateEndMonth, $dateEndDay, $dateEndYear) : 0;
+$effectiveDateEnd = $dateEnd > 0 ? $dateEnd : dol_now();
 $form = new Form($db);
 $dictionary = new LmdbVehicleConsumable($db);
 $vehicleOptions = array();
@@ -61,7 +62,7 @@ if (isModEnabled('multicompany') && count($allowedEntities) > 1) {
 $safeEntities = array_values(array_intersect($allowedEntities, array_map('intval', $entityIds)));
 $invalidEntityFilter = !empty($entityIds) && empty($safeEntities);
 $service = new LmdbVehicleConsumptionStats($db);
-$rows = $invalidEntityFilter ? array() : $service->fetchRows(array('vehicle_id' => $vehicleId, 'user_id' => $driverId, 'consumable_id' => $consumableId, 'category' => $category, 'date_start' => $dateStart, 'date_end' => $dateEnd, 'entity_ids' => $safeEntities));
+$rows = $invalidEntityFilter ? array() : $service->fetchRows(array('vehicle_id' => $vehicleId, 'user_id' => $driverId, 'consumable_id' => $consumableId, 'category' => $category, 'date_start' => $dateStart, 'date_end' => $effectiveDateEnd, 'entity_ids' => $safeEntities));
 if (!is_array($rows)) { setEventMessages($service->error, null, 'errors'); $rows = array(); }
 $groups = $service->summarize($rows);
 
@@ -70,7 +71,7 @@ print load_fiche_titre($langs->trans('ConsumptionSummary'), '', 'chart-line');
 print '<form method="GET" action="'.$_SERVER['PHP_SELF'].'"><div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 print '<tr class="liste_titre"><th>'.$langs->trans('Period').'</th><th>'.$langs->trans('Vehicle').'</th><th>'.$langs->trans('Driver').'</th><th>'.$langs->trans('Consumable').'</th><th>'.$langs->trans('ConsumptionNature').'</th>';
 if (!empty($entityOptions)) print '<th>'.$langs->trans('Environment').'</th>';
-print '<th></th></tr><tr class="oddeven"><td>'.$form->selectDate($dateStart, 'date_start', 0, 0, 1).' '.$form->selectDate($dateEnd, 'date_end', 0, 0, 1).'</td>';
+print '<th></th></tr><tr class="oddeven"><td>'.$form->selectDate($dateStart ?: -1, 'date_start', 0, 0, 1).' '.$form->selectDate($dateEnd ?: -1, 'date_end', 0, 0, 1).'</td>';
 print '<td>'.$form->selectarray('vehicle_id', $vehicleOptions, $vehicleId, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth250', 1).'</td>';
 print '<td>'.$form->select_dolusers($driverId ?: '', 'driver_id', 1, null, 0, '', '', '', 0, 1, '', 0, '', 'maxwidth200', 0, 0, false, 1).'</td>';
 print '<td>'.$form->selectarray('consumable_id', $dictionary->getOptions(), $consumableId, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth200', 1).'</td>';

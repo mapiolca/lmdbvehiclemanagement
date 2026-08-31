@@ -1,5 +1,10 @@
 # Historique des versions
 
+## `0.8.7` — 2026-08-31
+
+- Période de la synthèse des consommations laissée vide par défaut avec ouverture du sélecteur natif sur la date du jour.
+- Interprétation des bornes vides comme la première consommation disponible pour le début et la date courante pour la fin.
+
 ## `0.8.6` — 2026-08-31
 
 - Vérification et sécurisation des filtres de la synthèse des consommations, notamment des périodes incomplètes et de la remise à zéro native.
