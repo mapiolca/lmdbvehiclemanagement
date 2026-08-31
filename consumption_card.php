@@ -178,7 +178,7 @@ if ($action === 'delete' && $id > 0) print $form->formconfirm($_SERVER['PHP_SELF
 if ($action === 'create' || $action === 'edit') {
 	if (!$permissionWrite) accessforbidden();
 	print load_fiche_titre($title, '', 'gas-pump');
-	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="'.($action === 'create' ? 'add' : 'update').'">';
+	print '<form class="lmdb-responsive-form" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="'.($action === 'create' ? 'add' : 'update').'">';
 	if ($id > 0) print '<input type="hidden" name="id" value="'.$id.'">';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
 	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('ConsumptionDate').'</td><td>'.$form->selectDate($object->reading_date ?: dol_now(), 'reading_date', 1, 1, 0, '', 1, 1).'</td></tr>';

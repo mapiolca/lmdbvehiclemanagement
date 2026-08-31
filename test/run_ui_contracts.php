@@ -50,6 +50,7 @@ $setupPage = readModuleSource('admin/setup.php');
 $vehicleList = readModuleSource('vehicle_list.php');
 $vehicleEventList = readModuleSource('vehicleevent_list.php');
 $vehicleEventCard = readModuleSource('vehicleevent_card.php');
+$vehicleAssignment = readModuleSource('vehicle_assignment.php');
 $vehicleOdometer = readModuleSource('vehicle_odometer.php');
 $consumptionClass = readModuleSource('class/lmdbvehicleconsumption.class.php');
 $consumptionStats = readModuleSource('class/lmdbvehicleconsumptionstats.class.php');
@@ -61,6 +62,7 @@ $vehicleConsumption = readModuleSource('vehicle_consumption.php');
 $vehicleHistory = readModuleSource('vehicle_history.php');
 $vehicleHistoryClass = readModuleSource('class/lmdbvehiclehistory.class.php');
 $moduleJavascript = readModuleSource('js/lmdbvehiclemanagement.js');
+$moduleStylesheet = readModuleSource('css/lmdbvehiclemanagement.css');
 $consumptionSql = readModuleSource('sql/llx_lmdbvehiclemanagement_consumption.sql');
 $frLang = readModuleSource('langs/fr_FR/lmdbvehiclemanagement.lang');
 $enLang = readModuleSource('langs/en_US/lmdbvehiclemanagement.lang');
@@ -160,7 +162,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0123'] = strpos($descriptor, "\$this->version = '0.12.3';") !== false;
+$checks['module_version_is_0124'] = strpos($descriptor, "\$this->version = '0.12.4';") !== false;
 $checks['odometer_list_calculates_difference_at_render_time'] = strpos($vehicleOdometer, "trans('OdometerDifference')") !== false
 	&& strpos($vehicleOdometer, '$records[$recordIndex + 1]->odometer_km') !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-success';") !== false
@@ -192,6 +194,21 @@ $checks['vehicle_ajax_tooltip_uses_module_read_alias'] = strpos($vehicleClass, "
 	&& strpos($vehicleClass, "public \$entity_scope_element = 'lmdbvehicle';") !== false
 	&& strpos($actionsHooks, "'lmdbvehicleajaxtooltip@lmdbvehiclemanagement'") !== false
 	&& strpos($actionsHooks, "'classname' => 'LmdbVehicleAjaxTooltip'") !== false;
+$mobileFormSources = array($vehicleCard, $vehicleEventCard, $vehicleAssignment, $vehicleOdometer, $consumptionCard, $insuranceLibrary, $insuranceCertificate, $insuranceLink);
+$checks['object_forms_use_shared_mobile_scope'] = count(array_filter($mobileFormSources, static function ($source) {
+	return strpos($source, 'class="lmdb-responsive-form"') !== false;
+})) === count($mobileFormSources);
+$checks['mobile_forms_prevent_ios_focus_zoom_without_disabling_zoom'] = strpos($descriptor, "'css' => array('/lmdbvehiclemanagement/css/lmdbvehiclemanagement.css')") !== false
+	&& strpos($moduleStylesheet, '@media screen and (max-width: 900px)') !== false
+	&& strpos($moduleStylesheet, 'font-size: 16px !important;') !== false
+	&& strpos($moduleStylesheet, 'input:not([type])') !== false
+	&& strpos($moduleStylesheet, '.select2-container--open .select2-search__field') !== false
+	&& strpos($moduleStylesheet, 'user-scalable') === false
+	&& strpos($moduleStylesheet, 'maximum-scale') === false;
+$checks['mobile_forms_keep_native_controls_responsive'] = strpos($moduleStylesheet, 'input[class*="minwidth"]') !== false
+	&& strpos($moduleStylesheet, '.select2-container[class*="minwidth"]') !== false
+	&& strpos($moduleStylesheet, 'min-height: 44px;') !== false
+	&& strpos($moduleStylesheet, '@media screen and (max-width: 600px)') !== false;
 $checks['ajax_tooltips_resolve_all_business_objects'] = strpos($actionsHooks, "'lmdbvehicleassignment@lmdbvehiclemanagement'") !== false
 	&& strpos($actionsHooks, "'lmdbvehicleodometerreading@lmdbvehiclemanagement'") !== false
 	&& strpos($actionsHooks, "'lmdbvehicleconsumption@lmdbvehiclemanagement'") !== false

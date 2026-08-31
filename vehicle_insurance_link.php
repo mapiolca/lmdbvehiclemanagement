@@ -82,7 +82,7 @@ if (empty($contracts)) {
 	print '<div class="tabsAction">'.dolGetButtonAction('', $langs->trans('NewInsuranceContract'), 'default', dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'?action=create&vehicle_id='.$id).'</div>';
 } else {
 	if ($coverageStart <= 0 && $contractId > 0 && isset($contractObjects[$contractId])) $coverageStart = (int) $contractObjects[$contractId]->date_start;
-	print '<form method="POST" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'">';
+	print '<form class="lmdb-responsive-form" method="POST" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'">';
 	print '<input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="action" value="link_contract">';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
 	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('InsuranceContract').'</td><td>'.$form->selectarray('contract_id', $contracts, $contractId, 1, 0, 0, '', 1, 0, 0, '', 'minwidth500').'</td></tr>';

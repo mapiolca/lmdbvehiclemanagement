@@ -90,7 +90,7 @@ print dol_get_fiche_head($head, 'assignments', $langs->trans('Vehicle'), -1, $ve
 lmdbVehiclePrintBanner($vehicle);
 
 if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
-	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
+	print '<form class="lmdb-responsive-form" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
 	print '<input type="hidden" name="assignment_id" value="'.((int) $assignment->id).'"><input type="hidden" name="action" value="'.($action === 'edit' ? 'update' : 'add').'">';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
 	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('Driver').'</td><td>'.$form->select_dolusers($assignment->fk_user_driver, 'fk_user_driver', 1, null, 0, '', '', $vehicle->entity, 0, 1, '', 0, '', 'minwidth300', 0, 0, false, 1).'</td></tr>';

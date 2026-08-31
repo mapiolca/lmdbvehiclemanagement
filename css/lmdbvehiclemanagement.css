@@ -1,0 +1,139 @@
+/* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
+
+/*
+ * Keep Dolibarr's native form components while making object forms usable on
+ * touch screens. A 16px editable control prevents iOS from zooming the page on
+ * focus without disabling the user's ability to zoom.
+ */
+@media screen and (max-width: 900px) {
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input:not([type]),
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="text"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="email"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="tel"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="number"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="password"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="search"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="url"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="date"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="time"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="datetime-local"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="month"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="week"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[type="file"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form select,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form textarea,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form .select2-selection,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form .select2-search__field,
+	.mod-lmdbvehiclemanagement .select2-container--open .select2-search__field {
+		font-size: 16px !important;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield {
+		table-layout: fixed;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield td:first-child {
+		width: 38% !important;
+		min-width: 0 !important;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield td:nth-child(2) {
+		width: 62%;
+		min-width: 0;
+		white-space: normal;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input[class*="minwidth"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form select[class*="minwidth"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form textarea[class*="minwidth"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form .select2-container[class*="minwidth"] {
+		box-sizing: border-box;
+		width: 100% !important;
+		min-width: 0 !important;
+		max-width: 100% !important;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form input,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form select,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form textarea,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form .select2-container,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form .cke,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form .tox-tinymce {
+		max-width: 100%;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form .select2-selection {
+		min-height: 36px;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form .select2-selection--single .select2-selection__rendered {
+		line-height: 34px;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form .select2-selection--single .select2-selection__arrow {
+		height: 34px;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form > .center {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.5rem;
+		margin-top: 1rem;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form > .center .button,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form > .center button {
+		box-sizing: border-box;
+		min-height: 44px;
+		margin: 0;
+		touch-action: manipulation;
+	}
+}
+
+@media screen and (max-width: 600px) {
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form .div-table-responsive-no-min {
+		overflow-x: visible;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield tbody {
+		display: block;
+		width: 100%;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield tr {
+		display: grid !important;
+		grid-template-columns: minmax(0, 1fr);
+		width: 100%;
+		padding: 0.35rem 0;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield tr[style*="display:none"],
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield tr[style*="display: none"] {
+		display: none !important;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield td,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield td:first-child,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield td:nth-child(2) {
+		display: block;
+		box-sizing: border-box;
+		width: 100% !important;
+		min-width: 0 !important;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield td:first-child {
+		padding-bottom: 0.2rem;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield td:nth-child(2) {
+		padding-top: 0.2rem;
+	}
+
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form > .center .button,
+	.mod-lmdbvehiclemanagement .lmdb-responsive-form > .center button {
+		flex: 1 1 9rem;
+		max-width: 18rem;
+	}
+}

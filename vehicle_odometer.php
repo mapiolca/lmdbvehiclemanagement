@@ -87,7 +87,7 @@ print dol_get_fiche_head($head, 'odometer', $langs->trans('Vehicle'), -1, $vehic
 lmdbVehiclePrintBanner($vehicle);
 
 if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
-	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
+	print '<form class="lmdb-responsive-form" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
 	print '<input type="hidden" name="reading_id" value="'.((int) $reading->id).'"><input type="hidden" name="action" value="'.($action === 'edit' ? 'update' : 'add').'">';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
 	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('ReadingDate').'</td><td>'.$form->selectDate($reading->reading_date ?: dol_now(), 'reading_date', 1, 1, 0, '', 1, 1).'</td></tr>';

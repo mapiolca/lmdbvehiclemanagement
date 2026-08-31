@@ -152,7 +152,7 @@ if ($canCreate) {
 	if ($permissionWrite) $certificateVehicleOptions[0] = $langs->trans('InsuranceScopeFleet');
 	foreach ($eligibleVehicleIds as $eligibleVehicleId) $certificateVehicleOptions[$eligibleVehicleId] = $vehicleOptions[$eligibleVehicleId];
 	print load_fiche_titre($langs->trans('NewInsuranceCertificate'), '', 'plus');
-	print '<form method="POST" enctype="multipart/form-data" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'">';
+	print '<form class="lmdb-responsive-form" method="POST" enctype="multipart/form-data" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'">';
 	print '<input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
 	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('InsuranceCertificateScope').'</td><td>'.$form->selectarray('certificate_vehicle_id', $certificateVehicleOptions, '', 0, 0, 0, '', 1, 0, 0, '', 'minwidth500').'</td></tr>';

@@ -1,5 +1,11 @@
 # Historique des versions
 
+## `0.12.4` — 2026-08-31
+
+- Optimisation responsive des formulaires de création et d’édition des véhicules, événements, affectations, kilométrages, consommations, assurances et attestations.
+- Utilisation d’une taille minimale de 16 px sur les champs éditables mobiles pour éviter le zoom automatique d’iOS, sans désactiver le zoom utilisateur.
+- Adaptation des largeurs Select2, éditeurs, tableaux de champs et boutons d’action aux écrans tactiles étroits.
+
 ## `0.12.3` — 2026-08-31
 
 - Affichage des véhicules de la synthèse et de la liste des consommations avec leur lien natif `getNomUrl()` et leur tooltip Ajax.

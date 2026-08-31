@@ -36,12 +36,13 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->descriptionlong = 'ModuleLmdbVehicleManagementDesc';
 		$this->editor_name = 'Pierre Ardoin';
 		$this->editor_url = 'https://github.com/mapiolca';
-		$this->version = '0.12.3';
+		$this->version = '0.12.4';
 		$this->const_name = 'MAIN_MODULE_LMDBVEHICLEMANAGEMENT';
 		$this->picto = 'car';
 
 		$this->module_parts = array(
 			'triggers' => 1,
+			'css' => array('/lmdbvehiclemanagement/css/lmdbvehiclemanagement.css'),
 			'js' => array('/lmdbvehiclemanagement/js/lmdbvehiclemanagement.js'),
 			'hooks' => array(
 				'data' => array(
