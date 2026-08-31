@@ -1,5 +1,10 @@
 # Historique des versions
 
+## `0.12.1` — 2026-08-31
+
+- Traduction des valeurs techniques `fuel` et `additive` dans le champ Nature des tooltips Ajax des pleins et recharges.
+- Chargement explicite des catalogues Dolibarr et du module nécessaires aux tooltips génériques et aux contrats d’assurance.
+
 ## `0.12.0` — 2026-08-31
 
 - Ajout d’une colonne `Différence` dans l’onglet Kilométrage afin d’afficher la distance entre deux relevés chronologiquement successifs.

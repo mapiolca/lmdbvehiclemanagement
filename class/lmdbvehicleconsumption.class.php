@@ -30,7 +30,7 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		'ref' => array('type' => 'varchar(128)', 'label' => 'Ref', 'position' => 10, 'notnull' => 1, 'visible' => 1, 'index' => 1, 'searchall' => 1),
 		'fk_vehicle' => array('type' => 'integer:LmdbVehicle:lmdbvehiclemanagement/class/lmdbvehicle.class.php:0', 'label' => 'Vehicle', 'position' => 20, 'notnull' => 1, 'visible' => 1, 'index' => 1),
 		'fk_consumable' => array('type' => 'integer:LmdbVehicleConsumable:lmdbvehiclemanagement/class/lmdbvehicleconsumable.class.php', 'label' => 'Consumable', 'position' => 30, 'notnull' => 1, 'visible' => 1, 'index' => 1),
-		'category_snapshot' => array('type' => 'varchar(16)', 'label' => 'ConsumptionNature', 'position' => 40, 'notnull' => 1, 'visible' => 1),
+		'category_snapshot' => array('type' => 'varchar(16)', 'label' => 'ConsumptionNature', 'position' => 40, 'notnull' => 1, 'visible' => 1, 'arrayofkeyval' => array('fuel' => 'FuelOrRecharge', 'additive' => 'Additive')),
 		'unit_snapshot' => array('type' => 'varchar(16)', 'label' => 'Unit', 'position' => 50, 'notnull' => 1, 'visible' => 1),
 		'fk_odometer_reading' => array('type' => 'integer:LmdbVehicleOdometerReading:lmdbvehiclemanagement/class/lmdbvehicleodometerreading.class.php', 'label' => 'OdometerReading', 'position' => 60, 'notnull' => 1, 'visible' => 0, 'index' => 1),
 		'fk_user_driver' => array('type' => 'integer:User:user/class/user.class.php', 'label' => 'Driver', 'position' => 70, 'notnull' => -1, 'visible' => 1, 'index' => 1),

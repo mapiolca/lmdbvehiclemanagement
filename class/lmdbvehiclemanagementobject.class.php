@@ -315,7 +315,7 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 	{
 		global $langs;
 
-		$langs->loadLangs(array('main', 'other', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		$langs->loadLangs(array('main', 'other', 'companies', 'users', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 		$titleKeys = array(
 			'lmdbvehicle' => 'Vehicle',
 			'lmdbvehicleassignment' => 'VehicleAssignment',

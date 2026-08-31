@@ -62,6 +62,8 @@ $vehicleHistory = readModuleSource('vehicle_history.php');
 $vehicleHistoryClass = readModuleSource('class/lmdbvehiclehistory.class.php');
 $moduleJavascript = readModuleSource('js/lmdbvehiclemanagement.js');
 $consumptionSql = readModuleSource('sql/llx_lmdbvehiclemanagement_consumption.sql');
+$frLang = readModuleSource('langs/fr_FR/lmdbvehiclemanagement.lang');
+$enLang = readModuleSource('langs/en_US/lmdbvehiclemanagement.lang');
 $checks = array();
 
 $orderedTabs = array(
@@ -152,7 +154,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0120'] = strpos($descriptor, "\$this->version = '0.12.0';") !== false;
+$checks['module_version_is_0121'] = strpos($descriptor, "\$this->version = '0.12.1';") !== false;
 $checks['odometer_list_calculates_difference_at_render_time'] = strpos($vehicleOdometer, "trans('OdometerDifference')") !== false
 	&& strpos($vehicleOdometer, '$records[$recordIndex + 1]->odometer_km') !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-success';") !== false
@@ -168,6 +170,13 @@ $checks['module_objects_use_native_ajax_tooltips'] = strpos($baseObjectClass, 'p
 	&& strpos($baseObjectClass, "getDolGlobalInt('MAIN_ENABLE_AJAX_TOOLTIP')") !== false
 	&& strpos($baseObjectClass, "'objecttype' => \$this->element.'@'.\$this->module") !== false
 	&& strpos($baseObjectClass, 'classforajaxtooltip') !== false;
+$checks['ajax_tooltips_load_required_translation_catalogs'] = strpos($baseObjectClass, "array('main', 'other', 'companies', 'users', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement')") !== false
+	&& strpos($insuranceContractClass, "array('main', 'other', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement')") !== false;
+$checks['consumption_tooltip_translates_nature_values'] = strpos($consumptionClass, "'arrayofkeyval' => array('fuel' => 'FuelOrRecharge', 'additive' => 'Additive')") !== false
+	&& strpos($frLang, 'FuelOrRecharge=Carburant / recharge') !== false
+	&& strpos($frLang, 'Additive=Additif') !== false
+	&& strpos($enLang, 'FuelOrRecharge=Fuel / recharge') !== false
+	&& strpos($enLang, 'Additive=Additive') !== false;
 $checks['vehicle_ajax_tooltip_uses_module_read_alias'] = strpos($vehicleClass, "public \$ajax_tooltip_element = 'lmdbvehicleajaxtooltip';") !== false
 	&& strpos($vehicleClass, 'class LmdbVehicleAjaxTooltip extends LmdbVehicle') !== false
 	&& strpos($vehicleClass, "public \$entity_scope_element = 'lmdbvehicle';") !== false

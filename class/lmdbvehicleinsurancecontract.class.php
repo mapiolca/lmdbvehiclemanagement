@@ -95,7 +95,7 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 	{
 		global $langs;
 
-		$langs->loadLangs(array('companies', 'other', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		$langs->loadLangs(array('main', 'other', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 		if (getDolGlobalString('MAIN_OPTIMIZEFORTEXTBROWSER')) {
 			return array('optimize' => $langs->trans('InsuranceContract'));
 		}
