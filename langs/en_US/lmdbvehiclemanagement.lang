@@ -353,6 +353,14 @@ PermissionUploadInsuranceCertificate=Upload insurance certificates
 PermissionValidateInsuranceCertificate=Validate or reject insurance certificates
 PermissionDeleteInsurance=Delete insurance drafts
 SimpleInsuranceContractNumRefModelDesc=Insurance contract references in ASS YYMM-0001 format
+RegistrationVehicleNumRefModelDesc=Uses the normalized registration number as the vehicle reference
+RegistrationNumberRequiredForReference=The registration number is required to generate the vehicle reference.
+ConfirmNumberingModelChangeTitle=Change numbering model
+ConfirmNumberingModelChange=Do you want to enable this numbering model?
+ConfirmVehicleReferenceMigration=This operation will rename %s vehicle reference(s) and move their documents. Do you confirm the migration?
+VehicleReferencesMigrated=Vehicle references and their documents have been migrated.
+VehicleReferenceMigrationConflict=The migration produces conflicting references.
+VehicleDocumentDirectoryConflict=A target document directory already exists.
 
 # Insurance reminders
 InsuranceReminderSettings=Insurance certificate reminders

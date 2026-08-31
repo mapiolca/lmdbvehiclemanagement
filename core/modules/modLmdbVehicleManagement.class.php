@@ -364,6 +364,9 @@ class modLmdbVehicleManagement extends DolibarrModules
 			't.entity' => 'Numeric',
 		);
 		$this->export_entities_array[$r] = array_fill_keys(array_keys($this->export_fields_array[$r]), 'lmdbvehicle');
+		if (getDolGlobalString('LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON', 'mod_lmdbvehicle_standard') === 'mod_lmdbvehicle_registration') {
+			unset($this->export_fields_array[$r]['t.ref'], $this->export_TypeFields_array[$r]['t.ref'], $this->export_entities_array[$r]['t.ref']);
+		}
 		$this->export_sql_start[$r] = 'SELECT DISTINCT ';
 		$this->export_sql_end[$r] = ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS t';
 		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy AS energy ON energy.rowid = t.fk_energy';
@@ -459,6 +462,19 @@ class modLmdbVehicleManagement extends DolibarrModules
 			);
 			$this->import_updatekeys_array[$r] = array();
 			$this->import_run_sql_after_array[$r] = array();
+			if (getDolGlobalString('LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON', 'mod_lmdbvehicle_standard') === 'mod_lmdbvehicle_registration') {
+				unset($this->import_fields_array[$r]['t.ref'], $this->import_TypeFields_array[$r]['t.ref'], $this->import_examplevalues_array[$r]['t.ref']);
+				$this->import_fieldshidden_array[$r]['t.ref'] = 'rule-compute';
+				$this->import_convertvalue_array[$r]['t.ref'] = array(
+					'rule' => 'compute',
+					'file' => '/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php',
+					'class' => 'LmdbVehicleImport',
+					'method' => 'getRegistrationReference',
+					'type' => 'string',
+				);
+				$this->import_entities_array[$r] = array_fill_keys(array_keys($this->import_fields_array[$r]), 'lmdbvehicle');
+				$this->import_entities_array[$r]['t.ref'] = 'lmdbvehicle';
+			}
 		}
 	}
 

@@ -353,6 +353,14 @@ PermissionUploadInsuranceCertificate=Déposer les attestations d’assurance
 PermissionValidateInsuranceCertificate=Valider ou rejeter les attestations d’assurance
 PermissionDeleteInsurance=Supprimer les brouillons d’assurance
 SimpleInsuranceContractNumRefModelDesc=Références de contrat d’assurance au format ASS AAMM-0001
+RegistrationVehicleNumRefModelDesc=Utilise l’immatriculation normalisée comme référence du véhicule
+RegistrationNumberRequiredForReference=L’immatriculation est obligatoire pour générer la référence du véhicule.
+ConfirmNumberingModelChangeTitle=Changer le modèle de numérotation
+ConfirmNumberingModelChange=Voulez-vous activer ce modèle de numérotation ?
+ConfirmVehicleReferenceMigration=Cette opération va renommer %s référence(s) de véhicule et déplacer leurs documents. Confirmez-vous la migration ?
+VehicleReferencesMigrated=Les références des véhicules et leurs documents ont été migrés.
+VehicleReferenceMigrationConflict=La migration produit des références en conflit.
+VehicleDocumentDirectoryConflict=Un répertoire documentaire cible existe déjà.
 
 # Rappels assurance
 InsuranceReminderSettings=Rappels des attestations d’assurance

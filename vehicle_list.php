@@ -58,7 +58,7 @@ if (GETPOST('button_removefilter', 'alpha')) {
 $object = new LmdbVehicle($db);
 $hookmanager->initHooks(array('lmdbvehiclelist'));
 $arrayfields = array(
-	't.ref' => array('label' => 'Ref', 'checked' => 1, 'enabled' => 1, 'position' => 10),
+	't.ref' => array('label' => 'Ref', 'checked' => LmdbVehicle::usesRegistrationAsReference() ? 0 : 1, 'enabled' => 1, 'position' => 10),
 	't.registration_number' => array('label' => 'RegistrationNumber', 'checked' => 1, 'enabled' => 1, 'position' => 20),
 	't.label' => array('label' => 'Label', 'checked' => 1, 'enabled' => 1, 'position' => 30),
 	't.brand' => array('label' => 'Brand', 'checked' => 1, 'enabled' => 1, 'position' => 40),

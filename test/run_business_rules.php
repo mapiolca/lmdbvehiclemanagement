@@ -3,6 +3,7 @@
 
 require_once dirname(__DIR__).'/class/lmdbvehiclemanagementrules.class.php';
 require_once dirname(__DIR__).'/class/lmdbvehicleenergy.class.php';
+require_once dirname(__DIR__).'/lib/lmdbvehiclemanagement.lib.php';
 
 $defaultEnergies = LmdbVehicleEnergy::getDefaultDefinitions();
 
@@ -43,6 +44,8 @@ $checks = array(
 	'insurance_certificate_rejected_to_archived' => LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(3, 9),
 	'insurance_certificate_controlled_is_immutable' => !LmdbVehicleManagementRules::insuranceCertificateStatusTransitionIsAllowed(2, 3),
 	'insurance_reminder_bucket_is_stable' => LmdbVehicleManagementRules::insuranceReminderBucket(8, 7) === 1,
+	'registration_reference_is_not_repeated' => lmdbVehicleDisplayIdentifier('AA-123-BB', 'AA-123-BB', 'Jumper') === 'AA-123-BB — Jumper',
+	'standard_reference_keeps_registration' => lmdbVehicleDisplayIdentifier('VEH2608-0001', 'AA-123-BB', 'Jumper') === 'VEH2608-0001 — AA-123-BB — Jumper',
 );
 
 $failed = array_keys(array_filter($checks, static function ($result) {

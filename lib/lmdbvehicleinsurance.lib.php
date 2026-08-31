@@ -115,7 +115,7 @@ function lmdbInsuranceGetVehicleOptions($db, $entity)
 		return array();
 	}
 	while (is_object($row = $db->fetch_object($resql))) {
-		$options[(int) $row->rowid] = (string) $row->ref.' — '.(string) $row->registration_number.' — '.(string) $row->label;
+		$options[(int) $row->rowid] = lmdbVehicleDisplayIdentifier((string) $row->ref, (string) $row->registration_number, (string) $row->label);
 	}
 	$db->free($resql);
 

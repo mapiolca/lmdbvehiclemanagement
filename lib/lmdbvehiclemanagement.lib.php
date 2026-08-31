@@ -87,6 +87,30 @@ function lmdbVehiclePrepareHead($object)
 }
 
 /**
+ * Build a readable vehicle identifier without repeating registration-based refs.
+ *
+ * @param string $ref Vehicle reference
+ * @param string $registration Registration number
+ * @param string $label Vehicle label
+ * @return string
+ */
+function lmdbVehicleDisplayIdentifier($ref, $registration, $label = '')
+{
+	$parts = array();
+	if ($ref !== '') {
+		$parts[] = $ref;
+	}
+	if ($registration !== '' && strcasecmp($registration, $ref) !== 0) {
+		$parts[] = $registration;
+	}
+	if ($label !== '') {
+		$parts[] = $label;
+	}
+
+	return implode(' — ', $parts);
+}
+
+/**
  * Print the common native banner used by every vehicle tab.
  *
  * @param LmdbVehicle $object Vehicle
@@ -97,7 +121,10 @@ function lmdbVehiclePrintBanner($object)
 	global $db, $langs;
 
 	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
-	$moreHtmlRef = '<div class="refidno">'.dol_escape_htmltag($object->registration_number).' — '.dol_escape_htmltag($object->label);
+	$secondaryIdentifier = strcasecmp((string) $object->ref, (string) $object->registration_number) === 0
+		? (string) $object->label
+		: (string) $object->registration_number.' — '.(string) $object->label;
+	$moreHtmlRef = '<div class="refidno">'.dol_escape_htmltag($secondaryIdentifier);
 	if (isModEnabled('multicompany') && !empty($object->entity)) {
 		$entityLabel = (string) $object->entity;
 		$resEntity = $db->query('SELECT label FROM '.MAIN_DB_PREFIX.'entity WHERE rowid = '.((int) $object->entity));

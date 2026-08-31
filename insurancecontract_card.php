@@ -166,7 +166,7 @@ if ($action === 'create' || $action === 'edit') {
 		while (is_object($vehicleRow = $db->fetch_object($resVehicles))) {
 			$vehicleCount++;
 			$vehicleUrl = dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?id='.((int) $vehicleRow->rowid);
-			print '<tr class="oddeven"><td><a href="'.$vehicleUrl.'">'.img_picto('', 'car', 'class="pictofixedwidth"').dol_escape_htmltag((string) $vehicleRow->ref.' — '.(string) $vehicleRow->registration_number.' — '.(string) $vehicleRow->label).'</a></td>';
+			print '<tr class="oddeven"><td><a href="'.$vehicleUrl.'">'.img_picto('', 'car', 'class="pictofixedwidth"').dol_escape_htmltag(lmdbVehicleDisplayIdentifier((string) $vehicleRow->ref, (string) $vehicleRow->registration_number, (string) $vehicleRow->label)).'</a></td>';
 			print '<td>'.$langs->trans($vehicleRow->coverage_type === LmdbVehicleInsuranceContract::COVERAGE_PRIMARY ? 'InsuranceCoveragePrimary' : 'InsuranceCoverageComplementary').'</td>';
 			print '<td>'.dol_print_date($db->jdate($vehicleRow->date_start), 'day').' — '.(!empty($vehicleRow->date_end) ? dol_print_date($db->jdate($vehicleRow->date_end), 'day') : $langs->trans('NoLimit')).'</td></tr>';
 		}

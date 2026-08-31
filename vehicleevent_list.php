@@ -81,7 +81,7 @@ if (!$resVehicles) {
 	dol_print_error($db);
 	exit;
 }
-while (is_object($vehicleRow = $db->fetch_object($resVehicles))) $vehicleOptions[(int) $vehicleRow->rowid] = (string) $vehicleRow->registration_number.' — '.(string) $vehicleRow->ref;
+while (is_object($vehicleRow = $db->fetch_object($resVehicles))) $vehicleOptions[(int) $vehicleRow->rowid] = lmdbVehicleDisplayIdentifier((string) $vehicleRow->ref, (string) $vehicleRow->registration_number);
 $db->free($resVehicles);
 
 $where = ' WHERE e.entity IN ('.$entityScope.')';
@@ -174,7 +174,7 @@ while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 	$object->setVarsFromFetchObj($row);
 	print '<tr class="oddeven">';
 	if (!empty($arrayfields['e.ref']['checked'])) print '<td>'.$object->getNomUrl(1).'</td>';
-	if (!empty($arrayfields['e.fk_vehicle']['checked'])) print '<td><a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?id='.((int) $row->fk_vehicle).'">'.dol_escape_htmltag((string) $row->registration_number).' — '.dol_escape_htmltag((string) $row->vehicle_ref).'</a></td>';
+	if (!empty($arrayfields['e.fk_vehicle']['checked'])) print '<td><a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?id='.((int) $row->fk_vehicle).'">'.dol_escape_htmltag(lmdbVehicleDisplayIdentifier((string) $row->vehicle_ref, (string) $row->registration_number)).'</a></td>';
 	if (!empty($arrayfields['e.label']['checked'])) print '<td>'.dol_escape_htmltag($object->label).'</td>';
 	if (!empty($arrayfields['e.event_type']['checked'])) print '<td>'.$langs->trans($object->fields['event_type']['arrayofkeyval'][$object->event_type]).'</td>';
 	if (!empty($arrayfields['e.event_date']['checked'])) print '<td class="center">'.dol_print_date($object->event_date, 'dayhour').'</td>';

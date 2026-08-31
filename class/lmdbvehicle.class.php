@@ -4,6 +4,7 @@
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementobject.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementrules.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleenergy.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclereferencemigration.class.php');
 
 /**
  * Vehicle dossier object.
@@ -116,6 +117,9 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	public function create(User $user, $notrigger = 0)
 	{
 		$this->status = self::STATUS_DRAFT;
+		if (self::usesRegistrationAsReference()) {
+			$this->ref = self::normalizeRegistrationNumber((string) $this->registration_number);
+		}
 
 		return parent::create($user, $notrigger);
 	}
@@ -129,6 +133,7 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	 */
 	public function update(User $user, $notrigger = 0)
 	{
+		$current = null;
 		if (!$this->statusTransitionInProgress && !empty($this->id)) {
 			$current = new self($this->db);
 			if ($current->fetch((int) $this->id) <= 0) {
@@ -142,8 +147,56 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 				return -1;
 			}
 		}
+		if (self::usesRegistrationAsReference()) {
+			$this->registration_number = self::normalizeRegistrationNumber((string) $this->registration_number);
+			$this->ref = $this->registration_number;
+		}
+		if ($current instanceof self && (string) $current->ref !== (string) $this->ref) {
+			$this->entity = (int) $current->entity;
+			if ($this->validateBusinessRules() < 0) {
+				return -1;
+			}
+			$migration = new LmdbVehicleReferenceMigration($this->db);
+			$this->last_main_doc = $migration->replaceReferenceInPath((string) $current->last_main_doc, (string) $current->ref, (string) $this->ref);
+			$this->context['trigger_reason'] = 'reference_sync';
+			$this->context['old_ref'] = (string) $current->ref;
+			$this->context['new_ref'] = (string) $this->ref;
+			$this->db->begin();
+			if ($migration->relocateUpdatedVehicle($current, $this) < 0) {
+				$this->db->rollback();
+				$this->error = $migration->error;
+				$this->errors = $migration->errors;
+				return -1;
+			}
+			$result = parent::update($user, $notrigger);
+			if ($result <= 0 || $migration->updateEcmIndex($this, (string) $current->ref, (string) $this->ref) < 0) {
+				$this->db->rollback();
+				$migration->rollbackFilesystem();
+				if ($result > 0) {
+					$this->error = $migration->error;
+					$this->errors = $migration->errors;
+				}
+				return -1;
+			}
+			$this->db->commit();
+			$migration->commitFilesystem();
+
+			return $result;
+		}
 
 		return parent::update($user, $notrigger);
+	}
+
+	/** @return bool Whether the active model derives the reference from registration */
+	public static function usesRegistrationAsReference()
+	{
+		return getDolGlobalString('LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON', 'mod_lmdbvehicle_standard') === 'mod_lmdbvehicle_registration';
+	}
+
+	/** @param string $registration Registration value @return string Normalized value */
+	public static function normalizeRegistrationNumber($registration)
+	{
+		return strtoupper(trim($registration));
 	}
 
 	/**
@@ -327,7 +380,7 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	{
 		global $langs;
 
-		$this->registration_number = strtoupper(trim($this->registration_number));
+		$this->registration_number = self::normalizeRegistrationNumber((string) $this->registration_number);
 		$this->vin = trim((string) $this->vin) !== '' ? strtoupper(trim((string) $this->vin)) : null;
 		if (trim($this->registration_number) === '') {
 			$this->error = $langs->trans('FieldRequired', $langs->trans('RegistrationNumber'));

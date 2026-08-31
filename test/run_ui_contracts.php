@@ -40,6 +40,11 @@ $insuranceDocument = readModuleSource('insurancecontract_document.php');
 $insuranceAgenda = readModuleSource('insurancecontract_agenda.php');
 $insuranceSql = readModuleSource('sql/llx_lmdbvehiclemanagement_insurance_contract.sql');
 $moduleDataSql = readModuleSource('sql/data.sql');
+$vehicleClass = readModuleSource('class/lmdbvehicle.class.php');
+$vehicleReferenceMigration = readModuleSource('class/lmdbvehiclereferencemigration.class.php');
+$vehicleRegistrationNumbering = readModuleSource('core/modules/lmdbvehiclemanagement/mod_lmdbvehicle_registration.php');
+$setupPage = readModuleSource('admin/setup.php');
+$vehicleList = readModuleSource('vehicle_list.php');
 $checks = array();
 
 $orderedTabs = array(
@@ -75,6 +80,19 @@ foreach ($vehicleTabPages as $pageFile) {
 
 $checks['banner_uses_native_helper'] = strpos($library, 'dol_banner_tab(') !== false;
 $checks['banner_keeps_multicompany_badge'] = strpos($library, 'multicompany-entity-card-container') !== false;
+$checks['registration_numbering_model_is_native'] = strpos($vehicleRegistrationNumbering, 'extends ModeleNumRefLmdbVehicle') !== false
+	&& strpos($vehicleRegistrationNumbering, 'normalizeRegistrationNumber') !== false;
+$checks['vehicle_ref_is_synchronized_on_create_and_update'] = substr_count($vehicleClass, 'usesRegistrationAsReference()') >= 2
+	&& strpos($vehicleClass, '$this->ref = $this->registration_number;') !== false;
+$checks['vehicle_reference_migration_is_transactional'] = strpos($vehicleReferenceMigration, '$this->db->begin();') !== false
+	&& strpos($vehicleReferenceMigration, '$this->db->rollback();') !== false
+	&& strpos($vehicleReferenceMigration, 'rollbackFilesystem()') !== false;
+$checks['vehicle_reference_migration_updates_documents_and_ecm'] = strpos($vehicleReferenceMigration, 'getMultidirOutput(') !== false
+	&& strpos($vehicleReferenceMigration, "MAIN_DB_PREFIX.'ecm_files'") !== false
+	&& strpos($vehicleReferenceMigration, 'last_main_doc') !== false;
+$checks['vehicle_numbering_change_requires_confirmation'] = strpos($setupPage, "'confirm_setmod'") !== false
+	&& strpos($setupPage, 'ConfirmVehicleReferenceMigration') !== false;
+$checks['registration_mode_hides_redundant_ref_by_default'] = strpos($vehicleList, "'checked' => LmdbVehicle::usesRegistrationAsReference() ? 0 : 1") !== false;
 $checks['description_uses_native_wysiwyg'] = strpos($vehicleCard, "new DolEditor('description'") !== false;
 $checks['insurance_description_uses_native_wysiwyg'] = strpos($insuranceLibrary, "new DolEditor('contract_description'") !== false;
 $checks['insurance_allows_new_contract_after_first_one'] = strpos($insurancePage, "new_contract=1") !== false;

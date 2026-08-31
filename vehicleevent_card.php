@@ -109,7 +109,7 @@ if (!$resVehicles) {
 	exit;
 }
 while (is_object($vehicleRow = $db->fetch_object($resVehicles))) {
-	$vehicleOptions[(int) $vehicleRow->rowid] = (string) $vehicleRow->registration_number.' — '.(string) $vehicleRow->ref;
+	$vehicleOptions[(int) $vehicleRow->rowid] = lmdbVehicleDisplayIdentifier((string) $vehicleRow->ref, (string) $vehicleRow->registration_number);
 }
 $db->free($resVehicles);
 if ($action === 'create' && empty($object->fk_vehicle)) $object->fk_vehicle = GETPOSTINT('vehicle_id');
