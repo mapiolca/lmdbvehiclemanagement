@@ -51,7 +51,7 @@ class ActionsLmdbVehicleManagement
 		}
 
 		$this->results[] = array(
-			'url' => DOL_URL_ROOT_ALT.'/lmdbvehiclemanagement/consumption_card.php?action=create&mainmenu=lmdbvehiclemanagement',
+			'url' => dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement',
 			'title' => 'NewConsumption@lmdbvehiclemanagement',
 			'name' => 'ConsumptionEntry@lmdbvehiclemanagement',
 			'picto' => 'gas-pump',

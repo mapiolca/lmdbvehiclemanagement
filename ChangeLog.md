@@ -1,5 +1,10 @@
 # Historique des versions
 
+## `0.10.1` — 2026-08-31
+
+- Correction de l’URL de l’ajout rapide `Plein / Recharge` avec le helper natif compatible Dolibarr v20+.
+- Suppression de la dépendance à la constante inexistante `DOL_URL_ROOT_ALT` qui provoquait une erreur fatale dans le menu haut.
+
 ## `0.10.0` — 2026-08-31
 
 - Ajout des tooltips Ajax natifs sur les liens des objets du module.
