@@ -146,6 +146,7 @@ ConfirmDeleteAssignment=Confirmez-vous la suppression de cette affectation ?
 # Odometer
 OdometerReading=Relevé kilométrique
 OdometerKm=Kilométrage
+OdometerDifference=Différence
 ReadingDate=Date du relevé
 ReadingSource=Source
 ReadingKind=Nature du relevé

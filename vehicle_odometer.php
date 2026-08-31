@@ -106,9 +106,24 @@ if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
 		$records = array();
 	}
 	print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
-	print '<tr class="liste_titre"><th>'.$langs->trans('ReadingDate').'</th><th class="right">'.$langs->trans('OdometerKm').'</th><th>'.$langs->trans('ReadingSource').'</th><th>'.$langs->trans('ReadingKind').'</th><th>'.$langs->trans('ReadingReason').'</th><th></th></tr>';
-	foreach ($records as $record) {
-		print '<tr class="oddeven" id="odometer-'.((int) $record->id).'"><td>'.dol_print_date($record->reading_date, 'dayhour').'</td><td class="right">'.price($record->odometer_km, 0, $langs, 1, -1, -1).' km</td>';
+	print '<tr class="liste_titre"><th>'.$langs->trans('ReadingDate').'</th><th class="right">'.$langs->trans('OdometerKm').'</th><th class="right">'.$langs->trans('OdometerDifference').'</th><th>'.$langs->trans('ReadingSource').'</th><th>'.$langs->trans('ReadingKind').'</th><th>'.$langs->trans('ReadingReason').'</th><th></th></tr>';
+	$recordCount = count($records);
+	foreach ($records as $recordIndex => $record) {
+		$differenceHtml = '<span class="opacitymedium">&mdash;</span>';
+		if ($recordIndex + 1 < $recordCount) {
+			$difference = (float) $record->odometer_km - (float) $records[$recordIndex + 1]->odometer_km;
+			$differenceClass = '';
+			$differenceSign = '';
+			if ($difference > 0) {
+				$differenceClass = 'text-success';
+				$differenceSign = '+';
+			} elseif ($difference < 0) {
+				$differenceClass = 'text-danger';
+				$differenceSign = '-';
+			}
+			$differenceHtml = '<span'.($differenceClass !== '' ? ' class="'.$differenceClass.'"' : '').'>'.$differenceSign.price(abs($difference), 0, $langs, 1, -1, -1).' km</span>';
+		}
+		print '<tr class="oddeven" id="odometer-'.((int) $record->id).'"><td>'.dol_print_date($record->reading_date, 'dayhour').'</td><td class="right">'.price($record->odometer_km, 0, $langs, 1, -1, -1).' km</td><td class="right nowraponall">'.$differenceHtml.'</td>';
 		print '<td>'.$langs->trans($record->fields['source']['arrayofkeyval'][$record->source]).'</td><td>'.$langs->trans($record->fields['reading_kind']['arrayofkeyval'][$record->reading_kind]).'</td><td>'.dol_htmlentitiesbr((string) $record->reason).'</td><td class="nowraponall">';
 		if ($permissionToManage && $record->source !== 'consumption') {
 			print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&reading_id='.$record->id.'&action=edit">'.img_edit().'</a> ';
@@ -118,7 +133,7 @@ if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
 		}
 		print '</td></tr>';
 	}
-	if (empty($records)) print '<tr class="oddeven"><td colspan="6"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
+	if (empty($records)) print '<tr class="oddeven"><td colspan="7"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
 	print '</table></div>';
 }
 print dol_get_fiche_end();

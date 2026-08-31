@@ -1,5 +1,11 @@
 # Historique des versions
 
+## `0.12.0` — 2026-08-31
+
+- Ajout d’une colonne `Différence` dans l’onglet Kilométrage afin d’afficher la distance entre deux relevés chronologiquement successifs.
+- Calcul à la volée depuis les relevés chargés, sans donnée redondante ni migration SQL.
+- Affichage des écarts positifs en vert avec un signe `+`, des écarts négatifs en rouge et du premier relevé sans antécédent avec un tiret neutre.
+
 ## `0.11.3` — 2026-08-31
 
 - Correction de l’accès au tooltip Ajax des véhicules lorsque le sous-espace de droits `lmdbvehicle` ne contient volontairement que les droits d’écriture et de suppression.

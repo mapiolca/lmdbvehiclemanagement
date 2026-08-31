@@ -50,6 +50,7 @@ $setupPage = readModuleSource('admin/setup.php');
 $vehicleList = readModuleSource('vehicle_list.php');
 $vehicleEventList = readModuleSource('vehicleevent_list.php');
 $vehicleEventCard = readModuleSource('vehicleevent_card.php');
+$vehicleOdometer = readModuleSource('vehicle_odometer.php');
 $consumptionClass = readModuleSource('class/lmdbvehicleconsumption.class.php');
 $consumptionStats = readModuleSource('class/lmdbvehicleconsumptionstats.class.php');
 $consumableClass = readModuleSource('class/lmdbvehicleconsumable.class.php');
@@ -151,7 +152,12 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0113'] = strpos($descriptor, "\$this->version = '0.11.3';") !== false;
+$checks['module_version_is_0120'] = strpos($descriptor, "\$this->version = '0.12.0';") !== false;
+$checks['odometer_list_calculates_difference_at_render_time'] = strpos($vehicleOdometer, "trans('OdometerDifference')") !== false
+	&& strpos($vehicleOdometer, '$records[$recordIndex + 1]->odometer_km') !== false
+	&& strpos($vehicleOdometer, "\$differenceClass = 'text-success';") !== false
+	&& strpos($vehicleOdometer, "\$differenceClass = 'text-danger';") !== false
+	&& strpos($vehicleOdometer, "colspan=\"7\"") !== false;
 $checks['consumption_uses_native_quick_add_hook'] = strpos($descriptor, "'main',") !== false
 	&& strpos($actionsHooks, 'function menuDropdownQuickaddItems(') !== false
 	&& strpos($actionsHooks, "dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1)") !== false

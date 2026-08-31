@@ -146,6 +146,7 @@ ConfirmDeleteAssignment=Are you sure you want to delete this assignment?
 # Odometer
 OdometerReading=Odometer reading
 OdometerKm=Odometer
+OdometerDifference=Difference
 ReadingDate=Reading date
 ReadingSource=Source
 ReadingKind=Reading kind
