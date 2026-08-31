@@ -219,11 +219,6 @@ if ($action === 'create' || $action === 'edit') {
 	print $doleditor->Create(1);
 	print '</td></tr>';
 	print '</table></div>';
-	print '<script>';
-	print 'document.addEventListener("DOMContentLoaded",function(){var energy=document.getElementById("fk_energy");if(!energy){return;}';
-	print 'var updateCapacities=function(){var selected=parseInt(energy.value||"0",10);document.querySelectorAll(".lmdb-capacity-row").forEach(function(row){var ids=(row.getAttribute("data-energy-ids")||"").split(",").map(Number);var visible=selected>0&&ids.indexOf(selected)!==-1;row.style.display=visible?"":"none";var input=row.querySelector("input");if(input){input.disabled=!visible;}});};';
-	print 'energy.addEventListener("change",updateCapacities);updateCapacities();});';
-	print '</script>';
 	print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'" formnovalidate></div>';
 	print '</form>';
 } elseif ($id > 0) {

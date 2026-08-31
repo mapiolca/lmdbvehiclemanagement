@@ -26,6 +26,7 @@ if ($page < 0 || GETPOST('button_search', 'alpha') || GETPOST('button_removefilt
 $offset = $limit * $page;
 $sortfield = GETPOST('sortfield', 'aZ09comma') ?: 'e.event_date';
 $sortorder = strtoupper(GETPOST('sortorder', 'alpha')) === 'ASC' ? 'ASC' : 'DESC';
+$contextpage = GETPOST('contextpage', 'aZ09');
 $allowedSorts = array('e.ref', 'e.event_date', 'v.ref', 'e.label', 'e.event_type', 'e.severity', 'e.status', 'e.entity');
 if (!in_array($sortfield, $allowedSorts, true)) $sortfield = 'e.event_date';
 
@@ -141,8 +142,9 @@ print '<input type="hidden" name="token" value="'.newToken().'">';
 print '<input type="hidden" name="action" value="list"><input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'"><input type="hidden" name="page" value="'.((int) $page).'">';
 $newButton = dolGetButtonTitle($langs->trans('NewVehicleEvent'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create', '', $user->hasRight('lmdbvehiclemanagement', 'event', 'write'));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'calendar-day', 0, $newButton, '', $limit, 0, 0, 1);
-$selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, 'lmdbvehicleeventlist', 0);
-print '<div class="div-table-responsive-no-min"><table class="tagtable nobottomiftotal noborder liste">';
+$varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
+$selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, 0);
+print '<div class="div-table-responsive"><table class="tagtable nobottomiftotal noborder liste">';
 print '<tr class="liste_titre_filter">';
 if (!empty($arrayfields['e.ref']['checked'])) print '<td><input class="flat maxwidth100" type="text" name="search_ref" value="'.dol_escape_htmltag($searchRef).'"></td>';
 if (!empty($arrayfields['e.fk_vehicle']['checked'])) print '<td>'.$form->selectarray('search_vehicle', $vehicleOptions, $searchVehicle, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth200', 1).'</td>';

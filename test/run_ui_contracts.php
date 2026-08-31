@@ -47,12 +47,14 @@ $vehicleReferenceMigration = readModuleSource('class/lmdbvehiclereferencemigrati
 $vehicleRegistrationNumbering = readModuleSource('core/modules/lmdbvehiclemanagement/mod_lmdbvehicle_registration.php');
 $setupPage = readModuleSource('admin/setup.php');
 $vehicleList = readModuleSource('vehicle_list.php');
+$vehicleEventList = readModuleSource('vehicleevent_list.php');
 $consumptionClass = readModuleSource('class/lmdbvehicleconsumption.class.php');
 $consumableClass = readModuleSource('class/lmdbvehicleconsumable.class.php');
 $consumptionCard = readModuleSource('consumption_card.php');
 $consumptionList = readModuleSource('consumption_list.php');
 $consumptionIndex = readModuleSource('consumption_index.php');
 $vehicleConsumption = readModuleSource('vehicle_consumption.php');
+$moduleJavascript = readModuleSource('js/lmdbvehiclemanagement.js');
 $consumptionSql = readModuleSource('sql/llx_lmdbvehiclemanagement_consumption.sql');
 $checks = array();
 
@@ -136,7 +138,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_080'] = strpos($descriptor, "\$this->version = '0.8.0';") !== false;
+$checks['module_version_is_081'] = strpos($descriptor, "\$this->version = '0.8.1';") !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;
@@ -148,7 +150,7 @@ $checks['insurance_menu_has_create_and_list'] = strpos($descriptor, '/insurancec
 $checks['insurance_contract_has_dedicated_card'] = strpos($insuranceContractClass, "return 'insurancecontract_card.php';") !== false;
 $checks['insurance_list_uses_native_pattern'] = strpos($insuranceList, 'print_barre_liste(') !== false
 	&& strpos($insuranceList, "multiSelectArrayWithCheckbox('selectedfields'") !== false
-	&& strpos($insuranceList, 'div-table-responsive-no-min') !== false
+	&& strpos($insuranceList, 'div-table-responsive') !== false
 	&& strpos($insuranceList, 'multicompany-entity-card-container') !== false;
 $checks['insurance_list_bar_is_inside_form'] = strpos($insuranceList, "print '<form method=\"POST\"") < strpos($insuranceList, 'print_barre_liste(');
 $checks['insurance_pages_use_native_permissions'] = strpos($insuranceCard, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false
@@ -269,6 +271,16 @@ $checks['consumption_list_is_native'] = strpos($consumptionList, 'print_barre_li
 	&& strpos($consumptionList, "multiSelectArrayWithCheckbox('selectedfields'") !== false
 	&& strpos($consumptionList, 'multicompany-entity-card-container') !== false
 	&& strpos($consumptionList, "trans('NoRecordFound')") !== false;
+$mainListSources = array($vehicleList, $vehicleEventList, $insuranceList, $consumptionList);
+$checks['main_lists_reserve_native_height'] = count(array_filter($mainListSources, static function ($source) {
+	return strpos($source, 'div-table-responsive') !== false
+		&& strpos($source, 'div-table-responsive-no-min') === false;
+})) === count($mainListSources);
+$checks['main_list_column_selectors_use_native_page_context'] = count(array_filter($mainListSources, static function ($source) {
+	return strpos($source, "\$contextpage = GETPOST('contextpage', 'aZ09');") !== false
+		&& strpos($source, "\$varpage = empty(\$contextpage) ? \$_SERVER['PHP_SELF'] : \$contextpage;") !== false
+		&& strpos($source, "multiSelectArrayWithCheckbox('selectedfields', \$arrayfields, \$varpage") !== false;
+})) === count($mainListSources);
 $checks['consumption_analytics_use_dolgraph_only'] = strpos($consumptionIndex, 'lmdbVehicleConsumptionRenderGraph(') !== false
 	&& strpos($vehicleConsumption, 'lmdbVehicleConsumptionRenderGraph(') !== false
 	&& strpos($library, 'new DolGraph()') !== false;
@@ -277,7 +289,11 @@ $checks['vehicle_capacity_labels_and_units_are_rendered_separately'] = strpos($v
 	&& strpos($vehicleCard, "dol_escape_htmltag(\$consumableOption['unit'])") !== false
 	&& strpos($consumableClass, 'html_entity_decode($label, ENT_QUOTES | ENT_HTML5') !== false;
 $checks['vehicle_capacities_follow_selected_energy'] = strpos($vehicleCard, 'data-energy-ids=') !== false
-	&& strpos($vehicleCard, 'energy.addEventListener("change",updateCapacities)') !== false
+	&& strpos($descriptor, "'js' => array('/lmdbvehiclemanagement/js/lmdbvehiclemanagement.js')") !== false
+	&& strpos($moduleJavascript, "select[name=\"fk_energy\"]") !== false
+	&& strpos($moduleJavascript, "document.addEventListener('change'") !== false
+	&& strpos($moduleJavascript, "select2:select select2:clear") !== false
+	&& strpos($moduleJavascript, 'input.disabled = !visible') !== false
 	&& substr_count($vehicleCard, 'getCapacityOptions((int) $object->fk_energy)') >= 3
 	&& strpos($vehicleClass, 'DELETE cap FROM') !== false
 	&& strpos($vehicleClass, "AND ce.fk_energy = '.((int) \$this->fk_energy)") !== false;

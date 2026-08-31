@@ -1,5 +1,12 @@
 # Historique des versions
 
+## `0.8.1` — 2026-08-31
+
+- Actualisation JavaScript immédiate des champs de capacité lors d’un changement d’énergie.
+- Prise en charge du sélecteur natif Dolibarr et des événements Select2, en création comme en modification.
+- Rétablissement de la hauteur native des tableaux sur les listes principales.
+- Correction de la mémorisation et de l’application des colonnes visibles avec le contexte de page natif Dolibarr.
+
 ## `0.8.0` — 2026-08-31
 
 - Filtrage dynamique des capacités selon l’énergie P.3 sélectionnée sur le véhicule.

@@ -37,6 +37,7 @@ if ($page < 0 || GETPOST('button_search', 'alpha') || GETPOST('button_removefilt
 $offset = $limit * $page;
 $sortfield = GETPOST('sortfield', 'aZ09comma') ?: 't.registration_number';
 $sortorder = strtoupper(GETPOST('sortorder', 'alpha')) === 'DESC' ? 'DESC' : 'ASC';
+$contextpage = GETPOST('contextpage', 'aZ09');
 $allowedSorts = array('t.ref', 't.registration_number', 't.label', 't.brand', 't.model', 't.status', 't.entity');
 if (!in_array($sortfield, $allowedSorts, true)) {
 	$sortfield = 't.registration_number';
@@ -180,8 +181,9 @@ print '<input type="hidden" name="page" value="'.((int) $page).'">';
 $newButton = dolGetButtonTitle($langs->trans('NewVehicle'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?action=create', '', $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write'));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'car', 0, $newButton, '', $limit, 0, 0, 1);
 
-$selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, 'lmdbvehiclelist', 0);
-print '<div class="div-table-responsive-no-min">';
+$varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
+$selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, 0);
+print '<div class="div-table-responsive">';
 print '<table class="tagtable nobottomiftotal noborder liste">';
 print '<tr class="liste_titre_filter">';
 if (!empty($arrayfields['t.ref']['checked'])) print '<td><input class="flat maxwidth100" type="text" name="search_ref" value="'.dol_escape_htmltag($searchRef).'"></td>';
