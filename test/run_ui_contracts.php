@@ -138,7 +138,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_082'] = strpos($descriptor, "\$this->version = '0.8.2';") !== false;
+$checks['module_version_is_083'] = strpos($descriptor, "\$this->version = '0.8.3';") !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;
@@ -280,6 +280,9 @@ $checks['main_list_column_selectors_use_native_page_context'] = count(array_filt
 	return strpos($source, "\$contextpage = GETPOST('contextpage', 'aZ09');") !== false
 		&& strpos($source, "\$varpage = empty(\$contextpage) ? \$_SERVER['PHP_SELF'] : \$contextpage;") !== false
 		&& strpos($source, "multiSelectArrayWithCheckbox('selectedfields', \$arrayfields, \$varpage") !== false;
+})) === count($mainListSources);
+$checks['main_list_column_selectors_submit_with_native_filter_action'] = count(array_filter($mainListSources, static function ($source) {
+	return strpos($source, 'name="formfilteraction" id="formfilteraction" value="list"') !== false;
 })) === count($mainListSources);
 $checks['main_list_action_column_follows_native_position'] = count(array_filter($mainListSources, static function ($source) {
 	return strpos($source, "multiSelectArrayWithCheckbox('selectedfields', \$arrayfields, \$varpage, \$conf->main_checkbox_left_column)") !== false

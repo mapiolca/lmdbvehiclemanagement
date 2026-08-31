@@ -1,5 +1,11 @@
 # Historique des versions
 
+## `0.8.3` — 2026-08-31
+
+- Rétablissement de l’actualisation native des listes à la fermeture du sélecteur de colonnes.
+- Ajout du marqueur `formfilteraction` attendu par Dolibarr pour mémoriser et appliquer les colonnes sélectionnées.
+- Suppression du besoin de tout gestionnaire JavaScript spécifique pour ce comportement.
+
 ## `0.8.2` — 2026-08-31
 
 - Positionnement du sélecteur de colonnes avec le rendu natif `getTitleFieldOfList()`.
