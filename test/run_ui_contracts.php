@@ -49,6 +49,7 @@ $vehicleRegistrationNumbering = readModuleSource('core/modules/lmdbvehiclemanage
 $setupPage = readModuleSource('admin/setup.php');
 $vehicleList = readModuleSource('vehicle_list.php');
 $vehicleEventList = readModuleSource('vehicleevent_list.php');
+$vehicleEventCard = readModuleSource('vehicleevent_card.php');
 $consumptionClass = readModuleSource('class/lmdbvehicleconsumption.class.php');
 $consumptionStats = readModuleSource('class/lmdbvehicleconsumptionstats.class.php');
 $consumableClass = readModuleSource('class/lmdbvehicleconsumable.class.php');
@@ -150,7 +151,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0110'] = strpos($descriptor, "\$this->version = '0.11.0';") !== false;
+$checks['module_version_is_0111'] = strpos($descriptor, "\$this->version = '0.11.1';") !== false;
 $checks['consumption_uses_native_quick_add_hook'] = strpos($descriptor, "'main',") !== false
 	&& strpos($actionsHooks, 'function menuDropdownQuickaddItems(') !== false
 	&& strpos($actionsHooks, "dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1)") !== false
@@ -176,6 +177,8 @@ $checks['timeline_uses_native_field_filters_and_sorting'] = strpos($vehicleHisto
 	&& strpos($vehicleHistory, "getTitleFieldOfList('Date'") !== false
 	&& strpos($vehicleHistory, "getTitleFieldOfList('TimelineDocuments'") !== false
 	&& strpos($vehicleHistoryClass, 'private function buildFilterSql($filters)') !== false;
+$checks['vehicle_event_keeps_native_required_validation'] = strpos($vehicleEventCard, 'name="label" maxlength="255" required') !== false;
+$checks['vehicle_event_cancel_bypasses_required_validation'] = strpos($vehicleEventCard, 'name="cancel" value="\'.$langs->trans(\'Cancel\').\'" formnovalidate') !== false;
 $checks['dedicated_top_menu_is_declared'] = strpos($descriptor, "'type' => 'top'") !== false
 	&& strpos($descriptor, "'mainmenu' => 'lmdbvehiclemanagement'") !== false
 	&& strpos($descriptor, "'fk_menu' => 'fk_mainmenu=tools'") === false;

@@ -140,7 +140,7 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('OdometerKm').'</td><td><input class="flat width100 right" inputmode="decimal" name="odometer_km" value="'.dol_escape_htmltag($object->odometer_km === null ? '' : (string) $object->odometer_km).'"> km</td></tr>';
 	print '<tr><td>'.$langs->trans('Status').'</td><td>'.$form->selectarray('status', $object->fields['status']['arrayofkeyval'], (int) $object->status, 0, 0, 0, '', 1, 0, 0, '', 'minwidth200', 1).'</td></tr>';
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td><textarea class="flat centpercent" rows="4" name="description">'.dol_escape_htmltag((string) $object->description).'</textarea></td></tr>';
-	print '</table></div><div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'"></div></form>';
+	print '</table></div><div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'" formnovalidate></div></form>';
 } elseif ($id > 0) {
 	$head = lmdbVehicleEventPrepareHead($object);
 	print dol_get_fiche_head($head, 'card', $langs->trans('VehicleEvent'), -1, $object->picto);

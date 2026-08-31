@@ -1,5 +1,10 @@
 # Historique des versions
 
+## `0.11.1` — 2026-08-31
+
+- Conservation de la validation native du navigateur sur les champs obligatoires des événements véhicule.
+- Exclusion du bouton `Annuler` de cette validation grâce à l’attribut HTML natif `formnovalidate`.
+
 ## `0.11.0` — 2026-08-31
 
 - Ajout des pleins, recharges et additifs à la chronologie consolidée du véhicule.
