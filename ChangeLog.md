@@ -1,5 +1,11 @@
 # Historique des versions
 
+## `0.10.0` — 2026-08-31
+
+- Ajout des tooltips Ajax natifs sur les liens des objets du module.
+- Affichage des caractéristiques principales, du statut et du pictogramme propres à chaque objet.
+- Résolution native des affectations et relevés kilométriques par leur type d’élément Dolibarr.
+
 ## `0.9.0` — 2026-08-31
 
 - Ajout de l’entrée native `Plein / Recharge` au menu d’ajout rapide de Dolibarr.

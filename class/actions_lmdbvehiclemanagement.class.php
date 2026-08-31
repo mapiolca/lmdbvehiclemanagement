@@ -249,6 +249,24 @@ class ActionsLmdbVehicleManagement
 			'classfile' => 'lmdbvehicleevent',
 			'classname' => 'LmdbVehicleEvent',
 		);
+		$assignmentDefinition = array(
+			'module' => 'lmdbvehiclemanagement',
+			'element' => 'lmdbvehicleassignment',
+			'table_element' => 'lmdbvehiclemanagement_vehicle_assignment',
+			'subelement' => 'lmdbvehicleassignment',
+			'classpath' => 'lmdbvehiclemanagement/class',
+			'classfile' => 'lmdbvehicleassignment',
+			'classname' => 'LmdbVehicleAssignment',
+		);
+		$odometerDefinition = array(
+			'module' => 'lmdbvehiclemanagement',
+			'element' => 'lmdbvehicleodometerreading',
+			'table_element' => 'lmdbvehiclemanagement_odometer_reading',
+			'subelement' => 'lmdbvehicleodometerreading',
+			'classpath' => 'lmdbvehiclemanagement/class',
+			'classfile' => 'lmdbvehicleodometerreading',
+			'classname' => 'LmdbVehicleOdometerReading',
+		);
 		$insuranceContractDefinition = array(
 			'module' => 'lmdbvehiclemanagement',
 			'element' => 'lmdbinsurancecontract',
@@ -281,6 +299,10 @@ class ActionsLmdbVehicleManagement
 			'lmdbvehiclemanagement_lmdbvehicle' => $vehicleDefinition,
 			'lmdbvehicleevent@lmdbvehiclemanagement' => $eventDefinition,
 			'lmdbvehiclemanagement_lmdbvehicleevent' => $eventDefinition,
+			'lmdbvehicleassignment@lmdbvehiclemanagement' => $assignmentDefinition,
+			'lmdbvehiclemanagement_lmdbvehicleassignment' => $assignmentDefinition,
+			'lmdbvehicleodometerreading@lmdbvehiclemanagement' => $odometerDefinition,
+			'lmdbvehiclemanagement_lmdbvehicleodometerreading' => $odometerDefinition,
 			'lmdbinsurancecontract@lmdbvehiclemanagement' => $insuranceContractDefinition,
 			'lmdbvehiclemanagement_lmdbinsurancecontract' => $insuranceContractDefinition,
 			'lmdbinsurancecertificate@lmdbvehiclemanagement' => $insuranceCertificateDefinition,

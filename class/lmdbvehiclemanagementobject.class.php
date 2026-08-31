@@ -300,6 +300,84 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 	}
 
 	/**
+	 * Return the main object data displayed by native Dolibarr tooltips.
+	 *
+	 * Object classes can override this method when linked data must be resolved,
+	 * as the insurance contract does for its insurer.
+	 *
+	 * @param array<string,mixed> $params Tooltip parameters
+	 * @return array<string,string>
+	 */
+	public function getTooltipContentArray($params)
+	{
+		global $langs;
+
+		$langs->loadLangs(array('main', 'other', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		$titleKeys = array(
+			'lmdbvehicle' => 'Vehicle',
+			'lmdbvehicleassignment' => 'VehicleAssignment',
+			'lmdbvehicleodometerreading' => 'OdometerReading',
+			'lmdbvehicleevent' => 'VehicleEvent',
+			'lmdbvehicleconsumption' => 'ConsumptionEntry',
+			'lmdbinsurancecontract' => 'InsuranceContract',
+			'lmdbinsurancecertificate' => 'InsuranceCertificate',
+		);
+		$title = $langs->trans(isset($titleKeys[$this->element]) ? $titleKeys[$this->element] : 'Record');
+		if (getDolGlobalString('MAIN_OPTIMIZEFORTEXTBROWSER')) {
+			return array('optimize' => $title);
+		}
+
+		$datas = array();
+		$statusBadge = isset($this->fields['status']) && $this->status !== null ? ' '.$this->getLibStatut(5) : '';
+		$datas['picto'] = img_picto('', $this->picto).' <u class="paddingrightonly">'.dol_escape_htmltag($title).'</u>'.$statusBadge;
+		if (property_exists($this, 'ref') && (string) $this->ref !== '') {
+			$datas['ref'] = '<br><b>'.$langs->trans('Ref').':</b> '.dol_escape_htmltag((string) $this->ref);
+		}
+		if (property_exists($this, 'label') && (string) $this->label !== '') {
+			$datas['label'] = '<br><b>'.$langs->trans('Label').':</b> '.dol_escape_htmltag((string) $this->label);
+		}
+
+		$excludedFields = array('rowid', 'entity', 'ref', 'label', 'description', 'reason', 'rejection_reason', 'note_public', 'note_private', 'status', 'date_creation', 'tms', 'fk_user_creat', 'fk_user_modif', 'import_key', 'model_pdf', 'last_main_doc');
+		$fieldCount = 0;
+		foreach ($this->fields as $fieldName => $definition) {
+			if ($fieldCount >= 6 || in_array($fieldName, $excludedFields, true) || strpos($fieldName, 'fk_') === 0) {
+				continue;
+			}
+			if (empty($definition['visible']) || (int) $definition['visible'] <= 0 || !property_exists($this, $fieldName)) {
+				continue;
+			}
+			$type = isset($definition['type']) ? (string) $definition['type'] : '';
+			$value = $this->{$fieldName};
+			if ($value === null || $value === '' || (($type === 'date' || $type === 'datetime' || $type === 'timestamp') && (int) $value <= 0)) {
+				continue;
+			}
+			if ($fieldName === 'registration_number' && property_exists($this, 'ref') && (string) $value === (string) $this->ref) {
+				continue;
+			}
+
+			if ($type === 'date') {
+				$formattedValue = dol_print_date((int) $value, 'day');
+			} elseif ($type === 'datetime' || $type === 'timestamp') {
+				$formattedValue = dol_print_date((int) $value, 'dayhour');
+			} elseif ($type === 'boolean') {
+				$formattedValue = $langs->trans(!empty($value) ? 'Yes' : 'No');
+			} elseif (!empty($definition['arrayofkeyval']) && is_array($definition['arrayofkeyval']) && isset($definition['arrayofkeyval'][$value])) {
+				$formattedValue = $langs->trans((string) $definition['arrayofkeyval'][$value]);
+			} elseif (is_scalar($value)) {
+				$formattedValue = (string) $value;
+			} else {
+				continue;
+			}
+
+			$fieldLabel = isset($definition['label']) ? $langs->trans((string) $definition['label']) : $fieldName;
+			$datas['field_'.$fieldName] = '<br><b>'.dol_escape_htmltag($fieldLabel).':</b> '.dol_escape_htmltag($formattedValue);
+			$fieldCount++;
+		}
+
+		return $datas;
+	}
+
+	/**
 	 * Return a native object link.
 	 *
 	 * @param int<0,1> $withpicto Include icon
@@ -311,9 +389,52 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 	 */
 	public function getNomUrl($withpicto = 0, $option = '', $notooltip = 0, $morecss = '', $save_lastsearch_value = -1)
 	{
-		$label = property_exists($this, 'ref') && !empty($this->ref) ? (string) $this->ref : (string) $this->id;
+		global $conf, $langs;
+
+		if (!empty($conf->dol_no_mouse_hover)) {
+			$notooltip = 1;
+		}
+
+		$params = array(
+			'id' => (int) $this->id,
+			'objecttype' => $this->element.'@'.$this->module,
+			'option' => $option,
+			'nofetch' => 1,
+		);
+		$classForTooltip = 'classfortooltip';
+		$dataParams = '';
+		$tooltipLabel = '';
+		if (getDolGlobalInt('MAIN_ENABLE_AJAX_TOOLTIP')) {
+			$classForTooltip = 'classforajaxtooltip';
+			$dataParams = ' data-params="'.dol_escape_htmltag((string) json_encode($params)).'"';
+		} else {
+			$tooltipLabel = implode($this->getTooltipContentArray($params));
+		}
+
+		$linkAttributes = '';
+		$linkCss = 'nowraponall'.($morecss !== '' ? ' '.$morecss : '');
+		if (empty($notooltip)) {
+			if (getDolGlobalString('MAIN_OPTIMIZEFORTEXTBROWSER')) {
+				$tooltipLabel = $langs->trans('ShowCard');
+				$linkAttributes .= ' alt="'.dol_escape_htmltag($tooltipLabel, 1, 1).'"';
+			}
+			$linkAttributes .= $tooltipLabel !== '' ? ' title="'.dol_escape_htmltag($tooltipLabel, 1, 1).'"' : ' title="tocomplete"';
+			$linkAttributes .= $dataParams.' class="'.$linkCss.' '.$classForTooltip.'"';
+		} else {
+			$linkAttributes .= ' class="'.$linkCss.'"';
+		}
+
+		$label = property_exists($this, 'ref') && !empty($this->ref) ? (string) $this->ref : (property_exists($this, 'label') && !empty($this->label) ? (string) $this->label : (string) $this->id);
 		$url = dol_buildpath('/lmdbvehiclemanagement/'.$this->getCardPage(), 1).'?'.$this->getCardUrlParameters();
-		$link = '<a href="'.$url.'" class="'.dol_escape_htmltag($morecss).'">';
+		$saveLastSearch = $save_lastsearch_value === 1;
+		if ($save_lastsearch_value === -1 && isset($_SERVER['PHP_SELF']) && preg_match('/list\.php/', $_SERVER['PHP_SELF'])) {
+			$saveLastSearch = true;
+		}
+		if ($saveLastSearch) {
+			$url .= '&save_lastsearch_values=1';
+		}
+
+		$link = '<a href="'.dol_escape_htmltag($url).'"'.$linkAttributes.'>';
 		if ($withpicto) {
 			$link .= img_picto('', $this->picto, 'class="pictofixedwidth"');
 		}
