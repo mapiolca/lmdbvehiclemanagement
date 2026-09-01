@@ -162,7 +162,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0124'] = strpos($descriptor, "\$this->version = '0.12.4';") !== false;
+$checks['module_version_is_0125'] = strpos($descriptor, "\$this->version = '0.12.5';") !== false;
 $checks['odometer_list_calculates_difference_at_render_time'] = strpos($vehicleOdometer, "trans('OdometerDifference')") !== false
 	&& strpos($vehicleOdometer, '$records[$recordIndex + 1]->odometer_km') !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-success';") !== false
@@ -216,6 +216,9 @@ $checks['ajax_tooltips_resolve_all_business_objects'] = strpos($actionsHooks, "'
 $checks['timeline_includes_consumptions'] = strpos($vehicleHistoryClass, "'consumption' AS source_code") !== false
 	&& strpos($vehicleHistoryClass, "MAIN_DB_PREFIX.\"lmdbvehiclemanagement_consumption") !== false
 	&& strpos($vehicleHistory, "'consumption' => \$langs->trans('TimelineSourceConsumption')") !== false;
+$checks['timeline_consumption_quantities_use_native_two_decimal_display'] = strpos($vehicleHistoryClass, 'c.quantity AS consumption_quantity') !== false
+	&& strpos($vehicleHistoryClass, "price((float) \$obj->consumption_quantity, 0, \$langs, 1, 2, 2)") !== false
+	&& strpos($vehicleHistoryClass, 'CAST(c.quantity AS CHAR)') === false;
 $checks['timeline_defaults_to_newest_first'] = strpos($vehicleHistory, "?: 'event_timestamp'") !== false
 	&& strpos($vehicleHistory, "=== 'ASC' ? 'ASC' : 'DESC'") !== false
 	&& strpos($vehicleHistoryClass, "'event_timestamp' => 'timeline.event_timestamp'") !== false;

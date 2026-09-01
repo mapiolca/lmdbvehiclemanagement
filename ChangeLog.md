@@ -1,5 +1,10 @@
 # Historique des versions
 
+## `0.12.5` — 2026-09-01
+
+- Limitation à deux décimales des quantités de plein, recharge ou additif affichées dans la chronologie véhicule.
+- Utilisation du formateur numérique natif Dolibarr sans modifier la précision stockée ni les calculs métier.
+
 ## `0.12.4` — 2026-08-31
 
 - Optimisation responsive des formulaires de création et d’édition des véhicules, événements, affectations, kilométrages, consommations, assurances et attestations.
