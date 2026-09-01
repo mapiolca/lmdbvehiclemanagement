@@ -1,5 +1,13 @@
 # Historique des versions
 
+## `0.13.0` — 2026-09-01
+
+- Déclaration idempotente des 21 événements CRUD des véhicules, affectations, relevés kilométriques, consommations, événements véhicule, contrats et attestations d’assurance dans l’Agenda natif.
+- Activation conservatrice des événements Agenda dans chaque entité : les constantes absentes sont activées par défaut, sans modifier un choix administrateur existant, y compris la valeur `0`.
+- Ajout de titres et descriptions traduits aux événements, avec référence, motif métier et champs modifiés, afin de conserver un historique intelligible après suppression.
+- Passage de l’import natif des véhicules par `LmdbVehicle::create()`, sans trigger pendant la simulation et avec une erreur rapportée par ligne lors de l’import réel.
+- Exclusion des migrations techniques de références de la journalisation utilisateur, sans insertion manuelle d’`ActionComm` ni doublon avec le mécanisme Agenda de Dolibarr.
+
 ## `0.12.5` — 2026-09-01
 
 - Limitation à deux décimales des quantités de plein, recharge ou additif affichées dans la chronologie véhicule.

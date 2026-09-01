@@ -1,6 +1,6 @@
 # Gestion des véhicules pour Dolibarr
 
-`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.12.5` couvre les véhicules, leurs affectations, leurs relevés kilométriques, leurs consommations, leurs événements métier et leurs contrats d’assurance.
+`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.13.0` couvre les véhicules, leurs affectations, leurs relevés kilométriques, leurs consommations, leurs événements métier et leurs contrats d’assurance.
 
 ## Compatibilité
 
@@ -11,7 +11,7 @@
 - Module Ressources facultatif pour la liaison `fk_resource`
 - Module Travaux planifiés requis pour l’envoi automatique des relances d’assurance
 
-## Fonctionnalités de la version 0.12.5
+## Fonctionnalités de la version 0.13.0
 
 - fiche véhicule avec le cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
 - énergie sélectionnée dans un Select2 alimenté par un dictionnaire configurable, initialisé avec la [nomenclature réglementaire française P.3](https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000049860492/2026-07-27) ;
@@ -21,11 +21,11 @@
 - chronologie consolidée sans table d'historique dupliquée ;
 - chronologie triée du plus récent au plus ancien par défaut, incluant les pleins/recharges et proposant filtres SQL, recherche, tri et pagination par colonne ;
 - documents natifs Dolibarr sur les véhicules et les événements ;
-- événements Agenda natifs liés au véhicule, conservés séparément des événements métier ;
+- journalisation Agenda native et traduite des créations, modifications et suppressions des sept objets métier du module, configurable par entité sans écraser les choix administrateur ;
 - modèles de numérotation distincts pour les véhicules, événements, contrats d’assurance et consommations ;
 - modèle de référence véhicule basé sur l’immatriculation, activable après précontrôle et migration transactionnelle des références, documents et index ECM ;
 - droits granulaires distincts pour lire, créer/modifier, mettre en ou hors service, supprimer, exporter et importer, contrôlés directement avec la méthode native `$user->hasRight()` ;
-- profils natifs Dolibarr d'import et d'export des véhicules ;
+- profils natifs Dolibarr d’import et d’export des véhicules, avec création des lignes importées par l’objet métier et sans effet Agenda pendant la simulation ;
 - partage Multicompany configurable des véhicules, de leur numérotation et du dictionnaire des énergies.
 - contrats d’assurance individuels ou de flotte, avec une couverture principale et des couvertures complémentaires ;
 - résumé du contrat principal directement dans la fiche véhicule avec lien vers sa fiche native ; boutons natifs de liaison et de création lorsqu’aucun contrat n’est rattaché ;
@@ -65,6 +65,7 @@ Les réglages, la compatibilité détectée et les métadonnées du module sont 
 Les règles indépendantes de la base peuvent être vérifiées avec la commande suivante :
 
     php test/run_business_rules.php
+    php test/run_agenda_contracts.php
 
 Une suite PHPUnit équivalente est fournie dans le répertoire test/phpunit. Les tests d'installation, de droits, de Multicompany et de documents nécessitent une instance Dolibarr configurée.
 

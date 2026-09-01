@@ -36,7 +36,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->descriptionlong = 'ModuleLmdbVehicleManagementDesc';
 		$this->editor_name = 'Pierre Ardoin';
 		$this->editor_url = 'https://github.com/mapiolca';
-		$this->version = '0.12.5';
+		$this->version = '0.13.0';
 		$this->const_name = 'MAIN_MODULE_LMDBVEHICLEMANAGEMENT';
 		$this->picto = 'car';
 
@@ -51,6 +51,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 					'lmdbvehiclelist',
 					'lmdbvehicleeventcard',
 					'lmdbvehicleeventlist',
+					'imports',
 					'agendadao',
 					'elementproperties',
 					'multicompanyexternalmodulesharing',
@@ -644,6 +645,10 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'LMDBVEHICLEMANAGEMENT_INSURANCE_OVERDUE_REPEAT_DAYS' => '7',
 			'LMDBVEHICLEMANAGEMENT_INSURANCE_REVIEW_REPEAT_DAYS' => '3',
 		);
+		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleagenda.class.php');
+		foreach (array_keys(LmdbVehicleAgenda::getTriggerDefinitions()) as $triggerCode) {
+			$defaults['MAIN_AGENDA_ACTIONAUTO_'.$triggerCode] = '1';
+		}
 		foreach ($defaults as $name => $value) {
 			$constantExists = $this->entityConstantExists($name, (int) $conf->entity);
 			if ($constantExists < 0) {

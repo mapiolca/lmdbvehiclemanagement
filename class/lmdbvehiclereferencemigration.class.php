@@ -132,16 +132,8 @@ class LmdbVehicleReferenceMigration
 				return $this->rollbackWithError($this->error !== '' ? $this->error : $this->db->lasterror());
 			}
 
-			$targetVehicle->oldcopy = $plan['vehicle'];
-			$targetVehicle->context['trigger_reason'] = 'reference_migration';
-			$targetVehicle->context['changed_fields'] = array('ref', 'last_main_doc');
-			$targetVehicle->context['old_ref'] = $plan['old_ref'];
-			$targetVehicle->context['new_ref'] = $plan['new_ref'];
-			if ($targetVehicle->call_trigger($targetVehicle->TRIGGER_PREFIX.'_UPDATE', $user) < 0) {
-				$this->error = $targetVehicle->error;
-				$this->errors = $targetVehicle->errors;
-				return $this->rollbackWithError($this->error);
-			}
+			// This bulk renumbering is a technical migration, not a user object update.
+			// It intentionally bypasses CRUD triggers to avoid polluting the Agenda.
 		}
 
 		if (dolibarr_set_const($this->db, 'LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON', $targetModel, 'chaine', 0, '', (int) $entity) <= 0) {

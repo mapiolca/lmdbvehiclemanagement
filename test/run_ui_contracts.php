@@ -162,7 +162,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0125'] = strpos($descriptor, "\$this->version = '0.12.5';") !== false;
+$checks['module_version_is_0130'] = strpos($descriptor, "\$this->version = '0.13.0';") !== false;
 $checks['odometer_list_calculates_difference_at_render_time'] = strpos($vehicleOdometer, "trans('OdometerDifference')") !== false
 	&& strpos($vehicleOdometer, '$records[$recordIndex + 1]->odometer_km') !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-success';") !== false

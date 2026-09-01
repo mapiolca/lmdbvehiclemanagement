@@ -241,28 +241,6 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 			}
 		}
 
-		$agendaElementTypes = array('lmdbvehicle', 'lmdbvehicle@lmdbvehiclemanagement', 'lmdbvehiclemanagement_lmdbvehicle');
-		$quotedAgendaElementTypes = array();
-		foreach ($agendaElementTypes as $agendaElementType) {
-			$quotedAgendaElementTypes[] = "'".$this->db->escape($agendaElementType)."'";
-		}
-		$sql = 'SELECT id FROM '.MAIN_DB_PREFIX.'actioncomm';
-		$sql .= ' WHERE fk_element = '.((int) $this->id);
-		$sql .= ' AND elementtype IN ('.implode(', ', $quotedAgendaElementTypes).')';
-		$sql .= ' AND entity = '.((int) $this->entity).' LIMIT 1';
-		$resql = $this->db->query($sql);
-		if (!$resql) {
-			$this->error = $this->db->lasterror();
-			return -1;
-		}
-		$hasAgendaEvent = $this->db->num_rows($resql) > 0;
-		$this->db->free($resql);
-		if ($hasAgendaEvent) {
-			$this->error = 'VehicleHasAgendaEvents';
-			$this->errors[] = $this->error;
-			return 0;
-		}
-
 		return parent::delete($user, $notrigger);
 	}
 

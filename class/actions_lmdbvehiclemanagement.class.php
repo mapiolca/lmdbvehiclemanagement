@@ -63,6 +63,60 @@ class ActionsLmdbVehicleManagement
 	}
 
 	/**
+	 * Route every native vehicle import row through LmdbVehicle::create().
+	 *
+	 * Step 5 is the native simulation and therefore runs without triggers.
+	 * Step 6 is the real transactional import and emits one CREATE trigger.
+	 *
+	 * @param array<string,mixed> $parameters Native import parameters
+	 * @param CommonObject|null $object Current hook object
+	 * @param string $action Current action
+	 * @param HookManager $hookmanager Hook manager
+	 * @return int<-1,1>
+	 */
+	public function ImportInsert($parameters, &$object, &$action, $hookmanager)
+	{
+		global $langs, $user;
+
+		if (!isset($parameters['datatoimport']) || (string) $parameters['datatoimport'] !== 'lmdbvehiclemanagement_vehicles') {
+			return 0;
+		}
+		if (!$user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'import')) {
+			$this->error = $langs->trans('NotEnoughPermissions');
+			$this->errors = array($this->error);
+			return -1;
+		}
+		if (empty($parameters['arrayrecord']) || !is_array($parameters['arrayrecord']) || empty($parameters['array_match_file_to_database']) || !is_array($parameters['array_match_file_to_database'])) {
+			$this->error = $langs->trans('VehicleImportInvalidRow');
+			$this->errors = array($this->error);
+			return -1;
+		}
+
+		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php');
+		$import = new LmdbVehicleImport($this->db);
+		$step = isset($parameters['step']) ? (int) $parameters['step'] : 0;
+		$importId = isset($parameters['importid']) ? (string) $parameters['importid'] : '';
+		$result = $import->createVehicleFromNativeRow(
+			$parameters['arrayrecord'],
+			$parameters['array_match_file_to_database'],
+			$importId,
+			$user,
+			$step === 6
+		);
+		if ($result <= 0) {
+			$this->error = $import->error;
+			$this->errors = $import->errors;
+			return -1;
+		}
+
+		if (isset($parameters['nbok'])) {
+			$parameters['nbok'] = (int) $parameters['nbok'] + 1;
+		}
+
+		return 1;
+	}
+
+	/**
 	 * Return the single source of truth for Multicompany sharing.
 	 *
 	 * @return array<string,array<string,mixed>>

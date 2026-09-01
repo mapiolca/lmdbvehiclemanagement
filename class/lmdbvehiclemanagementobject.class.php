@@ -117,7 +117,9 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 			}
 		}
 
-		$this->context['trigger_reason'] = 'create';
+		if (empty($this->context['trigger_reason'])) {
+			$this->context['trigger_reason'] = 'create';
+		}
 		$this->context['changed_fields'] = array_keys($this->fields);
 
 		$result = $this->createCommon($user, $notrigger);
@@ -298,8 +300,102 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 		} elseif ($triggerName === $classTriggerPrefix.'_DELETE') {
 			$triggerName = $this->TRIGGER_PREFIX.'_DELETE';
 		}
+		$this->prepareAgendaTriggerContext($triggerName);
 
 		return parent::call_trigger($triggerName, $user);
+	}
+
+	/**
+	 * Provide native Agenda with translated, deletion-safe event content.
+	 *
+	 * @param string $triggerName Stable CRUD trigger code
+	 * @return void
+	 */
+	private function prepareAgendaTriggerContext($triggerName)
+	{
+		global $langs;
+
+		$operation = '';
+		foreach (array('CREATE', 'UPDATE', 'DELETE') as $candidate) {
+			if ($triggerName === $this->TRIGGER_PREFIX.'_'.$candidate) {
+				$operation = $candidate;
+				break;
+			}
+		}
+		if ($operation === '' || !is_object($langs)) {
+			return;
+		}
+		if (!is_array($this->context)) {
+			$this->context = array();
+		}
+
+		$langs->loadLangs(array('main', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		$objectLabelKeys = array(
+			'lmdbvehicle' => 'Vehicle',
+			'lmdbvehicleassignment' => 'VehicleAssignment',
+			'lmdbvehicleodometerreading' => 'OdometerReading',
+			'lmdbvehicleconsumption' => 'ConsumptionEntry',
+			'lmdbvehicleevent' => 'VehicleEvent',
+			'lmdbinsurancecontract' => 'InsuranceContract',
+			'lmdbinsurancecertificate' => 'InsuranceCertificate',
+		);
+		$objectLabel = $langs->transnoentitiesnoconv(isset($objectLabelKeys[$this->element]) ? $objectLabelKeys[$this->element] : 'Record');
+		$identifier = '';
+		foreach (array('ref', 'registration_number', 'label') as $identifierField) {
+			if (property_exists($this, $identifierField) && trim((string) $this->{$identifierField}) !== '') {
+				$identifier = trim((string) $this->{$identifierField});
+				break;
+			}
+		}
+		if ($identifier === '' && !empty($this->id)) {
+			$identifier = '#'.((int) $this->id);
+		}
+
+		$titleKeys = array(
+			'CREATE' => 'AgendaCreateTitle',
+			'UPDATE' => 'AgendaUpdateTitle',
+			'DELETE' => 'AgendaDeleteTitle',
+		);
+		if (empty($this->context['actionmsg2'])) {
+			$this->context['actionmsg2'] = $langs->transnoentitiesnoconv($titleKeys[$operation], $objectLabel, $identifier);
+		}
+
+		$reasonKeys = array(
+			'create' => 'AgendaReasonCreate',
+			'create_draft' => 'AgendaReasonCreateDraft',
+			'create_and_submit' => 'AgendaReasonCreateAndSubmit',
+			'create_with_coverage' => 'AgendaReasonCreateWithCoverage',
+			'update' => 'AgendaReasonUpdate',
+			'delete' => 'AgendaReasonDelete',
+			'status_change' => 'AgendaReasonStatusChange',
+			'reference_sync' => 'AgendaReasonReferenceSync',
+			'document_upload' => 'AgendaReasonDocumentUpload',
+			'coverage_change' => 'AgendaReasonCoverageChange',
+			'vehicle_link' => 'AgendaReasonVehicleLink',
+			'import' => 'AgendaReasonImport',
+		);
+		$reason = isset($this->context['trigger_reason']) ? (string) $this->context['trigger_reason'] : strtolower($operation);
+		$reasonKey = isset($reasonKeys[$reason]) ? $reasonKeys[$reason] : $reasonKeys[strtolower($operation)];
+		$description = $langs->transnoentitiesnoconv('AgendaEventDescription', $objectLabel, $identifier, $langs->transnoentitiesnoconv($reasonKey));
+
+		if ($operation === 'UPDATE' && !empty($this->context['changed_fields']) && is_array($this->context['changed_fields'])) {
+			$changedLabels = array();
+			foreach ($this->context['changed_fields'] as $fieldName) {
+				$fieldName = (string) $fieldName;
+				if (isset($this->fields[$fieldName]['label'])) {
+					$changedLabels[] = $langs->transnoentitiesnoconv((string) $this->fields[$fieldName]['label']);
+				} elseif ($fieldName === 'vehicle_links') {
+					$changedLabels[] = $langs->transnoentitiesnoconv('InsuranceVehicleLinks');
+				}
+			}
+			$changedLabels = array_values(array_unique(array_filter($changedLabels)));
+			if (!empty($changedLabels)) {
+				$description .= ' '.$langs->transnoentitiesnoconv('AgendaChangedFields', implode(', ', $changedLabels));
+			}
+		}
+		if (empty($this->context['actionmsg'])) {
+			$this->context['actionmsg'] = $description;
+		}
 	}
 
 	/**
