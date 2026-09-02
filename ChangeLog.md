@@ -6,7 +6,7 @@
 - Ajout des profils réglementaires cumulables, des exigences matérialisées et du catalogue français versionné pour les contrôles routiers, la pollution, les VGP, la mise en service, le tachygraphe, l’ADR et l’ATP, avec règles natives en lecture seule, surcharges d’entité auditées et règles personnalisées.
 - Ajout de l’objet documentaire `Contrôle réglementaire` numéroté `CTLyyMM-NNNN`, de son workflow brouillon/validation/annulation/archivage, de ses justificatifs et de ses événements Agenda CRUD natifs.
 - Ajout de l’échéancier, des listes et exports natifs, du registre de sécurité, des imports en brouillon, des droits dédiés et de la prise en charge Multicompany.
-- Ajout d’un travail planifié quotidien idempotent pour recalculer les échéances, synchroniser leur événement Agenda et envoyer les rappels configurés au moyen d’un modèle d’email Dolibarr.
+- Ajout d’un travail planifié quotidien idempotent pour recalculer les échéances, synchroniser leur événement Agenda avec résolution explicite du type natif et repli `AC_OTH_AUTO`, puis envoyer les rappels configurés au moyen d’un modèle d’email Dolibarr.
 
 ## `0.13.3` — 2026-09-02
 

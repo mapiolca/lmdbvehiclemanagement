@@ -6,10 +6,15 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatoryservice.clas
 /** Daily regulatory deadline synchronization and reminders. */
 class LmdbVehicleRegulatoryCron
 {
+	private const AGENDA_EVENT_CODE = 'AC_LMDB_REGULATORY_DUE';
+	private const AGENDA_FALLBACK_TYPE_CODE = 'AC_OTH_AUTO';
+
 	/** @var DoliDB */ public $db;
 	/** @var string */ public $error = '';
 	/** @var array<int,string> */ public $errors = array();
 	/** @var string */ public $output = '';
+	/** @var array{id:int,code:string}|null */ private $agendaType = null;
+	/** @var bool */ private $agendaTypeResolved = false;
 
 	/** @param DoliDB $db Database handler */
 	public function __construct($db)
@@ -94,12 +99,47 @@ class LmdbVehicleRegulatoryCron
 		else dol_syslog(__METHOD__.': '.$this->db->lasterror(), LOG_WARNING);
 	}
 
+	/**
+	 * Resolve both values required by ActionComm::create().
+	 *
+	 * The module type is preferred. The native automatic type keeps the cron
+	 * operational when code has been deployed before the module initialization
+	 * has registered the custom dictionary row.
+	 *
+	 * @return array{id:int,code:string}|null
+	 */
+	private function resolveAgendaType()
+	{
+		global $langs;
+
+		if ($this->agendaTypeResolved) return $this->agendaType;
+		$this->agendaTypeResolved = true;
+		require_once DOL_DOCUMENT_ROOT.'/comm/action/class/cactioncomm.class.php';
+		foreach (array(self::AGENDA_EVENT_CODE, self::AGENDA_FALLBACK_TYPE_CODE) as $typeCode) {
+			$type = new CActionComm($this->db);
+			$result = $type->fetch($typeCode);
+			if ($result > 0 && (int) $type->id > 0 && (string) $type->code !== '') {
+				$this->agendaType = array('id' => (int) $type->id, 'code' => (string) $type->code);
+				return $this->agendaType;
+			}
+			if ($result < 0) {
+				$this->error = $type->error;
+				return null;
+			}
+		}
+
+		$this->error = $langs->trans('RegulatoryAgendaTypeMissing', self::AGENDA_EVENT_CODE, self::AGENDA_FALLBACK_TYPE_CODE);
+		return null;
+	}
+
 	/** @param object $row Requirement row @param int $dueDate Due date @param User $user Cron user @return int<-1,1> */
 	private function synchronizeAgendaEvent($row, $dueDate, User $user)
 	{
 		global $langs;
 
 		require_once DOL_DOCUMENT_ROOT.'/comm/action/class/actioncomm.class.php';
+		$agendaType = $this->resolveAgendaType();
+		if ($agendaType === null) return -1;
 		$this->db->begin();
 		$event = new ActionComm($this->db);
 		$existing = !empty($row->fk_actioncomm) ? $event->fetch((int) $row->fk_actioncomm) : 0;
@@ -107,8 +147,9 @@ class LmdbVehicleRegulatoryCron
 		if ($isNew) $event = new ActionComm($this->db);
 		$vehicle = trim((string) $row->registration_number) !== '' ? (string) $row->registration_number : (string) $row->vehicle_ref;
 		$ruleLabel = $langs->trans((string) $row->rule_label);
-		$event->type_code = 'AC_LMDB_REGULATORY_DUE';
-		$event->code = 'AC_LMDB_REGULATORY_DUE';
+		$event->type_id = $agendaType['id'];
+		$event->type_code = $agendaType['code'];
+		$event->code = self::AGENDA_EVENT_CODE;
 		$event->label = $langs->trans('RegulatoryDueAgendaTitle', $ruleLabel, $vehicle);
 		$event->note_private = $langs->trans('RegulatoryDueAgendaDescription', $ruleLabel, $vehicle, dol_print_date($dueDate, 'day'));
 		$event->datep = $dueDate;
@@ -152,7 +193,7 @@ class LmdbVehicleRegulatoryCron
 			$this->db->begin();
 			$event = new ActionComm($this->db);
 			if ($event->fetch((int) $row->fk_actioncomm) > 0) {
-				$isOwnedDeadline = (string) $event->type_code === 'AC_LMDB_REGULATORY_DUE'
+				$isOwnedDeadline = (string) $event->code === self::AGENDA_EVENT_CODE
 					&& (string) $event->elementtype === 'lmdbvehicle@lmdbvehiclemanagement'
 					&& (int) $event->fk_element === (int) $row->fk_vehicle;
 				if ($isOwnedDeadline && $event->delete($user) < 0) {

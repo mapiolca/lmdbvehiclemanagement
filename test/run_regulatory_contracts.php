@@ -66,6 +66,11 @@ $checks = array(
 	'cron_prevents_concurrent_entity_runs' => strpos($cron, 'GET_LOCK(') !== false && strpos($cron, 'RELEASE_LOCK(') !== false,
 	'cron_resynchronizes_rule_validity' => strpos($cron, 'synchronizeEntityRequirements($entity, $user)') !== false,
 	'cron_is_idempotent' => strpos($cron, 'INSERT IGNORE INTO') !== false && strpos($cron, 'fk_actioncomm') !== false,
+	'cron_resolves_complete_native_agenda_type' => strpos($cron, 'private function resolveAgendaType()') !== false
+		&& strpos($cron, "private const AGENDA_FALLBACK_TYPE_CODE = 'AC_OTH_AUTO';") !== false
+		&& strpos($cron, "\$event->type_id = \$agendaType['id'];") !== false
+		&& strpos($cron, "\$event->type_code = \$agendaType['code'];") !== false,
+	'cron_identifies_owned_deadlines_by_event_code' => strpos($cron, '(string) $event->code === self::AGENDA_EVENT_CODE') !== false,
 	'cron_uses_email_template' => strpos($cron, "type_template = 'lmdbvehicle_regulatory_reminder'") !== false,
 	'future_agenda_event_is_linked' => strpos($cron, "elementtype = 'lmdbvehicle@lmdbvehiclemanagement'") !== false,
 	'future_agenda_type_is_short_and_automatic' => strpos($sql, "'AC_LMDB_REGULATORY_DUE', 'systemauto'") !== false && strlen('AC_LMDB_REGULATORY_DUE') <= 50,

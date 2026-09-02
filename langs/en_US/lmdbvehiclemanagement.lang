@@ -785,6 +785,7 @@ RegulatoryControlCronLabel=Recalculate regulatory controls and send reminders
 RegulatoryControlCronComment=Synchronises due dates, Agenda events and reminders daily without duplicates.
 RegulatoryDueAgendaTitle=%s — regulatory due date for %s
 RegulatoryDueAgendaDescription=The “%s” control for equipment %s is due on %s.
+RegulatoryAgendaTypeMissing=Agenda event type %s and its automatic fallback type %s could not be found.
 RegulatoryReminderEmailTemplateLabel=Regulatory due-date reminder
 RegulatoryReminderEmailSubject=Regulatory control due — __VEHICLE_REF__
 RegulatoryReminderEmailContent=Hello __RECIPIENT_NAME__,<br><br>the __CONTROL_LABEL__ control for equipment __VEHICLE_REF__ — __VEHICLE_LABEL__ is due on __CONTROL_DUE_DATE__.<br><br><a href="__CONTROL_URL__">Open the regulatory record</a>

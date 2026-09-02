@@ -785,6 +785,7 @@ RegulatoryControlCronLabel=Recalculer les contrôles réglementaires et envoyer 
 RegulatoryControlCronComment=Synchronise quotidiennement les échéances, les événements Agenda et les rappels sans doublon.
 RegulatoryDueAgendaTitle=%s — échéance réglementaire de %s
 RegulatoryDueAgendaDescription=Le contrôle « %s » du matériel %s arrive à échéance le %s.
+RegulatoryAgendaTypeMissing=Le type d’événement Agenda %s et son type automatique de repli %s sont introuvables.
 RegulatoryReminderEmailTemplateLabel=Rappel d’échéance réglementaire
 RegulatoryReminderEmailSubject=Contrôle réglementaire à échéance — __VEHICLE_REF__
 RegulatoryReminderEmailContent=Bonjour __RECIPIENT_NAME__,<br><br>le contrôle __CONTROL_LABEL__ du matériel __VEHICLE_REF__ — __VEHICLE_LABEL__ arrive à échéance le __CONTROL_DUE_DATE__.<br><br><a href="__CONTROL_URL__">Consulter le dossier réglementaire</a>
