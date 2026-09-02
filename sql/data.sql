@@ -95,3 +95,19 @@ WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMA
 INSERT INTO llx_c_action_trigger (elementtype, code, label, description, rang)
 SELECT 'lmdbvehicleconsumption@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_CONSUMPTION_DELETE', 'Delete vehicle consumption', 'Create an agenda event when a fuel, recharge or additive entry is deleted', 1220
 WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_CONSUMPTION_DELETE');
+
+INSERT INTO llx_c_action_trigger (elementtype, code, label, description, rang)
+SELECT 'lmdbvehicleregulatorycontrol@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_CREATE', 'Create regulatory control', 'Create an agenda event when a regulatory control draft is created', 1230
+WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_CREATE');
+
+INSERT INTO llx_c_action_trigger (elementtype, code, label, description, rang)
+SELECT 'lmdbvehicleregulatorycontrol@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_UPDATE', 'Update regulatory control', 'Create an agenda event when a regulatory control is updated, validated or cancelled', 1240
+WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_UPDATE');
+
+INSERT INTO llx_c_action_trigger (elementtype, code, label, description, rang)
+SELECT 'lmdbvehicleregulatorycontrol@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_DELETE', 'Delete regulatory control', 'Create an agenda event when a regulatory control draft is deleted', 1250
+WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_DELETE');
+
+INSERT INTO llx_c_actioncomm (code, type, libelle, module, active, color, picto, position)
+SELECT 'AC_LMDB_REGULATORY_DUE', 'systemauto', 'RegulatoryControlDueAgendaType', 'lmdbvehiclemanagement', 1, '#bc9526', 'clipboard-check', 1250
+WHERE NOT EXISTS (SELECT 1 FROM llx_c_actioncomm WHERE code = 'AC_LMDB_REGULATORY_DUE');

@@ -1,0 +1,5 @@
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_rule ADD UNIQUE INDEX uk_lmdbvm_reg_rule (entity, code);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_rule ADD INDEX idx_lmdbvm_reg_rule_entity (entity);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_rule ADD INDEX idx_lmdbvm_reg_rule_control_type (fk_control_type);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_rule ADD INDEX idx_lmdbvm_reg_rule_parent (fk_parent_rule);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_rule ADD INDEX idx_lmdbvm_reg_rule_effective (effective_from, effective_to);

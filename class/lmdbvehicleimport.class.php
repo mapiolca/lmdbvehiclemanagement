@@ -62,8 +62,6 @@ class LmdbVehicleImport
 	{
 		$fieldIndex = array_search('t.registration_number', $fields, true);
 		if ($fieldIndex === false || !array_key_exists($fieldIndex, $record)) {
-			$this->error = 'RegistrationNumberRequiredForReference';
-			$this->errors[] = $this->error;
 			return '';
 		}
 		$value = $record[$fieldIndex];
@@ -76,12 +74,32 @@ class LmdbVehicleImport
 			}
 		}
 		if (!is_scalar($value)) {
-			$this->error = 'RegistrationNumberRequiredForReference';
-			$this->errors[] = $this->error;
 			return '';
 		}
 
 		return strtoupper(trim((string) $value));
+	}
+
+	/**
+	 * Resolve an asset type code or label for the native import converter.
+	 *
+	 * @param int|string $id Row id or code
+	 * @param string $code Optional code
+	 * @param string $label Optional label
+	 * @return int<-1,max>
+	 */
+	public function fetchAssetType($id = 0, $code = '', $label = '')
+	{
+		$value = (int) $id > 0 ? (string) ((int) $id) : trim($code !== '' ? $code : $label);
+		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_asset_type WHERE active = 1 AND entity IN ('.getEntity('c_lmdbvehiclemanagement_asset_type').')';
+		if (ctype_digit($value)) $sql .= ' AND rowid = '.((int) $value);
+		else $sql .= " AND (code = '".$this->db->escape($value)."' OR label = '".$this->db->escape($value)."')";
+		$sql .= ' ORDER BY rowid LIMIT 1';
+		$resql = $this->db->query($sql);
+		if (!$resql) { $this->error = $this->db->lasterror(); return -1; }
+		$row = $this->db->fetch_object($resql);
+		$this->db->free($resql);
+		return is_object($row) ? (int) $row->rowid : 0;
 	}
 
 	/**
@@ -125,9 +143,18 @@ class LmdbVehicleImport
 		$vehicle->brand = $this->nullableStringValue($values, 'brand');
 		$vehicle->model = $this->nullableStringValue($values, 'model');
 		$vehicle->vehicle_version = $this->nullableStringValue($values, 'vehicle_version');
+		$vehicle->eu_category = $this->nullableStringValue($values, 'eu_category');
+		$vehicle->national_genre = $this->nullableStringValue($values, 'national_genre');
+		$vehicle->regulatory_territory = $this->stringValue($values, 'regulatory_territory') ?: 'FR_METRO';
 		$vehicle->ownership_type = $this->nullableStringValue($values, 'ownership_type');
 		$vehicle->description = $this->nullableStringValue($values, 'description');
 		$vehicle->import_key = $importId !== '' ? substr($importId, 0, 14) : null;
+		$assetTypeValue = $this->stringValue($values, 'fk_asset_type');
+		if ($assetTypeValue !== '') {
+			$assetTypeId = $this->fetchAssetType($assetTypeValue);
+			if ($assetTypeId <= 0) return $this->setImportError($langs->trans('VehicleImportInvalidAssetType', $assetTypeValue));
+			$vehicle->fk_asset_type = $assetTypeId;
+		}
 
 		$energyValue = $this->stringValue($values, 'fk_energy');
 		if ($energyValue !== '') {
@@ -155,7 +182,7 @@ class LmdbVehicleImport
 			$vehicle->fk_soc_owner = (int) $owner->id;
 		}
 
-		foreach (array('first_registration_date', 'commissioning_date') as $dateField) {
+		foreach (array('construction_date', 'first_registration_date', 'commissioning_date') as $dateField) {
 			$dateValue = $this->stringValue($values, $dateField);
 			if ($dateValue === '') {
 				continue;
@@ -177,6 +204,19 @@ class LmdbVehicleImport
 				return $this->setImportError($langs->trans('VehicleImportInvalidNumber', $rangeValue));
 			}
 			$vehicle->wltp_range_km = (float) $normalizedRange;
+		}
+		foreach (array('gvw_kg', 'gcw_kg') as $numericField) {
+			$value = $this->stringValue($values, $numericField);
+			if ($value !== '') {
+				$normalized = price2num($value);
+				if ($normalized === '' || !is_numeric($normalized)) return $this->setImportError($langs->trans('VehicleImportInvalidNumber', $value));
+				$vehicle->{$numericField} = (float) $normalized;
+			}
+		}
+		$seats = $this->stringValue($values, 'seats');
+		if ($seats !== '') {
+			if (!ctype_digit($seats)) return $this->setImportError($langs->trans('VehicleImportInvalidNumber', $seats));
+			$vehicle->seats = (int) $seats;
 		}
 
 		$vehicle->context['trigger_reason'] = 'import';

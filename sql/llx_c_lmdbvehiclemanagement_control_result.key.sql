@@ -1,0 +1,3 @@
+ALTER TABLE llx_c_lmdbvehiclemanagement_control_result ADD UNIQUE INDEX uk_lmdbvm_control_result (entity, code);
+ALTER TABLE llx_c_lmdbvehiclemanagement_control_result ADD INDEX idx_lmdbvm_control_result_entity (entity);
+ALTER TABLE llx_c_lmdbvehiclemanagement_control_result ADD INDEX idx_lmdbvm_control_result_active (active);

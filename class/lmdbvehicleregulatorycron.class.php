@@ -1,0 +1,276 @@
+<?php
+/* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
+
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatoryservice.class.php');
+
+/** Daily regulatory deadline synchronization and reminders. */
+class LmdbVehicleRegulatoryCron
+{
+	/** @var DoliDB */ public $db;
+	/** @var string */ public $error = '';
+	/** @var array<int,string> */ public $errors = array();
+	/** @var string */ public $output = '';
+
+	/** @param DoliDB $db Database handler */
+	public function __construct($db)
+	{
+		$this->db = $db;
+	}
+
+	/** @return int<-1,0> */
+	public function runDaily()
+	{
+		global $conf, $langs, $user;
+
+		if (!isModEnabled('lmdbvehiclemanagement')) {
+			$this->output = 'Regulatory controls disabled';
+			return 0;
+		}
+		$langs->loadLangs(array('agenda', 'mails', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		$entity = (int) $conf->entity;
+		$lockName = 'lmdbvm_regulatory_cron_'.sha1((string) $entity);
+		$lockResult = $this->acquireCronLock($lockName);
+		if ($lockResult < 0) return -1;
+		if ($lockResult === 0) {
+			$this->output = 'Regulatory controls already being processed for this entity';
+			return 0;
+		}
+		try {
+			$service = new LmdbVehicleRegulatoryService($this->db);
+			if ($service->synchronizeEntityRequirements($entity, $user) < 0) {
+				$this->error = $service->error;
+				return -1;
+			}
+			if ($this->removeObsoleteAgendaEvents($entity, $user) < 0) return -1;
+
+			$sql = 'SELECT req.rowid, req.entity, req.fk_vehicle, req.fk_actioncomm, req.retained_due_date, req.status, rr.label AS rule_label,';
+			$sql .= ' v.ref AS vehicle_ref, v.registration_number, v.label AS vehicle_label';
+			$sql .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS req';
+			$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS rr ON rr.rowid = req.fk_rule';
+			$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = req.fk_vehicle AND v.entity = req.entity';
+			$sql .= ' WHERE req.entity = '.$entity.' AND req.active = 1 AND req.retained_due_date IS NOT NULL AND v.status <> 4';
+			$resql = $this->db->query($sql);
+			if (!$resql) {
+				$this->error = $this->db->lasterror();
+				return -1;
+			}
+			$events = 0;
+			$sent = 0;
+			$failed = 0;
+			while (is_object($row = $this->db->fetch_object($resql))) {
+				$dueDate = $this->db->jdate($row->retained_due_date);
+				if ($dueDate <= 0) continue;
+				$eventResult = $this->synchronizeAgendaEvent($row, $dueDate, $user);
+				if ($eventResult > 0) $events++;
+				elseif ($eventResult < 0) $failed++;
+				if (getDolGlobalInt('LMDBVEHICLEMANAGEMENT_REGULATORY_REMINDERS_ENABLED')) {
+					$result = $this->sendDueReminders($row, $dueDate, $entity);
+					if ($result > 0) $sent += $result;
+					elseif ($result < 0) $failed++;
+				}
+			}
+			$this->db->free($resql);
+			$this->output = 'Regulatory events synchronized: '.$events.'; reminders sent: '.$sent.'; failures: '.$failed;
+			return $failed > 0 ? -1 : 0;
+		} finally {
+			$this->releaseCronLock($lockName);
+		}
+	}
+
+	/** @param string $lockName Advisory lock name @return int<-1,1> */
+	private function acquireCronLock($lockName)
+	{
+		$resql = $this->db->query("SELECT GET_LOCK('".$this->db->escape($lockName)."', 0) AS lock_acquired");
+		if (!$resql) { $this->error = $this->db->lasterror(); return -1; }
+		$row = $this->db->fetch_object($resql); $this->db->free($resql);
+		return is_object($row) ? (int) $row->lock_acquired : -1;
+	}
+
+	/** @param string $lockName Advisory lock name @return void */
+	private function releaseCronLock($lockName)
+	{
+		$resql = $this->db->query("SELECT RELEASE_LOCK('".$this->db->escape($lockName)."') AS lock_released");
+		if ($resql) $this->db->free($resql);
+		else dol_syslog(__METHOD__.': '.$this->db->lasterror(), LOG_WARNING);
+	}
+
+	/** @param object $row Requirement row @param int $dueDate Due date @param User $user Cron user @return int<-1,1> */
+	private function synchronizeAgendaEvent($row, $dueDate, User $user)
+	{
+		global $langs;
+
+		require_once DOL_DOCUMENT_ROOT.'/comm/action/class/actioncomm.class.php';
+		$this->db->begin();
+		$event = new ActionComm($this->db);
+		$existing = !empty($row->fk_actioncomm) ? $event->fetch((int) $row->fk_actioncomm) : 0;
+		$isNew = $existing <= 0;
+		if ($isNew) $event = new ActionComm($this->db);
+		$vehicle = trim((string) $row->registration_number) !== '' ? (string) $row->registration_number : (string) $row->vehicle_ref;
+		$ruleLabel = $langs->trans((string) $row->rule_label);
+		$event->type_code = 'AC_LMDB_REGULATORY_DUE';
+		$event->code = 'AC_LMDB_REGULATORY_DUE';
+		$event->label = $langs->trans('RegulatoryDueAgendaTitle', $ruleLabel, $vehicle);
+		$event->note_private = $langs->trans('RegulatoryDueAgendaDescription', $ruleLabel, $vehicle, dol_print_date($dueDate, 'day'));
+		$event->datep = $dueDate;
+		$event->datef = $dueDate;
+		$event->entity = (int) $row->entity;
+		$event->percentage = -1;
+		$event->userownerid = (int) $user->id;
+		$event->elementtype = 'lmdbvehicle@lmdbvehiclemanagement';
+		$event->fk_element = (int) $row->fk_vehicle;
+		$result = $isNew ? $event->create($user) : $event->update($user);
+		if ($result <= 0) {
+			$this->error = $event->error;
+			$this->errors = $event->errors;
+			$this->db->rollback();
+			return -1;
+		}
+		if ($isNew) {
+			$sql = 'UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement SET fk_actioncomm = '.((int) $event->id);
+			$sql .= ' WHERE rowid = '.((int) $row->rowid).' AND entity = '.((int) $row->entity);
+			if (!$this->db->query($sql)) {
+				$this->error = $this->db->lasterror();
+				$this->db->rollback();
+				return -1;
+			}
+		}
+		$this->db->commit();
+		return 1;
+	}
+
+	/** Remove the generated deadline event when its requirement no longer has a date or its vehicle is sold. @return int<-1,1> */
+	private function removeObsoleteAgendaEvents($entity, User $user)
+	{
+		require_once DOL_DOCUMENT_ROOT.'/comm/action/class/actioncomm.class.php';
+		$sql = 'SELECT req.rowid, req.fk_vehicle, req.fk_actioncomm FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS req';
+		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = req.fk_vehicle AND v.entity = req.entity';
+		$sql .= ' WHERE req.entity = '.((int) $entity).' AND req.fk_actioncomm IS NOT NULL';
+		$sql .= ' AND (req.active = 0 OR req.retained_due_date IS NULL OR v.status = 4)';
+		$resql = $this->db->query($sql);
+		if (!$resql) { $this->error = $this->db->lasterror(); return -1; }
+		while (is_object($row = $this->db->fetch_object($resql))) {
+			$this->db->begin();
+			$event = new ActionComm($this->db);
+			if ($event->fetch((int) $row->fk_actioncomm) > 0) {
+				$isOwnedDeadline = (string) $event->type_code === 'AC_LMDB_REGULATORY_DUE'
+					&& (string) $event->elementtype === 'lmdbvehicle@lmdbvehiclemanagement'
+					&& (int) $event->fk_element === (int) $row->fk_vehicle;
+				if ($isOwnedDeadline && $event->delete($user) < 0) {
+					$this->error = $event->error;
+					$this->db->rollback();
+					$this->db->free($resql);
+					return -1;
+				}
+			}
+			$sqlUpdate = 'UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement SET fk_actioncomm = NULL';
+			$sqlUpdate .= ' WHERE rowid = '.((int) $row->rowid).' AND entity = '.((int) $entity);
+			if (!$this->db->query($sqlUpdate)) { $this->error = $this->db->lasterror(); $this->db->rollback(); $this->db->free($resql); return -1; }
+			$this->db->commit();
+		}
+		$this->db->free($resql);
+
+		return 1;
+	}
+
+	/** @param object $row Requirement row @param int $dueDate Due date @param int $entity Entity @return int */
+	private function sendDueReminders($row, $dueDate, $entity)
+	{
+		$today = dol_mktime(0, 0, 0, (int) dol_print_date(dol_now(), '%m'), (int) dol_print_date(dol_now(), '%d'), (int) dol_print_date(dol_now(), '%Y'));
+		$remaining = (int) floor(($dueDate - $today) / 86400);
+		$horizons = json_decode(getDolGlobalString('LMDBVEHICLEMANAGEMENT_REGULATORY_REMINDER_HORIZONS', '[90,60,30,7,0]'), true);
+		$horizons = is_array($horizons) ? array_values(array_unique(array_map('intval', $horizons))) : array(90, 60, 30, 7, 0);
+		if (!in_array($remaining, $horizons, true)) return 0;
+		$template = $this->fetchTemplate(getDolGlobalInt('LMDBVEHICLEMANAGEMENT_REGULATORY_REMINDER_TEMPLATE'));
+		if ($template === null) return -1;
+		$recipients = $this->getRecipients((int) $row->fk_vehicle, $entity);
+		if (empty($recipients)) return 0;
+		$sent = 0;
+		global $langs;
+		$ruleLabel = $langs->trans((string) $row->rule_label);
+		foreach ($recipients as $email => $name) {
+			$key = sha1(((int) $row->rowid).':'.$remaining.':'.$email.':'.dol_print_date($dueDate, '%Y-%m-%d'));
+			$sql = 'INSERT IGNORE INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_reminder_log';
+			$sql .= ' (entity, reminder_key, fk_requirement, horizon_days, recipient_type, recipient_id, due_date_snapshot, recipient_email, status, date_creation) VALUES (';
+			$sql .= $entity.", '".$this->db->escape($key)."', ".((int) $row->rowid).", ".$remaining.", 'email', NULL, '".$this->db->idate($dueDate)."', '".$this->db->escape($email)."', 0, '".$this->db->idate(dol_now())."')";
+			$resql = $this->db->query($sql);
+			if (!$resql) { $this->error = $this->db->lasterror(); return -1; }
+			// A persisted attempt is the idempotency boundary. Failed sends remain
+			// visible in the log and require an explicit retry by an administrator.
+			if ($this->db->affected_rows($resql) === 0) continue;
+			$vehicle = trim((string) $row->registration_number) !== '' ? (string) $row->registration_number : (string) $row->vehicle_ref;
+			$replacements = array(
+				'__RECIPIENT_NAME__' => $name,
+				'__VEHICLE_REF__' => $vehicle,
+				'__VEHICLE_LABEL__' => (string) $row->vehicle_label,
+				'__CONTROL_LABEL__' => $ruleLabel,
+				'__CONTROL_DUE_DATE__' => dol_print_date($dueDate, 'day'),
+				'__CONTROL_URL__' => dol_buildpath('/lmdbvehiclemanagement/vehicle_regulatory.php', 2).'?id='.((int) $row->fk_vehicle),
+			);
+			$result = $this->sendMail($email, $template, $replacements);
+			$status = $result > 0 ? 1 : -1;
+			$update = 'UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_reminder_log SET status = '.$status.", sent_at = '".$this->db->idate(dol_now())."', error_message = ";
+			$update .= $result > 0 ? 'NULL' : "'".$this->db->escape($this->error)."'";
+			$update .= " WHERE entity = ".$entity." AND reminder_key = '".$this->db->escape($key)."'";
+			if (!$this->db->query($update)) { $this->error = $this->db->lasterror(); return -1; }
+			if ($result > 0) $sent++;
+		}
+		return $sent;
+	}
+
+	/** @param int $vehicleId @param int $entity @return array<string,string> */
+	private function getRecipients($vehicleId, $entity)
+	{
+		$userIds = json_decode(getDolGlobalString('LMDBVEHICLEMANAGEMENT_REGULATORY_RECIPIENT_USERS', '[]'), true);
+		$userIds = is_array($userIds) ? array_map('intval', $userIds) : array();
+		$groupIds = json_decode(getDolGlobalString('LMDBVEHICLEMANAGEMENT_REGULATORY_RECIPIENT_GROUPS', '[]'), true);
+		$groupIds = is_array($groupIds) ? array_map('intval', $groupIds) : array();
+		if (!empty($groupIds)) {
+			$resql = $this->db->query('SELECT DISTINCT fk_user FROM '.MAIN_DB_PREFIX.'usergroup_user WHERE fk_usergroup IN ('.implode(',', $groupIds).')');
+			if ($resql) { while (is_object($row = $this->db->fetch_object($resql))) $userIds[] = (int) $row->fk_user; $this->db->free($resql); }
+		}
+		if (getDolGlobalInt('LMDBVEHICLEMANAGEMENT_REGULATORY_INCLUDE_DRIVER')) {
+			$sql = 'SELECT fk_user_driver FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_assignment WHERE entity = '.$entity.' AND fk_vehicle = '.$vehicleId.' AND status = 1';
+			$sql .= ' AND date_start <= NOW() AND (date_end IS NULL OR date_end >= NOW()) ORDER BY date_start DESC, rowid DESC LIMIT 1';
+			$resql = $this->db->query($sql);
+			if ($resql && is_object($row = $this->db->fetch_object($resql))) $userIds[] = (int) $row->fk_user_driver;
+			if ($resql) $this->db->free($resql);
+		}
+		$userIds = array_values(array_unique(array_filter($userIds)));
+		if (empty($userIds)) return array();
+		$recipients = array();
+		$sql = 'SELECT email, firstname, lastname, login FROM '.MAIN_DB_PREFIX.'user WHERE rowid IN ('.implode(',', $userIds).") AND statut = 1 AND email IS NOT NULL AND email <> ''";
+		$resql = $this->db->query($sql);
+		if (!$resql) return array();
+		while (is_object($row = $this->db->fetch_object($resql))) {
+			$name = trim((string) $row->firstname.' '.(string) $row->lastname);
+			$recipients[(string) $row->email] = $name !== '' ? $name : (string) $row->login;
+		}
+		$this->db->free($resql);
+		return $recipients;
+	}
+
+	/** @param int $templateId @return array{subject:string,content:string}|null */
+	private function fetchTemplate($templateId)
+	{
+		global $conf;
+		$sql = 'SELECT topic, content FROM '.MAIN_DB_PREFIX.'c_email_templates WHERE rowid = '.((int) $templateId);
+		$sql .= " AND type_template = 'lmdbvehicle_regulatory_reminder' AND active = 1 AND entity IN (0, ".((int) $conf->entity).')';
+		$resql = $this->db->query($sql);
+		if (!$resql) { $this->error = $this->db->lasterror(); return null; }
+		$row = $this->db->fetch_object($resql);
+		$this->db->free($resql);
+		if (!is_object($row)) { $this->error = 'RegulatoryReminderEmailTemplateMissing'; return null; }
+		return array('subject' => (string) $row->topic, 'content' => (string) $row->content);
+	}
+
+	/** @param string $email @param array{subject:string,content:string} $template @param array<string,string> $replacements @return int<-1,1> */
+	private function sendMail($email, $template, $replacements)
+	{
+		require_once DOL_DOCUMENT_ROOT.'/core/class/CMailFile.class.php';
+		$from = getDolGlobalString('MAIN_MAIL_EMAIL_FROM');
+		if ($from === '') { $this->error = 'RegulatorySenderEmailMissing'; return -1; }
+		$mail = new CMailFile(strtr($template['subject'], $replacements), $email, $from, strtr($template['content'], $replacements), array(), array(), array(), '', '', 0, -1);
+		if (!$mail->sendfile()) { $this->error = is_string($mail->error) ? $mail->error : 'RegulatoryEmailSendFailed'; return -1; }
+		return 1;
+	}
+}

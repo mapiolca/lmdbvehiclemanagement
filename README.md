@@ -1,6 +1,6 @@
-# Gestion des véhicules pour Dolibarr
+# Gestion des véhicules et engins pour Dolibarr
 
-`lmdbvehiclemanagement` fournit un dossier véhicule multientité intégré à Dolibarr. La version `0.13.3` couvre les véhicules, leurs affectations, leurs relevés kilométriques, leurs consommations, leurs événements métier et leurs contrats d’assurance.
+`lmdbvehiclemanagement` fournit un parc multientité intégré à Dolibarr. La version `0.14.0` couvre les véhicules routiers, utilitaires et engins, leurs affectations, kilométrages, consommations, assurances et dossiers documentaires de contrôles réglementaires.
 
 ## Compatibilité
 
@@ -9,11 +9,18 @@
 - MySQL ou MariaDB
 - Module Multicompany facultatif
 - Module Ressources facultatif pour la liaison `fk_resource`
-- Module Travaux planifiés requis pour l’envoi automatique des relances d’assurance
+- Modules Agenda et Travaux planifiés recommandés pour les échéances et relances automatiques
 
-## Fonctionnalités de la version 0.13.3
+## Fonctionnalités de la version 0.14.0
 
-- fiche véhicule avec le cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
+- fiche véhicule ou engin avec immatriculation facultative et cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
+- type de matériel, catégorie européenne, genre national, PTAC/PTRA, places, territoire réglementaire, date de construction, première immatriculation et mise en service ;
+- profils réglementaires cumulables, proposés depuis les caractéristiques puis confirmés par l’utilisateur sans échéance arbitraire lorsque la qualification est incomplète ;
+- catalogue français versionné couvrant contrôles routiers, pollution N1, poids lourds, transport en commun, catégorie L, VGP à 3/6/12 mois, mise ou remise en service, tachygraphe, ADR et ATP ; règles natives en lecture seule, surcharges d’entité motivées et historisées, et règles personnalisées périodiques ou fondées sur l’expiration d’un justificatif ;
+- objet documentaire `Contrôle réglementaire` numéroté `CTLyyMM-NNNN`, avec organisme lié à un tiers, résultat simplifié, dates officielle/calculée/retenue, justificatif obligatoire avant validation et immutabilité du contrôle validé ;
+- annulation motivée et contrôle de remplacement, contre-visite distincte, dérogation temporaire motivée, blocage configurable des nouvelles affectations et mises en service ;
+- échéancier global, synthèse par matériel, listes Dolibarr natives, export des contrôles, registre de sécurité et import de brouillons ;
+- événement Agenda planifié unique par exigence et travail planifié quotidien idempotent pour les recalculs et rappels par modèle d’email Dolibarr ;
 - énergie sélectionnée dans un Select2 alimenté par un dictionnaire configurable, initialisé avec la [nomenclature réglementaire française P.3](https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000049860492/2026-07-27) ;
 - plusieurs conducteurs simultanés, avec une seule affectation principale sur une période donnée ;
 - relevés kilométriques contrôlés, avec correction et remplacement de compteur explicitement qualifiés, et différence calculée entre deux relevés successifs ;
@@ -23,7 +30,7 @@
 - documents natifs Dolibarr sur les véhicules et les événements ;
 - journalisation Agenda native et traduite des créations, modifications, transitions et suppressions des sept objets métier, avec des titres formulés comme des actions compréhensibles et une configuration par entité respectant les choix administrateur ;
 - codes Agenda compatibles avec la limite native de 50 caractères, y compris pour les attestations d’assurance ;
-- modèles de numérotation distincts pour les véhicules, événements, contrats d’assurance et consommations ;
+- modèles de numérotation distincts pour les véhicules et engins, événements, contrats d’assurance, consommations et contrôles réglementaires ;
 - modèle de référence véhicule basé sur l’immatriculation, activable après précontrôle et migration transactionnelle des références, documents et index ECM ;
 - droits granulaires distincts pour lire, créer/modifier, mettre en ou hors service, supprimer, exporter et importer, contrôlés directement avec la méthode native `$user->hasRight()` ;
 - profils natifs Dolibarr d’import et d’export des véhicules, avec création des lignes importées par l’objet métier et sans effet Agenda pendant la simulation ;
@@ -34,7 +41,7 @@
 - justificatifs PDF, JPEG ou PNG contrôlés côté serveur, avec suppression des métadonnées EXIF/GPS des images ;
 - référents assurance configurables par utilisateur ou groupe et personnels affectés éligibles selon leur type d’affectation ;
 - relances quotidiennes configurables avant et après échéance au moyen des modèles d’emails et travaux planifiés natifs Dolibarr.
-- menu haut dédié **Gestion des véhicules**, avec des sections séparées pour les véhicules et les contrats d’assurance ;
+- menu haut dédié **Gestion des véhicules et engins**, avec des sections séparées pour le parc, les contrôles réglementaires, les consommations et les contrats d’assurance ;
 - fiche autonome et liste native des contrats d’assurance ; l’ancien parcours modal redirige vers l’onglet `Attestations` de la fiche contrat.
 - pictogramme véhicule natif dans le menu haut, déclaré aussi par la constante d’icône attendue par les thèmes Dolibarr afin d’éviter leur pictogramme générique de repli ;
 - courtier filtré dynamiquement sur l’assureur et validation native des champs obligatoires du contrat.
@@ -57,7 +64,7 @@
 
 ## Installation
 
-Copier le répertoire `lmdbvehiclemanagement` dans le répertoire des modules externes de Dolibarr, puis activer **Gestion des véhicules** depuis la liste des modules. Une réactivation conservatrice après mise à jour reconstruit le menu haut dédié sans supprimer les réglages existants.
+Copier le répertoire `lmdbvehiclemanagement` dans le répertoire des modules externes de Dolibarr, puis activer **Gestion des véhicules et engins** depuis la liste des modules. Une réactivation conservatrice initialise les dictionnaires et règles absents sans remplacer les réglages, choix Agenda, modèles, crons ou partages existants.
 
 Les réglages, la compatibilité détectée et les métadonnées du module sont accessibles depuis l'unique roue dentée du module.
 
@@ -67,12 +74,14 @@ Les règles indépendantes de la base peuvent être vérifiées avec la commande
 
     php test/run_business_rules.php
     php test/run_agenda_contracts.php
+    php test/run_regulatory_contracts.php
+    php test/run_ui_contracts.php
 
 Une suite PHPUnit équivalente est fournie dans le répertoire test/phpunit. Les tests d'installation, de droits, de Multicompany et de documents nécessitent une instance Dolibarr configurée.
 
 ## Hors périmètre de cette version
 
-Quartix, l'export ZIP, les cartes grises, les contrôles techniques, les sinistres, les primes et franchises, les factures d’achat et les contraventions restent hors périmètre. Aucun champ fournisseur n'est dupliqué dans le modèle métier courant.
+Le module constitue une aide documentaire de conformité : il ne réalise aucun contrôle et ne produit aucun rapport officiel. Les contrôles détaillés des extincteurs, appareils sous pression, accessoires de levage et fluides frigorigènes ne sont pas préconfigurés dans cette version. Quartix, l’export ZIP, les cartes grises, les sinistres, les primes et franchises, les factures d’achat et les contraventions restent hors périmètre.
 
 ## Licence
 

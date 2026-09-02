@@ -183,7 +183,9 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 		if (empty($this->context['trigger_reason'])) {
 			$this->context['trigger_reason'] = 'update';
 		}
-		$this->context['changed_fields'] = $changedFields;
+		if (empty($this->context['changed_fields']) || !is_array($this->context['changed_fields'])) {
+			$this->context['changed_fields'] = $changedFields;
+		}
 
 		return $this->updateCommon($user, $notrigger);
 	}
@@ -365,6 +367,7 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 			'lmdbvehicleconsumption' => 'ConsumptionEntry',
 			'lmdbinsurancecontract' => 'InsuranceContract',
 			'lmdbinsurancecertificate' => 'InsuranceCertificate',
+			'lmdbvehicleregulatorycontrol' => 'RegulatoryControl',
 		);
 		$title = $langs->trans(isset($titleKeys[$this->element]) ? $titleKeys[$this->element] : 'Record');
 		if (getDolGlobalString('MAIN_OPTIMIZEFORTEXTBROWSER')) {
@@ -546,7 +549,7 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 	 * @param string $lockName Lock name (already bounded by SHA-1)
 	 * @return int<-1,1>
 	 */
-	private function acquireNumberingLock($lockName)
+	protected function acquireNumberingLock($lockName)
 	{
 		$sql = "SELECT GET_LOCK('".$this->db->escape($lockName)."', 10) AS lock_acquired";
 		$resql = $this->db->query($sql);
@@ -575,7 +578,7 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 	 * @param string $lockName Lock name
 	 * @return void
 	 */
-	private function releaseNumberingLock($lockName)
+	protected function releaseNumberingLock($lockName)
 	{
 		$sql = "SELECT RELEASE_LOCK('".$this->db->escape($lockName)."') AS lock_released";
 		$resql = $this->db->query($sql);

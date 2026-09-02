@@ -72,8 +72,8 @@ class LmdbAgendaTestDb
 }
 
 $checks = array(
-	'agenda_matrix_has_7_objects' => count($objectDefinitions) === 7,
-	'agenda_matrix_has_21_crud_triggers' => count($definitions) === 21,
+	'agenda_matrix_has_8_objects' => count($objectDefinitions) === 8,
+	'agenda_matrix_has_24_crud_triggers' => count($definitions) === 24,
 	'trigger_class_uses_central_matrix' => strpos($triggerClass, 'LmdbVehicleAgenda::getTriggerDefinitions()') !== false,
 	'base_object_sets_actionmsg2' => strpos($baseObject, "context['actionmsg2']") !== false,
 	'base_object_sets_actionmsg' => strpos($baseObject, "context['actionmsg']") !== false,
@@ -106,6 +106,7 @@ $crudMessageKeys = array(
 	'lmdbvehicleevent' => array('AgendaVehicleEventCreated', 'AgendaVehicleEventUpdated', 'AgendaVehicleEventDeleted'),
 	'lmdbinsurancecontract' => array('AgendaInsuranceContractCreated', 'AgendaInsuranceContractUpdated', 'AgendaInsuranceContractDeleted'),
 	'lmdbinsurancecertificate' => array('AgendaInsuranceCertificateCreated', 'AgendaInsuranceCertificateUpdated', 'AgendaInsuranceCertificateDeleted'),
+	'lmdbvehicleregulatorycontrol' => array('AgendaRegulatoryControlCreated', 'AgendaRegulatoryControlUpdated', 'AgendaRegulatoryControlDeleted'),
 );
 foreach ($crudMessageKeys as $element => $expectedKeys) {
 	foreach (array('CREATE', 'UPDATE', 'DELETE') as $index => $operation) {

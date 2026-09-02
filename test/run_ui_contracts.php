@@ -112,7 +112,7 @@ $checks['card_banners_hide_environment_without_sharing'] = substr_count($library
 $checks['registration_numbering_model_is_native'] = strpos($vehicleRegistrationNumbering, 'extends ModeleNumRefLmdbVehicle') !== false
 	&& strpos($vehicleRegistrationNumbering, 'normalizeRegistrationNumber') !== false;
 $checks['vehicle_ref_is_synchronized_on_create_and_update'] = substr_count($vehicleClass, 'usesRegistrationAsReference()') >= 2
-	&& strpos($vehicleClass, '$this->ref = $this->registration_number;') !== false;
+	&& strpos($vehicleClass, '$this->ref = (string) $this->registration_number;') !== false;
 $checks['vehicle_reference_migration_is_transactional'] = strpos($vehicleReferenceMigration, '$this->db->begin();') !== false
 	&& strpos($vehicleReferenceMigration, '$this->db->rollback();') !== false
 	&& strpos($vehicleReferenceMigration, 'rollbackFilesystem()') !== false;
@@ -162,7 +162,7 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0133'] = strpos($descriptor, "\$this->version = '0.13.3';") !== false;
+$checks['module_version_is_0140'] = strpos($descriptor, "\$this->version = '0.14.0';") !== false;
 $checks['insurance_certificate_actions_are_translated'] = strpos($insuranceCertificate, "\$langs->trans('SaveInsuranceCertificateDraft')") !== false
 	&& strpos($insuranceCertificate, "\$langs->trans('RejectInsuranceCertificate')") !== false
 	&& strpos($insuranceCertificate, "\$langs->trans('ArchiveInsuranceCertificate')") !== false

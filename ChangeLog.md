@@ -1,5 +1,13 @@
 # Historique des versions
 
+## `0.14.0` — 2026-09-02
+
+- Extension du parc aux véhicules, utilitaires et engins, avec immatriculation facultative, référence de repli `MATyyMM-NNNN` et caractéristiques de qualification réglementaire.
+- Ajout des profils réglementaires cumulables, des exigences matérialisées et du catalogue français versionné pour les contrôles routiers, la pollution, les VGP, la mise en service, le tachygraphe, l’ADR et l’ATP, avec règles natives en lecture seule, surcharges d’entité auditées et règles personnalisées.
+- Ajout de l’objet documentaire `Contrôle réglementaire` numéroté `CTLyyMM-NNNN`, de son workflow brouillon/validation/annulation/archivage, de ses justificatifs et de ses événements Agenda CRUD natifs.
+- Ajout de l’échéancier, des listes et exports natifs, du registre de sécurité, des imports en brouillon, des droits dédiés et de la prise en charge Multicompany.
+- Ajout d’un travail planifié quotidien idempotent pour recalculer les échéances, synchroniser leur événement Agenda et envoyer les rappels configurés au moyen d’un modèle d’email Dolibarr.
+
 ## `0.13.3` — 2026-09-02
 
 - Correction des libellés non traduits des actions « Enregistrer le brouillon », « Rejeter » et « Archiver » dans l’onglet des attestations d’assurance.

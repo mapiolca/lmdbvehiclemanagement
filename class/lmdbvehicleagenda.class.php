@@ -122,6 +122,21 @@ class LmdbVehicleAgenda
 			return self::crudDefinition($operation, 'AgendaInsuranceCertificateCreated', 'AgendaInsuranceCertificateUpdated', 'AgendaInsuranceCertificateDeleted', array('contract_ref'));
 		}
 
+		if ($element === 'lmdbvehicleregulatorycontrol') {
+			if ($operation === 'UPDATE') {
+				if ($reason === 'validation' || $newStatus === 1) {
+					return array('key' => 'AgendaRegulatoryControlValidated', 'arguments' => array('identifier'));
+				}
+				if ($reason === 'cancellation' || $newStatus === 2) {
+					return array('key' => 'AgendaRegulatoryControlCancelled', 'arguments' => array('identifier'));
+				}
+				if ($reason === 'archiving' || $newStatus === 3) {
+					return array('key' => 'AgendaRegulatoryControlArchived', 'arguments' => array('identifier'));
+				}
+			}
+			return self::crudDefinition($operation, 'AgendaRegulatoryControlCreated', 'AgendaRegulatoryControlUpdated', 'AgendaRegulatoryControlDeleted', array('identifier'));
+		}
+
 		return self::crudDefinition($operation, 'AgendaRecordCreated', 'AgendaRecordUpdated', 'AgendaRecordDeleted', array('object_label', 'identifier'));
 	}
 
@@ -199,6 +214,7 @@ class LmdbVehicleAgenda
 			'lmdbvehicleevent' => 'VehicleEvent',
 			'lmdbinsurancecontract' => 'InsuranceContract',
 			'lmdbinsurancecertificate' => 'InsuranceCertificate',
+			'lmdbvehicleregulatorycontrol' => 'RegulatoryControl',
 		);
 		$element = (string) $object->element;
 		$objectLabel = self::translate($langs, isset($objectLabels[$element]) ? $objectLabels[$element] : 'Record');
@@ -307,6 +323,10 @@ class LmdbVehicleAgenda
 		} elseif ($element === 'lmdbinsurancecertificate') {
 			self::appendDetail($details, $langs, 'AgendaVehicleDetail', array($data['vehicle_ref']));
 			self::appendPeriodDetail($details, $object, 'validity_start', 'validity_end', $langs, 'AgendaValidityDetail');
+		} elseif ($element === 'lmdbvehicleregulatorycontrol') {
+			self::appendDetail($details, $langs, 'AgendaVehicleDetail', array($data['vehicle_ref']));
+			self::appendDateDetail($details, $object, 'control_date', 'AgendaEventDateDetail', $langs);
+			self::appendDateDetail($details, $object, 'retained_valid_until', 'AgendaValidityEndDetail', $langs);
 		}
 
 		if ($operation === 'UPDATE' && !empty($context['changed_fields']) && is_array($context['changed_fields'])) {
@@ -518,11 +538,17 @@ class LmdbVehicleAgenda
 				'class_name' => 'LmdbVehicleInsuranceCertificate',
 				'trigger_prefix' => 'LMDBVEHICLEMANAGEMENT_CERTIFICATE',
 			),
+			'regulatory_control' => array(
+				'elementtype' => 'lmdbvehicleregulatorycontrol@lmdbvehiclemanagement',
+				'class_file' => 'class/lmdbvehicleregulatorycontrol.class.php',
+				'class_name' => 'LmdbVehicleRegulatoryControl',
+				'trigger_prefix' => 'LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL',
+			),
 		);
 	}
 
 	/**
-	 * Expand the object matrix into the 21 CRUD triggers.
+	 * Expand the object matrix into the 24 CRUD triggers.
 	 *
 	 * @return array<string,array{elementtype:string,class_file:string,class_name:string,trigger_prefix:string,operation:string}>
 	 */

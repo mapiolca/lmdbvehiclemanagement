@@ -53,6 +53,7 @@ function lmdbVehicleManagementAdminPrepareHead()
 	$h = 0;
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/setup.php', 1), $langs->trans('Settings'), 'settings');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/insurance.php', 1), $langs->trans('Insurance'), 'insurance');
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/regulatory.php', 1), $langs->trans('RegulatoryControls'), 'regulatory');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/compatibility.php', 1), $langs->trans('Compatibility'), 'compatibility');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/about.php', 1), $langs->trans('About'), 'about');
 
@@ -77,6 +78,7 @@ function lmdbVehiclePrepareHead($object)
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_assignment.php', 1).'?id='.$id, $langs->trans('VehicleAssignments'), 'assignments');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_odometer.php', 1).'?id='.$id, $langs->trans('OdometerReadings'), 'odometer');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_consumption.php', 1).'?id='.$id, $langs->trans('Consumption'), 'consumption');
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_regulatory.php', 1).'?id='.$id, $langs->trans('RegulatoryControls'), 'regulatory');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_history.php', 1).'?id='.$id, $langs->trans('VehicleHistory'), 'history');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_note.php', 1).'?id='.$id, $langs->trans('Notes'), 'notes');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_document.php', 1).'?id='.$id, $langs->trans('Documents'), 'documents');
@@ -85,6 +87,53 @@ function lmdbVehiclePrepareHead($object)
 	}
 
 	return $head;
+}
+
+/** @param LmdbVehicleRegulatoryControl $object Control @return array<int,array{0:string,1:string,2:string}> */
+function lmdbVehicleRegulatoryControlPrepareHead($object)
+{
+	global $db, $langs, $user;
+
+	$langs->loadLangs(array('agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+	$id = (int) $object->id;
+	$head = array();
+	$head[] = array(dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?id='.$id, $langs->trans('Card'), 'card');
+	$noteCount = (!empty($object->note_public) ? 1 : 0) + (!empty($object->note_private) ? 1 : 0);
+	$head[] = array(dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_note.php', 1).'?id='.$id, $langs->trans('Notes').($noteCount ? '<span class="badge marginleftonlyshort">'.$noteCount.'</span>' : ''), 'notes');
+	require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
+	$uploadDir = getMultidirOutput($object, 'lmdbvehiclemanagement', 1);
+	$fileCount = is_string($uploadDir) && $uploadDir !== '' && strpos($uploadDir, 'error-diroutput-') !== 0 ? count(dol_dir_list($uploadDir, 'files', 0, '', '(\.meta|_preview.*\.png)$')) : 0;
+	$head[] = array(dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_document.php', 1).'?id='.$id, $langs->trans('Documents').($fileCount ? '<span class="badge marginleftonlyshort">'.$fileCount.'</span>' : ''), 'documents');
+	if (isModEnabled('agenda') && ($user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) {
+		$agendaCount = 0;
+		$resql = $db->query('SELECT COUNT(*) AS total FROM '.MAIN_DB_PREFIX.'actioncomm AS a'.lmdbVehicleRegulatoryControlAgendaWhere($object, 'a'));
+		if ($resql && is_object($row = $db->fetch_object($resql))) $agendaCount = (int) $row->total;
+		if ($resql) $db->free($resql);
+		$head[] = array(dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_agenda.php', 1).'?id='.$id, $langs->trans('EventsAgenda').($agendaCount ? '<span class="badge marginleftonlyshort">'.$agendaCount.'</span>' : ''), 'agenda');
+	}
+	return $head;
+}
+
+/** @param LmdbVehicleRegulatoryControl $object Control @param string $alias Alias @return string */
+function lmdbVehicleRegulatoryControlAgendaWhere($object, $alias = 'a')
+{
+	global $user;
+	$alias = preg_match('/^[a-z][a-z0-9_]*$/i', $alias) ? $alias : 'a';
+	$where = " WHERE ".$alias.".elementtype = 'lmdbvehicleregulatorycontrol@lmdbvehiclemanagement'";
+	$where .= ' AND '.$alias.'.fk_element = '.((int) $object->id).' AND '.$alias.'.entity IN ('.getEntity('agenda').')';
+	if (!$user->hasRight('agenda', 'allactions', 'read')) {
+		$where .= ' AND ('.$alias.'.fk_user_author = '.((int) $user->id).' OR '.$alias.'.fk_user_action = '.((int) $user->id).')';
+	}
+	return $where;
+}
+
+/** @param LmdbVehicleRegulatoryControl $object Control @return void */
+function lmdbVehicleRegulatoryControlPrintBanner($object)
+{
+	global $langs;
+	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
+	$more = '<div class="refidno">'.$langs->trans('RegulatoryControl').'</div>';
+	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $more);
 }
 
 /**

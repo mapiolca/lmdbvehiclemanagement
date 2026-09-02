@@ -1,0 +1,4 @@
+ALTER TABLE llx_lmdbvehiclemanagement_control_reminder_log ADD UNIQUE INDEX uk_lmdbvm_control_reminder (entity, reminder_key);
+ALTER TABLE llx_lmdbvehiclemanagement_control_reminder_log ADD INDEX idx_lmdbvm_control_reminder_entity (entity);
+ALTER TABLE llx_lmdbvehiclemanagement_control_reminder_log ADD INDEX idx_lmdbvm_control_reminder_requirement (fk_requirement);
+ALTER TABLE llx_lmdbvehiclemanagement_control_reminder_log ADD INDEX idx_lmdbvm_control_reminder_sent (sent_at);

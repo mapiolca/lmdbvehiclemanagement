@@ -36,7 +36,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->descriptionlong = 'ModuleLmdbVehicleManagementDesc';
 		$this->editor_name = 'Pierre Ardoin';
 		$this->editor_url = 'https://github.com/mapiolca';
-		$this->version = '0.13.3';
+		$this->version = '0.14.0';
 		$this->const_name = 'MAIN_MODULE_LMDBVEHICLEMANAGEMENT';
 		$this->picto = 'car';
 
@@ -51,7 +51,10 @@ class modLmdbVehicleManagement extends DolibarrModules
 					'lmdbvehiclelist',
 					'lmdbvehicleeventcard',
 					'lmdbvehicleeventlist',
+					'lmdbvehicleregulatorycontrolcard',
+					'lmdbvehicleregulatorycontrollist',
 					'imports',
+					'notification',
 					'agendadao',
 					'elementproperties',
 					'multicompanyexternalmodulesharing',
@@ -80,21 +83,29 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->tabs = array();
 		$this->dictionaries = array(
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'tabname' => array('c_lmdbvehiclemanagement_energy', 'c_lmdbvehiclemanagement_consumable'),
-			'tablib' => array('VehicleEnergies', 'VehicleConsumables'),
+			'tabname' => array('c_lmdbvehiclemanagement_energy', 'c_lmdbvehiclemanagement_consumable', 'c_lmdbvehiclemanagement_asset_type', 'c_lmdbvehiclemanagement_regulatory_profile', 'c_lmdbvehiclemanagement_control_type', 'c_lmdbvehiclemanagement_control_result'),
+			'tablib' => array('VehicleEnergies', 'VehicleConsumables', 'AssetTypes', 'RegulatoryProfiles', 'RegulatoryControlTypes', 'RegulatoryControlResults'),
 			'tabsql' => array(
 				'SELECT f.rowid, f.code, f.label, f.position, f.active, f.entity FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy AS f WHERE f.entity IN ('.getEntity('c_lmdbvehiclemanagement_energy').')',
 				'SELECT f.rowid, f.code, f.label, f.category, f.unit, f.requires_oil_reference, f.position, f.active, f.entity FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS f WHERE f.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')',
+				'SELECT f.rowid, f.code, f.label, f.position, f.active, f.entity FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_asset_type AS f WHERE f.entity IN ('.getEntity('c_lmdbvehiclemanagement_asset_type').')',
+				'SELECT f.rowid, f.code, f.label, f.description, f.position, f.active, f.entity FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_regulatory_profile AS f WHERE f.entity IN ('.getEntity('c_lmdbvehiclemanagement_regulatory_profile').')',
+				'SELECT f.rowid, f.code, f.label, f.description, f.position, f.active, f.entity FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_control_type AS f WHERE f.entity IN ('.getEntity('c_lmdbvehiclemanagement_control_type').')',
+				'SELECT f.rowid, f.code, f.label, f.severity, f.requires_recheck, f.is_blocking, f.position, f.active, f.entity FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_control_result AS f WHERE f.entity IN ('.getEntity('c_lmdbvehiclemanagement_control_result').')',
 			),
-			'tabsqlsort' => array('position ASC, code ASC', 'position ASC, code ASC'),
-			'tabfield' => array('code,label,position', 'code,label,category,unit,requires_oil_reference,position'),
-			'tabfieldvalue' => array('code,label,position', 'code,label,category,unit,requires_oil_reference,position'),
-			'tabfieldinsert' => array('code,label,position,entity', 'code,label,category,unit,requires_oil_reference,position,entity'),
-			'tabrowid' => array('rowid', 'rowid'),
-			'tabcond' => array(isModEnabled('lmdbvehiclemanagement'), isModEnabled('lmdbvehiclemanagement')),
+			'tabsqlsort' => array_fill(0, 6, 'position ASC, code ASC'),
+			'tabfield' => array('code,label,position', 'code,label,category,unit,requires_oil_reference,position', 'code,label,position', 'code,label,description,position', 'code,label,description,position', 'code,label,severity,requires_recheck,is_blocking,position'),
+			'tabfieldvalue' => array('code,label,position', 'code,label,category,unit,requires_oil_reference,position', 'code,label,position', 'code,label,description,position', 'code,label,description,position', 'code,label,severity,requires_recheck,is_blocking,position'),
+			'tabfieldinsert' => array('code,label,position,entity', 'code,label,category,unit,requires_oil_reference,position,entity', 'code,label,position,entity', 'code,label,description,position,entity', 'code,label,description,position,entity', 'code,label,severity,requires_recheck,is_blocking,position,entity'),
+			'tabrowid' => array_fill(0, 6, 'rowid'),
+			'tabcond' => array_fill(0, 6, isModEnabled('lmdbvehiclemanagement')),
 			'tabhelp' => array(
 				array('code' => $langs->trans('VehicleEnergyCodeHelp'), 'label' => $langs->trans('VehicleEnergyLabelHelp')),
 				array('code' => $langs->trans('ConsumableCodeHelp'), 'category' => $langs->trans('ConsumableCategoryHelp'), 'unit' => $langs->trans('ConsumableUnitHelp')),
+				array('code' => $langs->trans('AssetTypeCodeHelp')),
+				array('code' => $langs->trans('RegulatoryProfileCodeHelp')),
+				array('code' => $langs->trans('RegulatoryControlTypeCodeHelp')),
+				array('code' => $langs->trans('RegulatoryControlResultCodeHelp')),
 			),
 		);
 		$this->boxes = array();
@@ -112,6 +123,20 @@ class modLmdbVehicleManagement extends DolibarrModules
 				'status' => 1,
 				'test' => 'isModEnabled("lmdbvehiclemanagement")',
 				'priority' => 50,
+			),
+			1 => array(
+				'label' => 'RegulatoryControlCronLabel',
+				'jobtype' => 'method',
+				'class' => '/lmdbvehiclemanagement/class/lmdbvehicleregulatorycron.class.php',
+				'objectname' => 'LmdbVehicleRegulatoryCron',
+				'method' => 'runDaily',
+				'parameters' => '',
+				'comment' => 'RegulatoryControlCronComment',
+				'frequency' => 1,
+				'unitfrequency' => 86400,
+				'status' => 1,
+				'test' => 'isModEnabled("lmdbvehiclemanagement")',
+				'priority' => 51,
 			),
 		);
 
@@ -227,6 +252,42 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->rights[$r][4] = 'consumption';
 		$this->rights[$r][5] = 'import';
 
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionWriteRegulatoryControls';
+		$this->rights[$r][4] = 'regulatorycontrol';
+		$this->rights[$r][5] = 'write';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionValidateRegulatoryControls';
+		$this->rights[$r][4] = 'regulatorycontrol';
+		$this->rights[$r][5] = 'validate';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionDeleteDraftRegulatoryControls';
+		$this->rights[$r][4] = 'regulatorycontrol';
+		$this->rights[$r][5] = 'delete';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionManageRegulatoryDerogations';
+		$this->rights[$r][4] = 'regulatorycontrol';
+		$this->rights[$r][5] = 'derogation';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionExportRegulatoryControls';
+		$this->rights[$r][4] = 'regulatorycontrol';
+		$this->rights[$r][5] = 'export';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'PermissionImportRegulatoryControls';
+		$this->rights[$r][4] = 'regulatorycontrol';
+		$this->rights[$r][5] = 'import';
+
 		$this->menu = array();
 		$r = 0;
 		$this->menu[$r++] = array(
@@ -304,13 +365,70 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->menu[$r++] = array(
 			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement',
 			'type' => 'left',
+			'titre' => 'RegulatoryControlsMenuSection',
+			'prefix' => img_picto('', 'clipboard-check', 'class="pictofixedwidth valignmiddle paddingright"'),
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_regulatory',
+			'url' => '/lmdbvehiclemanagement/regulatorycontrol_schedule.php',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+			'position' => 200,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'target' => '',
+			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement,fk_leftmenu=lmdbvehiclemanagement_regulatory',
+			'type' => 'left',
+			'titre' => 'RegulatoryControlSchedule',
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_regulatory_schedule',
+			'url' => '/lmdbvehiclemanagement/regulatorycontrol_schedule.php',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+			'position' => 201,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'target' => '',
+			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement,fk_leftmenu=lmdbvehiclemanagement_regulatory',
+			'type' => 'left',
+			'titre' => 'NewRegulatoryControl',
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_regulatory_new',
+			'url' => '/lmdbvehiclemanagement/regulatorycontrol_card.php?action=create',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+			'position' => 202,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "write")',
+			'target' => '',
+			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement,fk_leftmenu=lmdbvehiclemanagement_regulatory',
+			'type' => 'left',
+			'titre' => 'RegulatoryControlList',
+			'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_regulatory_list',
+			'url' => '/lmdbvehiclemanagement/regulatorycontrol_list.php',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+			'position' => 203,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'target' => '',
+			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement',
+			'type' => 'left',
 			'titre' => 'ConsumptionMenuSection',
 			'prefix' => img_picto('', 'gas-pump', 'class="pictofixedwidth valignmiddle paddingright"'),
 			'mainmenu' => 'lmdbvehiclemanagement',
 			'leftmenu' => 'lmdbvehiclemanagement_consumption',
 			'url' => '/lmdbvehiclemanagement/consumption_index.php',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'position' => 200,
+			'position' => 300,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
@@ -324,7 +442,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'leftmenu' => 'lmdbvehiclemanagement_consumption_new',
 			'url' => '/lmdbvehiclemanagement/consumption_card.php?action=create',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'position' => 201,
+			'position' => 301,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "consumption", "write")',
 			'target' => '',
@@ -338,7 +456,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'leftmenu' => 'lmdbvehiclemanagement_consumption_list',
 			'url' => '/lmdbvehiclemanagement/consumption_list.php',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'position' => 202,
+			'position' => 302,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
@@ -353,7 +471,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'leftmenu' => 'lmdbvehiclemanagement_insurance',
 			'url' => '/lmdbvehiclemanagement/insurancecontract_list.php',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'position' => 300,
+			'position' => 400,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
@@ -367,7 +485,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'leftmenu' => 'lmdbvehiclemanagement_insurance_new',
 			'url' => '/lmdbvehiclemanagement/insurancecontract_card.php?action=create',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'position' => 301,
+			'position' => 401,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "insurance", "write")',
 			'target' => '',
@@ -381,7 +499,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'leftmenu' => 'lmdbvehiclemanagement_insurance_list',
 			'url' => '/lmdbvehiclemanagement/insurancecontract_list.php',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
-			'position' => 302,
+			'position' => 402,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
@@ -409,12 +527,21 @@ class modLmdbVehicleManagement extends DolibarrModules
 			't.registration_number' => 'RegistrationNumber',
 			't.vin' => 'VIN',
 			't.label' => 'Label',
+			'asset.code' => 'AssetTypeCode',
+			'asset.label' => 'AssetType',
+			't.eu_category' => 'EuropeanCategory',
+			't.national_genre' => 'NationalGenre',
+			't.gvw_kg' => 'GrossVehicleWeightKg',
+			't.gcw_kg' => 'GrossCombinationWeightKg',
+			't.seats' => 'Seats',
+			't.regulatory_territory' => 'RegulatoryTerritory',
 			't.brand' => 'Brand',
 			't.model' => 'VehicleModel',
 			't.vehicle_version' => 'VehicleVersion',
 			'energy.code' => 'VehicleEnergyCode',
 			'energy.label' => 'VehicleEnergyLabel',
 			't.wltp_range_km' => 'WltpRangeKm',
+			't.construction_date' => 'ConstructionDate',
 			't.first_registration_date' => 'FirstRegistrationDate',
 			't.commissioning_date' => 'CommissioningDate',
 			't.ownership_type' => 'OwnershipType',
@@ -428,12 +555,21 @@ class modLmdbVehicleManagement extends DolibarrModules
 			't.registration_number' => 'Text',
 			't.vin' => 'Text',
 			't.label' => 'Text',
+			'asset.code' => 'Text',
+			'asset.label' => 'Text',
+			't.eu_category' => 'Text',
+			't.national_genre' => 'Text',
+			't.gvw_kg' => 'Numeric',
+			't.gcw_kg' => 'Numeric',
+			't.seats' => 'Numeric',
+			't.regulatory_territory' => 'Text',
 			't.brand' => 'Text',
 			't.model' => 'Text',
 			't.vehicle_version' => 'Text',
 			'energy.code' => 'Text',
 			'energy.label' => 'Text',
 			't.wltp_range_km' => 'Numeric',
+			't.construction_date' => 'Date',
 			't.first_registration_date' => 'Date',
 			't.commissioning_date' => 'Date',
 			't.ownership_type' => 'Text',
@@ -448,6 +584,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		}
 		$this->export_sql_start[$r] = 'SELECT DISTINCT ';
 		$this->export_sql_end[$r] = ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS t';
+		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_asset_type AS asset ON asset.rowid = t.fk_asset_type';
 		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy AS energy ON energy.rowid = t.fk_energy';
 		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'societe AS owner ON owner.rowid = t.fk_soc_owner';
 		$this->export_sql_end[$r] .= ' WHERE t.entity IN ('.getEntity('lmdbvehicle').')';
@@ -479,6 +616,67 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user AS u ON u.rowid = COALESCE(t.fk_user_driver, t.fk_user_creat)';
 		$this->export_sql_end[$r] .= ' WHERE t.entity IN ('.getEntity('lmdbvehicleconsumption').')';
 
+		$r++;
+		$this->export_code[$r] = 'lmdbvehiclemanagement_regulatory_controls';
+		$this->export_label[$r] = 'RegulatoryControlExportDataset';
+		$this->export_icon[$r] = 'clipboard-check';
+		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && $user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "export")';
+		$this->export_permission[$r] = array(array('lmdbvehiclemanagement', 'regulatorycontrol', 'export'));
+		$this->export_fields_array[$r] = array(
+			't.ref' => 'Ref', 't.control_date' => 'RegulatoryControlDate', 'v.ref' => 'VehicleRef', 'v.registration_number' => 'RegistrationNumber',
+			'ct.label' => 'RegulatoryControlType', 't.control_kind' => 'RegulatoryControlKind', 's.nom' => 'RegulatoryControlProvider',
+			't.document_ref' => 'RegulatoryDocumentReference', 'cr.label' => 'RegulatoryControlResult', 't.official_valid_until' => 'OfficialValidUntil',
+			't.calculated_valid_until' => 'CalculatedValidUntil', 't.retained_valid_until' => 'RetainedValidUntil', 't.observations' => 'Observations',
+			't.status' => 'Status', 't.entity' => 'Environment',
+		);
+		$this->export_TypeFields_array[$r] = array(
+			't.ref' => 'Text', 't.control_date' => 'Date', 'v.ref' => 'Text', 'v.registration_number' => 'Text', 'ct.label' => 'Text',
+			't.control_kind' => 'Text', 's.nom' => 'Text', 't.document_ref' => 'Text', 'cr.label' => 'Text',
+			't.official_valid_until' => 'Date', 't.calculated_valid_until' => 'Date', 't.retained_valid_until' => 'Date',
+			't.observations' => 'Text', 't.status' => 'Numeric', 't.entity' => 'Numeric',
+		);
+		$this->export_entities_array[$r] = array_fill_keys(array_keys($this->export_fields_array[$r]), 'lmdbvehicleregulatorycontrol');
+		$this->export_sql_start[$r] = 'SELECT DISTINCT ';
+		$this->export_sql_end[$r] = ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control AS t';
+		$this->export_sql_end[$r] .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND v.entity = t.entity';
+		$this->export_sql_end[$r] .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS rr ON rr.rowid = t.fk_rule';
+		$this->export_sql_end[$r] .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_control_type AS ct ON ct.rowid = rr.fk_control_type';
+		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX."c_lmdbvehiclemanagement_control_result AS cr ON cr.code = t.result_code AND cr.entity IN (".getEntity('c_lmdbvehiclemanagement_control_result').')';
+		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'societe AS s ON s.rowid = t.fk_soc_provider';
+		$this->export_sql_end[$r] .= ' WHERE t.entity IN ('.getEntity('lmdbvehicleregulatorycontrol').')';
+
+		$r++;
+		$this->export_code[$r] = 'lmdbvehiclemanagement_safety_register';
+		$this->export_label[$r] = 'RegulatorySafetyRegisterExportDataset';
+		$this->export_icon[$r] = 'shield-alt';
+		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && $user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "export")';
+		$this->export_permission[$r] = array(array('lmdbvehiclemanagement', 'regulatorycontrol', 'export'));
+		$this->export_fields_array[$r] = array(
+			'v.ref' => 'VehicleRef', 'v.registration_number' => 'RegistrationNumber', 'v.label' => 'Label', 'asset.label' => 'AssetType',
+			't.ref' => 'RegulatoryControlRef', 't.control_date' => 'RegulatoryControlDate', 'rr.code' => 'RegulatoryRuleCode',
+			'rr.label' => 'RegulatoryRule', 'ct.label' => 'RegulatoryControlType', 't.control_kind' => 'RegulatoryControlKind',
+			'cr.label' => 'RegulatoryControlResult', 's.nom' => 'RegulatoryControlProvider', 't.document_ref' => 'RegulatoryDocumentReference',
+			't.official_valid_until' => 'OfficialValidUntil', 't.calculated_valid_until' => 'CalculatedValidUntil',
+			't.retained_valid_until' => 'RetainedValidUntil', 't.observations' => 'Observations', 't.status' => 'Status', 't.entity' => 'Environment',
+		);
+		$this->export_TypeFields_array[$r] = array(
+			'v.ref' => 'Text', 'v.registration_number' => 'Text', 'v.label' => 'Text', 'asset.label' => 'Text', 't.ref' => 'Text',
+			't.control_date' => 'Date', 'rr.code' => 'Text', 'rr.label' => 'Text', 'ct.label' => 'Text', 't.control_kind' => 'Text',
+			'cr.label' => 'Text', 's.nom' => 'Text', 't.document_ref' => 'Text', 't.official_valid_until' => 'Date',
+			't.calculated_valid_until' => 'Date', 't.retained_valid_until' => 'Date', 't.observations' => 'Text',
+			't.status' => 'Numeric', 't.entity' => 'Numeric',
+		);
+		$this->export_entities_array[$r] = array_fill_keys(array_keys($this->export_fields_array[$r]), 'lmdbvehicleregulatorycontrol');
+		$this->export_sql_start[$r] = 'SELECT DISTINCT ';
+		$this->export_sql_end[$r] = ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control AS t';
+		$this->export_sql_end[$r] .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND v.entity = t.entity';
+		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_asset_type AS asset ON asset.rowid = v.fk_asset_type';
+		$this->export_sql_end[$r] .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS rr ON rr.rowid = t.fk_rule AND rr.entity = t.entity';
+		$this->export_sql_end[$r] .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_control_type AS ct ON ct.rowid = rr.fk_control_type';
+		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX."c_lmdbvehiclemanagement_control_result AS cr ON cr.code = t.result_code AND cr.entity IN (".getEntity('c_lmdbvehiclemanagement_control_result').')';
+		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'societe AS s ON s.rowid = t.fk_soc_provider';
+		$this->export_sql_end[$r] .= ' WHERE t.entity IN ('.getEntity('lmdbvehicleregulatorycontrol').') AND t.status IN (1, 2, 3)';
+
 		$this->import_code = array();
 		$this->import_label = array();
 		$this->import_icon = array();
@@ -503,14 +701,22 @@ class modLmdbVehicleManagement extends DolibarrModules
 			$this->import_tables_creator_array[$r] = array('t' => 'fk_user_creat');
 			$this->import_fields_array[$r] = array(
 				't.ref' => 'Ref',
-				't.registration_number' => 'RegistrationNumber*',
+				't.registration_number' => 'RegistrationNumber',
 				't.vin' => 'VIN',
 				't.label' => 'Label*',
+				't.fk_asset_type' => 'AssetType',
+				't.eu_category' => 'EuropeanCategory',
+				't.national_genre' => 'NationalGenre',
+				't.gvw_kg' => 'GrossVehicleWeightKg',
+				't.gcw_kg' => 'GrossCombinationWeightKg',
+				't.seats' => 'Seats',
+				't.regulatory_territory' => 'RegulatoryTerritory',
 				't.brand' => 'Brand',
 				't.model' => 'VehicleModel',
 				't.vehicle_version' => 'VehicleVersion',
 				't.fk_energy' => 'VehicleEnergyCode',
 				't.wltp_range_km' => 'WltpRangeKm',
+				't.construction_date' => 'ConstructionDate',
 				't.first_registration_date' => 'FirstRegistrationDate',
 				't.commissioning_date' => 'CommissioningDate',
 				't.ownership_type' => 'OwnershipType',
@@ -525,8 +731,16 @@ class modLmdbVehicleManagement extends DolibarrModules
 				't.brand' => 'Text',
 				't.model' => 'Text',
 				't.vehicle_version' => 'Text',
+				't.fk_asset_type' => 'Text',
+				't.eu_category' => 'Text',
+				't.national_genre' => 'Text',
+				't.gvw_kg' => 'Numeric',
+				't.gcw_kg' => 'Numeric',
+				't.seats' => 'Numeric',
+				't.regulatory_territory' => 'Text',
 				't.fk_energy' => 'Text',
 				't.wltp_range_km' => 'Numeric',
+				't.construction_date' => 'Date',
 				't.first_registration_date' => 'Date',
 				't.commissioning_date' => 'Date',
 				't.ownership_type' => 'Text',
@@ -548,6 +762,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 					'pathobject' => '/lmdbvehiclemanagement/class/lmdbvehicle.class.php',
 				),
 				't.fk_energy' => array('rule' => 'fetchidfromcodeorlabel', 'file' => '/lmdbvehiclemanagement/class/lmdbvehicleenergy.class.php', 'class' => 'LmdbVehicleEnergy', 'method' => 'fetch', 'dict' => 'VehicleEnergies'),
+				't.fk_asset_type' => array('rule' => 'fetchidfromcodeorlabel', 'file' => '/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php', 'class' => 'LmdbVehicleImport', 'method' => 'fetchAssetType', 'dict' => 'AssetTypes'),
 				't.fk_soc_owner' => array('rule' => 'fetchidfromref', 'file' => '/societe/class/societe.class.php', 'class' => 'Societe', 'method' => 'fetch', 'element' => 'ThirdParty'),
 				't.entity' => array('rule' => 'compute', 'file' => '/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php', 'class' => 'LmdbVehicleImport', 'method' => 'getCurrentEntityId', 'type' => 'int'),
 				't.date_creation' => array('rule' => 'compute', 'file' => '/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php', 'class' => 'LmdbVehicleImport', 'method' => 'getCreationDate', 'type' => 'string'),
@@ -558,10 +773,17 @@ class modLmdbVehicleManagement extends DolibarrModules
 				't.registration_number' => 'AA-123-BB',
 				't.vin' => 'VF123456789012345',
 				't.label' => 'Véhicule de service',
+				't.fk_asset_type' => 'light_commercial',
+				't.eu_category' => 'N1',
+				't.regulatory_territory' => 'FR_METRO',
 				't.brand' => 'Renault',
 				't.model' => 'Kangoo',
 				't.vehicle_version' => 'Confort',
 				't.fk_energy' => 'EL',
+				't.gvw_kg' => '3500',
+				't.gcw_kg' => '',
+				't.seats' => '3',
+				't.construction_date' => '2025-12-01',
 				't.first_registration_date' => '2026-01-15',
 				't.commissioning_date' => '',
 				't.ownership_type' => 'owned',
@@ -584,6 +806,44 @@ class modLmdbVehicleManagement extends DolibarrModules
 				$this->import_entities_array[$r]['t.ref'] = 'lmdbvehicle';
 			}
 		}
+		if (is_object($user) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'import')) {
+			$r = count($this->import_code);
+			$this->import_code[$r] = 'lmdbvehiclemanagement_regulatory_controls';
+			$this->import_label[$r] = 'RegulatoryControlImportDataset';
+			$this->import_icon[$r] = 'clipboard-check';
+			$this->import_tables_array[$r] = array('t' => MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control');
+			$this->import_tables_creator_array[$r] = array('t' => 'fk_user_creat');
+			$this->import_fields_array[$r] = array(
+				't.fk_vehicle' => 'VehicleRef*',
+				't.fk_rule' => 'RegulatoryRuleCode*',
+				't.control_kind' => 'RegulatoryControlKind*',
+				't.control_date' => 'RegulatoryControlDate*',
+				't.fk_soc_provider' => 'RegulatoryControlProvider',
+				't.document_ref' => 'RegulatoryDocumentReference',
+				't.result_code' => 'RegulatoryControlResult',
+				't.official_valid_until' => 'OfficialValidUntil',
+				't.observations' => 'Observations',
+			);
+			$this->import_TypeFields_array[$r] = array(
+				't.fk_vehicle' => 'Text', 't.fk_rule' => 'Text', 't.control_kind' => 'Text', 't.control_date' => 'Date',
+				't.fk_soc_provider' => 'Text', 't.document_ref' => 'Text', 't.result_code' => 'Text',
+				't.official_valid_until' => 'Date', 't.observations' => 'Text',
+			);
+			$this->import_entities_array[$r] = array_fill_keys(array_keys($this->import_fields_array[$r]), 'lmdbvehicleregulatorycontrol');
+			$this->import_fieldshidden_array[$r] = array('t.entity' => 'rule-compute', 't.ref' => 'rule-compute', 't.status' => 'const-0', 't.date_creation' => 'rule-compute');
+			$this->import_convertvalue_array[$r] = array(
+				't.entity' => array('rule' => 'compute', 'file' => '/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php', 'class' => 'LmdbVehicleImport', 'method' => 'getCurrentEntityId', 'type' => 'int'),
+				't.date_creation' => array('rule' => 'compute', 'file' => '/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php', 'class' => 'LmdbVehicleImport', 'method' => 'getCreationDate', 'type' => 'string'),
+			);
+			$this->import_regex_array[$r] = array();
+			$this->import_examplevalues_array[$r] = array(
+				't.fk_vehicle' => 'AA-123-BB', 't.fk_rule' => 'FR_ROAD_LIGHT', 't.control_kind' => 'periodic',
+				't.control_date' => '2026-09-02', 't.fk_soc_provider' => 'CONTROLEUR-001', 't.document_ref' => 'PV-2026-001',
+				't.result_code' => 'compliant', 't.official_valid_until' => '2028-09-02', 't.observations' => '',
+			);
+			$this->import_updatekeys_array[$r] = array();
+			$this->import_run_sql_after_array[$r] = array();
+		}
 	}
 
 	/**
@@ -600,6 +860,9 @@ class modLmdbVehicleManagement extends DolibarrModules
 			return -1;
 		}
 		if ($this->prepareInsuranceContractSchema() < 0) {
+			return -1;
+		}
+		if ($this->prepareRegulatorySchema() < 0) {
 			return -1;
 		}
 
@@ -623,7 +886,16 @@ class modLmdbVehicleManagement extends DolibarrModules
 			$this->error = $consumableDictionary->error;
 			return -1;
 		}
+		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycatalog.class.php');
+		$regulatoryCatalog = new LmdbVehicleRegulatoryCatalog($this->db);
+		if ($regulatoryCatalog->seedDefaults((int) $conf->entity) < 0) {
+			$this->error = $regulatoryCatalog->error;
+			return -1;
+		}
 		if ($this->migrateVehicleData((int) $conf->entity) < 0) {
+			return -1;
+		}
+		if ($this->migrateRegulatoryVehicleClassification((int) $conf->entity) < 0) {
 			return -1;
 		}
 
@@ -632,6 +904,9 @@ class modLmdbVehicleManagement extends DolibarrModules
 			return $result;
 		}
 		if ($this->ensureInsuranceEmailTemplates((int) $conf->entity) < 0) {
+			return -1;
+		}
+		if ($this->ensureRegulatoryEmailTemplate((int) $conf->entity) < 0) {
 			return -1;
 		}
 
@@ -647,6 +922,12 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'LMDBVEHICLEMANAGEMENT_INSURANCE_BEFORE_DAYS' => '[30,15,7,1]',
 			'LMDBVEHICLEMANAGEMENT_INSURANCE_OVERDUE_REPEAT_DAYS' => '7',
 			'LMDBVEHICLEMANAGEMENT_INSURANCE_REVIEW_REPEAT_DAYS' => '3',
+			'LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_ADDON' => 'mod_lmdbvehicleregulatorycontrol_standard',
+			'LMDBVEHICLEMANAGEMENT_REGULATORY_REMINDERS_ENABLED' => '0',
+			'LMDBVEHICLEMANAGEMENT_REGULATORY_REMINDER_HORIZONS' => '[90,60,30,7,0]',
+			'LMDBVEHICLEMANAGEMENT_REGULATORY_INCLUDE_DRIVER' => '0',
+			'LMDBVEHICLEMANAGEMENT_REGULATORY_RECIPIENT_USERS' => '[]',
+			'LMDBVEHICLEMANAGEMENT_REGULATORY_RECIPIENT_GROUPS' => '[]',
 		);
 		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleagenda.class.php');
 		foreach (array_keys(LmdbVehicleAgenda::getTriggerDefinitions()) as $triggerCode) {
@@ -687,19 +968,106 @@ class modLmdbVehicleManagement extends DolibarrModules
 		if ($tableExists === 0) {
 			return 1;
 		}
-		$fieldExists = $this->tableFieldExists($table, 'fk_energy');
-		if ($fieldExists < 0) {
+		$fields = array(
+			'fk_asset_type' => 'ALTER TABLE '.$table.' ADD COLUMN fk_asset_type integer DEFAULT NULL AFTER label',
+			'eu_category' => 'ALTER TABLE '.$table.' ADD COLUMN eu_category varchar(16) DEFAULT NULL AFTER fk_asset_type',
+			'national_genre' => 'ALTER TABLE '.$table.' ADD COLUMN national_genre varchar(32) DEFAULT NULL AFTER eu_category',
+			'gvw_kg' => 'ALTER TABLE '.$table.' ADD COLUMN gvw_kg double(24,8) DEFAULT NULL AFTER national_genre',
+			'gcw_kg' => 'ALTER TABLE '.$table.' ADD COLUMN gcw_kg double(24,8) DEFAULT NULL AFTER gvw_kg',
+			'seats' => 'ALTER TABLE '.$table.' ADD COLUMN seats integer DEFAULT NULL AFTER gcw_kg',
+			'regulatory_territory' => "ALTER TABLE ".$table." ADD COLUMN regulatory_territory varchar(32) DEFAULT 'FR_METRO' NOT NULL AFTER seats",
+			'fk_energy' => 'ALTER TABLE '.$table.' ADD COLUMN fk_energy integer DEFAULT NULL AFTER vehicle_version',
+			'wltp_range_km' => 'ALTER TABLE '.$table.' ADD COLUMN wltp_range_km double(24,8) DEFAULT NULL AFTER fk_energy',
+			'construction_date' => 'ALTER TABLE '.$table.' ADD COLUMN construction_date date DEFAULT NULL AFTER wltp_range_km',
+		);
+		foreach ($fields as $field => $sql) {
+			$fieldExists = $this->tableFieldExists($table, $field);
+			if ($fieldExists < 0) {
+				return -1;
+			}
+			if ($fieldExists === 0 && !$this->db->query($sql)) {
+				$this->error = $this->db->lasterror();
+				return -1;
+			}
+		}
+		$registrationNullable = $this->tableFieldIsNullable($table, 'registration_number');
+		if ($registrationNullable < 0) {
 			return -1;
 		}
-		if ($fieldExists === 0 && !$this->db->query('ALTER TABLE '.$table.' ADD COLUMN fk_energy integer DEFAULT NULL AFTER vehicle_version')) {
+		if ($registrationNullable === 0 && !$this->db->query('ALTER TABLE '.$table.' MODIFY COLUMN registration_number varchar(32) DEFAULT NULL')) {
 			$this->error = $this->db->lasterror();
 			return -1;
 		}
-		$fieldExists = $this->tableFieldExists($table, 'wltp_range_km');
+
+		return 1;
+	}
+
+	/**
+	 * Add regulatory migration fields before loading table and index scripts.
+	 *
+	 * @return int<-1,1>
+	 */
+	private function prepareRegulatorySchema()
+	{
+		$table = MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement';
+		$tableExists = $this->tableExists($table);
+		if ($tableExists < 0) {
+			return -1;
+		}
+		if ($tableExists === 0) {
+			return 1;
+		}
+
+		$fieldExists = $this->tableFieldExists($table, 'active');
 		if ($fieldExists < 0) {
 			return -1;
 		}
-		if ($fieldExists === 0 && !$this->db->query('ALTER TABLE '.$table.' ADD COLUMN wltp_range_km double(24,8) DEFAULT NULL AFTER fk_energy')) {
+		if ($fieldExists === 0 && !$this->db->query('ALTER TABLE '.$table.' ADD COLUMN active smallint DEFAULT 1 NOT NULL AFTER blocking_mode')) {
+			$this->error = $this->db->lasterror();
+			return -1;
+		}
+
+		return 1;
+	}
+
+	/**
+	 * Create the editable native reminder template once.
+	 *
+	 * @param int $entity Entity id
+	 * @return int<-1,1>
+	 */
+	private function ensureRegulatoryEmailTemplate($entity)
+	{
+		global $langs;
+
+		$langs->loadLangs(array('mails', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		$type = 'lmdbvehicle_regulatory_reminder';
+		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'c_email_templates';
+		$sql .= ' WHERE entity = '.((int) $entity)." AND module = 'lmdbvehiclemanagement' AND type_template = '".$this->db->escape($type)."' ORDER BY rowid LIMIT 1";
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			$this->error = $this->db->lasterror();
+			return -1;
+		}
+		$row = $this->db->fetch_object($resql);
+		$this->db->free($resql);
+		$templateId = is_object($row) ? (int) $row->rowid : 0;
+		if ($templateId <= 0) {
+			$sql = 'INSERT INTO '.MAIN_DB_PREFIX.'c_email_templates (entity, module, type_template, lang, private, fk_user, datec, label, position, enabled, active, topic, content, content_lines, joinfiles) VALUES (';
+			$sql .= ((int) $entity).", 'lmdbvehiclemanagement', '".$this->db->escape($type)."', '', 0, NULL, '".$this->db->idate(dol_now())."', '".$this->db->escape($langs->trans('RegulatoryReminderEmailTemplateLabel'))."', 30, 1, 1, '";
+			$sql .= $this->db->escape($langs->trans('RegulatoryReminderEmailSubject'))."', '".$this->db->escape($langs->trans('RegulatoryReminderEmailContent'))."', NULL, 0)";
+			if (!$this->db->query($sql)) {
+				$this->error = $this->db->lasterror();
+				return -1;
+			}
+			$templateId = (int) $this->db->last_insert_id(MAIN_DB_PREFIX.'c_email_templates');
+		}
+		$constant = 'LMDBVEHICLEMANAGEMENT_REGULATORY_REMINDER_TEMPLATE';
+		$exists = $this->entityConstantExists($constant, $entity);
+		if ($exists < 0) {
+			return -1;
+		}
+		if ($exists === 0 && dolibarr_set_const($this->db, $constant, (string) $templateId, 'chaine', 0, '', $entity) <= 0) {
 			$this->error = $this->db->lasterror();
 			return -1;
 		}
@@ -883,6 +1251,50 @@ class modLmdbVehicleManagement extends DolibarrModules
 	}
 
 	/**
+	 * Mark legacy rows as road assets requiring qualification without assigning
+	 * a regulatory profile or inventing a due date.
+	 *
+	 * @param int $entity Entity id
+	 * @return int<-1,1>
+	 */
+	private function migrateRegulatoryVehicleClassification($entity)
+	{
+		$marker = 'LMDBVEHICLEMANAGEMENT_REGULATORY_VEHICLE_SCHEMA_VERSION';
+		$markerExists = $this->entityConstantExists($marker, $entity);
+		if ($markerExists < 0) {
+			return -1;
+		}
+		if ($markerExists > 0) {
+			return 1;
+		}
+
+		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_asset_type';
+		$sql .= " WHERE entity = ".((int) $entity)." AND code = 'road_vehicle_unqualified' LIMIT 1";
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			$this->error = $this->db->lasterror();
+			return -1;
+		}
+		$row = $this->db->fetch_object($resql);
+		$this->db->free($resql);
+		if (!is_object($row)) {
+			$this->error = 'AssetTypeRoadVehicleToQualifyMissing';
+			return -1;
+		}
+
+		$this->db->begin();
+		$sql = 'UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle SET fk_asset_type = '.((int) $row->rowid);
+		$sql .= ' WHERE entity = '.((int) $entity).' AND fk_asset_type IS NULL';
+		if (!$this->db->query($sql) || dolibarr_set_const($this->db, $marker, '1', 'chaine', 0, '', $entity) <= 0) {
+			$this->error = $this->db->lasterror();
+			$this->db->rollback();
+			return -1;
+		}
+		$this->db->commit();
+		return 1;
+	}
+
+	/**
 	 * Resolve a historical free-text energy without discarding unknown values.
 	 *
 	 * @param string $value Historical value
@@ -979,6 +1391,27 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->db->free($resql);
 
 		return is_object($row) && (int) $row->nb > 0 ? 1 : 0;
+	}
+
+	/**
+	 * @param string $table Full table name
+	 * @param string $field Column name
+	 * @return int<-1,1>
+	 */
+	private function tableFieldIsNullable($table, $field)
+	{
+		$sql = 'SELECT IS_NULLABLE FROM information_schema.COLUMNS';
+		$sql .= " WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '".$this->db->escape($table)."'";
+		$sql .= " AND COLUMN_NAME = '".$this->db->escape($field)."'";
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			$this->error = $this->db->lasterror();
+			return -1;
+		}
+		$row = $this->db->fetch_object($resql);
+		$this->db->free($resql);
+
+		return is_object($row) && strtoupper((string) $row->IS_NULLABLE) === 'YES' ? 1 : 0;
 	}
 
 	/**

@@ -26,7 +26,7 @@ class mod_lmdbvehicle_registration extends ModeleNumRefLmdbVehicle
 	/** @return string */
 	public function getExample()
 	{
-		return 'AA-123-BB';
+		return 'AA-123-BB / MAT2609-0001';
 	}
 
 	/** @param LmdbVehicle $object Vehicle @return bool */
@@ -38,12 +38,20 @@ class mod_lmdbvehicle_registration extends ModeleNumRefLmdbVehicle
 	/** @param LmdbVehicle $object Vehicle @return string|int<-1,0> */
 	public function getNextValue($object)
 	{
-		$registration = LmdbVehicle::normalizeRegistrationNumber((string) $object->registration_number);
-		if ($registration === '') {
-			$this->error = 'RegistrationNumberRequiredForReference';
-			return -1;
-		}
+		global $db;
 
-		return $registration;
+		$registration = LmdbVehicle::normalizeRegistrationNumber((string) $object->registration_number);
+		if ($registration !== '') return $registration;
+
+		$date = !empty($object->date_creation) ? (int) $object->date_creation : dol_now();
+		$period = dol_print_date($date, '%y%m');
+		$sql = 'SELECT MAX(CAST(SUBSTRING(t.ref FROM 9) AS SIGNED)) AS maxref FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS t';
+		$sql .= " WHERE t.ref LIKE '".$db->escape('MAT'.$period)."-%' AND t.entity IN (".getEntity('lmdbvehiclenumber', 1, $object).')';
+		$resql = $db->query($sql);
+		if (!$resql) { $this->error = $db->lasterror(); return -1; }
+		$row = $db->fetch_object($resql);
+		$max = is_object($row) ? (int) $row->maxref : 0;
+		$db->free($resql);
+		return 'MAT'.$period.'-'.($max >= 9999 ? (string) ($max + 1) : sprintf('%04u', $max + 1));
 	}
 }

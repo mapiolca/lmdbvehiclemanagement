@@ -1,0 +1,3 @@
+ALTER TABLE llx_c_lmdbvehiclemanagement_regulatory_profile ADD UNIQUE INDEX uk_lmdbvm_reg_profile (entity, code);
+ALTER TABLE llx_c_lmdbvehiclemanagement_regulatory_profile ADD INDEX idx_lmdbvm_reg_profile_entity (entity);
+ALTER TABLE llx_c_lmdbvehiclemanagement_regulatory_profile ADD INDEX idx_lmdbvm_reg_profile_active (active);
