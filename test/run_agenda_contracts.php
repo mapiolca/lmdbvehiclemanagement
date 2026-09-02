@@ -6,6 +6,7 @@ require_once dirname(__DIR__).'/class/lmdbvehicleagenda.class.php';
 $moduleRoot = dirname(__DIR__);
 $definitions = LmdbVehicleAgenda::getTriggerDefinitions();
 $objectDefinitions = LmdbVehicleAgenda::getObjectDefinitions();
+$agendaClass = file_get_contents($moduleRoot.'/class/lmdbvehicleagenda.class.php');
 $sql = file_get_contents($moduleRoot.'/sql/data.sql');
 $triggerClass = file_get_contents($moduleRoot.'/core/triggers/interface_99_modLmdbVehicleManagement_LmdbVehicleManagementTriggers.class.php');
 $baseObject = file_get_contents($moduleRoot.'/class/lmdbvehiclemanagementobject.class.php');
@@ -19,12 +20,68 @@ $referenceMigration = file_get_contents($moduleRoot.'/class/lmdbvehiclereference
 $fr = file_get_contents($moduleRoot.'/langs/fr_FR/lmdbvehiclemanagement.lang');
 $en = file_get_contents($moduleRoot.'/langs/en_US/lmdbvehiclemanagement.lang');
 
+if (!defined('MAIN_DB_PREFIX')) {
+	define('MAIN_DB_PREFIX', 'llx_');
+}
+
+/** Minimal translation service used to exercise the final Agenda wording. */
+class LmdbAgendaTestLangs
+{
+	/** @var array<string,string> */
+	private $translations = array();
+
+	/** @param string $contents Dolibarr .lang contents */
+	public function __construct($contents)
+	{
+		foreach (preg_split('/\R/', $contents) as $line) {
+			if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) {
+				continue;
+			}
+			list($key, $value) = explode('=', $line, 2);
+			$this->translations[$key] = $value;
+		}
+	}
+
+	/** @param string $key Translation key @param mixed ...$arguments Format arguments @return string */
+	public function transnoentitiesnoconv($key, ...$arguments)
+	{
+		$value = isset($this->translations[$key]) ? $this->translations[$key] : $key;
+		return empty($arguments) ? $value : vsprintf($value, $arguments);
+	}
+}
+
+/** Minimal database service resolving the vehicle used by a consumption. */
+class LmdbAgendaTestDb
+{
+	/** @param string $sql SQL query @return object */
+	public function query($sql)
+	{
+		return (object) array('row' => (object) array('registration_number' => 'AA-123-ZZ', 'ref' => 'VEH0001'));
+	}
+
+	/** @param object $result Query result @return object */
+	public function fetch_object($result)
+	{
+		return $result->row;
+	}
+
+	/** @param object $result Query result @return void */
+	public function free($result)
+	{
+	}
+}
+
 $checks = array(
 	'agenda_matrix_has_7_objects' => count($objectDefinitions) === 7,
 	'agenda_matrix_has_21_crud_triggers' => count($definitions) === 21,
 	'trigger_class_uses_central_matrix' => strpos($triggerClass, 'LmdbVehicleAgenda::getTriggerDefinitions()') !== false,
 	'base_object_sets_actionmsg2' => strpos($baseObject, "context['actionmsg2']") !== false,
 	'base_object_sets_actionmsg' => strpos($baseObject, "context['actionmsg']") !== false,
+	'base_object_uses_central_message_builder' => strpos($baseObject, 'LmdbVehicleAgenda::buildEventMessages') !== false,
+	'base_object_preserves_explicit_messages' => strpos($baseObject, "!empty(\$this->context['actionmsg2']) && !empty(\$this->context['actionmsg'])") !== false,
+	'agenda_builder_resolves_linked_vehicle' => strpos($agendaClass, 'fetchVehicleRef') !== false,
+	'agenda_builder_resolves_linked_driver' => strpos($agendaClass, 'fetchDriverName') !== false,
+	'agenda_builder_resolves_linked_contract' => strpos($agendaClass, 'fetchContractRef') !== false,
 	'descriptor_enables_import_hook' => preg_match("/'imports'/", $descriptor) === 1,
 	'descriptor_defaults_agenda_from_matrix' => strpos($descriptor, "'MAIN_AGENDA_ACTIONAUTO_'.\$triggerCode") !== false,
 	'descriptor_preserves_existing_zero_constants' => strpos($descriptor, 'if ($constantExists === 0)') !== false,
@@ -41,6 +98,98 @@ $checks = array(
 	'odometer_trigger_uses_crud_prefix' => strpos($odometerObject, "public \$TRIGGER_PREFIX = 'LMDBVEHICLEMANAGEMENT_ODOMETER';") !== false,
 );
 
+$crudMessageKeys = array(
+	'lmdbvehicle' => array('AgendaVehicleCreated', 'AgendaVehicleUpdated', 'AgendaVehicleDeleted'),
+	'lmdbvehicleassignment' => array('AgendaAssignmentCreated', 'AgendaAssignmentUpdated', 'AgendaAssignmentDeleted'),
+	'lmdbvehicleodometerreading' => array('AgendaOdometerCreated', 'AgendaOdometerUpdated', 'AgendaOdometerDeleted'),
+	'lmdbvehicleconsumption' => array('AgendaConsumptionCreated', 'AgendaConsumptionUpdated', 'AgendaConsumptionDeleted'),
+	'lmdbvehicleevent' => array('AgendaVehicleEventCreated', 'AgendaVehicleEventUpdated', 'AgendaVehicleEventDeleted'),
+	'lmdbinsurancecontract' => array('AgendaInsuranceContractCreated', 'AgendaInsuranceContractUpdated', 'AgendaInsuranceContractDeleted'),
+	'lmdbinsurancecertificate' => array('AgendaInsuranceCertificateCreated', 'AgendaInsuranceCertificateUpdated', 'AgendaInsuranceCertificateDeleted'),
+);
+foreach ($crudMessageKeys as $element => $expectedKeys) {
+	foreach (array('CREATE', 'UPDATE', 'DELETE') as $index => $operation) {
+		$messageDefinition = LmdbVehicleAgenda::getMessageDefinition($element, $operation);
+		$checks['message_'.$element.'_'.$operation] = $messageDefinition['key'] === $expectedKeys[$index];
+	}
+}
+
+$transitionMessageCases = array(
+	'vehicle_imported' => array('lmdbvehicle', 'CREATE', array('trigger_reason' => 'import'), 'AgendaVehicleImported'),
+	'vehicle_validated' => array('lmdbvehicle', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 1), 'AgendaVehicleValidated'),
+	'vehicle_in_service' => array('lmdbvehicle', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 2), 'AgendaVehiclePutInService'),
+	'vehicle_out_of_service' => array('lmdbvehicle', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 3), 'AgendaVehiclePutOutOfService'),
+	'vehicle_sold' => array('lmdbvehicle', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 4), 'AgendaVehicleSold'),
+	'vehicle_reference_sync' => array('lmdbvehicle', 'UPDATE', array('trigger_reason' => 'reference_sync'), 'AgendaVehicleReferenceSynchronized'),
+	'assignment_deactivated' => array('lmdbvehicleassignment', 'UPDATE', array('new_status' => 0), 'AgendaAssignmentDeactivated'),
+	'vehicle_event_closed' => array('lmdbvehicleevent', 'UPDATE', array('new_status' => 2), 'AgendaVehicleEventClosed'),
+	'insurance_contract_activated' => array('lmdbinsurancecontract', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 1), 'AgendaInsuranceContractActivated'),
+	'insurance_contract_terminated' => array('lmdbinsurancecontract', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 9), 'AgendaInsuranceContractTerminated'),
+	'insurance_vehicle_linked' => array('lmdbinsurancecontract', 'UPDATE', array('trigger_reason' => 'vehicle_link'), 'AgendaInsuranceVehicleLinked'),
+	'insurance_coverage_updated' => array('lmdbinsurancecontract', 'UPDATE', array('trigger_reason' => 'coverage_change'), 'AgendaInsuranceCoverageUpdated'),
+	'certificate_uploaded' => array('lmdbinsurancecertificate', 'CREATE', array('trigger_reason' => 'create_draft'), 'AgendaInsuranceCertificateUploaded'),
+	'certificate_uploaded_submitted' => array('lmdbinsurancecertificate', 'CREATE', array('trigger_reason' => 'create_and_submit'), 'AgendaInsuranceCertificateUploadedAndSubmitted'),
+	'certificate_document_updated' => array('lmdbinsurancecertificate', 'UPDATE', array('trigger_reason' => 'document_upload'), 'AgendaInsuranceCertificateDocumentUpdated'),
+	'certificate_submitted' => array('lmdbinsurancecertificate', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 1), 'AgendaInsuranceCertificateSubmitted'),
+	'certificate_validated' => array('lmdbinsurancecertificate', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 2), 'AgendaInsuranceCertificateValidated'),
+	'certificate_rejected' => array('lmdbinsurancecertificate', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 3), 'AgendaInsuranceCertificateRejected'),
+	'certificate_archived' => array('lmdbinsurancecertificate', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 9), 'AgendaInsuranceCertificateArchived'),
+);
+foreach ($transitionMessageCases as $caseName => $case) {
+	$messageDefinition = LmdbVehicleAgenda::getMessageDefinition($case[0], $case[1], $case[2]);
+	$checks['transition_'.$caseName] = $messageDefinition['key'] === $case[3];
+}
+
+$testLangs = new LmdbAgendaTestLangs($fr);
+$vehicle = (object) array(
+	'element' => 'lmdbvehicle',
+	'id' => 10,
+	'rowid' => 10,
+	'entity' => 1,
+	'ref' => 'AA-123-ZZ',
+	'registration_number' => 'AA-123-ZZ',
+	'status' => 2,
+	'context' => array('trigger_reason' => 'status_change', 'new_status' => 2),
+	'fields' => array(),
+);
+$vehicleMessages = LmdbVehicleAgenda::buildEventMessages($vehicle, 'UPDATE', $testLangs);
+$checks['rendered_vehicle_transition_title'] = $vehicleMessages['title'] === 'Le véhicule AA-123-ZZ a été mis en service';
+
+$consumption = (object) array(
+	'element' => 'lmdbvehicleconsumption',
+	'id' => 20,
+	'rowid' => 20,
+	'entity' => 1,
+	'ref' => 'CON2609-0001',
+	'fk_vehicle' => 10,
+	'fk_user_driver' => 0,
+	'quantity' => 45.5,
+	'unit_snapshot' => 'L',
+	'category_snapshot' => 'fuel',
+	'odometer_km' => 105800,
+	'context' => array('trigger_reason' => 'create'),
+	'fields' => array(),
+	'db' => new LmdbAgendaTestDb(),
+);
+$consumptionMessages = LmdbVehicleAgenda::buildEventMessages($consumption, 'CREATE', $testLangs);
+$checks['rendered_consumption_title'] = $consumptionMessages['title'] === 'Plein/Recharge CON2609-0001 enregistré';
+$checks['rendered_consumption_description'] = strpos($consumptionMessages['description'], 'Véhicule : AA-123-ZZ.') !== false
+	&& strpos($consumptionMessages['description'], 'Nature : Carburant / recharge.') !== false
+	&& strpos($consumptionMessages['description'], 'Quantité : 45.5 L.') !== false;
+
+$assignmentWithoutResolvableLinks = (object) array(
+	'element' => 'lmdbvehicleassignment',
+	'id' => 30,
+	'rowid' => 30,
+	'entity' => 1,
+	'fk_vehicle' => 10,
+	'fk_user_driver' => 5,
+	'context' => array('trigger_reason' => 'delete'),
+	'fields' => array(),
+);
+$assignmentFallbackMessages = LmdbVehicleAgenda::buildEventMessages($assignmentWithoutResolvableLinks, 'DELETE', $testLangs);
+$checks['unresolvable_links_use_safe_identifiers'] = $assignmentFallbackMessages['title'] === 'L’affectation de #5 au véhicule #10 a été supprimée';
+
 foreach ($definitions as $code => $definition) {
 	$classContents = file_get_contents($moduleRoot.'/'.$definition['class_file']);
 	$prefix = $definition['trigger_prefix'];
@@ -53,7 +202,10 @@ foreach ($definitions as $code => $definition) {
 	$checks['crud_only_'.$code] = preg_match('/_(CREATE|UPDATE|DELETE)$/', $code) === 1;
 }
 
-foreach (array('AgendaCreateTitle', 'AgendaUpdateTitle', 'AgendaDeleteTitle', 'AgendaEventDescription', 'AgendaChangedFields') as $translationKey) {
+
+preg_match_all("/'(Agenda[A-Za-z0-9]+)'/", $agendaClass, $messageTranslationMatches);
+$messageTranslationKeys = array_values(array_unique($messageTranslationMatches[1]));
+foreach ($messageTranslationKeys as $translationKey) {
 	$checks['fr_event_text_'.$translationKey] = preg_match('/^'.preg_quote($translationKey, '/').'=.+$/m', $fr) === 1;
 	$checks['en_event_text_'.$translationKey] = preg_match('/^'.preg_quote($translationKey, '/').'=.+$/m', $en) === 1;
 }

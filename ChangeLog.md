@@ -1,5 +1,13 @@
 # Historique des versions
 
+## `0.13.1` — 2026-09-01
+
+- Remplacement des titres Agenda techniques par des phrases métier traduites et spécifiques à chaque objet.
+- Distinction des principales transitions : cycle de vie du véhicule, activation ou résiliation d’un contrat et traitement des attestations d’assurance.
+- Enrichissement des descriptions avec les véhicules, conducteurs, kilométrages, quantités, périodes et champs modifiés disponibles.
+- Conservation de l’auto-création Agenda native, des 21 triggers CRUD et des titres éventuellement fournis explicitement par un traitement métier.
+- Application des nouveaux libellés aux futurs événements uniquement, sans réécriture de l’historique Agenda existant.
+
 ## `0.13.0` — 2026-09-01
 
 - Déclaration idempotente des 21 événements CRUD des véhicules, affectations, relevés kilométriques, consommations, événements véhicule, contrats et attestations d’assurance dans l’Agenda natif.

@@ -50,6 +50,59 @@ final class LmdbVehicleAgendaTest extends TestCase
 		}
 	}
 
+	public function testEveryObjectUsesAnExplicitCrudMessage(): void
+	{
+		$expected = array(
+			'lmdbvehicle' => array('AgendaVehicleCreated', 'AgendaVehicleUpdated', 'AgendaVehicleDeleted'),
+			'lmdbvehicleassignment' => array('AgendaAssignmentCreated', 'AgendaAssignmentUpdated', 'AgendaAssignmentDeleted'),
+			'lmdbvehicleodometerreading' => array('AgendaOdometerCreated', 'AgendaOdometerUpdated', 'AgendaOdometerDeleted'),
+			'lmdbvehicleconsumption' => array('AgendaConsumptionCreated', 'AgendaConsumptionUpdated', 'AgendaConsumptionDeleted'),
+			'lmdbvehicleevent' => array('AgendaVehicleEventCreated', 'AgendaVehicleEventUpdated', 'AgendaVehicleEventDeleted'),
+			'lmdbinsurancecontract' => array('AgendaInsuranceContractCreated', 'AgendaInsuranceContractUpdated', 'AgendaInsuranceContractDeleted'),
+			'lmdbinsurancecertificate' => array('AgendaInsuranceCertificateCreated', 'AgendaInsuranceCertificateUpdated', 'AgendaInsuranceCertificateDeleted'),
+		);
+
+		foreach ($expected as $element => $keys) {
+			foreach (array('CREATE', 'UPDATE', 'DELETE') as $index => $operation) {
+				$definition = LmdbVehicleAgenda::getMessageDefinition($element, $operation);
+				self::assertSame($keys[$index], $definition['key']);
+			}
+		}
+	}
+
+	public function testBusinessTransitionsUseSpecificMessages(): void
+	{
+		$cases = array(
+			array('lmdbvehicle', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 2), 'AgendaVehiclePutInService'),
+			array('lmdbvehicle', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 4), 'AgendaVehicleSold'),
+			array('lmdbinsurancecontract', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 1), 'AgendaInsuranceContractActivated'),
+			array('lmdbinsurancecontract', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 9), 'AgendaInsuranceContractTerminated'),
+			array('lmdbinsurancecontract', 'UPDATE', array('trigger_reason' => 'vehicle_link'), 'AgendaInsuranceVehicleLinked'),
+			array('lmdbinsurancecertificate', 'CREATE', array('trigger_reason' => 'create_and_submit'), 'AgendaInsuranceCertificateUploadedAndSubmitted'),
+			array('lmdbinsurancecertificate', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 2), 'AgendaInsuranceCertificateValidated'),
+			array('lmdbinsurancecertificate', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 3), 'AgendaInsuranceCertificateRejected'),
+			array('lmdbinsurancecertificate', 'UPDATE', array('trigger_reason' => 'status_change', 'new_status' => 9), 'AgendaInsuranceCertificateArchived'),
+		);
+
+		foreach ($cases as $case) {
+			$definition = LmdbVehicleAgenda::getMessageDefinition($case[0], $case[1], $case[2]);
+			self::assertSame($case[3], $definition['key']);
+		}
+	}
+
+	public function testEveryAgendaMessageIsTranslatedInFrenchAndEnglish(): void
+	{
+		$agendaClass = $this->readFile('class/lmdbvehicleagenda.class.php');
+		$fr = $this->readFile('langs/fr_FR/lmdbvehiclemanagement.lang');
+		$en = $this->readFile('langs/en_US/lmdbvehiclemanagement.lang');
+		preg_match_all("/'(Agenda[A-Za-z0-9]+)'/", $agendaClass, $matches);
+
+		foreach (array_unique($matches[1]) as $translationKey) {
+			self::assertMatchesRegularExpression('/^'.preg_quote($translationKey, '/').'=.+$/m', $fr);
+			self::assertMatchesRegularExpression('/^'.preg_quote($translationKey, '/').'=.+$/m', $en);
+		}
+	}
+
 	public function testAgendaDefaultsAreConservativeAndNoManualActionCommIsCreated(): void
 	{
 		$descriptor = $this->readFile('core/modules/modLmdbVehicleManagement.class.php');
