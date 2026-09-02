@@ -424,6 +424,14 @@ $checks['main_lists_reserve_native_height'] = count(array_filter($mainListSource
 	return strpos($source, 'div-table-responsive') !== false
 		&& strpos($source, 'div-table-responsive-no-min') === false;
 })) === count($mainListSources);
+$checks['native_column_selector_overlays_responsive_lists'] = strpos($moduleJavascript, "ul.selectedfields, .mod-lmdbvehiclemanagement.page-list .dropdown dd ul.selectedfieldsleft") !== false
+	&& strpos($moduleJavascript, "menu.classList.contains('open')") !== false
+	&& strpos($moduleJavascript, "menu.closest('dl.dropdown')") !== false
+	&& strpos($moduleJavascript, "document.addEventListener('click', scheduleRefresh)") !== false
+	&& strpos($moduleJavascript, "document.addEventListener('scroll', scheduleRefresh, true)") !== false
+	&& strpos($moduleStylesheet, '.mod-lmdbvehiclemanagement.page-list .dropdown dd ul.lmdb-column-selector-overlay') !== false
+	&& strpos($moduleStylesheet, 'position: fixed;') !== false
+	&& strpos($moduleStylesheet, 'z-index: 95;') !== false;
 $checks['main_list_column_selectors_use_native_page_context'] = count(array_filter($mainListSources, static function ($source) {
 	return strpos($source, "\$contextpage = GETPOST('contextpage', 'aZ09');") !== false
 		&& strpos($source, "\$varpage = empty(\$contextpage) ? \$_SERVER['PHP_SELF'] : \$contextpage;") !== false

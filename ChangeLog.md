@@ -5,7 +5,7 @@
 - Extension du parc aux véhicules, utilitaires et engins, avec immatriculation facultative, référence de repli `MATyyMM-NNNN` et caractéristiques de qualification réglementaire.
 - Ajout des profils réglementaires cumulables, des exigences matérialisées et du catalogue français versionné pour les contrôles routiers, la pollution, les VGP, la mise en service, le tachygraphe, l’ADR et l’ATP, avec règles natives en lecture seule, surcharges d’entité auditées et règles personnalisées.
 - Ajout de l’objet documentaire `Contrôle réglementaire` numéroté `CTLyyMM-NNNN`, de son workflow brouillon/validation/annulation/archivage, de ses justificatifs et de ses événements Agenda CRUD natifs.
-- Ajout de l’échéancier, des listes et exports natifs, du registre de sécurité, des imports en brouillon, des droits dédiés et de la prise en charge Multicompany.
+- Ajout de l’échéancier, des listes et exports natifs, du registre de sécurité, des imports en brouillon, des droits dédiés et de la prise en charge Multicompany ; les sélecteurs de colonnes restent au premier plan au-dessus des tableaux défilants et les échéances dépassées utilisent le badge d’erreur natif.
 - Ajout d’un travail planifié quotidien idempotent pour recalculer les échéances, synchroniser leur événement Agenda avec résolution explicite du type natif et repli `AC_OTH_AUTO`, puis envoyer les rappels configurés au moyen d’un modèle d’email Dolibarr.
 
 ## `0.13.3` — 2026-09-02
