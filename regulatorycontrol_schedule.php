@@ -75,7 +75,7 @@ if (!empty($arrayfields['v.ref']['checked'])) print '<td>'.$form->selectarray('s
 if (!empty($arrayfields['at.label']['checked'])) print '<td>'.$form->selectarray('search_asset_type', $assetTypeOptions, $searchAssetType, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth150', 1).'</td>';
 if (!empty($arrayfields['profile']['checked'])) print '<td>'.$form->selectarray('search_profile', $profileOptions, $searchProfile, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth150', 1).'</td>';
 if (!empty($arrayfields['r.label']['checked'])) print '<td>'.$form->selectarray('search_control_type', $controlTypeOptions, $searchControlType, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth150', 1).'</td>';
-if (!empty($arrayfields['req.status']['checked'])) print '<td>'.$form->selectarray('search_status', $statusOptions, $searchStatus, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth150', 1).'</td>';
+if (!empty($arrayfields['req.status']['checked'])) print '<td class="center">'.$form->selectarray('search_status', $statusOptions, $searchStatus, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth150', 1).'</td>';
 if (!empty($arrayfields['s.nom']['checked'])) print '<td>'.$form->select_company($searchProvider ?: '', 'search_provider', '', '-1', 0, 0, array(), 0, 'maxwidth150').'</td>';
 if (!empty($arrayfields['v.regulatory_territory']['checked'])) print '<td>'.$form->selectarray('search_territory', $territoryOptions, $searchTerritory, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth150', 1).'</td>';
 if ($showEntityColumn && !empty($arrayfields['req.entity']['checked'])) print '<td>'.$form->multiselectarray('search_entity', $entityOptions, $searchEntities, 0, 0, 'maxwidth150', 1).'</td>';
@@ -95,7 +95,7 @@ $i = 0; while ($i < min($num, $limit) && is_object($row = $db->fetch_object($res
 	if (!empty($arrayfields['at.label']['checked'])) print '<td>'.dol_escape_htmltag(!empty($row->asset_type_label) ? $langs->trans((string) $row->asset_type_label) : '').'</td>';
 	if (!empty($arrayfields['profile']['checked'])) print '<td>'.dol_escape_htmltag(implode(', ', $profileLabels)).'</td>';
 	if (!empty($arrayfields['r.label']['checked'])) print '<td>'.dol_escape_htmltag($langs->trans((string) $row->rule_label)).'</td>';
-	if (!empty($arrayfields['req.status']['checked'])) print '<td class="center">'.dolGetStatus(isset($statusOptions[$row->status]) ? $statusOptions[$row->status] : $langs->trans('Unknown'), '', '', $statusTypes[$row->status] ?? 'status0', 1).'</td>';
+	if (!empty($arrayfields['req.status']['checked'])) print '<td class="center">'.dolGetStatus(isset($statusOptions[$row->status]) ? $statusOptions[$row->status] : $langs->trans('Unknown'), '', '', $statusTypes[$row->status] ?? 'status0', 5).'</td>';
 	if (!empty($arrayfields['s.nom']['checked'])) print '<td>'.(!empty($provider->id) ? $provider->getNomUrl(1) : '').'</td>';
 	if (!empty($arrayfields['v.regulatory_territory']['checked'])) print '<td>'.dol_escape_htmltag($territoryOptions[$row->regulatory_territory] ?? (string) $row->regulatory_territory).'</td>';
 	if ($showEntityColumn && !empty($arrayfields['req.entity']['checked'])) print '<td class="center">'.lmdbVehicleManagementEntityBadge((int) $row->entity, $entityOptions).'</td>';

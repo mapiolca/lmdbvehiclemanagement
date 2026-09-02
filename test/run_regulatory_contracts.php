@@ -57,6 +57,7 @@ $checks = array(
 	'native_rules_are_overridden_without_update' => strpos($catalog, 'createEntityOverride(') !== false && strpos($catalog, 'fk_parent_rule') !== false && strpos($catalog, 'is_native = 1') !== false,
 	'custom_rules_are_normalized' => strpos($catalog, 'createEntityCustomRule(') !== false && strpos($catalog, 'lmdbvehiclemanagement_regulatory_rule_profile') !== false,
 	'admin_exposes_versioned_rule_management' => strpos($adminRegulatory, "action\" value=\"create_override") !== false && strpos($adminRegulatory, "action\" value=\"create_custom_rule") !== false,
+	'reminder_horizons_use_native_multiselect' => strpos($adminRegulatory, "multiselectarray('reminder_horizons'") !== false && strpos($adminRegulatory, "GETPOST('reminder_horizons', 'array:int')") !== false,
 	'blocking_assignment' => strpos($assignment, "vehicleActionIsAllowed((int) \$this->fk_vehicle, 'assignment')") !== false,
 	'blocking_service' => strpos($vehicle, "vehicleActionIsAllowed((int) \$this->id, 'service')") !== false,
 	'derogation_remains_alert' => strpos($service, "return 'derogation_active'") !== false,
@@ -74,12 +75,15 @@ $checks = array(
 	'schedule_has_native_column_selector' => strpos($schedule, 'actions_changeselectedfields') !== false && strpos($schedule, 'multiSelectArrayWithCheckbox') !== false,
 	'shared_control_type_filter_uses_stable_code' => strpos($schedule, 'rule_ct.code = selected_ct.code') !== false,
 	'vehicle_tab_confirms_profiles' => strpos($vehicleRegulatory, "action\" value=\"save_profiles") !== false,
+	'qualification_status_uses_native_badge' => strpos($vehicleRegulatory, "dolGetStatus(\$langs->trans('QualificationToConfirm'), '', '', 'status3', 5)") !== false && strpos($vehicleRegulatory, "dolGetStatus(\$langs->trans('QualificationConfirmed'), '', '', 'status4', 5)") !== false,
+	'control_form_uses_native_buttons' => strpos($card, '<input type="submit" class="button button-save"') !== false && strpos($card, '<input type="submit" class="button button-cancel" name="cancel"') !== false && strpos($card, 'formnovalidate') !== false && strpos($vehicleRegulatory, '<input type="submit" class="button button-save"') !== false,
+	'schedule_status_is_centered_native_badge' => strpos($schedule, "if (!empty(\$arrayfields['req.status']['checked'])) print '<td class=\"center\">'.\$form->selectarray('search_status'") !== false && strpos($schedule, "\$statusTypes[\$row->status] ?? 'status0', 5") !== false,
 	'legacy_vehicles_require_explicit_qualification' => strpos($descriptor, 'road_vehicle_unqualified') !== false && strpos($descriptor, 'LMDBVEHICLEMANAGEMENT_REGULATORY_VEHICLE_SCHEMA_VERSION') !== false,
 	'vehicle_reference_migration_uses_numbering_lock' => strpos($vehicle, 'acquireNumberingLock') !== false && strpos($vehicle, 'releaseNumberingLock') !== false,
 	'exports_controls_and_register' => strpos($descriptor, 'lmdbvehiclemanagement_regulatory_controls') !== false && strpos($descriptor, 'lmdbvehiclemanagement_safety_register') !== false,
 	'imports_are_drafts' => strpos($descriptor, "'t.status' => 'const-0'") !== false,
-	'fr_translations' => strpos($fr, 'RegulatoryControls=Contrôles réglementaires') !== false && strpos($fr, 'Notify_LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_CREATE=') !== false,
-	'en_translations' => strpos($en, 'RegulatoryControls=Regulatory controls') !== false && strpos($en, 'Notify_LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_CREATE=') !== false,
+	'fr_translations' => strpos($fr, 'RegulatoryControls=Contrôles réglementaires') !== false && strpos($fr, 'Notify_LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_CREATE=') !== false && strpos($fr, 'SimpleRegulatoryControlNumRefModelDesc=Références des contrôles réglementaires au format CTL AAMM-0001') !== false,
+	'en_translations' => strpos($en, 'RegulatoryControls=Regulatory controls') !== false && strpos($en, 'Notify_LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_CREATE=') !== false && strpos($en, 'SimpleRegulatoryControlNumRefModelDesc=Regulatory control references using CTL YYMM-0001 format') !== false,
 );
 
 $failed = array_keys(array_filter($checks, static function ($result) {

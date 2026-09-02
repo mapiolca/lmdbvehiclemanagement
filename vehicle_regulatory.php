@@ -86,8 +86,8 @@ if ($permissionWrite) {
 	print '<td>'.$form->multiselectarray('profile_ids', $profileOptions, $selectedProfiles, 0, 0, 'minwidth500').'</td>';
 	$origins = array(); $unconfirmed = false;
 	foreach ($selectedProfiles as $profileId) { if (!empty($profileMeta[$profileId]['origin'])) $origins[] = $langs->trans($profileMeta[$profileId]['origin'] === 'deduced' ? 'ProfileOriginDeduced' : 'ProfileOriginManual'); if (empty($profileMeta[$profileId]['confirmed'])) $unconfirmed = true; }
-	print '<td>'.dol_escape_htmltag(implode(', ', array_unique($origins))).'</td><td>'.($unconfirmed ? dolGetStatus($langs->trans('QualificationToConfirm'), '', '', 'status3', 1) : dolGetStatus($langs->trans('QualificationConfirmed'), '', '', 'status4', 1)).'</td></tr></table></div>';
-	print '<div class="center"><button class="button button-save" type="submit">'.$langs->trans('ConfirmRegulatoryProfiles').'</button></div></form>';
+	print '<td>'.dol_escape_htmltag(implode(', ', array_unique($origins))).'</td><td class="center">'.($unconfirmed ? dolGetStatus($langs->trans('QualificationToConfirm'), '', '', 'status3', 5) : dolGetStatus($langs->trans('QualificationConfirmed'), '', '', 'status4', 5)).'</td></tr></table></div>';
+	print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('ConfirmRegulatoryProfiles').'"></div></form>';
 } else {
 	$labels = array(); foreach ($selectedProfiles as $profileId) if (isset($profileOptions[$profileId])) $labels[] = $profileOptions[$profileId];
 	print '<div class="info">'.dol_escape_htmltag(!empty($labels) ? implode(', ', $labels) : $langs->trans('NoRegulatoryProfileSelected')).'</div>';
@@ -110,7 +110,7 @@ foreach ($requirements as $requirement) {
 	print '<td>'; if (!empty($requirement->fk_last_control)) { $control = new LmdbVehicleRegulatoryControl($db); $control->id = (int) $requirement->fk_last_control; $control->ref = (string) $requirement->control_ref; print $control->getNomUrl(1); } print '</td>';
 	print '<td>'.(!empty($requirement->calculated_due_date) ? dol_print_date($db->jdate($requirement->calculated_due_date), 'day') : '').'</td>';
 	print '<td>'.(!empty($requirement->retained_due_date) ? dol_print_date($db->jdate($requirement->retained_due_date), 'day') : '').'</td>';
-	print '<td>'.dolGetStatus($langs->trans(isset($statusLabels[$status]) ? $statusLabels[$status] : 'Unknown'), '', '', isset($statusTypes[$status]) ? $statusTypes[$status] : 'status0', 1).'</td>';
+	print '<td class="center">'.dolGetStatus($langs->trans(isset($statusLabels[$status]) ? $statusLabels[$status] : 'Unknown'), '', '', isset($statusTypes[$status]) ? $statusTypes[$status] : 'status0', 5).'</td>';
 	print '<td>'.(!empty($requirement->derogation_until) ? dol_print_date($db->jdate($requirement->derogation_until), 'dayhour').' — '.dol_escape_htmltag((string) $requirement->derogation_reason) : '');
 	if ($permissionDerogation && in_array($status, array('overdue', 'recheck_required', 'non_compliant_blocking'), true)) {
 		print '<details><summary>'.$langs->trans('GrantDerogation').'</summary><form method="POST" action="'.$_SERVER['PHP_SELF'].'" class="lmdb-responsive-form"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="grant_derogation"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="requirement_id" value="'.((int) $requirement->rowid).'">'.$form->selectDate(-1, 'derogation_until', 0, 0, 1, '', 1, 1).' <input class="flat minwidth200" name="derogation_reason" placeholder="'.$langs->trans('DerogationReason').'"> <button class="button small" type="submit">'.$langs->trans('Grant').'</button></form></details>';

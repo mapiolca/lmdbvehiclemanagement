@@ -494,6 +494,7 @@ OilReferenceRequired=La référence ou le type d’huile est obligatoire pour ce
 ConsumptionTotalCannotBeNegative=Le montant total TTC ne peut pas être négatif.
 ConsumptionOdometerReadingIsShared=Le relevé kilométrique associé n’appartient pas exclusivement à cette consommation.
 SimpleConsumptionNumRefModelDesc=Références des pleins et recharges au format CON AAMM-0001
+SimpleRegulatoryControlNumRefModelDesc=Références des contrôles réglementaires au format CTL AAMM-0001
 ConsumptionExportDataset=Pleins, recharges et additifs
 PermissionWriteConsumptions=Créer et modifier les pleins, recharges et additifs
 PermissionDeleteConsumptions=Supprimer les pleins, recharges et additifs
