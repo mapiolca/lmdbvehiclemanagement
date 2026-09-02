@@ -1,5 +1,11 @@
 # Historique des versions
 
+## `0.13.3` — 2026-09-02
+
+- Correction des libellés non traduits des actions « Enregistrer le brouillon » et « Rejeter » dans l’onglet des attestations d’assurance.
+- Ajout de clés métier françaises et anglaises stables, indépendantes des variations des catalogues génériques entre versions de Dolibarr.
+- Ajout d’un contrôle empêchant la réapparition des clés brutes dans le rendu de l’onglet.
+
 ## `0.13.2` — 2026-09-02
 
 - Raccourcissement des codes CRUD des attestations pour respecter la limite native de 50 caractères de `actioncomm.code` après ajout du préfixe `AC_` par Dolibarr.
