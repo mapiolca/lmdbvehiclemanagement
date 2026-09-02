@@ -830,6 +830,7 @@ Notify_LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_DELETE=Regulatory control delete
 RegulatoryControlsSetup=Regulatory control settings
 RegulatoryReminderSettings=Due dates and reminders
 EnableRegulatoryReminders=Enable email reminders
+EnableDailyOverdueRegulatoryReminders=Enable daily reminders after the due date
 IncludeAssignedDriver=Include the assigned driver
 ReminderHorizonsDays=Reminder horizons (days)
 DueSoonDays=“Due soon” display horizon (days)

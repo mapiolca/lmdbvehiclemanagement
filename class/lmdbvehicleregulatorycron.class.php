@@ -220,7 +220,8 @@ class LmdbVehicleRegulatoryCron
 		$remaining = (int) floor(($dueDate - $today) / 86400);
 		$horizons = json_decode(getDolGlobalString('LMDBVEHICLEMANAGEMENT_REGULATORY_REMINDER_HORIZONS', '[90,60,30,7,0]'), true);
 		$horizons = is_array($horizons) ? array_values(array_unique(array_map('intval', $horizons))) : array(90, 60, 30, 7, 0);
-		if (!in_array($remaining, $horizons, true)) return 0;
+		$dailyOverdueReminder = $remaining < 0 && getDolGlobalInt('LMDBVEHICLEMANAGEMENT_REGULATORY_DAILY_OVERDUE_REMINDERS') > 0;
+		if (!in_array($remaining, $horizons, true) && !$dailyOverdueReminder) return 0;
 		$template = $this->fetchTemplate(getDolGlobalInt('LMDBVEHICLEMANAGEMENT_REGULATORY_REMINDER_TEMPLATE'));
 		if ($template === null) return -1;
 		$recipients = $this->getRecipients((int) $row->fk_vehicle, $entity);

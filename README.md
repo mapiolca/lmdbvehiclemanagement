@@ -20,7 +20,7 @@
 - objet documentaire `Contrôle réglementaire` numéroté `CTLyyMM-NNNN`, avec organisme lié à un tiers, résultat simplifié, dates officielle/calculée/retenue, justificatif obligatoire avant validation et immutabilité du contrôle validé ;
 - annulation motivée et contrôle de remplacement, contre-visite distincte, dérogation temporaire motivée, blocage configurable des nouvelles affectations et mises en service ;
 - échéancier global, synthèse par matériel, listes Dolibarr natives, export des contrôles, registre de sécurité et import de brouillons ;
-- événement Agenda planifié unique par exigence et travail planifié quotidien idempotent pour les recalculs et rappels par modèle d’email Dolibarr ;
+- événement Agenda planifié unique par exigence et travail planifié quotidien idempotent pour les recalculs et rappels par modèle d’email Dolibarr, avec option de rappel journalier après l’échéance ;
 - énergie sélectionnée dans un Select2 alimenté par un dictionnaire configurable, initialisé avec la [nomenclature réglementaire française P.3](https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000049860492/2026-07-27) ;
 - plusieurs conducteurs simultanés, avec une seule affectation principale sur une période donnée ;
 - relevés kilométriques contrôlés, avec correction et remplacement de compteur explicitement qualifiés, et différence calculée entre deux relevés successifs ;

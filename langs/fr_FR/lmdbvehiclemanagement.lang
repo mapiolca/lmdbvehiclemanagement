@@ -830,6 +830,7 @@ Notify_LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_DELETE=Suppression d’un contr�
 RegulatoryControlsSetup=Réglages des contrôles réglementaires
 RegulatoryReminderSettings=Échéances et rappels
 EnableRegulatoryReminders=Activer les rappels par email
+EnableDailyOverdueRegulatoryReminders=Activer les rappels journaliers après échéance
 IncludeAssignedDriver=Inclure le conducteur affecté
 ReminderHorizonsDays=Horizons de rappel (jours)
 DueSoonDays=Délai d’affichage « à échéance prochaine » (jours)

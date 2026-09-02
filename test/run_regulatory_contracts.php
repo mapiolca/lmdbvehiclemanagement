@@ -59,6 +59,11 @@ $checks = array(
 	'custom_rules_are_normalized' => strpos($catalog, 'createEntityCustomRule(') !== false && strpos($catalog, 'lmdbvehiclemanagement_regulatory_rule_profile') !== false,
 	'admin_exposes_versioned_rule_management' => strpos($adminRegulatory, "action\" value=\"create_override") !== false && strpos($adminRegulatory, "action\" value=\"create_custom_rule") !== false,
 	'reminder_horizons_use_native_multiselect' => strpos($adminRegulatory, "multiselectarray('reminder_horizons'") !== false && strpos($adminRegulatory, "GETPOST('reminder_horizons', 'array:int')") !== false,
+	'daily_overdue_reminders_are_optional_and_native' => strpos($descriptor, "'LMDBVEHICLEMANAGEMENT_REGULATORY_DAILY_OVERDUE_REMINDERS' => '0'") !== false
+		&& strpos($adminRegulatory, "ajax_constantonoff('LMDBVEHICLEMANAGEMENT_REGULATORY_DAILY_OVERDUE_REMINDERS')") !== false
+		&& strpos($cron, "\$remaining < 0 && getDolGlobalInt('LMDBVEHICLEMANAGEMENT_REGULATORY_DAILY_OVERDUE_REMINDERS') > 0") !== false,
+	'daily_overdue_reminders_keep_one_attempt_per_day' => strpos($cron, "':'.\$remaining.':'.\$email.':'.dol_print_date(\$dueDate, '%Y-%m-%d')") !== false
+		&& strpos($cron, 'INSERT IGNORE INTO') !== false,
 	'blocking_assignment' => strpos($assignment, "vehicleActionIsAllowed((int) \$this->fk_vehicle, 'assignment')") !== false,
 	'blocking_service' => strpos($vehicle, "vehicleActionIsAllowed((int) \$this->id, 'service')") !== false,
 	'derogation_remains_alert' => strpos($service, "return 'derogation_active'") !== false,
@@ -98,8 +103,8 @@ $checks = array(
 	'vehicle_reference_migration_uses_numbering_lock' => strpos($vehicle, 'acquireNumberingLock') !== false && strpos($vehicle, 'releaseNumberingLock') !== false,
 	'exports_controls_and_register' => strpos($descriptor, 'lmdbvehiclemanagement_regulatory_controls') !== false && strpos($descriptor, 'lmdbvehiclemanagement_safety_register') !== false,
 	'imports_are_drafts' => strpos($descriptor, "'t.status' => 'const-0'") !== false,
-	'fr_translations' => strpos($fr, 'RegulatoryControls=Contrôles réglementaires') !== false && strpos($fr, 'Notify_LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_CREATE=') !== false && strpos($fr, 'SimpleRegulatoryControlNumRefModelDesc=Références des contrôles réglementaires au format CTL AAMM-0001') !== false,
-	'en_translations' => strpos($en, 'RegulatoryControls=Regulatory controls') !== false && strpos($en, 'Notify_LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_CREATE=') !== false && strpos($en, 'SimpleRegulatoryControlNumRefModelDesc=Regulatory control references using CTL YYMM-0001 format') !== false,
+	'fr_translations' => strpos($fr, 'RegulatoryControls=Contrôles réglementaires') !== false && strpos($fr, 'Notify_LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_CREATE=') !== false && strpos($fr, 'SimpleRegulatoryControlNumRefModelDesc=Références des contrôles réglementaires au format CTL AAMM-0001') !== false && strpos($fr, 'EnableDailyOverdueRegulatoryReminders=Activer les rappels journaliers après échéance') !== false,
+	'en_translations' => strpos($en, 'RegulatoryControls=Regulatory controls') !== false && strpos($en, 'Notify_LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_CREATE=') !== false && strpos($en, 'SimpleRegulatoryControlNumRefModelDesc=Regulatory control references using CTL YYMM-0001 format') !== false && strpos($en, 'EnableDailyOverdueRegulatoryReminders=Enable daily reminders after the due date') !== false,
 );
 
 $failed = array_keys(array_filter($checks, static function ($result) {
