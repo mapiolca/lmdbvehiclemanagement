@@ -77,6 +77,12 @@ $checks = array(
 		&& strpos($cron, "\$event->type_code = \$agendaType['code'];") !== false,
 	'cron_identifies_owned_deadlines_by_event_code' => strpos($cron, '(string) $event->code === self::AGENDA_EVENT_CODE') !== false,
 	'cron_uses_email_template' => strpos($cron, "type_template = 'lmdbvehicle_regulatory_reminder'") !== false,
+	'manual_scheduled_job_run_forces_regulatory_reminders' => strpos($cron, 'public function runDaily($force = 0)') !== false
+		&& strpos($cron, "GETPOST('action', 'aZ09') === 'confirm_execute'") !== false
+		&& strpos($cron, "GETPOST('confirm', 'alpha') === 'yes'") !== false
+		&& strpos($cron, "in_array('--force', \$argv, true)") !== false
+		&& strpos($cron, "':forced:'.\$forcedRunKey") !== false
+		&& strpos($cron, "Execution mode: '.(\$force ? 'forced' : 'automatic')") !== false,
 	'reminder_subject_is_plain_utf8' => strpos($cron, "html_entity_decode(strtr(\$template['subject'], \$replacements), ENT_QUOTES | ENT_HTML5, 'UTF-8')") !== false
 		&& strpos($descriptor, "transnoentitiesnoconv('RegulatoryReminderEmailSubject')") !== false,
 	'reminder_recipient_identity_is_preserved' => strpos($cron, "'id' => (int) \$row->rowid") !== false

@@ -89,9 +89,7 @@ if (!$conf->main_checkbox_left_column) print getTitleFieldOfList($selectedfields
 print '</tr>';
 $i = 0; while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) { $vehicle = new LmdbVehicle($db); $vehicle->id = (int) $row->fk_vehicle; $vehicle->ref = (string) $row->vehicle_ref; $vehicle->registration_number = (string) $row->registration_number; $vehicle->label = (string) $row->vehicle_label; $provider = new Societe($db); $provider->id = (int) $row->fk_soc_provider; $provider->name = (string) $row->provider_name; $statusTypes = array('incomplete' => 'status3', 'up_to_date' => 'status4', 'due_soon' => 'status1', 'overdue' => 'status8', 'recheck_required' => 'status6', 'non_compliant_blocking' => 'status8', 'derogation_active' => 'status1');
 	$profileLabels = array(); foreach (array_filter(explode('||', (string) $row->profile_labels)) as $profileLabel) $profileLabels[] = $langs->trans($profileLabel);
-	$recordUrl = dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&vehicle_id='.((int) $row->fk_vehicle).'&requirement_id='.((int) $row->rowid);
-	$recordButton = '<a class="button small" href="'.$recordUrl.'">'.$langs->trans('RecordControl').'</a>';
-	print '<tr class="oddeven">'; if ($conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn">'.$recordButton.'</td>';
+	print '<tr class="oddeven">'; if ($conf->main_checkbox_left_column) print '<td class="center actioncolumn"></td>';
 	if (!empty($arrayfields['req.retained_due_date']['checked'])) print '<td>'.(!empty($row->retained_due_date) ? dol_print_date($db->jdate($row->retained_due_date), 'day') : '<span class="opacitymedium">'.$langs->trans('NotCalculated').'</span>').'</td>';
 	if (!empty($arrayfields['v.ref']['checked'])) print '<td>'.$vehicle->getNomUrl(1).'</td>';
 	if (!empty($arrayfields['at.label']['checked'])) print '<td>'.dol_escape_htmltag(!empty($row->asset_type_label) ? $langs->trans((string) $row->asset_type_label) : '').'</td>';
@@ -101,6 +99,6 @@ $i = 0; while ($i < min($num, $limit) && is_object($row = $db->fetch_object($res
 	if (!empty($arrayfields['s.nom']['checked'])) print '<td>'.(!empty($provider->id) ? $provider->getNomUrl(1) : '').'</td>';
 	if (!empty($arrayfields['v.regulatory_territory']['checked'])) print '<td>'.dol_escape_htmltag($territoryOptions[$row->regulatory_territory] ?? (string) $row->regulatory_territory).'</td>';
 	if ($showEntityColumn && !empty($arrayfields['req.entity']['checked'])) print '<td class="center">'.lmdbVehicleManagementEntityBadge((int) $row->entity, $entityOptions).'</td>';
-	if (!$conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn">'.$recordButton.'</td>'; print '</tr>'; $i++; }
+	if (!$conf->main_checkbox_left_column) print '<td class="center actioncolumn"></td>'; print '</tr>'; $i++; }
 $visibleColumns = 1; foreach ($arrayfields as $definition) if (!empty($definition['checked'])) $visibleColumns++;
 if ($i === 0) print '<tr class="oddeven"><td colspan="'.$visibleColumns.'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>'; print '</table></div></form>'; $db->free($resql); llxFooter(); $db->close();

@@ -164,6 +164,11 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
+$checks['manual_scheduled_job_run_forces_insurance_reminders'] = strpos($insuranceCron, 'public function sendCertificateReminders($force = 0)') !== false
+	&& strpos($insuranceCron, "GETPOST('action', 'aZ09') === 'confirm_execute'") !== false
+	&& strpos($insuranceCron, "GETPOST('confirm', 'alpha') === 'yes'") !== false
+	&& strpos($insuranceCron, "in_array('--force', \$argv, true)") !== false
+	&& strpos($insuranceCron, "':forced:'.\$forcedRunKey") !== false;
 $checks['insurance_recipient_address_and_subject_are_preserved'] = strpos($insuranceAdmin, "firstname, lastname, login, email") !== false
 	&& strpos($insuranceConfig, "ORDER BY FIELD(rowid, '.implode(',', \$userIds).')'") !== false
 	&& strpos($insuranceConfig, '!isValidEmail($email)') !== false
@@ -446,6 +451,10 @@ $checks['regulatory_schedule_column_selector_escapes_short_table'] = strpos($reg
 	&& strpos($moduleJavascript, "responsiveWrapper.classList.remove('lmdb-column-selector-wrapper-open')") !== false
 	&& strpos($moduleStylesheet, '.mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .div-table-responsive.lmdb-column-selector-wrapper-open') !== false
 	&& strpos($moduleStylesheet, 'overflow: visible !important;') !== false;
+$checks['regulatory_schedule_uses_only_toolbar_create_action'] = substr_count($regulatorySchedule, "dolGetButtonTitle(\$langs->trans('NewRegulatoryControl')") === 1
+	&& strpos($regulatorySchedule, "\$langs->trans('RecordControl')") === false
+	&& strpos($regulatorySchedule, 'requirement_id=') === false
+	&& strpos($regulatorySchedule, '$visibleColumns = 1;') !== false;
 $checks['main_list_column_selectors_use_native_page_context'] = count(array_filter($mainListSources, static function ($source) {
 	return strpos($source, "\$contextpage = GETPOST('contextpage', 'aZ09');") !== false
 		&& strpos($source, "\$varpage = empty(\$contextpage) ? \$_SERVER['PHP_SELF'] : \$contextpage;") !== false

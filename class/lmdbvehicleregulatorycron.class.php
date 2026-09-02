@@ -22,8 +22,17 @@ class LmdbVehicleRegulatoryCron
 		$this->db = $db;
 	}
 
-	/** @return int<-1,0> */
-	public function runDaily()
+	/**
+	 * Run the daily synchronization.
+	 *
+	 * A manual execution confirmed from the native Scheduled Jobs card is a
+	 * forced test: due reminders are sent again without consuming or replacing
+	 * the automatic run's daily idempotency key.
+	 *
+	 * @param int $force 1 to force reminder sends during a direct test call
+	 * @return int<-1,0>
+	 */
+	public function runDaily($force = 0)
 	{
 		global $conf, $langs, $user;
 
@@ -32,6 +41,8 @@ class LmdbVehicleRegulatoryCron
 			return 0;
 		}
 		$langs->loadLangs(array('agenda', 'mails', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		$force = $this->isForcedExecution($force);
+		$forcedRunKey = $force ? sha1((string) microtime(true).':'.(string) dol_now().':'.(string) getmypid()) : '';
 		$entity = (int) $conf->entity;
 		$lockName = 'lmdbvm_regulatory_cron_'.sha1((string) $entity);
 		$lockResult = $this->acquireCronLock($lockName);
@@ -69,17 +80,38 @@ class LmdbVehicleRegulatoryCron
 				if ($eventResult > 0) $events++;
 				elseif ($eventResult < 0) $failed++;
 				if (getDolGlobalInt('LMDBVEHICLEMANAGEMENT_REGULATORY_REMINDERS_ENABLED')) {
-					$result = $this->sendDueReminders($row, $dueDate, $entity);
+					$result = $this->sendDueReminders($row, $dueDate, $entity, $forcedRunKey);
 					if ($result > 0) $sent += $result;
 					elseif ($result < 0) $failed++;
 				}
 			}
 			$this->db->free($resql);
-			$this->output = 'Regulatory events synchronized: '.$events.'; reminders sent: '.$sent.'; failures: '.$failed;
+			$this->output = 'Execution mode: '.($force ? 'forced' : 'automatic').'; regulatory events synchronized: '.$events.'; reminders sent: '.$sent.'; failures: '.$failed;
 			return $failed > 0 ? -1 : 0;
 		} finally {
 			$this->releaseCronLock($lockName);
 		}
+	}
+
+	/**
+	 * Detect a direct forced call or the native Scheduled Jobs manual run.
+	 *
+	 * Dolibarr v20-v24 invokes cron methods without a force argument from
+	 * cron/card.php, while keeping the confirmed action in the request.
+	 *
+	 * @param int $force Explicit direct-call flag
+	 * @return bool
+	 */
+	private function isForcedExecution($force)
+	{
+		if ((int) $force > 0) return true;
+		if (PHP_SAPI === 'cli') {
+			global $argv;
+
+			return is_array($argv) && in_array('--force', $argv, true);
+		}
+
+		return GETPOST('action', 'aZ09') === 'confirm_execute' && GETPOST('confirm', 'alpha') === 'yes';
 	}
 
 	/** @param string $lockName Advisory lock name @return int<-1,1> */
@@ -213,8 +245,14 @@ class LmdbVehicleRegulatoryCron
 		return 1;
 	}
 
-	/** @param object $row Requirement row @param int $dueDate Due date @param int $entity Entity @return int */
-	private function sendDueReminders($row, $dueDate, $entity)
+	/**
+	 * @param object $row Requirement row
+	 * @param int $dueDate Due date
+	 * @param int $entity Entity
+	 * @param string $forcedRunKey Non-empty key for a forced manual execution
+	 * @return int
+	 */
+	private function sendDueReminders($row, $dueDate, $entity, $forcedRunKey = '')
 	{
 		$today = dol_mktime(0, 0, 0, (int) dol_print_date(dol_now(), '%m'), (int) dol_print_date(dol_now(), '%d'), (int) dol_print_date(dol_now(), '%Y'));
 		$remaining = (int) floor(($dueDate - $today) / 86400);
@@ -231,7 +269,9 @@ class LmdbVehicleRegulatoryCron
 		$ruleLabel = $langs->trans((string) $row->rule_label);
 		foreach ($recipients as $recipient) {
 			$email = $recipient['email'];
-			$key = sha1(((int) $row->rowid).':'.$remaining.':'.$email.':'.dol_print_date($dueDate, '%Y-%m-%d'));
+			$keySource = ((int) $row->rowid).':'.$remaining.':'.$email.':'.dol_print_date($dueDate, '%Y-%m-%d');
+			if ($forcedRunKey !== '') $keySource .= ':forced:'.$forcedRunKey;
+			$key = sha1($keySource);
 			$sql = 'INSERT IGNORE INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_reminder_log';
 			$sql .= ' (entity, reminder_key, fk_requirement, horizon_days, recipient_type, recipient_id, due_date_snapshot, recipient_email, status, date_creation) VALUES (';
 			$sql .= $entity.", '".$this->db->escape($key)."', ".((int) $row->rowid).", ".$remaining.", 'user', ".((int) $recipient['id']).", '".$this->db->idate($dueDate)."', '".$this->db->escape($email)."', 0, '".$this->db->idate(dol_now())."')";
