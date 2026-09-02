@@ -50,6 +50,13 @@ final class LmdbVehicleAgendaTest extends TestCase
 		}
 	}
 
+	public function testEveryGeneratedAgendaCodeFitsTheNativeColumn(): void
+	{
+		foreach (array_keys(LmdbVehicleAgenda::getTriggerDefinitions()) as $code) {
+			self::assertLessThanOrEqual(LmdbVehicleAgenda::ACTIONCOMM_CODE_MAX_LENGTH, strlen('AC_'.$code), $code);
+		}
+	}
+
 	public function testEveryObjectUsesAnExplicitCrudMessage(): void
 	{
 		$expected = array(
@@ -112,6 +119,18 @@ final class LmdbVehicleAgendaTest extends TestCase
 		self::assertStringContainsString('if ($constantExists === 0)', $descriptor);
 		self::assertStringNotContainsString('new ActionComm', $trigger);
 		self::assertStringNotContainsString("MAIN_DB_PREFIX.'actioncomm'", $trigger);
+	}
+
+	public function testLegacyCertificateAgendaSettingsAreMigratedConservatively(): void
+	{
+		$descriptor = $this->readFile('core/modules/modLmdbVehicleManagement.class.php');
+		$sql = $this->readFile('sql/data.sql');
+
+		self::assertStringContainsString('migrateAgendaCertificateTriggerCodes', $descriptor);
+		self::assertStringContainsString("'LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE'", $descriptor);
+		self::assertStringContainsString("'LMDBVEHICLEMANAGEMENT_CERTIFICATE'", $descriptor);
+		self::assertStringContainsString('$oldConstantExists === 1 && $newConstantExists === 0', $descriptor);
+		self::assertStringNotContainsString('LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE', $sql);
 	}
 
 	private function readFile(string $relativePath): string

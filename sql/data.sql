@@ -73,16 +73,16 @@ SELECT 'lmdbinsurancecontract@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_INS
 WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_INSURANCE_CONTRACT_DELETE');
 
 INSERT INTO llx_c_action_trigger (elementtype, code, label, description, rang)
-SELECT 'lmdbinsurancecertificate@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE_CREATE', 'Create insurance certificate', 'Create an agenda event when an insurance certificate is created', 1150
-WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE_CREATE');
+SELECT 'lmdbinsurancecertificate@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_CERTIFICATE_CREATE', 'Create insurance certificate', 'Create an agenda event when an insurance certificate is created', 1150
+WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_CERTIFICATE_CREATE');
 
 INSERT INTO llx_c_action_trigger (elementtype, code, label, description, rang)
-SELECT 'lmdbinsurancecertificate@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE_UPDATE', 'Update insurance certificate', 'Create an agenda event when an insurance certificate is updated', 1160
-WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE_UPDATE');
+SELECT 'lmdbinsurancecertificate@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_CERTIFICATE_UPDATE', 'Update insurance certificate', 'Create an agenda event when an insurance certificate is updated', 1160
+WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_CERTIFICATE_UPDATE');
 
 INSERT INTO llx_c_action_trigger (elementtype, code, label, description, rang)
-SELECT 'lmdbinsurancecertificate@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE_DELETE', 'Delete insurance certificate', 'Create an agenda event when an insurance certificate is deleted', 1170
-WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE_DELETE');
+SELECT 'lmdbinsurancecertificate@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_CERTIFICATE_DELETE', 'Delete insurance certificate', 'Create an agenda event when an insurance certificate is deleted', 1170
+WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_CERTIFICATE_DELETE');
 
 INSERT INTO llx_c_action_trigger (elementtype, code, label, description, rang)
 SELECT 'lmdbvehicleconsumption@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_CONSUMPTION_CREATE', 'Create vehicle consumption', 'Create an agenda event when a fuel, recharge or additive entry is created', 1200

@@ -6,6 +6,9 @@
  */
 class LmdbVehicleAgenda
 {
+	/** Maximum size of actioncomm.code in the Dolibarr v20+ schema. */
+	public const ACTIONCOMM_CODE_MAX_LENGTH = 50;
+
 	/**
 	 * Return the translated title definition for one business event.
 	 *
@@ -513,7 +516,7 @@ class LmdbVehicleAgenda
 				'elementtype' => 'lmdbinsurancecertificate@lmdbvehiclemanagement',
 				'class_file' => 'class/lmdbvehicleinsurancecertificate.class.php',
 				'class_name' => 'LmdbVehicleInsuranceCertificate',
-				'trigger_prefix' => 'LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE',
+				'trigger_prefix' => 'LMDBVEHICLEMANAGEMENT_CERTIFICATE',
 			),
 		);
 	}

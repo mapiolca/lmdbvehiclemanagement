@@ -200,8 +200,15 @@ foreach ($definitions as $code => $definition) {
 	$checks['fr_translation_'.$code] = preg_match('/^Notify_'.preg_quote($code, '/').'=.+$/m', $fr) === 1;
 	$checks['en_translation_'.$code] = preg_match('/^Notify_'.preg_quote($code, '/').'=.+$/m', $en) === 1;
 	$checks['crud_only_'.$code] = preg_match('/_(CREATE|UPDATE|DELETE)$/', $code) === 1;
+	$checks['native_actioncomm_code_length_'.$code] = strlen('AC_'.$code) <= LmdbVehicleAgenda::ACTIONCOMM_CODE_MAX_LENGTH;
 }
 
+$checks['legacy_certificate_triggers_are_migrated'] = strpos($descriptor, 'migrateAgendaCertificateTriggerCodes') !== false
+	&& strpos($descriptor, "'LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE'") !== false
+	&& strpos($descriptor, "'LMDBVEHICLEMANAGEMENT_CERTIFICATE'") !== false;
+$checks['legacy_agenda_choice_is_preserved'] = strpos($descriptor, '$oldConstantExists === 1 && $newConstantExists === 0') !== false
+	&& strpos($descriptor, 'dolibarr_set_const($this->db, $newConstant, (string) $row->value') !== false;
+$checks['legacy_certificate_triggers_are_not_redeclared'] = strpos($sql, 'LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE') === false;
 
 preg_match_all("/'(Agenda[A-Za-z0-9]+)'/", $agendaClass, $messageTranslationMatches);
 $messageTranslationKeys = array_values(array_unique($messageTranslationMatches[1]));

@@ -36,7 +36,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->descriptionlong = 'ModuleLmdbVehicleManagementDesc';
 		$this->editor_name = 'Pierre Ardoin';
 		$this->editor_url = 'https://github.com/mapiolca';
-		$this->version = '0.13.1';
+		$this->version = '0.13.2';
 		$this->const_name = 'MAIN_MODULE_LMDBVEHICLEMANAGEMENT';
 		$this->picto = 'car';
 
@@ -607,6 +607,9 @@ class modLmdbVehicleManagement extends DolibarrModules
 		if ($result < 0) {
 			return -1;
 		}
+		if ($this->migrateAgendaCertificateTriggerCodes((int) $conf->entity) < 0) {
+			return -1;
+		}
 
 		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleenergy.class.php');
 		$energyDictionary = new LmdbVehicleEnergy($this->db);
@@ -976,6 +979,99 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->db->free($resql);
 
 		return is_object($row) && (int) $row->nb > 0 ? 1 : 0;
+	}
+
+	/**
+	 * Shorten certificate trigger codes so the AC_ prefix added by Agenda fits
+	 * in the native 50-character actioncomm.code column. Existing per-entity
+	 * administrator choices are copied only when the new constant is absent.
+	 *
+	 * @param int $entity Entity id
+	 * @return int<-1,1>
+	 */
+	private function migrateAgendaCertificateTriggerCodes($entity)
+	{
+		$oldPrefix = 'LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE';
+		$newPrefix = 'LMDBVEHICLEMANAGEMENT_CERTIFICATE';
+
+		$this->db->begin();
+		foreach (array('CREATE', 'UPDATE', 'DELETE') as $operation) {
+			$oldCode = $oldPrefix.'_'.$operation;
+			$newCode = $newPrefix.'_'.$operation;
+			$oldTriggerExists = $this->actionTriggerExists($oldCode);
+			$newTriggerExists = $this->actionTriggerExists($newCode);
+			if ($oldTriggerExists < 0 || $newTriggerExists < 0) {
+				$this->db->rollback();
+				return -1;
+			}
+			if ($oldTriggerExists === 1 && $newTriggerExists === 0) {
+				$sql = 'UPDATE '.MAIN_DB_PREFIX.'c_action_trigger';
+				$sql .= " SET code = '".$this->db->escape($newCode)."'";
+				$sql .= " WHERE code = '".$this->db->escape($oldCode)."'";
+				if (!$this->db->query($sql)) {
+					$this->error = $this->db->lasterror();
+					$this->db->rollback();
+					return -1;
+				}
+			} elseif ($oldTriggerExists === 1) {
+				$sql = 'DELETE FROM '.MAIN_DB_PREFIX.'c_action_trigger';
+				$sql .= " WHERE code = '".$this->db->escape($oldCode)."'";
+				if (!$this->db->query($sql)) {
+					$this->error = $this->db->lasterror();
+					$this->db->rollback();
+					return -1;
+				}
+			}
+
+			$oldConstant = 'MAIN_AGENDA_ACTIONAUTO_'.$oldCode;
+			$newConstant = 'MAIN_AGENDA_ACTIONAUTO_'.$newCode;
+			$oldConstantExists = $this->entityConstantExists($oldConstant, $entity);
+			$newConstantExists = $this->entityConstantExists($newConstant, $entity);
+			if ($oldConstantExists < 0 || $newConstantExists < 0) {
+				$this->db->rollback();
+				return -1;
+			}
+			if ($oldConstantExists === 1 && $newConstantExists === 0) {
+				$sql = 'SELECT value FROM '.MAIN_DB_PREFIX.'const';
+				$sql .= " WHERE name = '".$this->db->escape($this->db->encrypt($oldConstant, 0))."'";
+				$sql .= ' AND entity = '.((int) $entity);
+				$resql = $this->db->query($sql);
+				if (!$resql) {
+					$this->error = $this->db->lasterror();
+					$this->db->rollback();
+					return -1;
+				}
+				$row = $this->db->fetch_object($resql);
+				$this->db->free($resql);
+				if (!is_object($row) || dolibarr_set_const($this->db, $newConstant, (string) $row->value, 'chaine', 0, '', $entity) <= 0) {
+					$this->error = is_object($row) ? $this->db->lasterror() : 'AgendaCertificateConstantMigrationFailed';
+					$this->db->rollback();
+					return -1;
+				}
+			}
+		}
+		$this->db->commit();
+
+		return 1;
+	}
+
+	/**
+	 * @param string $code Trigger code
+	 * @return int<-1,1>
+	 */
+	private function actionTriggerExists($code)
+	{
+		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'c_action_trigger';
+		$sql .= " WHERE code = '".$this->db->escape($code)."'";
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			$this->error = $this->db->lasterror();
+			return -1;
+		}
+		$exists = $this->db->num_rows($resql) > 0 ? 1 : 0;
+		$this->db->free($resql);
+
+		return $exists;
 	}
 
 	/**

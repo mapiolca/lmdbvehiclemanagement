@@ -1,5 +1,13 @@
 # Historique des versions
 
+## `0.13.2` — 2026-09-02
+
+- Raccourcissement des codes CRUD des attestations pour respecter la limite native de 50 caractères de `actioncomm.code` après ajout du préfixe `AC_` par Dolibarr.
+- Correction de l’échec de création d’une attestation lorsque sa journalisation Agenda automatique est activée.
+- Migration idempotente des déclarations `c_action_trigger` vers les nouveaux codes sans créer d’événement supplémentaire.
+- Conservation par entité des choix Agenda existants, y compris une désactivation volontaire configurée à `0`.
+- Ajout d’un contrôle couvrant la longueur des 21 codes d’événements Agenda générés.
+
 ## `0.13.1` — 2026-09-01
 
 - Remplacement des titres Agenda techniques par des phrases métier traduites et spécifiques à chaque objet.

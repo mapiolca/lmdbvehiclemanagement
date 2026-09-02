@@ -16,7 +16,7 @@ class LmdbVehicleInsuranceCertificate extends LmdbVehicleManagementObject
 
 	/** @var string */ public $element = 'lmdbinsurancecertificate';
 	/** @var string */ public $table_element = 'lmdbvehiclemanagement_insurance_certificate';
-	/** @var string */ public $TRIGGER_PREFIX = 'LMDBVEHICLEMANAGEMENT_INSURANCE_CERTIFICATE';
+	/** @var string */ public $TRIGGER_PREFIX = 'LMDBVEHICLEMANAGEMENT_CERTIFICATE';
 	/** @var string */ public $entity_scope_element = 'lmdbvehicle';
 	/** @var string */ public $picto = 'file-shield';
 
