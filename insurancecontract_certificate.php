@@ -139,7 +139,7 @@ foreach ($certificates as $certificate) {
 		print lmdbInsuranceCertificatePostButton($id, (int) $certificate->id, 'validate_certificate', $langs->trans('Validate'), 'button');
 		print '<form class="inline-block" method="POST" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="certificate_id" value="'.((int) $certificate->id).'"><input type="hidden" name="action" value="reject_certificate"><input class="flat" name="rejection_reason" placeholder="'.$langs->trans('InsuranceRejectionReason').'"> <input type="submit" class="button button-cancel" value="'.$langs->trans('RejectInsuranceCertificate').'"></form>';
 	}
-	if (in_array((int) $certificate->status, array(LmdbVehicleInsuranceCertificate::STATUS_VALIDATED, LmdbVehicleInsuranceCertificate::STATUS_REJECTED), true) && $permissionWrite) print lmdbInsuranceCertificatePostButton($id, (int) $certificate->id, 'archive_certificate', $langs->trans('Archive'), 'button');
+	if (in_array((int) $certificate->status, array(LmdbVehicleInsuranceCertificate::STATUS_VALIDATED, LmdbVehicleInsuranceCertificate::STATUS_REJECTED), true) && $permissionWrite) print lmdbInsuranceCertificatePostButton($id, (int) $certificate->id, 'archive_certificate', $langs->trans('ArchiveInsuranceCertificate'), 'button');
 	if ((int) $certificate->status === LmdbVehicleInsuranceCertificate::STATUS_DRAFT && $permissionDelete) print lmdbInsuranceCertificatePostButton($id, (int) $certificate->id, 'delete_certificate', $langs->trans('Delete'), 'button-delete');
 	print '</td></tr>';
 }

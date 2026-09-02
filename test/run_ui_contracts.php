@@ -165,12 +165,16 @@ $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCe
 $checks['module_version_is_0133'] = strpos($descriptor, "\$this->version = '0.13.3';") !== false;
 $checks['insurance_certificate_actions_are_translated'] = strpos($insuranceCertificate, "\$langs->trans('SaveInsuranceCertificateDraft')") !== false
 	&& strpos($insuranceCertificate, "\$langs->trans('RejectInsuranceCertificate')") !== false
+	&& strpos($insuranceCertificate, "\$langs->trans('ArchiveInsuranceCertificate')") !== false
 	&& strpos($insuranceCertificate, "\$langs->trans('SaveDraft')") === false
 	&& strpos($insuranceCertificate, "\$langs->trans('Reject')") === false
+	&& strpos($insuranceCertificate, "\$langs->trans('Archive')") === false
 	&& preg_match('/^SaveInsuranceCertificateDraft=.+$/m', $frLang) === 1
 	&& preg_match('/^RejectInsuranceCertificate=.+$/m', $frLang) === 1
+	&& preg_match('/^ArchiveInsuranceCertificate=.+$/m', $frLang) === 1
 	&& preg_match('/^SaveInsuranceCertificateDraft=.+$/m', $enLang) === 1
-	&& preg_match('/^RejectInsuranceCertificate=.+$/m', $enLang) === 1;
+	&& preg_match('/^RejectInsuranceCertificate=.+$/m', $enLang) === 1
+	&& preg_match('/^ArchiveInsuranceCertificate=.+$/m', $enLang) === 1;
 $checks['odometer_list_calculates_difference_at_render_time'] = strpos($vehicleOdometer, "trans('OdometerDifference')") !== false
 	&& strpos($vehicleOdometer, '$records[$recordIndex + 1]->odometer_km') !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-success';") !== false

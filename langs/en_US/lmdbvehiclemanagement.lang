@@ -351,6 +351,7 @@ InsuranceActionCompleted=Insurance action completed
 SaveInsuranceCertificateDraft=Save draft
 SubmitForReview=Submit for review
 RejectInsuranceCertificate=Reject
+ArchiveInsuranceCertificate=Archive
 InsuranceHistoryContractLinked=Contract linked
 InsuranceHistoryCertificateSubmitted=Certificate submitted
 InsuranceHistoryCertificateValidated=Certificate validated

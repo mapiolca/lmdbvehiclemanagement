@@ -351,6 +351,7 @@ InsuranceActionCompleted=Action d’assurance réalisée
 SaveInsuranceCertificateDraft=Enregistrer le brouillon
 SubmitForReview=Soumettre au contrôle
 RejectInsuranceCertificate=Rejeter
+ArchiveInsuranceCertificate=Archiver
 InsuranceHistoryContractLinked=Contrat rattaché
 InsuranceHistoryCertificateSubmitted=Attestation déposée
 InsuranceHistoryCertificateValidated=Attestation validée
