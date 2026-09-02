@@ -556,6 +556,26 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		return $result;
 	}
 
+	/**
+	 * Persist the guided regulatory qualification and recalculate requirements.
+	 *
+	 * @param array<int,array{choice_id:int,applicable_since?:int}> $answers Questionnaire answers
+	 * @param list<int> $manualProfileIds Additional custom profiles
+	 * @param User $user Author
+	 * @return int<-1,1>
+	 */
+	public function saveRegulatoryQualification(array $answers, array $manualProfileIds, User $user)
+	{
+		$service = new LmdbVehicleRegulatoryService($this->db);
+		$result = $service->saveVehicleQualification($this, $answers, $manualProfileIds, $user);
+		if ($result < 0) {
+			$this->error = $service->error;
+			$this->errors = $service->errors;
+		}
+
+		return $result;
+	}
+
 	/** Grant a temporary, justified derogation without marking the equipment compliant. @param int $requirementId Requirement @param int $until Expiry @param string $reason Reason @param User $user Author @return int<-1,1> */
 	public function grantRegulatoryDerogation($requirementId, $until, $reason, User $user)
 	{

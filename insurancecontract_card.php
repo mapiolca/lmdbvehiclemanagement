@@ -25,15 +25,15 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'companies', 'contacts', 'other', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $preselectedVehicleId = GETPOSTINT('vehicle_id');
 $action = GETPOST('action', 'aZ09') ?: ($id > 0 ? 'view' : 'create');
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write');
-$permissionDelete = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'delete');
+$permissionWrite = lmdbVehicleManagementCanDo($user, 'insurance', 'write');
+$permissionDelete = lmdbVehicleManagementCanDo($user, 'insurance', 'delete');
 $object = new LmdbVehicleInsuranceContract($db);
 $coverage = array(
 	'vehicle_ids' => array(),

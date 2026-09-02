@@ -20,7 +20,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'currencies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
 $id = GETPOSTINT('id');
 $vehicle = new LmdbVehicle($db);
 if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
@@ -37,7 +37,7 @@ llxHeader('', $vehicle->ref.' - '.$langs->trans('Consumption'), '', '', 0, 0, ''
 $head = lmdbVehiclePrepareHead($vehicle);
 print dol_get_fiche_head($head, 'consumption', $langs->trans('Vehicle'), -1, $vehicle->picto);
 lmdbVehiclePrintBanner($vehicle);
-if ($user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')) {
+if (lmdbVehicleManagementCanDo($user, 'consumption', 'write')) {
 	print '<div class="tabsAction">'.dolGetButtonAction('', $langs->trans('NewConsumption'), 'default', dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&vehicle_id='.$id).'</div>';
 }
 

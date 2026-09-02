@@ -22,15 +22,15 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'users', 'agenda', 'currencies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $vehicleIdFromUrl = GETPOSTINT('vehicle_id');
 $action = GETPOST('action', 'aZ09') ?: ($id > 0 ? 'view' : 'create');
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write');
-$permissionDelete = $user->hasRight('lmdbvehiclemanagement', 'consumption', 'delete');
+$permissionWrite = lmdbVehicleManagementCanDo($user, 'consumption', 'write');
+$permissionDelete = lmdbVehicleManagementCanDo($user, 'consumption', 'delete');
 $object = new LmdbVehicleConsumption($db);
 if ($id > 0 && $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $hookmanager->initHooks(array('lmdbvehicleconsumptioncard', 'globalcard'));

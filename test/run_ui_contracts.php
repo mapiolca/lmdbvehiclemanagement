@@ -157,10 +157,11 @@ $checks['insurance_compatibility_route_only_redirects'] = strpos($insurancePage,
 	&& strpos($insurancePage, '<form') === false;
 $checks['insurance_mutations_use_csrf_tokens'] = substr_count($insuranceCertificate, "name=\"token\" value=\"'.newToken()") >= 3
 	&& strpos($insuranceLink, "name=\"token\" value=\"'.newToken()") !== false;
-$checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')") !== false
-	&& strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'upload')") !== false
-	&& strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'validate')") !== false
-	&& strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'delete')") !== false;
+$checks['insurance_uses_centralized_native_permission_checks'] = strpos($insuranceCertificate, "lmdbVehicleManagementCanDo(\$user, 'insurance', 'write')") !== false
+	&& strpos($insuranceCertificate, "lmdbVehicleManagementCanDo(\$user, 'insurance', 'upload')") !== false
+	&& strpos($insuranceCertificate, "lmdbVehicleManagementCanDo(\$user, 'insurance', 'validate')") !== false
+	&& strpos($insuranceCertificate, "lmdbVehicleManagementCanDo(\$user, 'insurance', 'delete')") !== false
+	&& strpos($library, "\$user->hasRight('lmdbvehiclemanagement', \$rightObject, \$action)") !== false;
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
@@ -176,7 +177,8 @@ $checks['insurance_recipient_address_and_subject_are_preserved'] = strpos($insur
 	&& strpos($insuranceCron, "html_entity_decode(strtr(\$template['subject'], \$replacements), ENT_QUOTES | ENT_HTML5, 'UTF-8')") !== false
 	&& strpos($descriptor, "transnoentitiesnoconv('InsuranceRequestEmailSubject')") !== false
 	&& strpos($descriptor, "transnoentitiesnoconv('InsuranceReviewEmailSubject')") !== false;
-$checks['module_version_is_0140'] = strpos($descriptor, "\$this->version = '0.14.0';") !== false;
+$checks['module_version_is_0141'] = strpos($descriptor, "\$this->version = '0.14.1';") !== false;
+$checks['hook_class_declares_php82_warnings_property'] = strpos($actionsHooks, 'public $warnings = array();') !== false;
 $checks['insurance_certificate_actions_are_translated'] = strpos($insuranceCertificate, "\$langs->trans('SaveInsuranceCertificateDraft')") !== false
 	&& strpos($insuranceCertificate, "\$langs->trans('RejectInsuranceCertificate')") !== false
 	&& strpos($insuranceCertificate, "\$langs->trans('ArchiveInsuranceCertificate')") !== false
@@ -199,7 +201,7 @@ $checks['consumption_uses_native_quick_add_hook'] = strpos($descriptor, "'main',
 	&& strpos($actionsHooks, "dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1)") !== false
 	&& strpos($actionsHooks, 'DOL_URL_ROOT_ALT') === false
 	&& strpos($actionsHooks, "'title' => 'NewConsumption@lmdbvehiclemanagement'") !== false
-	&& strpos($actionsHooks, "hasRight('lmdbvehiclemanagement', 'consumption', 'write')") !== false;
+	&& strpos($actionsHooks, "lmdbVehicleManagementCanDo(\$user, 'consumption', 'write')") !== false;
 $checks['module_objects_use_native_ajax_tooltips'] = strpos($baseObjectClass, 'public function getTooltipContentArray($params)') !== false
 	&& strpos($baseObjectClass, "getDolGlobalInt('MAIN_ENABLE_AJAX_TOOLTIP')") !== false
 	&& strpos($baseObjectClass, "'objecttype' => \$this->element.'@'.\$this->module") !== false
@@ -262,16 +264,16 @@ $checks['dedicated_top_menu_uses_native_car_icon'] = strpos($descriptor, "img_pi
 	&& strpos($descriptor, "'MAIN_MODULE_LMDBVEHICLEMANAGEMENT_ICON' => 'fa-car'") !== false;
 $checks['insurance_menu_has_create_and_list'] = strpos($descriptor, '/insurancecontract_card.php?action=create') !== false
 	&& strpos($descriptor, '/insurancecontract_list.php') !== false
-	&& strpos($descriptor, '$user->hasRight("lmdbvehiclemanagement", "insurance", "write")') !== false;
+	&& strpos($descriptor, 'lmdbVehicleManagementCanDo($user, "insurance", "write")') !== false;
 $checks['insurance_contract_has_dedicated_card'] = strpos($insuranceContractClass, "return 'insurancecontract_card.php';") !== false;
 $checks['insurance_list_uses_native_pattern'] = strpos($insuranceList, 'print_barre_liste(') !== false
 	&& strpos($insuranceList, "multiSelectArrayWithCheckbox('selectedfields'") !== false
 	&& strpos($insuranceList, 'div-table-responsive') !== false
 	&& strpos($insuranceList, 'lmdbVehicleManagementEntityBadge(') !== false;
 $checks['insurance_list_bar_is_inside_form'] = strpos($insuranceList, "print '<form method=\"POST\"") < strpos($insuranceList, 'print_barre_liste(');
-$checks['insurance_pages_use_native_permissions'] = strpos($insuranceCard, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false
-	&& strpos($insuranceCard, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')") !== false
-	&& strpos($insuranceList, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false;
+$checks['insurance_pages_use_centralized_permissions'] = strpos($insuranceCard, "lmdbVehicleManagementCanDo(\$user, 'read')") !== false
+	&& strpos($insuranceCard, "lmdbVehicleManagementCanDo(\$user, 'insurance', 'write')") !== false
+	&& strpos($insuranceList, "lmdbVehicleManagementCanDo(\$user, 'read')") !== false;
 $checks['insurance_form_is_shared'] = strpos($insuranceCard, 'lmdbInsurancePrintContractForm(') !== false
 	&& strpos($insuranceLibrary, 'function lmdbInsurancePrintContractForm') !== false;
 $insuranceCardClearPosition = strpos($insuranceCard, 'print \'<div class="clearboth"></div>\';');
@@ -317,7 +319,7 @@ $checks['insurance_card_uses_native_tabs'] = strpos($insuranceCard, "dol_get_fic
 	&& strpos($insuranceCard, 'lmdbInsuranceContractPrepareHead($object)') !== false;
 $checks['insurance_contacts_use_native_template'] = strpos($insuranceContact, '/contacts.tpl.php') !== false
 	&& strpos($insuranceContact, '$object->socid = (int) $object->fk_soc') !== false
-	&& strpos($insuranceContact, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')") !== false;
+	&& strpos($insuranceContact, "lmdbVehicleManagementCanDo(\$user, 'insurance', 'write')") !== false;
 $checks['insurance_notes_use_native_actions_and_template'] = strpos($insuranceNote, '/core/actions_setnotes.inc.php') !== false
 	&& strpos($insuranceNote, '/notes.tpl.php') !== false;
 $checks['insurance_documents_use_native_actions_and_template'] = strpos($insuranceDocument, '/core/actions_linkedfiles.inc.php') !== false
@@ -370,7 +372,7 @@ $checks['certificate_trigger_zero_commits'] = strpos($insuranceCertificateClass,
 	&& strpos($insuranceCertificateClass, 'return 1;') !== false;
 $checks['consumption_menus_use_native_permissions'] = strpos($descriptor, '/consumption_index.php') !== false
 	&& strpos($descriptor, '/consumption_card.php?action=create') !== false
-	&& strpos($descriptor, '$user->hasRight("lmdbvehiclemanagement", "consumption", "write")') !== false;
+	&& strpos($descriptor, 'lmdbVehicleManagementCanDo($user, "consumption", "write")') !== false;
 $checks['consumption_owns_one_odometer_reading'] = strpos($consumptionSql, 'fk_odometer_reading integer NOT NULL') !== false
 	&& strpos($consumptionSql, 'odometer_km') === false
 	&& strpos($consumptionSql, 'reading_date') === false;
@@ -381,8 +383,8 @@ $checks['consumption_synchronizes_odometer_transactionally'] = strpos($consumpti
 $checks['consumption_form_uses_native_required_style'] = strpos($consumptionCard, 'titlefieldcreate fieldrequired') !== false
 	&& substr_count($consumptionCard, 'fieldrequired') >= 6
 	&& strpos($consumptionCard, ' required') === false;
-$checks['consumption_pages_use_direct_rights'] = strpos($consumptionCard, "\$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')") !== false
-	&& strpos($consumptionList, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false;
+$checks['consumption_pages_use_centralized_rights'] = strpos($consumptionCard, "lmdbVehicleManagementCanDo(\$user, 'consumption', 'write')") !== false
+	&& strpos($consumptionList, "lmdbVehicleManagementCanDo(\$user, 'read')") !== false;
 $checks['consumption_creator_is_default_driver'] = strpos($consumptionClass, 'if (empty($this->fk_user_driver))') !== false
 	&& strpos($consumptionClass, '$this->fk_user_driver = (int) $user->id;') !== false
 	&& strpos($consumptionCard, '$object->fk_user_driver = (int) $user->id;') !== false
@@ -438,12 +440,13 @@ $checks['main_lists_reserve_native_height'] = count(array_filter($mainListSource
 	return strpos($source, 'div-table-responsive') !== false
 		&& strpos($source, 'div-table-responsive-no-min') === false;
 })) === count($mainListSources);
-$checks['native_column_selector_overlays_responsive_lists'] = strpos($moduleJavascript, "ul.selectedfields, .mod-lmdbvehiclemanagement.page-list .dropdown dd ul.selectedfieldsleft") !== false
+$checks['schedule_column_selector_overlay_is_scoped'] = strpos($moduleJavascript, ".mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .dropdown dd ul.selectedfields") !== false
 	&& strpos($moduleJavascript, "menu.classList.contains('open')") !== false
 	&& strpos($moduleJavascript, "menu.closest('dl.dropdown')") !== false
 	&& strpos($moduleJavascript, "document.addEventListener('click', scheduleRefresh)") !== false
 	&& strpos($moduleJavascript, "document.addEventListener('scroll', scheduleRefresh, true)") !== false
-	&& strpos($moduleStylesheet, '.mod-lmdbvehiclemanagement.page-list .dropdown dd ul.lmdb-column-selector-overlay') !== false
+	&& strpos($moduleStylesheet, '.mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .dropdown dd ul.lmdb-column-selector-overlay') !== false
+	&& strpos($moduleStylesheet, '.mod-lmdbvehiclemanagement.page-list .dropdown dd ul.lmdb-column-selector-overlay') === false
 	&& strpos($moduleStylesheet, 'position: fixed;') !== false
 	&& strpos($moduleStylesheet, 'z-index: 10000;') !== false;
 $checks['regulatory_schedule_column_selector_escapes_short_table'] = strpos($regulatorySchedule, 'page-regulatorycontrol-schedule') !== false

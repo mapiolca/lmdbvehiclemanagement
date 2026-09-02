@@ -20,9 +20,9 @@ $id = GETPOSTINT('id');
 $assignmentId = GETPOSTINT('assignment_id');
 $action = GETPOST('action', 'aZ09');
 $confirm = GETPOST('confirm', 'alpha');
-$permissionToManage = $user->hasRight('lmdbvehiclemanagement', 'assignment', 'write');
+$permissionToManage = lmdbVehicleManagementCanDo($user, 'assignment', 'write');
 $vehicle = new LmdbVehicle($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 
 $assignment = new LmdbVehicleAssignment($db);

@@ -1,6 +1,8 @@
 <?php
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
+dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
+
 /**
  * Hooks for the vehicle management module.
  */
@@ -17,6 +19,9 @@ class ActionsLmdbVehicleManagement
 
 	/** @var array<int,string> */
 	public $errors = array();
+
+	/** @var array<int,string> */
+	public $warnings = array();
 
 	/** @var array<string,mixed> */
 	public $results = array();
@@ -50,9 +55,9 @@ class ActionsLmdbVehicleManagement
 			return 0;
 		}
 
-		if ($user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')) {
+		if (lmdbVehicleManagementCanDo($user, 'consumption', 'write')) {
 			$this->results[] = array(
-				'url' => dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement',
+				'url' => dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement&token='.newToken(),
 				'title' => 'NewConsumption@lmdbvehiclemanagement',
 				'name' => 'ConsumptionEntry@lmdbvehiclemanagement',
 				'picto' => 'gas-pump',
@@ -60,9 +65,9 @@ class ActionsLmdbVehicleManagement
 				'position' => 450,
 			);
 		}
-		if ($user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write')) {
+		if (lmdbVehicleManagementCanDo($user, 'regulatorycontrol', 'write')) {
 			$this->results[] = array(
-				'url' => dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement',
+				'url' => dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement&token='.newToken(),
 				'title' => 'NewRegulatoryControl@lmdbvehiclemanagement',
 				'name' => 'RegulatoryControl@lmdbvehiclemanagement',
 				'picto' => 'clipboard-check',
@@ -95,7 +100,7 @@ class ActionsLmdbVehicleManagement
 			return 0;
 		}
 		$rightObject = $dataset === 'lmdbvehiclemanagement_vehicles' ? 'lmdbvehicle' : 'regulatorycontrol';
-		if (!$user->hasRight('lmdbvehiclemanagement', $rightObject, 'import')) {
+		if (!lmdbVehicleManagementCanDo($user, $rightObject, 'import')) {
 			$this->error = $langs->trans('NotEnoughPermissions');
 			$this->errors = array($this->error);
 			return -1;

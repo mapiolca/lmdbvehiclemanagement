@@ -20,16 +20,16 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
 $certificateId = GETPOSTINT('certificate_id');
 $downloadCertificate = GETPOSTINT('download_certificate');
-$permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write');
-$permissionUpload = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'upload');
-$permissionValidate = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'validate');
-$permissionDelete = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'delete');
+$permissionWrite = lmdbVehicleManagementCanDo($user, 'insurance', 'write');
+$permissionUpload = lmdbVehicleManagementCanDo($user, 'insurance', 'upload');
+$permissionValidate = lmdbVehicleManagementCanDo($user, 'insurance', 'validate');
+$permissionDelete = lmdbVehicleManagementCanDo($user, 'insurance', 'delete');
 $contract = new LmdbVehicleInsuranceContract($db);
 if ($id <= 0 || $contract->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 

@@ -94,7 +94,7 @@
 	}
 
 	function refreshColumnSelectorOverlays() {
-		document.querySelectorAll('.mod-lmdbvehiclemanagement.page-list .dropdown dd ul.selectedfields, .mod-lmdbvehiclemanagement.page-list .dropdown dd ul.selectedfieldsleft').forEach(function (menu) {
+		document.querySelectorAll('.mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .dropdown dd ul.selectedfields, .mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .dropdown dd ul.selectedfieldsleft').forEach(function (menu) {
 			if (menu.classList.contains('open')) {
 				positionColumnSelectorOverlay(menu);
 			} else if (menu.classList.contains('lmdb-column-selector-overlay')) {
@@ -104,7 +104,7 @@
 	}
 
 	function initializeColumnSelectorOverlays() {
-		if (!document.querySelector('.mod-lmdbvehiclemanagement.page-list')) {
+		if (!document.querySelector('.mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule')) {
 			return;
 		}
 

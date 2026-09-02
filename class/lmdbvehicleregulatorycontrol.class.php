@@ -159,21 +159,52 @@ class LmdbVehicleRegulatoryControl extends LmdbVehicleManagementObject
 		return $result;
 	}
 
-	/** Archive a cancelled control while preserving its immutable evidence. @param User $user Author @return int<-1,max> */
+	/** Archive a cancelled or formally replaced control while preserving evidence. @param User $user Author @return int<-1,max> */
 	public function archive(User $user)
 	{
 		$current = new self($this->db);
 		if (empty($this->id) || $current->fetch((int) $this->id) <= 0) return $this->copyError($current);
-		if ((int) $current->status !== self::STATUS_CANCELLED) return $this->businessError('OnlyCancelledControlCanBeArchived');
+		$archiveCheck = $this->canBeArchived();
+		if ($archiveCheck < 0) return -1;
+		if ($archiveCheck === 0) return $this->businessError('OnlyCancelledOrReplacedControlCanBeArchived');
 		$this->copyFrom($current);
 		$this->status = self::STATUS_ARCHIVED;
 		$this->context['trigger_reason'] = 'archiving';
-		$this->context['old_status'] = self::STATUS_CANCELLED;
+		$this->context['old_status'] = (int) $current->status;
 		$this->context['new_status'] = self::STATUS_ARCHIVED;
 		$this->transitionInProgress = true;
 		$result = parent::update($user);
 		$this->transitionInProgress = false;
 		return $result;
+	}
+
+	/**
+	 * Check whether evidence may be manually archived.
+	 *
+	 * @return int<-1,1> 1 when archivable, 0 when forbidden, -1 on database error
+	 */
+	public function canBeArchived()
+	{
+		$current = new self($this->db);
+		if (empty($this->id) || $current->fetch((int) $this->id) <= 0) {
+			$this->copyError($current);
+			return -1;
+		}
+		if ((int) $current->status === self::STATUS_CANCELLED && trim((string) $current->cancellation_reason) !== '') return 1;
+		if ((int) $current->status !== self::STATUS_VALIDATED) return 0;
+
+		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control';
+		$sql .= ' WHERE entity = '.((int) $current->entity).' AND fk_previous_control = '.((int) $current->id).' AND status = '.self::STATUS_VALIDATED.' LIMIT 1';
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			$this->error = $this->db->lasterror();
+			$this->errors[] = $this->error;
+			return -1;
+		}
+		$archivable = $this->db->num_rows($resql) > 0;
+		$this->db->free($resql);
+
+		return $archivable ? 1 : 0;
 	}
 
 	/** @inheritdoc */
@@ -230,21 +261,35 @@ class LmdbVehicleRegulatoryControl extends LmdbVehicleManagementObject
 	/** @return ?int */
 	private function calculateNextDueDate()
 	{
-		$sql = 'SELECT r.code, r.recurrence_months, r.recurrence_days, r.recheck_days, v.regulatory_territory FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r';
+		$sql = 'SELECT r.code, r.recurrence_months, r.recurrence_days, r.recheck_days, v.regulatory_territory, v.eu_category FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = '.((int) $this->fk_vehicle).' AND v.entity = r.entity';
 		$sql .= ' WHERE r.rowid = '.((int) $this->fk_rule).' AND r.entity = '.((int) $this->entity);
 		$resql = $this->db->query($sql);
 		if (!$resql) return null;
 		$row = $this->db->fetch_object($resql); $this->db->free($resql);
 		if (!is_object($row)) return null;
-		if (in_array((string) $this->result_code, array('recheck_required', 'non_compliant', 'critical'), true) && !empty($row->recheck_days)) {
-			$recheckDays = (int) $row->recheck_days;
-			if ((string) $row->code === 'FR_ROAD_HEAVY' && in_array((string) $row->regulatory_territory, array('FR_GUADELOUPE', 'FR_MARTINIQUE', 'FR_GUYANE', 'FR_REUNION', 'FR_MAYOTTE'), true)) $recheckDays = 60;
+		if ((string) $this->result_code === 'critical') return (int) $this->control_date;
+		if (in_array((string) $this->result_code, array('recheck_required', 'non_compliant'), true) && !empty($row->recheck_days)) {
+			$recheckDays = $this->resolveRecheckDays($row);
 			return dol_time_plus_duree((int) $this->control_date, $recheckDays, 'd');
 		}
 		if (!empty($row->recurrence_months)) return dol_time_plus_duree((int) $this->control_date, (int) $row->recurrence_months, 'm');
 		if (!empty($row->recurrence_days)) return dol_time_plus_duree((int) $this->control_date, (int) $row->recurrence_days, 'd');
 		return null;
+	}
+
+	/** @param object $row Rule and vehicle context @return int */
+	private function resolveRecheckDays($row)
+	{
+		$code = (string) $row->code;
+		if ($code === 'FR_CATEGORY_L' || $code === 'FR_ROAD_LIGHT' || strpos($code, 'FR_SPECIAL_') === 0) return 60;
+		if (in_array($code, array('FR_ROAD_HEAVY', 'FR_PUBLIC_TRANSPORT'), true)) {
+			if (strpos(strtoupper(trim((string) $row->eu_category)), 'M1') === 0) return 60;
+			if (in_array((string) $row->regulatory_territory, array('FR_GUADELOUPE', 'FR_MARTINIQUE', 'FR_GUYANE', 'FR_REUNION', 'FR_MAYOTTE'), true)) return 60;
+			return 30;
+		}
+
+		return (int) $row->recheck_days;
 	}
 
 	/** @param self $source Source @return void */

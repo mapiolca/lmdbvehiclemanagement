@@ -23,11 +23,11 @@ $langs->loadLangs(array('companies', 'users', 'lmdbvehiclemanagement@lmdbvehicle
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
 $object = new LmdbVehicleInsuranceContract($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $object->socid = (int) $object->fk_soc;
 $object->fetch_thirdparty();
-$permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write');
+$permissionWrite = lmdbVehicleManagementCanDo($user, 'insurance', 'write');
 
 $hookmanager->initHooks(array('lmdbinsurancecontractcontact', 'globalcard'));
 $parameters = array('id' => $id);

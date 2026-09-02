@@ -14,7 +14,8 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumptionimport.clas
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'imports', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'consumption', 'import') || !empty($user->socid)) accessforbidden();
+dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
+if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'consumption', 'import') || !empty($user->socid)) accessforbidden();
 $action = GETPOST('action', 'aZ09');
 if ($action === 'import') {
 	$upload = isset($_FILES['import_file']) && is_array($_FILES['import_file']) ? $_FILES['import_file'] : array();

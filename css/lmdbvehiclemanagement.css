@@ -5,7 +5,7 @@
  * Keep its native markup and styling while allowing the open menu to overlay
  * the page instead of being clipped by the table's horizontal overflow.
  */
-.mod-lmdbvehiclemanagement.page-list .dropdown dd ul.lmdb-column-selector-overlay {
+.mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .dropdown dd ul.lmdb-column-selector-overlay {
 	position: fixed;
 	z-index: 10000;
 }

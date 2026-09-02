@@ -7,6 +7,7 @@ CREATE TABLE llx_lmdbvehiclemanagement_control_requirement (
 	fk_source_control integer DEFAULT 0 NOT NULL,
 	fk_last_control integer DEFAULT NULL,
 	qualification_status varchar(16) DEFAULT 'incomplete' NOT NULL,
+	applicability_date date DEFAULT NULL,
 	calculated_due_date date DEFAULT NULL,
 	retained_due_date date DEFAULT NULL,
 	status varchar(32) DEFAULT 'incomplete' NOT NULL,

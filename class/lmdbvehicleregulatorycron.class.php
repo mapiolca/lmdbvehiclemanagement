@@ -6,7 +6,7 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatoryservice.clas
 /** Daily regulatory deadline synchronization and reminders. */
 class LmdbVehicleRegulatoryCron
 {
-	private const AGENDA_EVENT_CODE = 'AC_LMDB_REGULATORY_DUE';
+	private const AGENDA_EVENT_CODE = 'AC_LMDB_REGDUE';
 	private const AGENDA_FALLBACK_TYPE_CODE = 'AC_OTH_AUTO';
 
 	/** @var DoliDB */ public $db;
@@ -181,7 +181,7 @@ class LmdbVehicleRegulatoryCron
 		$ruleLabel = $langs->trans((string) $row->rule_label);
 		$event->type_id = $agendaType['id'];
 		$event->type_code = $agendaType['code'];
-		$event->code = self::AGENDA_EVENT_CODE;
+		$event->code = $agendaType['code'];
 		$event->label = $langs->trans('RegulatoryDueAgendaTitle', $ruleLabel, $vehicle);
 		$event->note_private = $langs->trans('RegulatoryDueAgendaDescription', $ruleLabel, $vehicle, dol_print_date($dueDate, 'day'));
 		$event->datep = $dueDate;
@@ -225,7 +225,7 @@ class LmdbVehicleRegulatoryCron
 			$this->db->begin();
 			$event = new ActionComm($this->db);
 			if ($event->fetch((int) $row->fk_actioncomm) > 0) {
-				$isOwnedDeadline = (string) $event->code === self::AGENDA_EVENT_CODE
+				$isOwnedDeadline = in_array((string) $event->code, array(self::AGENDA_EVENT_CODE, self::AGENDA_FALLBACK_TYPE_CODE), true)
 					&& (string) $event->elementtype === 'lmdbvehicle@lmdbvehiclemanagement'
 					&& (int) $event->fk_element === (int) $row->fk_vehicle;
 				if ($isOwnedDeadline && $event->delete($user) < 0) {
