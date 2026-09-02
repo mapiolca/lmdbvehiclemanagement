@@ -77,6 +77,15 @@ $checks = array(
 		&& strpos($cron, "\$event->type_code = \$agendaType['code'];") !== false,
 	'cron_identifies_owned_deadlines_by_event_code' => strpos($cron, '(string) $event->code === self::AGENDA_EVENT_CODE') !== false,
 	'cron_uses_email_template' => strpos($cron, "type_template = 'lmdbvehicle_regulatory_reminder'") !== false,
+	'reminder_subject_is_plain_utf8' => strpos($cron, "html_entity_decode(strtr(\$template['subject'], \$replacements), ENT_QUOTES | ENT_HTML5, 'UTF-8')") !== false
+		&& strpos($descriptor, "transnoentitiesnoconv('RegulatoryReminderEmailSubject')") !== false,
+	'reminder_recipient_identity_is_preserved' => strpos($cron, "'id' => (int) \$row->rowid") !== false
+		&& strpos($cron, "'email' => \$email") !== false
+		&& strpos($cron, "((int) \$recipient['id'])") !== false
+		&& strpos($cron, "ORDER BY FIELD(rowid, '.implode(',', \$userIds).')'") !== false,
+	'reminder_recipient_addresses_are_visible_and_validated' => strpos($adminRegulatory, "SELECT rowid, firstname, lastname, login, email") !== false
+		&& strpos($adminRegulatory, ".' — '.\$email") !== false
+		&& strpos($cron, '!isValidEmail($email)') !== false,
 	'future_agenda_event_is_linked' => strpos($cron, "elementtype = 'lmdbvehicle@lmdbvehiclemanagement'") !== false,
 	'future_agenda_type_is_short_and_automatic' => strpos($sql, "'AC_LMDB_REGULATORY_DUE', 'systemauto'") !== false && strlen('AC_LMDB_REGULATORY_DUE') <= 50,
 	'crud_triggers_declared' => substr_count($sql, 'LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_') === 6,

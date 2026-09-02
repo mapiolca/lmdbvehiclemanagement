@@ -271,12 +271,16 @@ class LmdbVehicleInsuranceCron
 	{
 		require_once DOL_DOCUMENT_ROOT.'/core/class/CMailFile.class.php';
 
+		if (!isValidEmail($email)) {
+			$this->error = 'ErrorBadEMail';
+			return -1;
+		}
 		$from = getDolGlobalString('MAIN_MAIL_EMAIL_FROM');
 		if ($from === '') {
 			$this->error = 'InsuranceSenderEmailMissing';
 			return -1;
 		}
-		$subject = strtr($template['subject'], $replacements);
+		$subject = html_entity_decode(strtr($template['subject'], $replacements), ENT_QUOTES | ENT_HTML5, 'UTF-8');
 		$content = strtr($template['content'], $replacements);
 		$mail = new CMailFile($subject, $email, $from, $content, array(), array(), array(), '', '', 0, -1);
 		if (!$mail->sendfile()) {

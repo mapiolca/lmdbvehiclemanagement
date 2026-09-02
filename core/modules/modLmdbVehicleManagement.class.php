@@ -1055,8 +1055,8 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$templateId = is_object($row) ? (int) $row->rowid : 0;
 		if ($templateId <= 0) {
 			$sql = 'INSERT INTO '.MAIN_DB_PREFIX.'c_email_templates (entity, module, type_template, lang, private, fk_user, datec, label, position, enabled, active, topic, content, content_lines, joinfiles) VALUES (';
-			$sql .= ((int) $entity).", 'lmdbvehiclemanagement', '".$this->db->escape($type)."', '', 0, NULL, '".$this->db->idate(dol_now())."', '".$this->db->escape($langs->trans('RegulatoryReminderEmailTemplateLabel'))."', 30, 1, 1, '";
-			$sql .= $this->db->escape($langs->trans('RegulatoryReminderEmailSubject'))."', '".$this->db->escape($langs->trans('RegulatoryReminderEmailContent'))."', NULL, 0)";
+			$sql .= ((int) $entity).", 'lmdbvehiclemanagement', '".$this->db->escape($type)."', '', 0, NULL, '".$this->db->idate(dol_now())."', '".$this->db->escape($langs->transnoentitiesnoconv('RegulatoryReminderEmailTemplateLabel'))."', 30, 1, 1, '";
+			$sql .= $this->db->escape($langs->transnoentitiesnoconv('RegulatoryReminderEmailSubject'))."', '".$this->db->escape($langs->trans('RegulatoryReminderEmailContent'))."', NULL, 0)";
 			if (!$this->db->query($sql)) {
 				$this->error = $this->db->lasterror();
 				return -1;
@@ -1124,15 +1124,15 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$templates = array(
 			'LMDBVEHICLEMANAGEMENT_INSURANCE_REQUEST_TEMPLATE' => array(
 				'type' => 'lmdbvehicle_insurance_request',
-				'label' => $langs->trans('InsuranceRequestEmailTemplateLabel'),
-				'topic' => $langs->trans('InsuranceRequestEmailSubject'),
+				'label' => $langs->transnoentitiesnoconv('InsuranceRequestEmailTemplateLabel'),
+				'topic' => $langs->transnoentitiesnoconv('InsuranceRequestEmailSubject'),
 				'content' => $langs->trans('InsuranceRequestEmailContent'),
 				'position' => 10,
 			),
 			'LMDBVEHICLEMANAGEMENT_INSURANCE_REVIEW_TEMPLATE' => array(
 				'type' => 'lmdbvehicle_insurance_review',
-				'label' => $langs->trans('InsuranceReviewEmailTemplateLabel'),
-				'topic' => $langs->trans('InsuranceReviewEmailSubject'),
+				'label' => $langs->transnoentitiesnoconv('InsuranceReviewEmailTemplateLabel'),
+				'topic' => $langs->transnoentitiesnoconv('InsuranceReviewEmailSubject'),
 				'content' => $langs->trans('InsuranceReviewEmailContent'),
 				'position' => 20,
 			),

@@ -229,11 +229,12 @@ class LmdbVehicleRegulatoryCron
 		$sent = 0;
 		global $langs;
 		$ruleLabel = $langs->trans((string) $row->rule_label);
-		foreach ($recipients as $email => $name) {
+		foreach ($recipients as $recipient) {
+			$email = $recipient['email'];
 			$key = sha1(((int) $row->rowid).':'.$remaining.':'.$email.':'.dol_print_date($dueDate, '%Y-%m-%d'));
 			$sql = 'INSERT IGNORE INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_reminder_log';
 			$sql .= ' (entity, reminder_key, fk_requirement, horizon_days, recipient_type, recipient_id, due_date_snapshot, recipient_email, status, date_creation) VALUES (';
-			$sql .= $entity.", '".$this->db->escape($key)."', ".((int) $row->rowid).", ".$remaining.", 'email', NULL, '".$this->db->idate($dueDate)."', '".$this->db->escape($email)."', 0, '".$this->db->idate(dol_now())."')";
+			$sql .= $entity.", '".$this->db->escape($key)."', ".((int) $row->rowid).", ".$remaining.", 'user', ".((int) $recipient['id']).", '".$this->db->idate($dueDate)."', '".$this->db->escape($email)."', 0, '".$this->db->idate(dol_now())."')";
 			$resql = $this->db->query($sql);
 			if (!$resql) { $this->error = $this->db->lasterror(); return -1; }
 			// A persisted attempt is the idempotency boundary. Failed sends remain
@@ -241,7 +242,7 @@ class LmdbVehicleRegulatoryCron
 			if ($this->db->affected_rows($resql) === 0) continue;
 			$vehicle = trim((string) $row->registration_number) !== '' ? (string) $row->registration_number : (string) $row->vehicle_ref;
 			$replacements = array(
-				'__RECIPIENT_NAME__' => $name,
+				'__RECIPIENT_NAME__' => $recipient['name'],
 				'__VEHICLE_REF__' => $vehicle,
 				'__VEHICLE_LABEL__' => (string) $row->vehicle_label,
 				'__CONTROL_LABEL__' => $ruleLabel,
@@ -259,7 +260,18 @@ class LmdbVehicleRegulatoryCron
 		return $sent;
 	}
 
-	/** @param int $vehicleId @param int $entity @return array<string,string> */
+	/**
+	 * Resolve configured users, groups and the optional assigned driver.
+	 *
+	 * The user id remains attached to its current email and display name so the
+	 * reminder log can identify the exact Dolibarr account used for each send.
+	 * When several accounts share an address, the first configured account wins
+	 * and only one message is sent to that mailbox.
+	 *
+	 * @param int $vehicleId Vehicle id
+	 * @param int $entity Entity id
+	 * @return array<string,array{id:int,name:string,email:string}>
+	 */
 	private function getRecipients($vehicleId, $entity)
 	{
 		$userIds = json_decode(getDolGlobalString('LMDBVEHICLEMANAGEMENT_REGULATORY_RECIPIENT_USERS', '[]'), true);
@@ -267,7 +279,7 @@ class LmdbVehicleRegulatoryCron
 		$groupIds = json_decode(getDolGlobalString('LMDBVEHICLEMANAGEMENT_REGULATORY_RECIPIENT_GROUPS', '[]'), true);
 		$groupIds = is_array($groupIds) ? array_map('intval', $groupIds) : array();
 		if (!empty($groupIds)) {
-			$resql = $this->db->query('SELECT DISTINCT fk_user FROM '.MAIN_DB_PREFIX.'usergroup_user WHERE fk_usergroup IN ('.implode(',', $groupIds).')');
+			$resql = $this->db->query('SELECT DISTINCT fk_user FROM '.MAIN_DB_PREFIX.'usergroup_user WHERE entity = '.((int) $entity).' AND fk_usergroup IN ('.implode(',', $groupIds).')');
 			if ($resql) { while (is_object($row = $this->db->fetch_object($resql))) $userIds[] = (int) $row->fk_user; $this->db->free($resql); }
 		}
 		if (getDolGlobalInt('LMDBVEHICLEMANAGEMENT_REGULATORY_INCLUDE_DRIVER')) {
@@ -280,12 +292,21 @@ class LmdbVehicleRegulatoryCron
 		$userIds = array_values(array_unique(array_filter($userIds)));
 		if (empty($userIds)) return array();
 		$recipients = array();
-		$sql = 'SELECT email, firstname, lastname, login FROM '.MAIN_DB_PREFIX.'user WHERE rowid IN ('.implode(',', $userIds).") AND statut = 1 AND email IS NOT NULL AND email <> ''";
+		$sql = 'SELECT rowid, email, firstname, lastname, login FROM '.MAIN_DB_PREFIX.'user WHERE rowid IN ('.implode(',', $userIds).") AND statut = 1 AND email IS NOT NULL AND email <> ''";
+		$sql .= ' ORDER BY FIELD(rowid, '.implode(',', $userIds).')';
 		$resql = $this->db->query($sql);
 		if (!$resql) return array();
 		while (is_object($row = $this->db->fetch_object($resql))) {
+			$email = trim((string) $row->email);
+			if ($email === '' || !isValidEmail($email)) continue;
+			$emailKey = strtolower($email);
+			if (isset($recipients[$emailKey])) continue;
 			$name = trim((string) $row->firstname.' '.(string) $row->lastname);
-			$recipients[(string) $row->email] = $name !== '' ? $name : (string) $row->login;
+			$recipients[$emailKey] = array(
+				'id' => (int) $row->rowid,
+				'name' => $name !== '' ? $name : (string) $row->login,
+				'email' => $email,
+			);
 		}
 		$this->db->free($resql);
 		return $recipients;
@@ -309,9 +330,11 @@ class LmdbVehicleRegulatoryCron
 	private function sendMail($email, $template, $replacements)
 	{
 		require_once DOL_DOCUMENT_ROOT.'/core/class/CMailFile.class.php';
+		if (!isValidEmail($email)) { $this->error = 'ErrorBadEMail'; return -1; }
 		$from = getDolGlobalString('MAIN_MAIL_EMAIL_FROM');
 		if ($from === '') { $this->error = 'RegulatorySenderEmailMissing'; return -1; }
-		$mail = new CMailFile(strtr($template['subject'], $replacements), $email, $from, strtr($template['content'], $replacements), array(), array(), array(), '', '', 0, -1);
+		$subject = html_entity_decode(strtr($template['subject'], $replacements), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		$mail = new CMailFile($subject, $email, $from, strtr($template['content'], $replacements), array(), array(), array(), '', '', 0, -1);
 		if (!$mail->sendfile()) { $this->error = is_string($mail->error) ? $mail->error : 'RegulatoryEmailSendFailed'; return -1; }
 		return 1;
 	}

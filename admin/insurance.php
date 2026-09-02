@@ -94,7 +94,7 @@ function lmdbInsuranceAdminOptions($db, $sql, $idField, $labelFields)
 	return $options;
 }
 
-$userOptions = lmdbInsuranceAdminOptions($db, 'SELECT rowid, firstname, lastname, login FROM '.MAIN_DB_PREFIX.'user WHERE statut = 1 AND entity IN ('.getEntity('user').') ORDER BY lastname, firstname, login', 'rowid', array('firstname', 'lastname', 'login'));
+$userOptions = lmdbInsuranceAdminOptions($db, 'SELECT rowid, firstname, lastname, login, email FROM '.MAIN_DB_PREFIX.'user WHERE statut = 1 AND email IS NOT NULL AND email <> \'\' AND entity IN ('.getEntity('user').') ORDER BY lastname, firstname, login', 'rowid', array('firstname', 'lastname', 'login', 'email'));
 $groupOptions = lmdbInsuranceAdminOptions($db, 'SELECT rowid, nom FROM '.MAIN_DB_PREFIX.'usergroup WHERE entity IN ('.getEntity('usergroup').') ORDER BY nom', 'rowid', array('nom'));
 $requestTemplateOptions = lmdbInsuranceAdminOptions($db, 'SELECT rowid, label FROM '.MAIN_DB_PREFIX."c_email_templates WHERE type_template = '".$db->escape(LmdbVehicleInsuranceConfig::REQUEST_TEMPLATE_TYPE)."' AND active = 1 AND entity IN (0, ".$entity.') ORDER BY position, label', 'rowid', array('label'));
 $reviewTemplateOptions = lmdbInsuranceAdminOptions($db, 'SELECT rowid, label FROM '.MAIN_DB_PREFIX."c_email_templates WHERE type_template = '".$db->escape(LmdbVehicleInsuranceConfig::REVIEW_TEMPLATE_TYPE)."' AND active = 1 AND entity IN (0, ".$entity.') ORDER BY position, label', 'rowid', array('label'));

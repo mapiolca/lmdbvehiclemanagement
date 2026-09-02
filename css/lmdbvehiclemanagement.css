@@ -7,7 +7,17 @@
  */
 .mod-lmdbvehiclemanagement.page-list .dropdown dd ul.lmdb-column-selector-overlay {
 	position: fixed;
-	z-index: 95;
+	z-index: 10000;
+}
+
+/*
+ * The schedule commonly exceeds the viewport width. While its native column
+ * selector is open, release the responsive wrapper overflow so a short table
+ * cannot create a nested vertical scroll area around the menu. Horizontal
+ * scrolling is restored as soon as Dolibarr closes the selector.
+ */
+.mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .div-table-responsive.lmdb-column-selector-wrapper-open {
+	overflow: visible !important;
 }
 
 /*

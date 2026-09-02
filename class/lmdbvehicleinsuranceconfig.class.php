@@ -207,18 +207,25 @@ class LmdbVehicleInsuranceConfig
 		if (empty($userIds)) {
 			return array();
 		}
-		$sql = 'SELECT rowid, firstname, lastname, email FROM '.MAIN_DB_PREFIX.'user';
+		$sql = 'SELECT rowid, firstname, lastname, login, email FROM '.MAIN_DB_PREFIX.'user';
 		$sql .= ' WHERE rowid IN ('.implode(',', $userIds).') AND statut = 1 AND email IS NOT NULL AND email <> \'\'';
+		$sql .= ' ORDER BY FIELD(rowid, '.implode(',', $userIds).')';
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			return array();
 		}
 		$recipients = array();
 		while (is_object($row = $this->db->fetch_object($resql))) {
-			$email = strtolower(trim((string) $row->email));
-			if ($email !== '') {
-				$recipients[$email] = array('id' => (int) $row->rowid, 'name' => trim((string) $row->firstname.' '.(string) $row->lastname), 'email' => $email);
-			}
+			$email = trim((string) $row->email);
+			if ($email === '' || !isValidEmail($email)) continue;
+			$emailKey = strtolower($email);
+			if (isset($recipients[$emailKey])) continue;
+			$name = trim((string) $row->firstname.' '.(string) $row->lastname);
+			$recipients[$emailKey] = array(
+				'id' => (int) $row->rowid,
+				'name' => $name !== '' ? $name : (string) $row->login,
+				'email' => $email,
+			);
 		}
 		$this->db->free($resql);
 

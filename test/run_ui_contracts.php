@@ -31,6 +31,7 @@ $insuranceLibrary = readModuleSource('lib/lmdbvehicleinsurance.lib.php');
 $insuranceCard = readModuleSource('insurancecontract_card.php');
 $insuranceList = readModuleSource('insurancecontract_list.php');
 $insuranceContractClass = readModuleSource('class/lmdbvehicleinsurancecontract.class.php');
+$insuranceConfig = readModuleSource('class/lmdbvehicleinsuranceconfig.class.php');
 $baseObjectClass = readModuleSource('class/lmdbvehiclemanagementobject.class.php');
 $insuranceCertificateClass = readModuleSource('class/lmdbvehicleinsurancecertificate.class.php');
 $insuranceAdmin = readModuleSource('admin/insurance.php');
@@ -58,6 +59,7 @@ $consumableClass = readModuleSource('class/lmdbvehicleconsumable.class.php');
 $consumptionCard = readModuleSource('consumption_card.php');
 $consumptionList = readModuleSource('consumption_list.php');
 $consumptionIndex = readModuleSource('consumption_index.php');
+$regulatorySchedule = readModuleSource('regulatorycontrol_schedule.php');
 $vehicleConsumption = readModuleSource('vehicle_consumption.php');
 $vehicleHistory = readModuleSource('vehicle_history.php');
 $vehicleHistoryClass = readModuleSource('class/lmdbvehiclehistory.class.php');
@@ -162,6 +164,13 @@ $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificat
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
+$checks['insurance_recipient_address_and_subject_are_preserved'] = strpos($insuranceAdmin, "firstname, lastname, login, email") !== false
+	&& strpos($insuranceConfig, "ORDER BY FIELD(rowid, '.implode(',', \$userIds).')'") !== false
+	&& strpos($insuranceConfig, '!isValidEmail($email)') !== false
+	&& strpos($insuranceConfig, 'if (isset($recipients[$emailKey])) continue;') !== false
+	&& strpos($insuranceCron, "html_entity_decode(strtr(\$template['subject'], \$replacements), ENT_QUOTES | ENT_HTML5, 'UTF-8')") !== false
+	&& strpos($descriptor, "transnoentitiesnoconv('InsuranceRequestEmailSubject')") !== false
+	&& strpos($descriptor, "transnoentitiesnoconv('InsuranceReviewEmailSubject')") !== false;
 $checks['module_version_is_0140'] = strpos($descriptor, "\$this->version = '0.14.0';") !== false;
 $checks['insurance_certificate_actions_are_translated'] = strpos($insuranceCertificate, "\$langs->trans('SaveInsuranceCertificateDraft')") !== false
 	&& strpos($insuranceCertificate, "\$langs->trans('RejectInsuranceCertificate')") !== false
@@ -431,7 +440,12 @@ $checks['native_column_selector_overlays_responsive_lists'] = strpos($moduleJava
 	&& strpos($moduleJavascript, "document.addEventListener('scroll', scheduleRefresh, true)") !== false
 	&& strpos($moduleStylesheet, '.mod-lmdbvehiclemanagement.page-list .dropdown dd ul.lmdb-column-selector-overlay') !== false
 	&& strpos($moduleStylesheet, 'position: fixed;') !== false
-	&& strpos($moduleStylesheet, 'z-index: 95;') !== false;
+	&& strpos($moduleStylesheet, 'z-index: 10000;') !== false;
+$checks['regulatory_schedule_column_selector_escapes_short_table'] = strpos($regulatorySchedule, 'page-regulatorycontrol-schedule') !== false
+	&& strpos($moduleJavascript, "responsiveWrapper.classList.add('lmdb-column-selector-wrapper-open')") !== false
+	&& strpos($moduleJavascript, "responsiveWrapper.classList.remove('lmdb-column-selector-wrapper-open')") !== false
+	&& strpos($moduleStylesheet, '.mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .div-table-responsive.lmdb-column-selector-wrapper-open') !== false
+	&& strpos($moduleStylesheet, 'overflow: visible !important;') !== false;
 $checks['main_list_column_selectors_use_native_page_context'] = count(array_filter($mainListSources, static function ($source) {
 	return strpos($source, "\$contextpage = GETPOST('contextpage', 'aZ09');") !== false
 		&& strpos($source, "\$varpage = empty(\$contextpage) ? \$_SERVER['PHP_SELF'] : \$contextpage;") !== false

@@ -44,6 +44,10 @@
 	}
 
 	function clearColumnSelectorOverlay(menu) {
+		var responsiveWrapper = menu.closest('.div-table-responsive, .div-table-responsive-no-min');
+		if (responsiveWrapper) {
+			responsiveWrapper.classList.remove('lmdb-column-selector-wrapper-open');
+		}
 		menu.classList.remove('lmdb-column-selector-overlay');
 		menu.style.removeProperty('top');
 		menu.style.removeProperty('right');
@@ -56,6 +60,11 @@
 		var trigger = dropdown ? dropdown.querySelector('dt a.multiselectpicto') : null;
 		if (!trigger) {
 			return;
+		}
+
+		var responsiveWrapper = menu.closest('.div-table-responsive, .div-table-responsive-no-min');
+		if (responsiveWrapper && document.body.classList.contains('page-regulatorycontrol-schedule')) {
+			responsiveWrapper.classList.add('lmdb-column-selector-wrapper-open');
 		}
 
 		menu.classList.add('lmdb-column-selector-overlay');
