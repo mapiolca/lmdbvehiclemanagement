@@ -35,6 +35,7 @@ $insuranceConfig = readModuleSource('class/lmdbvehicleinsuranceconfig.class.php'
 $baseObjectClass = readModuleSource('class/lmdbvehiclemanagementobject.class.php');
 $insuranceCertificateClass = readModuleSource('class/lmdbvehicleinsurancecertificate.class.php');
 $insuranceAdmin = readModuleSource('admin/insurance.php');
+$regulatoryAdmin = readModuleSource('admin/regulatory.php');
 $descriptor = readModuleSource('core/modules/modLmdbVehicleManagement.class.php');
 $actionsHooks = readModuleSource('class/actions_lmdbvehiclemanagement.class.php');
 $insuranceCron = readModuleSource('class/lmdbvehicleinsurancecron.class.php');
@@ -179,6 +180,19 @@ $checks['insurance_recipient_address_and_subject_are_preserved'] = strpos($insur
 	&& strpos($descriptor, "transnoentitiesnoconv('InsuranceReviewEmailSubject')") !== false;
 $checks['module_version_is_0141'] = strpos($descriptor, "\$this->version = '0.14.1';") !== false;
 $checks['hook_class_declares_php82_warnings_property'] = strpos($actionsHooks, 'public $warnings = array();') !== false;
+$checks['regulatory_rule_creation_uses_native_modals'] = substr_count($regulatoryAdmin, '$form->formconfirm(') === 2
+	&& strpos($regulatoryAdmin, "\$overrideButtonId = 'action-create-regulatory-rule-override';") !== false
+	&& strpos($regulatoryAdmin, "\$customRuleButtonId = 'action-create-custom-regulatory-rule';") !== false
+	&& substr_count($regulatoryAdmin, "0, 'Create', 'Cancel'") === 2
+	&& strpos($regulatoryAdmin, 'name="action" value="create_override"') === false
+	&& strpos($regulatoryAdmin, 'name="action" value="create_custom_rule"') === false;
+$checks['regulatory_native_modals_keep_native_fields_and_fallback'] = strpos($regulatoryAdmin, "\$form->selectDate(\$overrideEffectiveFrom ?: -1") !== false
+	&& strpos($regulatoryAdmin, "\$form->selectDate(\$customEffectiveFrom ?: -1") !== false
+	&& strpos($regulatoryAdmin, "\$form->multiselectarray('custom_profile_ids'") !== false
+	&& strpos($regulatoryAdmin, "explode(',', \$submittedProfileIds)") !== false
+	&& strpos($regulatoryAdmin, "empty(\$conf->dol_use_jmobile)") !== false
+	&& strpos($regulatoryAdmin, "'?action=show_override&token='.newToken()") !== false
+	&& strpos($regulatoryAdmin, "'?action=show_custom_rule&token='.newToken()") !== false;
 $checks['insurance_certificate_actions_are_translated'] = strpos($insuranceCertificate, "\$langs->trans('SaveInsuranceCertificateDraft')") !== false
 	&& strpos($insuranceCertificate, "\$langs->trans('RejectInsuranceCertificate')") !== false
 	&& strpos($insuranceCertificate, "\$langs->trans('ArchiveInsuranceCertificate')") !== false

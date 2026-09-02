@@ -113,7 +113,10 @@ $checks = array(
 		&& strpos($control, "return (int) \$this->control_date;") !== false,
 	'native_rules_are_overridden_without_update' => strpos($catalog, 'createEntityOverride(') !== false && strpos($catalog, 'fk_parent_rule') !== false && strpos($catalog, 'is_native = 1') !== false,
 	'custom_rules_are_normalized' => strpos($catalog, 'createEntityCustomRule(') !== false && strpos($catalog, 'lmdbvehiclemanagement_regulatory_rule_profile') !== false,
-	'admin_exposes_versioned_rule_management' => strpos($adminRegulatory, "action\" value=\"create_override") !== false && strpos($adminRegulatory, "action\" value=\"create_custom_rule") !== false,
+	'admin_exposes_versioned_rule_management' => strpos($adminRegulatory, "'create_override', \$overrideQuestions") !== false
+		&& strpos($adminRegulatory, "'create_custom_rule', \$customRuleQuestions") !== false
+		&& strpos($adminRegulatory, "\$overrideButtonId = 'action-create-regulatory-rule-override';") !== false
+		&& strpos($adminRegulatory, "\$customRuleButtonId = 'action-create-custom-regulatory-rule';") !== false,
 	'admin_displays_rule_applicability_and_source_metadata' => strpos($adminRegulatory, 'RegulatoryRuleGroup') !== false
 		&& strpos($adminRegulatory, 'RegulatoryApplicabilityCode') !== false
 		&& strpos($adminRegulatory, 'RegulatorySourceReviewedOn') !== false,
