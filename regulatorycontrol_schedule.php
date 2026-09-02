@@ -16,6 +16,7 @@ $langs->loadLangs(array('main', 'companies', 'lmdbvehiclemanagement@lmdbvehiclem
 if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 $limit = GETPOSTINT('limit') ?: (int) $conf->liste_limit; $page = GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page'); if ($page < 0 || GETPOST('button_search', 'alpha') || GETPOST('button_removefilter', 'alpha')) $page = 0; $offset = $limit * $page;
 $sortfield = GETPOST('sortfield', 'aZ09comma') ?: 'req.retained_due_date'; $sortorder = strtoupper(GETPOST('sortorder', 'alpha')) === 'DESC' ? 'DESC' : 'ASC';
+$contextpage = GETPOST('contextpage', 'aZ09');
 $allowedSorts = array('req.retained_due_date', 'v.ref', 'at.label', 'r.label', 'req.status', 's.nom', 'v.regulatory_territory', 'req.entity'); if (!in_array($sortfield, $allowedSorts, true)) $sortfield = 'req.retained_due_date';
 $startDate = GETPOSTINT('date_startyear') > 0 ? dol_mktime(0, 0, 0, GETPOSTINT('date_startmonth'), GETPOSTINT('date_startday'), GETPOSTINT('date_startyear')) : 0;
 $endDate = GETPOSTINT('date_endyear') > 0 ? dol_mktime(23, 59, 59, GETPOSTINT('date_endmonth'), GETPOSTINT('date_endday'), GETPOSTINT('date_endyear')) : 0;
@@ -65,11 +66,12 @@ $sql .= $from.$where.$db->order($sortfield, $sortorder).$db->plimit($limit + 1, 
 $title = $langs->trans('RegulatoryControlSchedule'); llxHeader('', $title, '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-list bodyforlist');
 $param = ''; if ($startDate) $param .= '&date_startday='.dol_print_date($startDate, '%d').'&date_startmonth='.dol_print_date($startDate, '%m').'&date_startyear='.dol_print_date($startDate, '%Y'); if ($endDate) $param .= '&date_endday='.dol_print_date($endDate, '%d').'&date_endmonth='.dol_print_date($endDate, '%m').'&date_endyear='.dol_print_date($endDate, '%Y');
 foreach (array('search_vehicle' => $searchVehicle, 'search_asset_type' => $searchAssetType, 'search_profile' => $searchProfile, 'search_control_type' => $searchControlType, 'search_status' => $searchStatus, 'search_provider' => $searchProvider, 'search_territory' => $searchTerritory) as $name => $value) if ($value !== '' && $value !== 0) $param .= '&'.$name.'='.urlencode((string) $value); foreach ($searchEntities as $entityId) $param .= '&search_entity[]='.((int) $entityId);
-print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="formfilteraction" value="list"><input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'">';
+print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="formfilteraction" id="formfilteraction" value="list"><input type="hidden" name="action" value="list"><input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'"><input type="hidden" name="page" value="'.((int) $page).'">';
 $newButton = dolGetButtonTitle($langs->trans('NewRegulatoryControl'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create', '', $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write')); print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'calendar-check', 0, $newButton, '', $limit, 0, 0, 1);
-$selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $_SERVER['PHP_SELF'], $conf->main_checkbox_left_column);
+$varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
+$selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, $conf->main_checkbox_left_column);
 print '<div class="div-table-responsive"><table class="tagtable nobottomiftotal noborder liste"><tr class="liste_titre_filter">';
-if ($conf->main_checkbox_left_column) print '<td class="liste_titre center actioncolumn">'.$form->showFilterButtons('left').'</td>';
+if ($conf->main_checkbox_left_column) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons('left').'</td>';
 if (!empty($arrayfields['req.retained_due_date']['checked'])) print '<td>'.$form->selectDate($startDate ?: -1, 'date_start', 0, 0, 1, '', 1, 1).' '.$form->selectDate($endDate ?: -1, 'date_end', 0, 0, 1, '', 1, 1).'</td>';
 if (!empty($arrayfields['v.ref']['checked'])) print '<td>'.$form->selectarray('search_vehicle', $vehicleOptions, $searchVehicle, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth200', 1).'</td>';
 if (!empty($arrayfields['at.label']['checked'])) print '<td>'.$form->selectarray('search_asset_type', $assetTypeOptions, $searchAssetType, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth150', 1).'</td>';
@@ -79,17 +81,17 @@ if (!empty($arrayfields['req.status']['checked'])) print '<td class="center">'.$
 if (!empty($arrayfields['s.nom']['checked'])) print '<td>'.$form->select_company($searchProvider ?: '', 'search_provider', '', '-1', 0, 0, array(), 0, 'maxwidth150').'</td>';
 if (!empty($arrayfields['v.regulatory_territory']['checked'])) print '<td>'.$form->selectarray('search_territory', $territoryOptions, $searchTerritory, 1, 0, 0, '', 1, 0, 0, '', 'maxwidth150', 1).'</td>';
 if ($showEntityColumn && !empty($arrayfields['req.entity']['checked'])) print '<td>'.$form->multiselectarray('search_entity', $entityOptions, $searchEntities, 0, 0, 'maxwidth150', 1).'</td>';
-if (!$conf->main_checkbox_left_column) print '<td class="liste_titre center actioncolumn">'.$form->showFilterButtons().'</td>';
+if (!$conf->main_checkbox_left_column) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons().'</td>';
 print '</tr><tr class="liste_titre">';
-if ($conf->main_checkbox_left_column) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center actioncolumn ');
+if ($conf->main_checkbox_left_column) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch ');
 foreach ($arrayfields as $field => $definition) if (!empty($definition['checked'])) print getTitleFieldOfList($definition['label'], 0, $_SERVER['PHP_SELF'], $field === 'profile' ? '' : $field, '', $param, in_array($field, array('req.status', 'req.entity'), true) ? 'class="center"' : '', $sortfield, $sortorder);
-if (!$conf->main_checkbox_left_column) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center actioncolumn ');
+if (!$conf->main_checkbox_left_column) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch ');
 print '</tr>';
 $i = 0; while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) { $vehicle = new LmdbVehicle($db); $vehicle->id = (int) $row->fk_vehicle; $vehicle->ref = (string) $row->vehicle_ref; $vehicle->registration_number = (string) $row->registration_number; $vehicle->label = (string) $row->vehicle_label; $provider = new Societe($db); $provider->id = (int) $row->fk_soc_provider; $provider->name = (string) $row->provider_name; $statusTypes = array('incomplete' => 'status3', 'up_to_date' => 'status4', 'due_soon' => 'status1', 'overdue' => 'status6', 'recheck_required' => 'status6', 'non_compliant_blocking' => 'status8', 'derogation_active' => 'status1');
 	$profileLabels = array(); foreach (array_filter(explode('||', (string) $row->profile_labels)) as $profileLabel) $profileLabels[] = $langs->trans($profileLabel);
 	$recordUrl = dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&vehicle_id='.((int) $row->fk_vehicle).'&requirement_id='.((int) $row->rowid);
 	$recordButton = '<a class="button small" href="'.$recordUrl.'">'.$langs->trans('RecordControl').'</a>';
-	print '<tr class="oddeven">'; if ($conf->main_checkbox_left_column) print '<td class="center actioncolumn">'.$recordButton.'</td>';
+	print '<tr class="oddeven">'; if ($conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn">'.$recordButton.'</td>';
 	if (!empty($arrayfields['req.retained_due_date']['checked'])) print '<td>'.(!empty($row->retained_due_date) ? dol_print_date($db->jdate($row->retained_due_date), 'day') : '<span class="opacitymedium">'.$langs->trans('NotCalculated').'</span>').'</td>';
 	if (!empty($arrayfields['v.ref']['checked'])) print '<td>'.$vehicle->getNomUrl(1).'</td>';
 	if (!empty($arrayfields['at.label']['checked'])) print '<td>'.dol_escape_htmltag(!empty($row->asset_type_label) ? $langs->trans((string) $row->asset_type_label) : '').'</td>';
@@ -99,6 +101,6 @@ $i = 0; while ($i < min($num, $limit) && is_object($row = $db->fetch_object($res
 	if (!empty($arrayfields['s.nom']['checked'])) print '<td>'.(!empty($provider->id) ? $provider->getNomUrl(1) : '').'</td>';
 	if (!empty($arrayfields['v.regulatory_territory']['checked'])) print '<td>'.dol_escape_htmltag($territoryOptions[$row->regulatory_territory] ?? (string) $row->regulatory_territory).'</td>';
 	if ($showEntityColumn && !empty($arrayfields['req.entity']['checked'])) print '<td class="center">'.lmdbVehicleManagementEntityBadge((int) $row->entity, $entityOptions).'</td>';
-	if (!$conf->main_checkbox_left_column) print '<td class="right actioncolumn">'.$recordButton.'</td>'; print '</tr>'; $i++; }
+	if (!$conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn">'.$recordButton.'</td>'; print '</tr>'; $i++; }
 $visibleColumns = 1; foreach ($arrayfields as $definition) if (!empty($definition['checked'])) $visibleColumns++;
 if ($i === 0) print '<tr class="oddeven"><td colspan="'.$visibleColumns.'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>'; print '</table></div></form>'; $db->free($resql); llxFooter(); $db->close();

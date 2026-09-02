@@ -24,6 +24,7 @@ $catalog = regulatorySource('class/lmdbvehicleregulatorycatalog.class.php');
 $cron = regulatorySource('class/lmdbvehicleregulatorycron.class.php');
 $card = regulatorySource('regulatorycontrol_card.php');
 $document = regulatorySource('regulatorycontrol_document.php');
+$controlList = regulatorySource('regulatorycontrol_list.php');
 $schedule = regulatorySource('regulatorycontrol_schedule.php');
 $vehicleRegulatory = regulatorySource('vehicle_regulatory.php');
 $adminRegulatory = regulatorySource('admin/regulatory.php');
@@ -72,7 +73,16 @@ $checks = array(
 	'card_has_csrf_token' => strpos($card, 'newToken()') !== false,
 	'document_uses_multicompany_output' => strpos($document, 'getMultidirOutput(') !== false,
 	'schedule_has_sql_filters' => strpos($schedule, 'search_status') !== false && strpos($schedule, 'sortfield') !== false && strpos($schedule, 'print_barre_liste') !== false,
-	'schedule_has_native_column_selector' => strpos($schedule, 'actions_changeselectedfields') !== false && strpos($schedule, 'multiSelectArrayWithCheckbox') !== false,
+	'regulatory_lists_have_native_column_selectors' => count(array_filter(array($controlList, $schedule), static function ($source) {
+		return strpos($source, 'actions_changeselectedfields.inc.php') !== false
+			&& strpos($source, "\$contextpage = GETPOST('contextpage', 'aZ09');") !== false
+			&& strpos($source, "\$varpage = empty(\$contextpage) ? \$_SERVER['PHP_SELF'] : \$contextpage;") !== false
+			&& strpos($source, "multiSelectArrayWithCheckbox('selectedfields', \$arrayfields, \$varpage, \$conf->main_checkbox_left_column)") !== false
+			&& strpos($source, 'name="formfilteraction" id="formfilteraction" value="list"') !== false
+			&& strpos($source, "if (\$conf->main_checkbox_left_column) print '<td class=\"liste_titre center maxwidthsearch actioncolumn\">'.\$form->showFilterButtons('left')") !== false
+			&& strpos($source, "if (!\$conf->main_checkbox_left_column) print '<td class=\"liste_titre center maxwidthsearch actioncolumn\">'.\$form->showFilterButtons()") !== false
+			&& substr_count($source, 'getTitleFieldOfList($selectedfields') === 2;
+	})) === 2,
 	'shared_control_type_filter_uses_stable_code' => strpos($schedule, 'rule_ct.code = selected_ct.code') !== false,
 	'vehicle_tab_confirms_profiles' => strpos($vehicleRegulatory, "action\" value=\"save_profiles") !== false,
 	'qualification_status_uses_native_badge' => strpos($vehicleRegulatory, "dolGetStatus(\$langs->trans('QualificationToConfirm'), '', '', 'status3', 5)") !== false && strpos($vehicleRegulatory, "dolGetStatus(\$langs->trans('QualificationConfirmed'), '', '', 'status4', 5)") !== false,
