@@ -109,5 +109,5 @@ SELECT 'lmdbvehicleregulatorycontrol@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEM
 WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_REGULATORY_CONTROL_DELETE');
 
 INSERT INTO llx_c_actioncomm (code, type, libelle, module, active, color, picto, position)
-SELECT 'AC_LMDB_REGULATORY_DUE', 'systemauto', 'RegulatoryControlDueAgendaType', 'lmdbvehiclemanagement', 1, '#bc9526', 'clipboard-check', 1250
-WHERE NOT EXISTS (SELECT 1 FROM llx_c_actioncomm WHERE code = 'AC_LMDB_REGULATORY_DUE');
+SELECT 'AC_LMDB_REGDUE', 'systemauto', 'RegulatoryControlDueAgendaType', 'lmdbvehiclemanagement', 1, '#bc9526', 'clipboard-check', 1250
+WHERE NOT EXISTS (SELECT 1 FROM llx_c_actioncomm WHERE code = 'AC_LMDB_REGDUE');

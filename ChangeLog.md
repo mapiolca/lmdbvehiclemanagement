@@ -1,5 +1,13 @@
 # Historique des versions
 
+## `0.14.1` — 2026-09-02
+
+- Remplacement de la qualification manuelle par un questionnaire guidé et historisé, ajout des profils taxi/VTC, sanitaire, auto-école, dépannage et transport public particulier, et arbitrage déterministe des règles par groupe d’obligation.
+- Correction de l’applicabilité de la pollution N1, du régime transitoire de la catégorie L, des délais de contre-visite et des intervalles VGP, avec sources officielles, dates d’effet et dates de révision renseignées.
+- Sécurisation transactionnelle de la qualification, migration conservatrice des anciens profils `SPECIAL_PUBLIC`, archivage limité aux contrôles annulés ou remplacés et utilisation directe de la méthode native `$user->hasRight()` pour tous les droits fonctionnels.
+- Stabilisation des événements d’échéance Agenda, des rappels automatiques et forcés, des destinataires et sujets UTF-8, des exports enrichis et du sélecteur de colonnes propre à l’échéancier.
+- Extension des contrôles contractuels sur les règles, traductions, droits, interfaces, Agenda, cron, migration et compatibilité Dolibarr v20/PHP 8.0 ; utilisation des modales natives Dolibarr pour créer les surcharges et règles personnalisées, correction du libellé natif « Travaux planifiés » dans les réglages d’assurance et déclaration explicite des propriétés de retour de hooks sous PHP 8.2+, sans réécriture des événements ou contrôles validés existants.
+
 ## `0.14.0` — 2026-09-02
 
 - Extension du parc aux véhicules, utilitaires et engins, avec immatriculation facultative, référence de repli `MATyyMM-NNNN` et caractéristiques de qualification réglementaire.

@@ -1,6 +1,6 @@
 # Gestion des véhicules et engins pour Dolibarr
 
-`lmdbvehiclemanagement` fournit un parc multientité intégré à Dolibarr. La version `0.14.0` couvre les véhicules routiers, utilitaires et engins, leurs affectations, kilométrages, consommations, assurances et dossiers documentaires de contrôles réglementaires.
+`lmdbvehiclemanagement` fournit un parc multientité intégré à Dolibarr. La version `0.14.1` couvre les véhicules routiers, utilitaires et engins, leurs affectations, kilométrages, consommations, assurances et dossiers documentaires de contrôles réglementaires.
 
 ## Compatibilité
 
@@ -11,16 +11,16 @@
 - Module Ressources facultatif pour la liaison `fk_resource`
 - Modules Agenda et Travaux planifiés recommandés pour les échéances et relances automatiques
 
-## Fonctionnalités de la version 0.14.0
+## Fonctionnalités de la version 0.14.1
 
 - fiche véhicule ou engin avec immatriculation facultative et cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
 - type de matériel, catégorie européenne, genre national, PTAC/PTRA, places, territoire réglementaire, date de construction, première immatriculation et mise en service ;
-- profils réglementaires cumulables, proposés depuis les caractéristiques puis confirmés par l’utilisateur sans échéance arbitraire lorsque la qualification est incomplète ;
-- catalogue français versionné couvrant contrôles routiers, pollution N1, poids lourds, transport en commun, catégorie L, VGP à 3/6/12 mois, mise ou remise en service, tachygraphe, ADR et ATP ; règles natives en lecture seule, surcharges d’entité motivées et historisées, et règles personnalisées périodiques ou fondées sur l’expiration d’un justificatif ;
+- questionnaire guidé de qualification réglementaire, avec profils routiers déduits des caractéristiques, réponses spécialisées historisées par véhicule et profils personnalisés ajoutables manuellement ; aucune échéance n’est inventée tant qu’une réponse ou une date indispensable manque ;
+- catalogue français versionné couvrant contrôles routiers, pollution N1 et ses exemptions, poids lourds, transport en commun, catégorie L et son régime transitoire, taxi/VTC, sanitaire, auto-école, dépannage, transport public particulier, VGP à 3/6/12 mois, mise ou remise en service, tachygraphe, ADR et ATP ; les groupes d’obligations et priorités empêchent les règles concurrentes ;
 - objet documentaire `Contrôle réglementaire` numéroté `CTLyyMM-NNNN`, avec organisme lié à un tiers, résultat simplifié, dates officielle/calculée/retenue, justificatif obligatoire avant validation et immutabilité du contrôle validé ;
-- annulation motivée et contrôle de remplacement, contre-visite distincte, dérogation temporaire motivée, blocage configurable des nouvelles affectations et mises en service ;
+- annulation motivée et contrôle de remplacement, archivage manuel limité aux contrôles annulés ou remplacés, contre-visite distincte, dérogation temporaire motivée, blocage configurable des nouvelles affectations et mises en service ;
 - échéancier global, synthèse par matériel, listes Dolibarr natives, export des contrôles, registre de sécurité et import de brouillons ;
-- événement Agenda planifié unique par exigence et travail planifié quotidien idempotent pour les recalculs et rappels par modèle d’email Dolibarr, avec option de rappel journalier après l’échéance, objet UTF-8 et résolution traçable des destinataires ; les lancements manuels depuis les Travaux planifiés rejouent les emails dus sans modifier la limite des exécutions automatiques ;
+- événement Agenda planifié unique par exigence, avec code compatible Dolibarr v20, et travail planifié quotidien idempotent pour les recalculs et rappels par modèle d’email Dolibarr, avec option de rappel journalier après l’échéance, sujet UTF-8 et résolution traçable des adresses réelles ; les lancements manuels depuis les Travaux planifiés forcent explicitement les emails dus sans modifier la limite quotidienne des exécutions automatiques ;
 - énergie sélectionnée dans un Select2 alimenté par un dictionnaire configurable, initialisé avec la [nomenclature réglementaire française P.3](https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000049860492/2026-07-27) ;
 - plusieurs conducteurs simultanés, avec une seule affectation principale sur une période donnée ;
 - relevés kilométriques contrôlés, avec correction et remplacement de compteur explicitement qualifiés, et différence calculée entre deux relevés successifs ;

@@ -86,7 +86,7 @@ foreach (array('search_ref' => $searchRef, 'search_vehicle' => $searchVehicle, '
 if ($searchStatus >= 0) $param .= '&search_status='.$searchStatus;
 foreach ($searchEntities as $entityId) $param .= '&search_entity[]='.((int) $entityId);
 print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="formfilteraction" id="formfilteraction" value="list"><input type="hidden" name="action" value="list"><input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'"><input type="hidden" name="page" value="'.$page.'">';
-$newButton = dolGetButtonTitle($langs->trans('NewRegulatoryControl'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create', '', $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write'));
+$newButton = dolGetButtonTitle($langs->trans('NewRegulatoryControl'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&token='.newToken(), '', $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write'));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'clipboard-check', 0, $newButton, '', $limit, 0, 0, 1);
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, $conf->main_checkbox_left_column);

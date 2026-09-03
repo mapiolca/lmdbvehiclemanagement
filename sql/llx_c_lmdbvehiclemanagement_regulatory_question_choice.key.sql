@@ -1,0 +1,4 @@
+ALTER TABLE llx_c_lmdbvehiclemanagement_regulatory_question_choice ADD UNIQUE INDEX uk_lmdbvm_reg_question_choice (entity, fk_question, code);
+ALTER TABLE llx_c_lmdbvehiclemanagement_regulatory_question_choice ADD INDEX idx_lmdbvm_reg_question_choice_entity (entity);
+ALTER TABLE llx_c_lmdbvehiclemanagement_regulatory_question_choice ADD INDEX idx_lmdbvm_reg_question_choice_question (fk_question);
+ALTER TABLE llx_c_lmdbvehiclemanagement_regulatory_question_choice ADD INDEX idx_lmdbvm_reg_question_choice_profile (profile_code);
