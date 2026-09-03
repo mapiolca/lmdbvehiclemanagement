@@ -1,6 +1,26 @@
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 /*
+ * The native column selector is rendered inside the responsive list wrapper.
+ * Keep its native markup and styling while allowing the open menu to overlay
+ * the page instead of being clipped by the table's horizontal overflow.
+ */
+.mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .dropdown dd ul.lmdb-column-selector-overlay {
+	position: fixed;
+	z-index: 10000;
+}
+
+/*
+ * The schedule commonly exceeds the viewport width. While its native column
+ * selector is open, release the responsive wrapper overflow so a short table
+ * cannot create a nested vertical scroll area around the menu. Horizontal
+ * scrolling is restored as soon as Dolibarr closes the selector.
+ */
+.mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .div-table-responsive.lmdb-column-selector-wrapper-open {
+	overflow: visible !important;
+}
+
+/*
  * Keep Dolibarr's native form components while making object forms usable on
  * touch screens. A 16px editable control prevents iOS from zooming the page on
  * focus without disabling the user's ability to zoom.

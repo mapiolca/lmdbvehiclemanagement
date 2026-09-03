@@ -94,7 +94,7 @@ function lmdbInsuranceAdminOptions($db, $sql, $idField, $labelFields)
 	return $options;
 }
 
-$userOptions = lmdbInsuranceAdminOptions($db, 'SELECT rowid, firstname, lastname, login FROM '.MAIN_DB_PREFIX.'user WHERE statut = 1 AND entity IN ('.getEntity('user').') ORDER BY lastname, firstname, login', 'rowid', array('firstname', 'lastname', 'login'));
+$userOptions = lmdbInsuranceAdminOptions($db, 'SELECT rowid, firstname, lastname, login, email FROM '.MAIN_DB_PREFIX.'user WHERE statut = 1 AND email IS NOT NULL AND email <> \'\' AND entity IN ('.getEntity('user').') ORDER BY lastname, firstname, login', 'rowid', array('firstname', 'lastname', 'login', 'email'));
 $groupOptions = lmdbInsuranceAdminOptions($db, 'SELECT rowid, nom FROM '.MAIN_DB_PREFIX.'usergroup WHERE entity IN ('.getEntity('usergroup').') ORDER BY nom', 'rowid', array('nom'));
 $requestTemplateOptions = lmdbInsuranceAdminOptions($db, 'SELECT rowid, label FROM '.MAIN_DB_PREFIX."c_email_templates WHERE type_template = '".$db->escape(LmdbVehicleInsuranceConfig::REQUEST_TEMPLATE_TYPE)."' AND active = 1 AND entity IN (0, ".$entity.') ORDER BY position, label', 'rowid', array('label'));
 $reviewTemplateOptions = lmdbInsuranceAdminOptions($db, 'SELECT rowid, label FROM '.MAIN_DB_PREFIX."c_email_templates WHERE type_template = '".$db->escape(LmdbVehicleInsuranceConfig::REVIEW_TEMPLATE_TYPE)."' AND active = 1 AND entity IN (0, ".$entity.') ORDER BY position, label', 'rowid', array('label'));
@@ -130,7 +130,7 @@ print '<tr class="oddeven"><td>'.$langs->trans('InsuranceOverdueRepeat').'</td><
 print '<tr class="oddeven"><td>'.$langs->trans('InsuranceReviewRepeat').'</td><td>'.$form->selectarray('review_repeat', array(1 => '1', 3 => '3', 7 => '7', 14 => '14'), getDolGlobalInt(LmdbVehicleInsuranceConfig::CONST_REVIEW_REPEAT, 3), 0, 0, 0, '', 1).' '.$langs->trans('days').'</td></tr>';
 print '<tr class="oddeven"><td>'.$langs->trans('InsuranceRequestEmailTemplate').'</td><td>'.$form->selectarray('request_template', $requestTemplateOptions, getDolGlobalInt(LmdbVehicleInsuranceConfig::CONST_REQUEST_TEMPLATE), 1, 0, 0, '', 1, 0, 0, '', 'minwidth500', 1).'</td></tr>';
 print '<tr class="oddeven"><td>'.$langs->trans('InsuranceReviewEmailTemplate').'</td><td>'.$form->selectarray('review_template', $reviewTemplateOptions, getDolGlobalInt(LmdbVehicleInsuranceConfig::CONST_REVIEW_TEMPLATE), 1, 0, 0, '', 1, 0, 0, '', 'minwidth500', 1).'</td></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('ScheduledJobs').'</td><td>';
+print '<tr class="oddeven"><td>'.$langs->trans('CronList').'</td><td>';
 if (!isModEnabled('cron')) {
 	print dolGetStatus($langs->trans('Unavailable'), '', '', 'status6', 5).' — '.$langs->trans('RequiresCronModule');
 } elseif (is_array($cronStatus)) {

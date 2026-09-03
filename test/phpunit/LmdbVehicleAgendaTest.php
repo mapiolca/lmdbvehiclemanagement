@@ -18,13 +18,13 @@ final class LmdbVehicleAgendaTest extends TestCase
 		$this->moduleRoot = dirname(__DIR__, 2);
 	}
 
-	public function testCrudMatrixContainsSevenObjectsAndTwentyOneTriggers(): void
+	public function testCrudMatrixContainsEightObjectsAndTwentyFourTriggers(): void
 	{
 		$objects = LmdbVehicleAgenda::getObjectDefinitions();
 		$triggers = LmdbVehicleAgenda::getTriggerDefinitions();
 
-		self::assertCount(7, $objects);
-		self::assertCount(21, $triggers);
+		self::assertCount(8, $objects);
+		self::assertCount(24, $triggers);
 		foreach ($objects as $object) {
 			foreach (array('CREATE', 'UPDATE', 'DELETE') as $operation) {
 				$code = $object['trigger_prefix'].'_'.$operation;
@@ -67,6 +67,7 @@ final class LmdbVehicleAgendaTest extends TestCase
 			'lmdbvehicleevent' => array('AgendaVehicleEventCreated', 'AgendaVehicleEventUpdated', 'AgendaVehicleEventDeleted'),
 			'lmdbinsurancecontract' => array('AgendaInsuranceContractCreated', 'AgendaInsuranceContractUpdated', 'AgendaInsuranceContractDeleted'),
 			'lmdbinsurancecertificate' => array('AgendaInsuranceCertificateCreated', 'AgendaInsuranceCertificateUpdated', 'AgendaInsuranceCertificateDeleted'),
+			'lmdbvehicleregulatorycontrol' => array('AgendaRegulatoryControlCreated', 'AgendaRegulatoryControlUpdated', 'AgendaRegulatoryControlDeleted'),
 		);
 
 		foreach ($expected as $element => $keys) {

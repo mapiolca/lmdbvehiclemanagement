@@ -48,6 +48,17 @@ function lmdbVehiclePopulateFromPost($vehicle)
 	$vehicle->registration_number = strtoupper(trim(GETPOST('registration_number', 'alphanohtml')));
 	$vehicle->vin = trim(GETPOST('vin', 'alphanohtml')) ?: null;
 	$vehicle->label = trim(GETPOST('label', 'alphanohtml'));
+	$assetTypeId = GETPOSTINT('fk_asset_type');
+	$vehicle->fk_asset_type = $assetTypeId > 0 ? $assetTypeId : null;
+	$vehicle->eu_category = trim(GETPOST('eu_category', 'alphanohtml')) ?: null;
+	$vehicle->national_genre = trim(GETPOST('national_genre', 'alphanohtml')) ?: null;
+	$gvw = trim(GETPOST('gvw_kg', 'alphanohtml'));
+	$vehicle->gvw_kg = $gvw === '' ? null : (float) price2num($gvw);
+	$gcw = trim(GETPOST('gcw_kg', 'alphanohtml'));
+	$vehicle->gcw_kg = $gcw === '' ? null : (float) price2num($gcw);
+	$seats = GETPOST('seats', 'alphanohtml');
+	$vehicle->seats = trim($seats) === '' ? null : GETPOSTINT('seats');
+	$vehicle->regulatory_territory = GETPOST('regulatory_territory', 'aZ09') ?: 'FR_METRO';
 	$vehicle->brand = trim(GETPOST('brand', 'alphanohtml')) ?: null;
 	$vehicle->model = trim(GETPOST('model', 'alphanohtml')) ?: null;
 	$vehicle->vehicle_version = trim(GETPOST('vehicle_version', 'alphanohtml')) ?: null;
@@ -55,6 +66,7 @@ function lmdbVehiclePopulateFromPost($vehicle)
 	$vehicle->fk_energy = $energyId > 0 ? $energyId : null;
 	$wltpRange = trim(GETPOST('wltp_range_km', 'alphanohtml'));
 	$vehicle->wltp_range_km = $wltpRange === '' ? null : (float) price2num($wltpRange);
+	$vehicle->construction_date = dol_mktime(12, 0, 0, GETPOSTINT('construction_datemonth'), GETPOSTINT('construction_dateday'), GETPOSTINT('construction_dateyear')) ?: null;
 	$vehicle->first_registration_date = dol_mktime(12, 0, 0, GETPOSTINT('first_registration_datemonth'), GETPOSTINT('first_registration_dateday'), GETPOSTINT('first_registration_dateyear')) ?: null;
 	$vehicle->commissioning_date = dol_mktime(12, 0, 0, GETPOSTINT('commissioning_datemonth'), GETPOSTINT('commissioning_dateday'), GETPOSTINT('commissioning_dateyear')) ?: null;
 	$vehicle->ownership_type = GETPOST('ownership_type', 'alpha') ?: null;
@@ -173,6 +185,12 @@ $formfile = new FormFile($db);
 $energyDictionary = new LmdbVehicleEnergy($db);
 $consumableDictionary = new LmdbVehicleConsumable($db);
 $capacityOptions = $consumableDictionary->getCapacityOptions();
+$assetTypeOptions = array();
+$resqlAssetTypes = $db->query('SELECT rowid, label FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_asset_type WHERE entity IN ('.getEntity('c_lmdbvehiclemanagement_asset_type').') AND active = 1 ORDER BY position, label');
+if ($resqlAssetTypes) {
+	while (is_object($assetTypeRow = $db->fetch_object($resqlAssetTypes))) $assetTypeOptions[(int) $assetTypeRow->rowid] = $langs->trans((string) $assetTypeRow->label);
+	$db->free($resqlAssetTypes);
+}
 $title = $id > 0 ? $object->ref : $langs->trans('NewVehicle');
 llxHeader('', $title, '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card');
 
@@ -188,8 +206,15 @@ if ($action === 'create' || $action === 'edit') {
 	print '<input type="hidden" name="action" value="'.($action === 'create' ? 'add' : 'update').'">';
 	if ($id > 0) print '<input type="hidden" name="id" value="'.$id.'">';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
-	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('RegistrationNumber').'</td><td><input class="flat minwidth200" name="registration_number" maxlength="32" value="'.dol_escape_htmltag($object->registration_number).'"></td></tr>';
-	print '<tr><td class="fieldrequired">'.$langs->trans('Label').'</td><td><input class="flat minwidth300" name="label" maxlength="255" value="'.dol_escape_htmltag($object->label).'"></td></tr>';
+	print '<tr><td class="titlefieldcreate">'.$langs->trans('RegistrationNumber').'</td><td><input class="flat minwidth200" name="registration_number" maxlength="32" value="'.dol_escape_htmltag((string) $object->registration_number).'"><span class="opacitymedium left">'.$langs->trans('RegistrationOptionalHelp').'</span></td></tr>';
+	print '<tr><td class="fieldrequired">'.$langs->trans('Label').'</td><td><input class="flat minwidth300" name="label" maxlength="255" value="'.dol_escape_htmltag($object->label).'" autofocus></td></tr>';
+	print '<tr><td>'.$langs->trans('AssetType').'</td><td>'.$form->selectarray('fk_asset_type', $assetTypeOptions, (int) $object->fk_asset_type, 1, 0, 0, '', 1, 0, 0, '', 'minwidth300', 1).'</td></tr>';
+	print '<tr><td>'.$langs->trans('EuropeanCategory').'</td><td><input class="flat minwidth100" name="eu_category" maxlength="16" value="'.dol_escape_htmltag((string) $object->eu_category).'"></td></tr>';
+	print '<tr><td>'.$langs->trans('NationalGenre').'</td><td><input class="flat minwidth200" name="national_genre" maxlength="32" value="'.dol_escape_htmltag((string) $object->national_genre).'"></td></tr>';
+	print '<tr><td>'.$langs->trans('GrossVehicleWeight').'</td><td><input class="flat width100" name="gvw_kg" value="'.dol_escape_htmltag($object->gvw_kg !== null ? price($object->gvw_kg) : '').'"> '.$langs->trans('UnitKg').'</td></tr>';
+	print '<tr><td>'.$langs->trans('GrossCombinationWeight').'</td><td><input class="flat width100" name="gcw_kg" value="'.dol_escape_htmltag($object->gcw_kg !== null ? price($object->gcw_kg) : '').'"> '.$langs->trans('UnitKg').'</td></tr>';
+	print '<tr><td>'.$langs->trans('NumberOfSeats').'</td><td><input class="flat width75" name="seats" inputmode="numeric" value="'.dol_escape_htmltag($object->seats !== null ? (string) $object->seats : '').'"></td></tr>';
+	print '<tr><td>'.$langs->trans('RegulatoryTerritory').'</td><td>'.$form->selectarray('regulatory_territory', $object->fields['regulatory_territory']['arrayofkeyval'], $object->regulatory_territory, 0, 0, 0, '', 1, 0, 0, '', 'minwidth300', 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('VIN').'</td><td><input class="flat minwidth300" name="vin" maxlength="64" value="'.dol_escape_htmltag((string) $object->vin).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('Brand').'</td><td><input class="flat minwidth200" name="brand" maxlength="128" value="'.dol_escape_htmltag((string) $object->brand).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('VehicleModel').'</td><td><input class="flat minwidth200" name="model" maxlength="128" value="'.dol_escape_htmltag((string) $object->model).'"></td></tr>';
@@ -205,6 +230,7 @@ if ($action === 'create' || $action === 'edit') {
 		print '<tr class="lmdb-capacity-row" data-energy-ids="'.dol_escape_htmltag(implode(',', $consumableOption['energy_ids'])).'"'.($isCompatible ? '' : ' style="display:none"').'>';
 		print '<td>'.dol_escape_htmltag($capacityLabel).'</td><td><input class="flat width100" name="capacity_'.((int) $consumableId).'" value="'.dol_escape_htmltag($value).'"'.($isCompatible ? '' : ' disabled').'> '.dol_escape_htmltag($consumableOption['unit']).'</td></tr>';
 	}
+	print '<tr><td>'.$langs->trans('ConstructionDate').'</td><td>'.$form->selectDate($object->construction_date ?: -1, 'construction_date', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('FirstRegistrationDate').'</td><td>'.$form->selectDate($object->first_registration_date ?: -1, 'first_registration_date', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('CommissioningDate').'</td><td>'.$form->selectDate($object->commissioning_date ?: -1, 'commissioning_date', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('OwnershipType').'</td><td>'.$form->selectarray('ownership_type', $object->fields['ownership_type']['arrayofkeyval'], $object->ownership_type, 1, 0, 0, '', 1, 0, 0, '', 'minwidth200', 1).'</td></tr>';
@@ -228,12 +254,21 @@ if ($action === 'create' || $action === 'edit') {
 
 	print '<div class="fichecenter"><div class="fichehalfleft"><div class="underbanner clearboth"></div><table class="border centpercent tableforfield">';
 	print '<tr><td class="titlefield">'.$langs->trans('RegistrationNumber').'</td><td>'.dol_escape_htmltag($object->registration_number).'</td></tr>';
+	print '<tr><td>'.$langs->trans('AssetType').'</td><td>'.(!empty($object->fk_asset_type) && isset($assetTypeOptions[(int) $object->fk_asset_type]) ? dol_escape_htmltag($assetTypeOptions[(int) $object->fk_asset_type]) : '').'</td></tr>';
+	print '<tr><td>'.$langs->trans('EuropeanCategory').'</td><td>'.dol_escape_htmltag((string) $object->eu_category).'</td></tr>';
+	print '<tr><td>'.$langs->trans('NationalGenre').'</td><td>'.dol_escape_htmltag((string) $object->national_genre).'</td></tr>';
+	print '<tr><td>'.$langs->trans('GrossVehicleWeight').'</td><td>'.($object->gvw_kg !== null ? price($object->gvw_kg).' '.$langs->trans('UnitKg') : '').'</td></tr>';
+	print '<tr><td>'.$langs->trans('GrossCombinationWeight').'</td><td>'.($object->gcw_kg !== null ? price($object->gcw_kg).' '.$langs->trans('UnitKg') : '').'</td></tr>';
+	print '<tr><td>'.$langs->trans('NumberOfSeats').'</td><td>'.($object->seats !== null ? ((int) $object->seats) : '').'</td></tr>';
+	$territoryOptions = $object->fields['regulatory_territory']['arrayofkeyval'];
+	print '<tr><td>'.$langs->trans('RegulatoryTerritory').'</td><td>'.$langs->trans(isset($territoryOptions[$object->regulatory_territory]) ? $territoryOptions[$object->regulatory_territory] : 'Unknown').'</td></tr>';
 	print '<tr><td>'.$langs->trans('VIN').'</td><td>'.dol_escape_htmltag((string) $object->vin).'</td></tr>';
 	print '<tr><td>'.$langs->trans('Brand').'</td><td>'.dol_escape_htmltag((string) $object->brand).'</td></tr>';
 	print '<tr><td>'.$langs->trans('VehicleModel').'</td><td>'.dol_escape_htmltag((string) $object->model).'</td></tr>';
 	print '<tr><td>'.$langs->trans('VehicleVersion').'</td><td>'.dol_escape_htmltag((string) $object->vehicle_version).'</td></tr>';
 	print '<tr><td>'.$langs->trans('Energy').'</td><td>'.dol_escape_htmltag($energyDictionary->getDisplayLabel((int) $object->fk_energy)).'</td></tr>';
 	print '<tr><td>'.$langs->trans('WltpRangeKm').'</td><td>'.($object->wltp_range_km !== null ? price($object->wltp_range_km).' '.$langs->trans('UnitKm') : '').'</td></tr>';
+	print '<tr><td>'.$langs->trans('ConstructionDate').'</td><td>'.($object->construction_date ? dol_print_date($object->construction_date, 'day') : '').'</td></tr>';
 	$storedCapacities = $object->fetchCapacities();
 	$compatibleCapacityOptions = !empty($object->fk_energy) ? $consumableDictionary->getCapacityOptions((int) $object->fk_energy) : array();
 	foreach ($compatibleCapacityOptions as $consumableId => $consumableOption) {
@@ -280,7 +315,7 @@ if ($action === 'create' || $action === 'edit') {
 	} elseif ($permissionToManageService && (int) $object->status === LmdbVehicle::STATUS_IN_SERVICE) {
 		print dolGetButtonAction('', $langs->trans('PutOutOfService'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=set_out_of_service&token='.newToken());
 	}
-	if ($user->hasRight('lmdbvehiclemanagement', 'event', 'write')) {
+if ($user->hasRight('lmdbvehiclemanagement', 'event', 'write')) {
 		print dolGetButtonAction('', $langs->trans('NewVehicleEvent'), 'default', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create&vehicle_id='.$id);
 	}
 	if ($permissionToDelete) print dolGetButtonAction('', $langs->trans('Delete'), 'delete', $_SERVER['PHP_SELF'].'?id='.$id.'&action=delete&token='.newToken());

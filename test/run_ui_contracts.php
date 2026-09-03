@@ -31,9 +31,11 @@ $insuranceLibrary = readModuleSource('lib/lmdbvehicleinsurance.lib.php');
 $insuranceCard = readModuleSource('insurancecontract_card.php');
 $insuranceList = readModuleSource('insurancecontract_list.php');
 $insuranceContractClass = readModuleSource('class/lmdbvehicleinsurancecontract.class.php');
+$insuranceConfig = readModuleSource('class/lmdbvehicleinsuranceconfig.class.php');
 $baseObjectClass = readModuleSource('class/lmdbvehiclemanagementobject.class.php');
 $insuranceCertificateClass = readModuleSource('class/lmdbvehicleinsurancecertificate.class.php');
 $insuranceAdmin = readModuleSource('admin/insurance.php');
+$regulatoryAdmin = readModuleSource('admin/regulatory.php');
 $descriptor = readModuleSource('core/modules/modLmdbVehicleManagement.class.php');
 $actionsHooks = readModuleSource('class/actions_lmdbvehiclemanagement.class.php');
 $insuranceCron = readModuleSource('class/lmdbvehicleinsurancecron.class.php');
@@ -58,6 +60,7 @@ $consumableClass = readModuleSource('class/lmdbvehicleconsumable.class.php');
 $consumptionCard = readModuleSource('consumption_card.php');
 $consumptionList = readModuleSource('consumption_list.php');
 $consumptionIndex = readModuleSource('consumption_index.php');
+$regulatorySchedule = readModuleSource('regulatorycontrol_schedule.php');
 $vehicleConsumption = readModuleSource('vehicle_consumption.php');
 $vehicleHistory = readModuleSource('vehicle_history.php');
 $vehicleHistoryClass = readModuleSource('class/lmdbvehiclehistory.class.php');
@@ -112,7 +115,7 @@ $checks['card_banners_hide_environment_without_sharing'] = substr_count($library
 $checks['registration_numbering_model_is_native'] = strpos($vehicleRegistrationNumbering, 'extends ModeleNumRefLmdbVehicle') !== false
 	&& strpos($vehicleRegistrationNumbering, 'normalizeRegistrationNumber') !== false;
 $checks['vehicle_ref_is_synchronized_on_create_and_update'] = substr_count($vehicleClass, 'usesRegistrationAsReference()') >= 2
-	&& strpos($vehicleClass, '$this->ref = $this->registration_number;') !== false;
+	&& strpos($vehicleClass, '$this->ref = (string) $this->registration_number;') !== false;
 $checks['vehicle_reference_migration_is_transactional'] = strpos($vehicleReferenceMigration, '$this->db->begin();') !== false
 	&& strpos($vehicleReferenceMigration, '$this->db->rollback();') !== false
 	&& strpos($vehicleReferenceMigration, 'rollbackFilesystem()') !== false;
@@ -158,11 +161,41 @@ $checks['insurance_mutations_use_csrf_tokens'] = substr_count($insuranceCertific
 $checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')") !== false
 	&& strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'upload')") !== false
 	&& strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'validate')") !== false
-	&& strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'delete')") !== false;
+	&& strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'delete')") !== false
+	&& strpos($library, 'function lmdbVehicleManagementCanDo(') === false;
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
+$checks['insurance_admin_uses_native_scheduled_jobs_translation'] = strpos($insuranceAdmin, "'cron', 'lmdbvehiclemanagement@lmdbvehiclemanagement'") !== false
+	&& strpos($insuranceAdmin, "trans('CronList')") !== false
+	&& strpos($insuranceAdmin, "trans('ScheduledJobs')") === false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
-$checks['module_version_is_0133'] = strpos($descriptor, "\$this->version = '0.13.3';") !== false;
+$checks['manual_scheduled_job_run_forces_insurance_reminders'] = strpos($insuranceCron, 'public function sendCertificateReminders($force = 0)') !== false
+	&& strpos($insuranceCron, "GETPOST('action', 'aZ09') === 'confirm_execute'") !== false
+	&& strpos($insuranceCron, "GETPOST('confirm', 'alpha') === 'yes'") !== false
+	&& strpos($insuranceCron, "in_array('--force', \$argv, true)") !== false
+	&& strpos($insuranceCron, "':forced:'.\$forcedRunKey") !== false;
+$checks['insurance_recipient_address_and_subject_are_preserved'] = strpos($insuranceAdmin, "firstname, lastname, login, email") !== false
+	&& strpos($insuranceConfig, "ORDER BY FIELD(rowid, '.implode(',', \$userIds).')'") !== false
+	&& strpos($insuranceConfig, '!isValidEmail($email)') !== false
+	&& strpos($insuranceConfig, 'if (isset($recipients[$emailKey])) continue;') !== false
+	&& strpos($insuranceCron, "html_entity_decode(strtr(\$template['subject'], \$replacements), ENT_QUOTES | ENT_HTML5, 'UTF-8')") !== false
+	&& strpos($descriptor, "transnoentitiesnoconv('InsuranceRequestEmailSubject')") !== false
+	&& strpos($descriptor, "transnoentitiesnoconv('InsuranceReviewEmailSubject')") !== false;
+$checks['module_version_is_0141'] = strpos($descriptor, "\$this->version = '0.14.1';") !== false;
+$checks['hook_class_declares_php82_warnings_property'] = strpos($actionsHooks, 'public $warnings = array();') !== false;
+$checks['regulatory_rule_creation_uses_native_modals'] = substr_count($regulatoryAdmin, '$form->formconfirm(') === 2
+	&& strpos($regulatoryAdmin, "\$overrideButtonId = 'action-create-regulatory-rule-override';") !== false
+	&& strpos($regulatoryAdmin, "\$customRuleButtonId = 'action-create-custom-regulatory-rule';") !== false
+	&& substr_count($regulatoryAdmin, "0, 'Create', 'Cancel'") === 2
+	&& strpos($regulatoryAdmin, 'name="action" value="create_override"') === false
+	&& strpos($regulatoryAdmin, 'name="action" value="create_custom_rule"') === false;
+$checks['regulatory_native_modals_keep_native_fields_and_fallback'] = strpos($regulatoryAdmin, "\$form->selectDate(\$overrideEffectiveFrom ?: -1") !== false
+	&& strpos($regulatoryAdmin, "\$form->selectDate(\$customEffectiveFrom ?: -1") !== false
+	&& strpos($regulatoryAdmin, "\$form->multiselectarray('custom_profile_ids'") !== false
+	&& strpos($regulatoryAdmin, "explode(',', \$submittedProfileIds)") !== false
+	&& strpos($regulatoryAdmin, "empty(\$conf->dol_use_jmobile)") !== false
+	&& strpos($regulatoryAdmin, "'?action=show_override&token='.newToken()") !== false
+	&& strpos($regulatoryAdmin, "'?action=show_custom_rule&token='.newToken()") !== false;
 $checks['insurance_certificate_actions_are_translated'] = strpos($insuranceCertificate, "\$langs->trans('SaveInsuranceCertificateDraft')") !== false
 	&& strpos($insuranceCertificate, "\$langs->trans('RejectInsuranceCertificate')") !== false
 	&& strpos($insuranceCertificate, "\$langs->trans('ArchiveInsuranceCertificate')") !== false
@@ -185,7 +218,7 @@ $checks['consumption_uses_native_quick_add_hook'] = strpos($descriptor, "'main',
 	&& strpos($actionsHooks, "dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1)") !== false
 	&& strpos($actionsHooks, 'DOL_URL_ROOT_ALT') === false
 	&& strpos($actionsHooks, "'title' => 'NewConsumption@lmdbvehiclemanagement'") !== false
-	&& strpos($actionsHooks, "hasRight('lmdbvehiclemanagement', 'consumption', 'write')") !== false;
+	&& strpos($actionsHooks, "\$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')") !== false;
 $checks['module_objects_use_native_ajax_tooltips'] = strpos($baseObjectClass, 'public function getTooltipContentArray($params)') !== false
 	&& strpos($baseObjectClass, "getDolGlobalInt('MAIN_ENABLE_AJAX_TOOLTIP')") !== false
 	&& strpos($baseObjectClass, "'objecttype' => \$this->element.'@'.\$this->module") !== false
@@ -367,7 +400,7 @@ $checks['consumption_synchronizes_odometer_transactionally'] = strpos($consumpti
 $checks['consumption_form_uses_native_required_style'] = strpos($consumptionCard, 'titlefieldcreate fieldrequired') !== false
 	&& substr_count($consumptionCard, 'fieldrequired') >= 6
 	&& strpos($consumptionCard, ' required') === false;
-$checks['consumption_pages_use_direct_rights'] = strpos($consumptionCard, "\$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')") !== false
+$checks['consumption_pages_use_native_rights'] = strpos($consumptionCard, "\$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')") !== false
 	&& strpos($consumptionList, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false;
 $checks['consumption_creator_is_default_driver'] = strpos($consumptionClass, 'if (empty($this->fk_user_driver))') !== false
 	&& strpos($consumptionClass, '$this->fk_user_driver = (int) $user->id;') !== false
@@ -424,6 +457,24 @@ $checks['main_lists_reserve_native_height'] = count(array_filter($mainListSource
 	return strpos($source, 'div-table-responsive') !== false
 		&& strpos($source, 'div-table-responsive-no-min') === false;
 })) === count($mainListSources);
+$checks['schedule_column_selector_overlay_is_scoped'] = strpos($moduleJavascript, ".mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .dropdown dd ul.selectedfields") !== false
+	&& strpos($moduleJavascript, "menu.classList.contains('open')") !== false
+	&& strpos($moduleJavascript, "menu.closest('dl.dropdown')") !== false
+	&& strpos($moduleJavascript, "document.addEventListener('click', scheduleRefresh)") !== false
+	&& strpos($moduleJavascript, "document.addEventListener('scroll', scheduleRefresh, true)") !== false
+	&& strpos($moduleStylesheet, '.mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .dropdown dd ul.lmdb-column-selector-overlay') !== false
+	&& strpos($moduleStylesheet, '.mod-lmdbvehiclemanagement.page-list .dropdown dd ul.lmdb-column-selector-overlay') === false
+	&& strpos($moduleStylesheet, 'position: fixed;') !== false
+	&& strpos($moduleStylesheet, 'z-index: 10000;') !== false;
+$checks['regulatory_schedule_column_selector_escapes_short_table'] = strpos($regulatorySchedule, 'page-regulatorycontrol-schedule') !== false
+	&& strpos($moduleJavascript, "responsiveWrapper.classList.add('lmdb-column-selector-wrapper-open')") !== false
+	&& strpos($moduleJavascript, "responsiveWrapper.classList.remove('lmdb-column-selector-wrapper-open')") !== false
+	&& strpos($moduleStylesheet, '.mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .div-table-responsive.lmdb-column-selector-wrapper-open') !== false
+	&& strpos($moduleStylesheet, 'overflow: visible !important;') !== false;
+$checks['regulatory_schedule_uses_only_toolbar_create_action'] = substr_count($regulatorySchedule, "dolGetButtonTitle(\$langs->trans('NewRegulatoryControl')") === 1
+	&& strpos($regulatorySchedule, "\$langs->trans('RecordControl')") === false
+	&& strpos($regulatorySchedule, 'requirement_id=') === false
+	&& strpos($regulatorySchedule, '$visibleColumns = 1;') !== false;
 $checks['main_list_column_selectors_use_native_page_context'] = count(array_filter($mainListSources, static function ($source) {
 	return strpos($source, "\$contextpage = GETPOST('contextpage', 'aZ09');") !== false
 		&& strpos($source, "\$varpage = empty(\$contextpage) ? \$_SERVER['PHP_SELF'] : \$contextpage;") !== false

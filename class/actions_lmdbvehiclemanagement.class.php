@@ -1,6 +1,8 @@
 <?php
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
+dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
+
 /**
  * Hooks for the vehicle management module.
  */
@@ -17,6 +19,9 @@ class ActionsLmdbVehicleManagement
 
 	/** @var array<int,string> */
 	public $errors = array();
+
+	/** @var array<int,string> */
+	public $warnings = array();
 
 	/** @var array<string,mixed> */
 	public $results = array();
@@ -46,18 +51,30 @@ class ActionsLmdbVehicleManagement
 		global $user;
 
 		$this->results = array();
-		if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')) {
+		if (!isModEnabled('lmdbvehiclemanagement')) {
 			return 0;
 		}
 
-		$this->results[] = array(
-			'url' => dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement',
-			'title' => 'NewConsumption@lmdbvehiclemanagement',
-			'name' => 'ConsumptionEntry@lmdbvehiclemanagement',
-			'picto' => 'gas-pump',
-			'activation' => true,
-			'position' => 450,
-		);
+		if ($user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')) {
+			$this->results[] = array(
+				'url' => dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement&token='.newToken(),
+				'title' => 'NewConsumption@lmdbvehiclemanagement',
+				'name' => 'ConsumptionEntry@lmdbvehiclemanagement',
+				'picto' => 'gas-pump',
+				'activation' => true,
+				'position' => 450,
+			);
+		}
+		if ($user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write')) {
+			$this->results[] = array(
+				'url' => dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement&token='.newToken(),
+				'title' => 'NewRegulatoryControl@lmdbvehiclemanagement',
+				'name' => 'RegulatoryControl@lmdbvehiclemanagement',
+				'picto' => 'clipboard-check',
+				'activation' => true,
+				'position' => 451,
+			);
+		}
 
 		return 0;
 	}
@@ -78,10 +95,12 @@ class ActionsLmdbVehicleManagement
 	{
 		global $langs, $user;
 
-		if (!isset($parameters['datatoimport']) || (string) $parameters['datatoimport'] !== 'lmdbvehiclemanagement_vehicles') {
+		$dataset = isset($parameters['datatoimport']) ? (string) $parameters['datatoimport'] : '';
+		if (!in_array($dataset, array('lmdbvehiclemanagement_vehicles', 'lmdbvehiclemanagement_regulatory_controls'), true)) {
 			return 0;
 		}
-		if (!$user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'import')) {
+		$rightObject = $dataset === 'lmdbvehiclemanagement_vehicles' ? 'lmdbvehicle' : 'regulatorycontrol';
+		if (!$user->hasRight('lmdbvehiclemanagement', $rightObject, 'import')) {
 			$this->error = $langs->trans('NotEnoughPermissions');
 			$this->errors = array($this->error);
 			return -1;
@@ -92,17 +111,17 @@ class ActionsLmdbVehicleManagement
 			return -1;
 		}
 
-		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php');
-		$import = new LmdbVehicleImport($this->db);
 		$step = isset($parameters['step']) ? (int) $parameters['step'] : 0;
 		$importId = isset($parameters['importid']) ? (string) $parameters['importid'] : '';
-		$result = $import->createVehicleFromNativeRow(
-			$parameters['arrayrecord'],
-			$parameters['array_match_file_to_database'],
-			$importId,
-			$user,
-			$step === 6
-		);
+		if ($dataset === 'lmdbvehiclemanagement_vehicles') {
+			dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php');
+			$import = new LmdbVehicleImport($this->db);
+			$result = $import->createVehicleFromNativeRow($parameters['arrayrecord'], $parameters['array_match_file_to_database'], $importId, $user, $step === 6);
+		} else {
+			dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycontrolimport.class.php');
+			$import = new LmdbVehicleRegulatoryControlImport($this->db);
+			$result = $import->createDraftFromNativeRow($parameters['arrayrecord'], $parameters['array_match_file_to_database'], $importId, $user, $step === 6);
+		}
 		if ($result <= 0) {
 			$this->error = $import->error;
 			$this->errors = $import->errors;
@@ -158,12 +177,30 @@ class ActionsLmdbVehicleManagement
 						'enable' => 'isModEnabled("lmdbvehiclemanagement")',
 						'input' => array('global' => array('showhide' => true, 'hide' => true, 'del' => true)),
 					),
+					'lmdbvehicleregulatorycontrol' => array(
+						'type' => 'element',
+						'icon' => 'clipboard-check',
+						'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+						'tooltip' => 'LmdbVehicleRegulatoryControlSharingInfo',
+						'enable' => 'isModEnabled("lmdbvehiclemanagement")',
+						'input' => array('global' => array('showhide' => true, 'hide' => true, 'del' => true)),
+					),
+					'lmdbvehicleregulatorycontrolnumber' => array(
+						'type' => 'objectnumber',
+						'icon' => 'hashtag',
+						'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+						'tooltip' => 'LmdbVehicleRegulatoryControlNumberSharingInfo',
+						'enable' => 'isModEnabled("lmdbvehiclemanagement")',
+						'input' => array('global' => array('showhide' => true, 'hide' => true, 'del' => true)),
+					),
 				),
 				'sharingmodulename' => array(
 					'lmdbvehicle' => 'lmdbvehiclemanagement',
 					'lmdbvehiclenumber' => 'lmdbvehiclemanagement',
 					'lmdbvehicleconsumption' => 'lmdbvehiclemanagement',
 					'lmdbvehicleconsumptionnumber' => 'lmdbvehiclemanagement',
+					'lmdbvehicleregulatorycontrol' => 'lmdbvehiclemanagement',
+					'lmdbvehicleregulatorycontrolnumber' => 'lmdbvehiclemanagement',
 				),
 				'dictionary' => array(
 					'c_lmdbvehiclemanagement_energy' => array(
@@ -181,6 +218,22 @@ class ActionsLmdbVehicleManagement
 						'tooltip' => 'VehicleConsumableSharingInfo',
 						'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 						'filepath' => '/lmdbvehiclemanagement/sql/llx_c_lmdbvehiclemanagement_consumable.sql',
+					),
+					'c_lmdbvehiclemanagement_asset_type' => array(
+						'type' => 'dictionary', 'icon' => 'truck', 'transkey' => 'AssetTypes', 'tooltip' => 'AssetTypeSharingInfo',
+						'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement', 'filepath' => '/lmdbvehiclemanagement/sql/llx_c_lmdbvehiclemanagement_asset_type.sql',
+					),
+					'c_lmdbvehiclemanagement_regulatory_profile' => array(
+						'type' => 'dictionary', 'icon' => 'tags', 'transkey' => 'RegulatoryProfiles', 'tooltip' => 'RegulatoryProfileSharingInfo',
+						'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement', 'filepath' => '/lmdbvehiclemanagement/sql/llx_c_lmdbvehiclemanagement_regulatory_profile.sql',
+					),
+					'c_lmdbvehiclemanagement_control_type' => array(
+						'type' => 'dictionary', 'icon' => 'clipboard-check', 'transkey' => 'RegulatoryControlTypes', 'tooltip' => 'RegulatoryControlTypeSharingInfo',
+						'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement', 'filepath' => '/lmdbvehiclemanagement/sql/llx_c_lmdbvehiclemanagement_control_type.sql',
+					),
+					'c_lmdbvehiclemanagement_control_result' => array(
+						'type' => 'dictionary', 'icon' => 'check-circle', 'transkey' => 'RegulatoryControlResults', 'tooltip' => 'RegulatoryControlResultSharingInfo',
+						'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement', 'filepath' => '/lmdbvehiclemanagement/sql/llx_c_lmdbvehiclemanagement_control_result.sql',
 					),
 				),
 			),
@@ -253,7 +306,7 @@ class ActionsLmdbVehicleManagement
 		global $user;
 
 		$elementType = isset($parameters['elementtype']) ? (string) $parameters['elementtype'] : '';
-		if (!in_array($elementType, array('lmdbvehicle@lmdbvehiclemanagement', 'lmdbinsurancecontract@lmdbvehiclemanagement', 'lmdbvehicleconsumption@lmdbvehiclemanagement'), true)) {
+		if (!in_array($elementType, array('lmdbvehicle@lmdbvehiclemanagement', 'lmdbinsurancecontract@lmdbvehiclemanagement', 'lmdbvehicleconsumption@lmdbvehiclemanagement', 'lmdbvehicleregulatorycontrol@lmdbvehiclemanagement'), true)) {
 			return 0;
 		}
 		if ($user->hasRight('agenda', 'allactions', 'read')) {
@@ -357,6 +410,15 @@ class ActionsLmdbVehicleManagement
 			'classfile' => 'lmdbvehicleconsumption',
 			'classname' => 'LmdbVehicleConsumption',
 		);
+		$regulatoryControlDefinition = array(
+			'module' => 'lmdbvehiclemanagement',
+			'element' => 'lmdbvehicleregulatorycontrol',
+			'table_element' => 'lmdbvehiclemanagement_regulatory_control',
+			'subelement' => 'lmdbvehicleregulatorycontrol',
+			'classpath' => 'lmdbvehiclemanagement/class',
+			'classfile' => 'lmdbvehicleregulatorycontrol',
+			'classname' => 'LmdbVehicleRegulatoryControl',
+		);
 		$definitions = array(
 			'lmdbvehicle@lmdbvehiclemanagement' => $vehicleDefinition,
 			'lmdbvehiclemanagement_lmdbvehicle' => $vehicleDefinition,
@@ -374,11 +436,29 @@ class ActionsLmdbVehicleManagement
 			'lmdbvehiclemanagement_lmdbinsurancecertificate' => $insuranceCertificateDefinition,
 			'lmdbvehicleconsumption@lmdbvehiclemanagement' => $consumptionDefinition,
 			'lmdbvehiclemanagement_lmdbvehicleconsumption' => $consumptionDefinition,
+			'lmdbvehicleregulatorycontrol@lmdbvehiclemanagement' => $regulatoryControlDefinition,
+			'lmdbvehiclemanagement_lmdbvehicleregulatorycontrol' => $regulatoryControlDefinition,
 		);
 		if (isset($definitions[$elementType])) {
 			$this->results = array_replace($this->results, $definitions[$elementType]);
 		}
 
+		return 0;
+	}
+
+	/**
+	 * Expose module CRUD events to native Notifications.
+	 *
+	 * @param array<string,mixed> $parameters Hook parameters
+	 * @param CommonObject|null $object Current object
+	 * @param string $action Current action
+	 * @param HookManager $hookmanager Hook manager
+	 * @return int
+	 */
+	public function notifsupported($parameters, &$object, &$action, $hookmanager)
+	{
+		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleagenda.class.php');
+		$this->results['arrayofnotifsupported'] = array_keys(LmdbVehicleAgenda::getTriggerDefinitions());
 		return 0;
 	}
 }

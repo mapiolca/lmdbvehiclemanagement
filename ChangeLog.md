@@ -1,5 +1,21 @@
 # Historique des versions
 
+## `0.14.1` — 2026-09-02
+
+- Remplacement de la qualification manuelle par un questionnaire guidé et historisé, ajout des profils taxi/VTC, sanitaire, auto-école, dépannage et transport public particulier, et arbitrage déterministe des règles par groupe d’obligation.
+- Correction de l’applicabilité de la pollution N1, du régime transitoire de la catégorie L, des délais de contre-visite et des intervalles VGP, avec sources officielles, dates d’effet et dates de révision renseignées.
+- Sécurisation transactionnelle de la qualification, migration conservatrice des anciens profils `SPECIAL_PUBLIC`, archivage limité aux contrôles annulés ou remplacés et utilisation directe de la méthode native `$user->hasRight()` pour tous les droits fonctionnels.
+- Stabilisation des événements d’échéance Agenda, des rappels automatiques et forcés, des destinataires et sujets UTF-8, des exports enrichis et du sélecteur de colonnes propre à l’échéancier.
+- Extension des contrôles contractuels sur les règles, traductions, droits, interfaces, Agenda, cron, migration et compatibilité Dolibarr v20/PHP 8.0 ; utilisation des modales natives Dolibarr pour créer les surcharges et règles personnalisées, correction du libellé natif « Travaux planifiés » dans les réglages d’assurance et déclaration explicite des propriétés de retour de hooks sous PHP 8.2+, sans réécriture des événements ou contrôles validés existants.
+
+## `0.14.0` — 2026-09-02
+
+- Extension du parc aux véhicules, utilitaires et engins, avec immatriculation facultative, référence de repli `MATyyMM-NNNN` et caractéristiques de qualification réglementaire.
+- Ajout des profils réglementaires cumulables, des exigences matérialisées et du catalogue français versionné pour les contrôles routiers, la pollution, les VGP, la mise en service, le tachygraphe, l’ADR et l’ATP, avec règles natives en lecture seule, surcharges d’entité auditées et règles personnalisées.
+- Ajout de l’objet documentaire `Contrôle réglementaire` numéroté `CTLyyMM-NNNN`, de son workflow brouillon/validation/annulation/archivage, de ses justificatifs et de ses événements Agenda CRUD natifs.
+- Ajout de l’échéancier, des listes et exports natifs, du registre de sécurité, des imports en brouillon, des droits dédiés et de la prise en charge Multicompany ; les sélecteurs de colonnes restent au premier plan, y compris hors des échéanciers courts sans défilement vertical imbriqué, et les échéances dépassées utilisent le badge d’erreur natif.
+- Ajout d’un travail planifié quotidien idempotent pour recalculer les échéances, synchroniser leur événement Agenda avec résolution explicite du type natif et repli `AC_OTH_AUTO`, puis envoyer les rappels configurés au moyen d’un modèle d’email Dolibarr, avec option de rappel journalier après l’échéance, objets UTF-8 et destinataires utilisateurs traçables sans doublon d’adresse ; un lancement manuel depuis les Travaux planifiés rejoue les emails dus sans consommer la limite de l’exécution automatique.
+
 ## `0.13.3` — 2026-09-02
 
 - Correction des libellés non traduits des actions « Enregistrer le brouillon », « Rejeter » et « Archiver » dans l’onglet des attestations d’assurance.

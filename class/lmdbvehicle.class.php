@@ -5,6 +5,7 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementobject.class
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementrules.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleenergy.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclereferencemigration.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatoryservice.class.php');
 
 /**
  * Vehicle dossier object.
@@ -36,14 +37,22 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		'rowid' => array('type' => 'integer', 'label' => 'TechnicalID', 'position' => 1, 'notnull' => 1, 'visible' => 0, 'noteditable' => 1),
 		'ref' => array('type' => 'varchar(128)', 'label' => 'Ref', 'position' => 10, 'notnull' => 1, 'visible' => 1, 'index' => 1, 'searchall' => 1, 'showoncombobox' => 1),
 		'entity' => array('type' => 'integer', 'label' => 'Entity', 'position' => 20, 'notnull' => 1, 'visible' => 0, 'default' => 1, 'index' => 1),
-		'registration_number' => array('type' => 'varchar(32)', 'label' => 'RegistrationNumber', 'position' => 30, 'notnull' => 1, 'visible' => 1, 'index' => 1, 'searchall' => 1, 'showoncombobox' => 2),
+		'registration_number' => array('type' => 'varchar(32)', 'label' => 'RegistrationNumber', 'position' => 30, 'notnull' => -1, 'visible' => 1, 'index' => 1, 'searchall' => 1, 'showoncombobox' => 2),
 		'vin' => array('type' => 'varchar(64)', 'label' => 'VIN', 'position' => 40, 'notnull' => -1, 'visible' => 1, 'index' => 1, 'searchall' => 1),
 		'label' => array('type' => 'varchar(255)', 'label' => 'Label', 'position' => 50, 'notnull' => 1, 'visible' => 1, 'searchall' => 1),
+		'fk_asset_type' => array('type' => 'integer', 'label' => 'AssetType', 'position' => 51, 'notnull' => -1, 'visible' => 1, 'index' => 1),
+		'eu_category' => array('type' => 'varchar(16)', 'label' => 'EuropeanCategory', 'position' => 52, 'notnull' => -1, 'visible' => -1),
+		'national_genre' => array('type' => 'varchar(32)', 'label' => 'NationalGenre', 'position' => 53, 'notnull' => -1, 'visible' => -1),
+		'gvw_kg' => array('type' => 'double(24,8)', 'label' => 'GrossVehicleWeight', 'position' => 54, 'notnull' => -1, 'visible' => -1),
+		'gcw_kg' => array('type' => 'double(24,8)', 'label' => 'GrossCombinationWeight', 'position' => 55, 'notnull' => -1, 'visible' => -1),
+		'seats' => array('type' => 'integer', 'label' => 'NumberOfSeats', 'position' => 56, 'notnull' => -1, 'visible' => -1),
+		'regulatory_territory' => array('type' => 'varchar(32)', 'label' => 'RegulatoryTerritory', 'position' => 57, 'notnull' => 1, 'visible' => -1, 'default' => 'FR_METRO', 'arrayofkeyval' => array('FR_METRO' => 'TerritoryMetropolitanFrance', 'FR_GUADELOUPE' => 'TerritoryGuadeloupe', 'FR_MARTINIQUE' => 'TerritoryMartinique', 'FR_GUYANE' => 'TerritoryFrenchGuiana', 'FR_REUNION' => 'TerritoryReunion', 'FR_MAYOTTE' => 'TerritoryMayotte', 'FR_OTHER_OVERSEAS' => 'TerritoryOtherOverseas')),
 		'brand' => array('type' => 'varchar(128)', 'label' => 'Brand', 'position' => 60, 'notnull' => -1, 'visible' => 1, 'searchall' => 1),
 		'model' => array('type' => 'varchar(128)', 'label' => 'VehicleModel', 'position' => 70, 'notnull' => -1, 'visible' => 1, 'searchall' => 1),
 		'vehicle_version' => array('type' => 'varchar(128)', 'label' => 'VehicleVersion', 'position' => 80, 'notnull' => -1, 'visible' => -1),
 		'fk_energy' => array('type' => 'integer:LmdbVehicleEnergy:lmdbvehiclemanagement/class/lmdbvehicleenergy.class.php', 'label' => 'Energy', 'position' => 90, 'notnull' => -1, 'visible' => -1, 'index' => 1),
 		'wltp_range_km' => array('type' => 'double(24,8)', 'label' => 'WltpRangeKm', 'position' => 95, 'notnull' => -1, 'visible' => -1),
+		'construction_date' => array('type' => 'date', 'label' => 'ConstructionDate', 'position' => 97, 'notnull' => -1, 'visible' => -1),
 		'first_registration_date' => array('type' => 'date', 'label' => 'FirstRegistrationDate', 'position' => 100, 'notnull' => -1, 'visible' => -1),
 		'commissioning_date' => array('type' => 'date', 'label' => 'CommissioningDate', 'position' => 110, 'notnull' => -1, 'visible' => -1),
 		'ownership_type' => array('type' => 'varchar(32)', 'label' => 'OwnershipType', 'position' => 120, 'notnull' => -1, 'visible' => -1, 'arrayofkeyval' => array('owned' => 'Owned', 'leased' => 'Leased', 'long_term_leased' => 'LongTermLeased', 'short_term_leased' => 'ShortTermLeased')),
@@ -64,12 +73,20 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 
 	/** @var string */
 	public $ref = '';
-	/** @var string */
-	public $registration_number = '';
+	/** @var ?string */
+	public $registration_number;
 	/** @var ?string */
 	public $vin;
 	/** @var string */
 	public $label = '';
+	/** @var ?int */ public $fk_asset_type;
+	/** @var ?string */ public $eu_category;
+	/** @var ?string */ public $national_genre;
+	/** @var ?float */ public $gvw_kg;
+	/** @var ?float */ public $gcw_kg;
+	/** @var ?int */ public $seats;
+	/** @var string */ public $regulatory_territory = 'FR_METRO';
+	/** @var ?string Resolved dictionary code, not persisted */ public $asset_type;
 	/** @var ?string */
 	public $brand;
 	/** @var ?string */
@@ -80,6 +97,7 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	public $fk_energy;
 	/** @var ?float */
 	public $wltp_range_km;
+	/** @var ?int */ public $construction_date;
 	/** @var ?int */
 	public $first_registration_date;
 	/** @var ?int */
@@ -126,8 +144,36 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		if (self::usesRegistrationAsReference()) {
 			$this->ref = self::normalizeRegistrationNumber((string) $this->registration_number);
 		}
+		$this->db->begin();
+		$result = parent::create($user, $notrigger);
+		if ($result > 0) {
+			$service = new LmdbVehicleRegulatoryService($this->db);
+			if ($service->initializeSuggestedProfiles($this, $user) < 0) {
+				$this->error = $service->error;
+				$this->errors = $service->errors;
+				$this->db->rollback();
+				return -1;
+			}
+		}
+		if ($result <= 0) {
+			$this->db->rollback();
+			return $result;
+		}
+		$this->db->commit();
 
-		return parent::create($user, $notrigger);
+		return $result;
+	}
+
+	/** @inheritdoc */
+	public function fetch($id, $ref = null)
+	{
+		$result = parent::fetch($id, $ref);
+		if ($result > 0 && !empty($this->fk_asset_type)) {
+			$resql = $this->db->query('SELECT code FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_asset_type WHERE rowid = '.((int) $this->fk_asset_type).' AND entity IN ('.getEntity('c_lmdbvehiclemanagement_asset_type').')');
+			if ($resql && is_object($row = $this->db->fetch_object($resql))) $this->asset_type = (string) $row->code;
+			if ($resql) $this->db->free($resql);
+		}
+		return $result;
 	}
 
 	/**
@@ -140,6 +186,7 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	public function update(User $user, $notrigger = 0)
 	{
 		$current = null;
+		$numberingLock = '';
 		if (!$this->statusTransitionInProgress && !empty($this->id)) {
 			$current = new self($this->db);
 			if ($current->fetch((int) $this->id) <= 0) {
@@ -152,14 +199,25 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 				$this->errors[] = $this->error;
 				return -1;
 			}
+			$this->entity = (int) $current->entity;
 		}
 		if (self::usesRegistrationAsReference()) {
-			$this->registration_number = self::normalizeRegistrationNumber((string) $this->registration_number);
-			$this->ref = $this->registration_number;
+			$this->registration_number = self::normalizeRegistrationNumber((string) $this->registration_number) ?: null;
+			if (!empty($this->registration_number)) {
+				$this->ref = (string) $this->registration_number;
+			} elseif ($current instanceof self && strpos((string) $current->ref, 'MAT') !== 0) {
+				$this->ref = '';
+				$numberingLock = 'lmdbvm_num_'.sha1($this->getNumberingLockScope());
+				if ($this->acquireNumberingLock($numberingLock) < 0) return -1;
+				$nextRef = $this->getNextNumRef();
+				if (!is_string($nextRef) || $nextRef === '') { $this->releaseNumberingLock($numberingLock); return -1; }
+				$this->ref = $nextRef;
+			}
 		}
 		if ($current instanceof self && (string) $current->ref !== (string) $this->ref) {
 			$this->entity = (int) $current->entity;
 			if ($this->validateBusinessRules() < 0) {
+				if ($numberingLock !== '') $this->releaseNumberingLock($numberingLock);
 				return -1;
 			}
 			$migration = new LmdbVehicleReferenceMigration($this->db);
@@ -170,27 +228,48 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 			$this->db->begin();
 			if ($migration->relocateUpdatedVehicle($current, $this) < 0) {
 				$this->db->rollback();
+				if ($numberingLock !== '') $this->releaseNumberingLock($numberingLock);
 				$this->error = $migration->error;
 				$this->errors = $migration->errors;
 				return -1;
 			}
 			$result = parent::update($user, $notrigger);
-			if ($result <= 0 || $migration->updateEcmIndex($this, (string) $current->ref, (string) $this->ref) < 0) {
+			$service = new LmdbVehicleRegulatoryService($this->db);
+			if ($result <= 0 || $migration->updateEcmIndex($this, (string) $current->ref, (string) $this->ref) < 0 || $service->refreshSuggestedProfiles($this, $user) < 0) {
 				$this->db->rollback();
 				$migration->rollbackFilesystem();
+				if ($numberingLock !== '') $this->releaseNumberingLock($numberingLock);
 				if ($result > 0) {
-					$this->error = $migration->error;
-					$this->errors = $migration->errors;
+					$this->error = $service->error !== '' ? $service->error : $migration->error;
+					$this->errors = !empty($service->errors) ? $service->errors : $migration->errors;
 				}
 				return -1;
 			}
 			$this->db->commit();
 			$migration->commitFilesystem();
+			if ($numberingLock !== '') $this->releaseNumberingLock($numberingLock);
 
 			return $result;
 		}
 
-		return parent::update($user, $notrigger);
+		$this->db->begin();
+		$result = parent::update($user, $notrigger);
+		if ($result > 0) {
+			$service = new LmdbVehicleRegulatoryService($this->db);
+			if ($service->refreshSuggestedProfiles($this, $user) < 0) {
+				$this->error = $service->error;
+				$this->errors = $service->errors;
+				$this->db->rollback();
+				return -1;
+			}
+		}
+		if ($result <= 0) {
+			$this->db->rollback();
+			return $result;
+		}
+		$this->db->commit();
+
+		return $result;
 	}
 
 	/** @return bool Whether the active model derives the reference from registration */
@@ -222,6 +301,9 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 			'lmdbvehiclemanagement_vehicle_event',
 			'lmdbvehiclemanagement_insurance_contract_vehicle',
 			'lmdbvehiclemanagement_insurance_certificate',
+			'lmdbvehiclemanagement_vehicle_regulatory_profile',
+			'lmdbvehiclemanagement_control_requirement',
+			'lmdbvehiclemanagement_regulatory_control',
 		);
 		foreach ($tables as $table) {
 			$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.$table;
@@ -265,6 +347,9 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	 */
 	public function setInService(User $user, $notrigger = 0)
 	{
+		$regulatory = new LmdbVehicleRegulatoryService($this->db);
+		$allowed = $regulatory->vehicleActionIsAllowed((int) $this->id, 'service');
+		if ($allowed <= 0) { $this->error = $regulatory->error; $this->errors = $regulatory->errors; return $allowed < 0 ? -1 : 0; }
 		return $this->changeStatus(self::STATUS_IN_SERVICE, $user, $notrigger);
 	}
 
@@ -366,13 +451,8 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	{
 		global $langs;
 
-		$this->registration_number = self::normalizeRegistrationNumber((string) $this->registration_number);
+		$this->registration_number = self::normalizeRegistrationNumber((string) $this->registration_number) ?: null;
 		$this->vin = trim((string) $this->vin) !== '' ? strtoupper(trim((string) $this->vin)) : null;
-		if (trim($this->registration_number) === '') {
-			$this->error = $langs->trans('FieldRequired', $langs->trans('RegistrationNumber'));
-			$this->errors[] = $this->error;
-			return -1;
-		}
 		if (trim($this->label) === '') {
 			$this->error = $langs->trans('FieldRequired', $langs->trans('Label'));
 			$this->errors[] = $this->error;
@@ -391,20 +471,24 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 				return -1;
 			}
 		}
+		if (!empty($this->fk_asset_type)) {
+			$assetTypeExists = $this->linkedRecordExists('c_lmdbvehiclemanagement_asset_type', (int) $this->fk_asset_type, getEntity('c_lmdbvehiclemanagement_asset_type'));
+			if ($assetTypeExists <= 0) return $this->businessRuleError($assetTypeExists < 0 ? $this->error : 'InvalidAssetType');
+		}
 		if ($this->wltp_range_km !== null && (float) $this->wltp_range_km < 0) {
 			$this->error = 'WltpRangeMustBePositive';
 			$this->errors[] = $this->error;
 			return -1;
 		}
-		$duplicateRegistration = $this->duplicateVehicleFieldExists('registration_number', $this->registration_number);
-		if ($duplicateRegistration < 0) {
-			return -1;
+		if ($this->registration_number !== null) {
+			$duplicateRegistration = $this->duplicateVehicleFieldExists('registration_number', $this->registration_number);
+			if ($duplicateRegistration < 0) return -1;
+			if ($duplicateRegistration > 0) { $this->error = 'DuplicateRegistrationNumber'; $this->errors[] = $this->error; return -1; }
 		}
-		if ($duplicateRegistration > 0) {
-			$this->error = 'DuplicateRegistrationNumber';
-			$this->errors[] = $this->error;
-			return -1;
-		}
+		if (empty($this->regulatory_territory)) $this->regulatory_territory = 'FR_METRO';
+		if (!in_array($this->regulatory_territory, array_keys($this->fields['regulatory_territory']['arrayofkeyval']), true)) return $this->businessRuleError('InvalidRegulatoryTerritory');
+		foreach (array('gvw_kg', 'gcw_kg') as $weightField) if ($this->{$weightField} !== null && (float) $this->{$weightField} < 0) return $this->businessRuleError('WeightMustBePositive');
+		if ($this->seats !== null && (int) $this->seats < 0) return $this->businessRuleError('SeatsMustBePositive');
 		if ($this->vin !== null) {
 			$duplicateVin = $this->duplicateVehicleFieldExists('vin', $this->vin);
 			if ($duplicateVin < 0) {
@@ -449,6 +533,79 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		}
 
 		return 1;
+	}
+
+	/** Return selected regulatory profile ids. @return list<int> */
+	public function fetchRegulatoryProfileIds()
+	{
+		$ids = array();
+		if (empty($this->id)) return $ids;
+		$resql = $this->db->query('SELECT fk_profile FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_regulatory_profile WHERE entity = '.((int) $this->entity).' AND fk_vehicle = '.((int) $this->id).' ORDER BY fk_profile');
+		if (!$resql) return $ids;
+		while (is_object($row = $this->db->fetch_object($resql))) $ids[] = (int) $row->fk_profile;
+		$this->db->free($resql);
+		return $ids;
+	}
+
+	/** Persist confirmed regulatory profiles and refresh materialized requirements. @param list<int> $profileIds Profiles @param User $user Author @return int<-1,1> */
+	public function saveRegulatoryProfiles($profileIds, User $user)
+	{
+		$service = new LmdbVehicleRegulatoryService($this->db);
+		$result = $service->saveVehicleProfiles($this, $profileIds, $user);
+		if ($result < 0) { $this->error = $service->error; $this->errors = $service->errors; }
+		return $result;
+	}
+
+	/**
+	 * Persist the guided regulatory qualification and recalculate requirements.
+	 *
+	 * @param array<int,array{choice_id:int,applicable_since?:int}> $answers Questionnaire answers
+	 * @param list<int> $manualProfileIds Additional custom profiles
+	 * @param User $user Author
+	 * @return int<-1,1>
+	 */
+	public function saveRegulatoryQualification(array $answers, array $manualProfileIds, User $user)
+	{
+		$service = new LmdbVehicleRegulatoryService($this->db);
+		$result = $service->saveVehicleQualification($this, $answers, $manualProfileIds, $user);
+		if ($result < 0) {
+			$this->error = $service->error;
+			$this->errors = $service->errors;
+		}
+
+		return $result;
+	}
+
+	/** Grant a temporary, justified derogation without marking the equipment compliant. @param int $requirementId Requirement @param int $until Expiry @param string $reason Reason @param User $user Author @return int<-1,1> */
+	public function grantRegulatoryDerogation($requirementId, $until, $reason, User $user)
+	{
+		if ($until <= dol_now() || trim($reason) === '') return $this->businessRuleError('RegulatoryDerogationReasonAndDateRequired');
+		$this->db->begin();
+		$sql = 'UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement SET derogation_until = \''.$this->db->idate($until).'\', derogation_reason = \''.$this->db->escape(trim($reason)).'\', fk_user_derogation = '.((int) $user->id).', date_derogation = \''.$this->db->idate(dol_now()).'\'';
+		$sql .= ' WHERE rowid = '.((int) $requirementId).' AND entity = '.((int) $this->entity).' AND fk_vehicle = '.((int) $this->id).' AND active = 1';
+		$resql = $this->db->query($sql);
+		if (!$resql || $this->db->affected_rows($resql) <= 0) { $this->error = $this->db->lasterror() ?: 'InvalidRegulatoryRequirement'; $this->db->rollback(); return -1; }
+		$service = new LmdbVehicleRegulatoryService($this->db);
+		if ($service->recalculateVehicle((int) $this->id, (int) $this->entity) < 0) {
+			$this->error = $service->error;
+			$this->errors = $service->errors;
+			$this->db->rollback();
+			return -1;
+		}
+		$this->context['trigger_reason'] = 'regulatory_derogation';
+		$this->context['changed_fields'] = array('regulatory_derogation');
+		$result = parent::update($user);
+		if ($result <= 0) { $this->db->rollback(); return $result; }
+		$this->db->commit();
+		return 1;
+	}
+
+	/** @param string $error Error key @return int<-1,-1> */
+	private function businessRuleError($error)
+	{
+		$this->error = $error;
+		$this->errors[] = $error;
+		return -1;
 	}
 
 	/** @return array<int,float> Consumable id to capacity */

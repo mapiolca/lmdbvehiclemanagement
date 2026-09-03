@@ -1,0 +1,3 @@
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_rule_profile ADD UNIQUE INDEX uk_lmdbvm_rule_profile (entity, fk_rule, fk_profile);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_rule_profile ADD INDEX idx_lmdbvm_rule_profile_rule (fk_rule);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_rule_profile ADD INDEX idx_lmdbvm_rule_profile_profile (fk_profile);

@@ -2,6 +2,7 @@
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementobject.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatoryservice.class.php');
 
 /**
  * Driver assignment for a vehicle.
@@ -77,6 +78,16 @@ class LmdbVehicleAssignment extends LmdbVehicleManagementObject
 			$this->db->rollback();
 			return -1;
 		}
+		if ((int) $this->status === self::STATUS_ACTIVE) {
+			$regulatory = new LmdbVehicleRegulatoryService($this->db);
+			$allowed = $regulatory->vehicleActionIsAllowed((int) $this->fk_vehicle, 'assignment');
+			if ($allowed <= 0) {
+				$this->error = $regulatory->error;
+				$this->errors = $regulatory->errors;
+				$this->db->rollback();
+				return $allowed < 0 ? -1 : 0;
+			}
+		}
 		$result = parent::create($user, $notrigger);
 		if ($result < 0) {
 			$this->db->rollback();
@@ -94,6 +105,16 @@ class LmdbVehicleAssignment extends LmdbVehicleManagementObject
 		if ($this->lockVehicleRow((int) $this->fk_vehicle) < 0) {
 			$this->db->rollback();
 			return -1;
+		}
+		if ((int) $this->status === self::STATUS_ACTIVE) {
+			$regulatory = new LmdbVehicleRegulatoryService($this->db);
+			$allowed = $regulatory->vehicleActionIsAllowed((int) $this->fk_vehicle, 'assignment');
+			if ($allowed <= 0) {
+				$this->error = $regulatory->error;
+				$this->errors = $regulatory->errors;
+				$this->db->rollback();
+				return $allowed < 0 ? -1 : 0;
+			}
 		}
 		$result = parent::update($user, $notrigger);
 		if ($result < 0) {

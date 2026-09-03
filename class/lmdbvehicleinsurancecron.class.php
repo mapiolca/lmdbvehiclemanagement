@@ -23,9 +23,10 @@ class LmdbVehicleInsuranceCron
 	/**
 	 * Send due certificate and review reminders.
 	 *
+	 * @param int $force 1 to force reminder sends during a direct test call
 	 * @return int<-1,0>
 	 */
-	public function sendCertificateReminders()
+	public function sendCertificateReminders($force = 0)
 	{
 		global $conf, $langs;
 
@@ -34,6 +35,8 @@ class LmdbVehicleInsuranceCron
 			return 0;
 		}
 		$langs->loadLangs(array('mails', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		$force = $this->isForcedExecution($force);
+		$forcedRunKey = $force ? sha1((string) microtime(true).':'.(string) dol_now().':'.(string) getmypid()) : '';
 		$entity = (int) $conf->entity;
 		$today = $this->dayStart(dol_now());
 		$sql = 'SELECT cv.fk_contract, cv.fk_vehicle, cv.date_start AS coverage_start, v.ref AS vehicle_ref, v.registration_number, v.label AS vehicle_label';
@@ -60,7 +63,7 @@ class LmdbVehicleInsuranceCron
 			if ($due === null) {
 				continue;
 			}
-			$result = $this->sendReminder($contract, $certificate, (int) $row->fk_vehicle, (string) $row->vehicle_ref, (string) $row->registration_number, (string) $row->vehicle_label, $due, $entity);
+			$result = $this->sendReminder($contract, $certificate, (int) $row->fk_vehicle, (string) $row->vehicle_ref, (string) $row->registration_number, (string) $row->vehicle_label, $due, $entity, $forcedRunKey);
 			if ($result > 0) {
 				$sent++;
 			} elseif ($result < 0) {
@@ -68,9 +71,27 @@ class LmdbVehicleInsuranceCron
 			}
 		}
 		$this->db->free($resql);
-		$this->output = 'Insurance reminders sent: '.$sent.'; failures: '.$failed;
+		$this->output = 'Execution mode: '.($force ? 'forced' : 'automatic').'; insurance reminders sent: '.$sent.'; failures: '.$failed;
 
 		return $failed > 0 ? -1 : 0;
+	}
+
+	/**
+	 * Detect a direct forced call or the native Scheduled Jobs manual run.
+	 *
+	 * @param int $force Explicit direct-call flag
+	 * @return bool
+	 */
+	private function isForcedExecution($force)
+	{
+		if ((int) $force > 0) return true;
+		if (PHP_SAPI === 'cli') {
+			global $argv;
+
+			return is_array($argv) && in_array('--force', $argv, true);
+		}
+
+		return GETPOST('action', 'aZ09') === 'confirm_execute' && GETPOST('confirm', 'alpha') === 'yes';
 	}
 
 	/**
@@ -167,13 +188,16 @@ class LmdbVehicleInsuranceCron
 	 * @param string $vehicleLabel Vehicle label
 	 * @param array{type:string,key_suffix:string,due_date:int,review:bool} $due Due reminder
 	 * @param int $entity Entity
+	 * @param string $forcedRunKey Non-empty key for a forced manual execution
 	 * @return int<-1,1>
 	 */
-	private function sendReminder($contract, $certificate, $vehicleId, $vehicleRef, $registration, $vehicleLabel, $due, $entity)
+	private function sendReminder($contract, $certificate, $vehicleId, $vehicleRef, $registration, $vehicleLabel, $due, $entity, $forcedRunKey = '')
 	{
 		$isFleetReview = $due['review'] && $certificate instanceof LmdbVehicleInsuranceCertificate && empty($certificate->fk_vehicle);
 		$logVehicleId = $isFleetReview ? 0 : $vehicleId;
-		$key = sha1($contract->id.':'.$logVehicleId.':'.$due['key_suffix']);
+		$keySource = $contract->id.':'.$logVehicleId.':'.$due['key_suffix'];
+		if ($forcedRunKey !== '') $keySource .= ':forced:'.$forcedRunKey;
+		$key = sha1($keySource);
 		$sql = 'INSERT IGNORE INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_reminder_log';
 		$sql .= ' (entity, reminder_key, fk_contract, fk_vehicle, fk_certificate, reminder_type, due_date, status, recipient_count, date_creation) VALUES (';
 		$sql .= $entity.", '".$this->db->escape($key)."', ".((int) $contract->id).', '.($logVehicleId > 0 ? (string) $logVehicleId : 'NULL').', ';
@@ -271,12 +295,16 @@ class LmdbVehicleInsuranceCron
 	{
 		require_once DOL_DOCUMENT_ROOT.'/core/class/CMailFile.class.php';
 
+		if (!isValidEmail($email)) {
+			$this->error = 'ErrorBadEMail';
+			return -1;
+		}
 		$from = getDolGlobalString('MAIN_MAIL_EMAIL_FROM');
 		if ($from === '') {
 			$this->error = 'InsuranceSenderEmailMissing';
 			return -1;
 		}
-		$subject = strtr($template['subject'], $replacements);
+		$subject = html_entity_decode(strtr($template['subject'], $replacements), ENT_QUOTES | ENT_HTML5, 'UTF-8');
 		$content = strtr($template['content'], $replacements);
 		$mail = new CMailFile($subject, $email, $from, $content, array(), array(), array(), '', '', 0, -1);
 		if (!$mail->sendfile()) {

@@ -1,0 +1,9 @@
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_control ADD UNIQUE INDEX uk_lmdbvm_reg_control_ref (entity, ref);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_control ADD INDEX idx_lmdbvm_reg_control_entity (entity);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_control ADD INDEX idx_lmdbvm_reg_control_vehicle (fk_vehicle);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_control ADD INDEX idx_lmdbvm_reg_control_requirement (fk_requirement);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_control ADD INDEX idx_lmdbvm_reg_control_rule (fk_rule);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_control ADD INDEX idx_lmdbvm_reg_control_provider (fk_soc_provider);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_control ADD INDEX idx_lmdbvm_reg_control_previous (fk_previous_control);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_control ADD INDEX idx_lmdbvm_reg_control_status (status);
+ALTER TABLE llx_lmdbvehiclemanagement_regulatory_control ADD INDEX idx_lmdbvm_reg_control_date (control_date);

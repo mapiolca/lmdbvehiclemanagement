@@ -1,0 +1,5 @@
+ALTER TABLE llx_lmdbvehiclemanagement_vehicle_regulatory_answer ADD UNIQUE INDEX uk_lmdbvm_vehicle_reg_answer (entity, fk_vehicle, fk_question);
+ALTER TABLE llx_lmdbvehiclemanagement_vehicle_regulatory_answer ADD INDEX idx_lmdbvm_vehicle_reg_answer_entity (entity);
+ALTER TABLE llx_lmdbvehiclemanagement_vehicle_regulatory_answer ADD INDEX idx_lmdbvm_vehicle_reg_answer_vehicle (fk_vehicle);
+ALTER TABLE llx_lmdbvehiclemanagement_vehicle_regulatory_answer ADD INDEX idx_lmdbvm_vehicle_reg_answer_question (fk_question);
+ALTER TABLE llx_lmdbvehiclemanagement_vehicle_regulatory_answer ADD INDEX idx_lmdbvm_vehicle_reg_answer_choice (fk_choice);

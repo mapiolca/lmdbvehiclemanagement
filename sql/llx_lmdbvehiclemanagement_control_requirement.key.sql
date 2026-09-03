@@ -1,0 +1,10 @@
+ALTER TABLE llx_lmdbvehiclemanagement_control_requirement ADD UNIQUE INDEX uk_lmdbvm_requirement (entity, fk_vehicle, fk_rule, requirement_kind, fk_source_control);
+ALTER TABLE llx_lmdbvehiclemanagement_control_requirement ADD INDEX idx_lmdbvm_requirement_entity (entity);
+ALTER TABLE llx_lmdbvehiclemanagement_control_requirement ADD INDEX idx_lmdbvm_requirement_vehicle (fk_vehicle);
+ALTER TABLE llx_lmdbvehiclemanagement_control_requirement ADD INDEX idx_lmdbvm_requirement_rule (fk_rule);
+ALTER TABLE llx_lmdbvehiclemanagement_control_requirement ADD INDEX idx_lmdbvm_requirement_source_control (fk_source_control);
+ALTER TABLE llx_lmdbvehiclemanagement_control_requirement ADD INDEX idx_lmdbvm_requirement_last_control (fk_last_control);
+ALTER TABLE llx_lmdbvehiclemanagement_control_requirement ADD INDEX idx_lmdbvm_requirement_due (retained_due_date);
+ALTER TABLE llx_lmdbvehiclemanagement_control_requirement ADD INDEX idx_lmdbvm_requirement_status (status);
+ALTER TABLE llx_lmdbvehiclemanagement_control_requirement ADD INDEX idx_lmdbvm_requirement_active (active);
+ALTER TABLE llx_lmdbvehiclemanagement_control_requirement ADD INDEX idx_lmdbvm_requirement_actioncomm (fk_actioncomm);

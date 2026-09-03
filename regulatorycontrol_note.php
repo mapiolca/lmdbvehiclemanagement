@@ -1,0 +1,18 @@
+<?php
+/* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
+$res = 0;
+if (!$res && !empty($_SERVER['CONTEXT_DOCUMENT_ROOT'])) $res = @include str_replace('..', '', $_SERVER['CONTEXT_DOCUMENT_ROOT']).'/main.inc.php';
+if (!$res && file_exists('../../main.inc.php')) $res = @include '../../main.inc.php';
+if (!$res && file_exists('../main.inc.php')) $res = @include '../main.inc.php';
+if (!$res) die('Include of main fails');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycontrol.class.php');
+dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
+/** @var Conf $conf */ /** @var DoliDB $db */ /** @var HookManager $hookmanager */ /** @var Translate $langs */ /** @var User $user */
+$langs->loadLangs(array('companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+$id = GETPOSTINT('id'); $action = GETPOST('action', 'aZ09'); $object = new LmdbVehicleRegulatoryControl($db);
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if ($id <= 0 || $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
+$permissionnote = $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write') && (int) $object->status === LmdbVehicleRegulatoryControl::STATUS_DRAFT;
+$hookmanager->initHooks(array('lmdbvehicleregulatorycontrolnote', 'globalcard')); $parameters = array('id' => $id); $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action); if ($reshook < 0) setEventMessages($hookmanager->error, $hookmanager->errors, 'errors'); if (empty($reshook)) include DOL_DOCUMENT_ROOT.'/core/actions_setnotes.inc.php';
+llxHeader('', $object->ref.' - '.$langs->trans('Notes'), '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card_notes'); $head = lmdbVehicleRegulatoryControlPrepareHead($object); print dol_get_fiche_head($head, 'notes', $langs->trans('RegulatoryControl'), -1, $object->picto); lmdbVehicleRegulatoryControlPrintBanner($object);
+print '<div class="fichecenter"><div class="underbanner clearboth"></div>'; $cssclass = 'titlefield'; $dirtpls = array_merge($conf->modules_parts['tpl'], array('/core/tpl')); foreach ($dirtpls as $reldir) { $tplResult = @include dol_buildpath($reldir.'/notes.tpl.php'); if ($tplResult) break; } print '</div>'.dol_get_fiche_end(); llxFooter(); $db->close();
