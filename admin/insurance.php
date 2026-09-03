@@ -130,7 +130,7 @@ print '<tr class="oddeven"><td>'.$langs->trans('InsuranceOverdueRepeat').'</td><
 print '<tr class="oddeven"><td>'.$langs->trans('InsuranceReviewRepeat').'</td><td>'.$form->selectarray('review_repeat', array(1 => '1', 3 => '3', 7 => '7', 14 => '14'), getDolGlobalInt(LmdbVehicleInsuranceConfig::CONST_REVIEW_REPEAT, 3), 0, 0, 0, '', 1).' '.$langs->trans('days').'</td></tr>';
 print '<tr class="oddeven"><td>'.$langs->trans('InsuranceRequestEmailTemplate').'</td><td>'.$form->selectarray('request_template', $requestTemplateOptions, getDolGlobalInt(LmdbVehicleInsuranceConfig::CONST_REQUEST_TEMPLATE), 1, 0, 0, '', 1, 0, 0, '', 'minwidth500', 1).'</td></tr>';
 print '<tr class="oddeven"><td>'.$langs->trans('InsuranceReviewEmailTemplate').'</td><td>'.$form->selectarray('review_template', $reviewTemplateOptions, getDolGlobalInt(LmdbVehicleInsuranceConfig::CONST_REVIEW_TEMPLATE), 1, 0, 0, '', 1, 0, 0, '', 'minwidth500', 1).'</td></tr>';
-print '<tr class="oddeven"><td>'.$langs->trans('ScheduledJobs').'</td><td>';
+print '<tr class="oddeven"><td>'.$langs->trans('CronList').'</td><td>';
 if (!isModEnabled('cron')) {
 	print dolGetStatus($langs->trans('Unavailable'), '', '', 'status6', 5).' — '.$langs->trans('RequiresCronModule');
 } elseif (is_array($cronStatus)) {

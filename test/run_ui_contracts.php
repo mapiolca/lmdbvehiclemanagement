@@ -165,6 +165,9 @@ $checks['insurance_uses_centralized_native_permission_checks'] = strpos($insuran
 	&& strpos($library, "\$user->hasRight('lmdbvehiclemanagement', \$rightObject, \$action)") !== false;
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
+$checks['insurance_admin_uses_native_scheduled_jobs_translation'] = strpos($insuranceAdmin, "'cron', 'lmdbvehiclemanagement@lmdbvehiclemanagement'") !== false
+	&& strpos($insuranceAdmin, "trans('CronList')") !== false
+	&& strpos($insuranceAdmin, "trans('ScheduledJobs')") === false;
 $checks['insurance_cron_is_declared'] = strpos($descriptor, "'method' => 'sendCertificateReminders'") !== false && strpos($insuranceCron, 'INSERT IGNORE INTO') !== false;
 $checks['manual_scheduled_job_run_forces_insurance_reminders'] = strpos($insuranceCron, 'public function sendCertificateReminders($force = 0)') !== false
 	&& strpos($insuranceCron, "GETPOST('action', 'aZ09') === 'confirm_execute'") !== false
