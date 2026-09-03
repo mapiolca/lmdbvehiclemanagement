@@ -39,6 +39,19 @@ $choiceSql = regulatorySource('sql/llx_c_lmdbvehiclemanagement_regulatory_questi
 $answerSql = regulatorySource('sql/llx_lmdbvehiclemanagement_vehicle_regulatory_answer.sql');
 $fr = regulatorySource('langs/fr_FR/lmdbvehiclemanagement.lang');
 $en = regulatorySource('langs/en_US/lmdbvehiclemanagement.lang');
+$runtimePhpSources = '';
+$runtimeFiles = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+foreach ($runtimeFiles as $runtimeFile) {
+	if (!$runtimeFile->isFile() || strtolower($runtimeFile->getExtension()) !== 'php') continue;
+	$relativeRuntimePath = str_replace('\\', '/', substr($runtimeFile->getPathname(), strlen($root) + 1));
+	if (strpos($relativeRuntimePath, 'test/') === 0) continue;
+	$runtimeSource = file_get_contents($runtimeFile->getPathname());
+	if (!is_string($runtimeSource)) {
+		fwrite(STDERR, 'Unable to read '.$relativeRuntimePath.PHP_EOL);
+		exit(1);
+	}
+	$runtimePhpSources .= $runtimeSource;
+}
 
 $checks = array(
 	'module_version_0141' => strpos($descriptor, "\$this->version = '0.14.1';") !== false,
@@ -190,11 +203,11 @@ $checks = array(
 		&& strpos($descriptor, "rule_definition.code = 'FR_SPECIAL_PUBLIC'") !== false
 		&& strpos($descriptor, 'SET requirement.active = 0') !== false
 		&& strpos($descriptor, 'synchronizeEntityRequirements((int) $entity, $user)') !== false,
-	'central_permissions_elevate_admins_before_native_rights' => strpos($permissions, 'function lmdbVehicleManagementUserIsFullAdmin(') !== false
-		&& strpos($permissions, 'if (!empty($user->admin)) return true;') !== false
-		&& strpos($permissions, "\$user->hasRight('multicompany', 'entities', 'write')") !== false
-		&& strpos($permissions, 'function lmdbVehicleManagementCanDo(') !== false
-		&& strpos($permissions, "\$user->hasRight('lmdbvehiclemanagement', \$rightObject, \$action)") !== false,
+	'permissions_use_only_native_hasright' => strpos($runtimePhpSources, 'lmdbVehicleManagementUserIsFullAdmin') === false
+		&& strpos($runtimePhpSources, 'lmdbVehicleManagementCanDo') === false
+		&& strpos($runtimePhpSources, 'rights->lmdbvehiclemanagement') === false
+		&& strpos($descriptor, '$user->hasRight("lmdbvehiclemanagement", "read")') !== false
+		&& strpos($descriptor, '$user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "write")') !== false,
 	'schedule_column_selector_fix_is_strictly_scoped' => strpos($moduleStylesheet, '.mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .dropdown') !== false
 		&& strpos($moduleStylesheet, 'z-index: 10000;') !== false
 		&& strpos($moduleJavascript, ".mod-lmdbvehiclemanagement.page-regulatorycontrol-schedule .dropdown") !== false

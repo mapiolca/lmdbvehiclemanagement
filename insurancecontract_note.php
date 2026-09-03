@@ -20,10 +20,10 @@ $langs->loadLangs(array('companies', 'lmdbvehiclemanagement@lmdbvehiclemanagemen
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
 $object = new LmdbVehicleInsuranceContract($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 
-$permissionnote = lmdbVehicleManagementCanDo($user, 'insurance', 'write');
+$permissionnote = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write');
 $hookmanager->initHooks(array('lmdbinsurancecontractnote', 'globalcard'));
 $parameters = array('id' => $id);
 $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action);

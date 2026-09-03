@@ -17,7 +17,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 
 $limit = GETPOSTINT('limit') ?: (int) $conf->liste_limit;
 $page = GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page');
@@ -127,7 +127,7 @@ print '<input type="hidden" name="action" value="list">';
 print '<input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'">';
 print '<input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'">';
 print '<input type="hidden" name="page" value="'.((int) $page).'">';
-$newButton = dolGetButtonTitle($langs->trans('NewInsuranceContract'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'?action=create&token='.newToken(), '', lmdbVehicleManagementCanDo($user, 'insurance', 'write'));
+$newButton = dolGetButtonTitle($langs->trans('NewInsuranceContract'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'?action=create&token='.newToken(), '', $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write'));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'shield-alt', 0, $newButton, '', $limit, 0, 0, 1);
 
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;

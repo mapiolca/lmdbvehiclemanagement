@@ -301,7 +301,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 30,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -316,7 +316,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 100,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -330,7 +330,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 101,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "lmdbvehicle", "write")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "lmdbvehicle", "write")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -344,7 +344,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 102,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -358,7 +358,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 103,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -373,7 +373,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 200,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -387,7 +387,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 201,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -401,7 +401,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 202,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "regulatorycontrol", "write")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "write")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -415,7 +415,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 203,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -430,7 +430,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 300,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -444,7 +444,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 301,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "consumption", "write")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "consumption", "write")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -458,7 +458,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 302,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -473,7 +473,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 400,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -487,7 +487,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 401,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "insurance", "write")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "insurance", "write")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -501,7 +501,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 402,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'lmdbVehicleManagementCanDo($user, "read")',
+			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -520,7 +520,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->export_code[$r] = 'lmdbvehiclemanagement_vehicles';
 		$this->export_label[$r] = 'VehicleExportDataset';
 		$this->export_icon[$r] = 'car';
-		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && lmdbVehicleManagementCanDo($user, "lmdbvehicle", "export")';
+		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && $user->hasRight("lmdbvehiclemanagement", "lmdbvehicle", "export")';
 		$this->export_permission[$r] = array(array('lmdbvehiclemanagement', 'lmdbvehicle', 'export'));
 		$this->export_fields_array[$r] = array(
 			't.ref' => 'Ref',
@@ -593,7 +593,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->export_code[$r] = 'lmdbvehiclemanagement_consumptions';
 		$this->export_label[$r] = 'ConsumptionExportDataset';
 		$this->export_icon[$r] = 'gas-pump';
-		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && lmdbVehicleManagementCanDo($user, "consumption", "export")';
+		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && $user->hasRight("lmdbvehiclemanagement", "consumption", "export")';
 		$this->export_permission[$r] = array(array('lmdbvehiclemanagement', 'consumption', 'export'));
 		$this->export_fields_array[$r] = array(
 			't.ref' => 'Ref', 'r.reading_date' => 'Date', 'v.ref' => 'VehicleRef', 'v.registration_number' => 'RegistrationNumber',
@@ -620,7 +620,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->export_code[$r] = 'lmdbvehiclemanagement_regulatory_controls';
 		$this->export_label[$r] = 'RegulatoryControlExportDataset';
 		$this->export_icon[$r] = 'clipboard-check';
-		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && lmdbVehicleManagementCanDo($user, "regulatorycontrol", "export")';
+		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && $user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "export")';
 		$this->export_permission[$r] = array(array('lmdbvehiclemanagement', 'regulatorycontrol', 'export'));
 		$this->export_fields_array[$r] = array(
 			't.ref' => 'Ref', 't.control_date' => 'RegulatoryControlDate', 'v.ref' => 'VehicleRef', 'v.registration_number' => 'RegistrationNumber',
@@ -654,7 +654,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->export_code[$r] = 'lmdbvehiclemanagement_safety_register';
 		$this->export_label[$r] = 'RegulatorySafetyRegisterExportDataset';
 		$this->export_icon[$r] = 'shield-alt';
-		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && lmdbVehicleManagementCanDo($user, "regulatorycontrol", "export")';
+		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && $user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "export")';
 		$this->export_permission[$r] = array(array('lmdbvehiclemanagement', 'regulatorycontrol', 'export'));
 		$this->export_fields_array[$r] = array(
 			'v.ref' => 'VehicleRef', 'v.registration_number' => 'RegistrationNumber', 'v.label' => 'Label', 'asset.label' => 'AssetType',
@@ -702,7 +702,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->import_run_sql_after_array = array();
 		$this->import_TypeFields_array = array();
 		$this->import_help_array = array();
-		if (is_object($user) && lmdbVehicleManagementCanDo($user, 'lmdbvehicle', 'import')) {
+		if (is_object($user) && $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'import')) {
 			$r = 0;
 			$this->import_code[$r] = 'lmdbvehiclemanagement_vehicles';
 			$this->import_label[$r] = 'VehicleImportDataset';
@@ -816,7 +816,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 				$this->import_entities_array[$r]['t.ref'] = 'lmdbvehicle';
 			}
 		}
-		if (is_object($user) && lmdbVehicleManagementCanDo($user, 'regulatorycontrol', 'import')) {
+		if (is_object($user) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'import')) {
 			$r = count($this->import_code);
 			$this->import_code[$r] = 'lmdbvehiclemanagement_regulatory_controls';
 			$this->import_label[$r] = 'RegulatoryControlImportDataset';

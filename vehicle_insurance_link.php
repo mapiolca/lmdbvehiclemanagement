@@ -18,7 +18,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !lmdbVehicleManagementCanDo($user, 'insurance', 'write') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'insurance', 'write') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');

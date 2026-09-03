@@ -30,7 +30,7 @@ $searchLabel = GETPOST('search_label', 'alphanohtml');
 if (GETPOST('button_removefilter', 'alpha')) $searchLabel = '';
 
 $object = new LmdbVehicle($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !isModEnabled('agenda') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !isModEnabled('agenda') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $canReadAllAgenda = $user->hasRight('agenda', 'allactions', 'read');
 if (!$user->hasRight('agenda', 'myactions', 'read') && !$canReadAllAgenda) accessforbidden();

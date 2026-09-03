@@ -20,9 +20,9 @@ $id = GETPOSTINT('id');
 $readingId = GETPOSTINT('reading_id');
 $action = GETPOST('action', 'aZ09');
 $confirm = GETPOST('confirm', 'alpha');
-$permissionToManage = lmdbVehicleManagementCanDo($user, 'odometer', 'write');
+$permissionToManage = $user->hasRight('lmdbvehiclemanagement', 'odometer', 'write');
 $vehicle = new LmdbVehicle($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 
 $reading = new LmdbVehicleOdometerReading($db);

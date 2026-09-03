@@ -18,7 +18,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'users', 'currencies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 $limit = GETPOSTINT('limit') ?: (int) $conf->liste_limit;
 $page = GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page');
 if ($page < 0 || GETPOST('button_search', 'alpha') || GETPOST('button_removefilter', 'alpha')) $page = 0;
@@ -117,8 +117,8 @@ if ($searchCategory !== '') $param .= '&search_category='.urlencode($searchCateg
 foreach ($searchEntities as $entityId) $param .= '&search_entity[]='.((int) $entityId);
 print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="formfilteraction" id="formfilteraction" value="list"><input type="hidden" name="action" value="list"><input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'"><input type="hidden" name="page" value="'.((int) $page).'">';
 $newButton = '';
-if (lmdbVehicleManagementCanDo($user, 'consumption', 'import')) $newButton .= dolGetButtonTitle($langs->trans('Import'), '', 'fa fa-file-import', dol_buildpath('/lmdbvehiclemanagement/consumption_import.php', 1), '', true);
-$newButton .= dolGetButtonTitle($langs->trans('NewConsumption'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&token='.newToken(), '', lmdbVehicleManagementCanDo($user, 'consumption', 'write'));
+if ($user->hasRight('lmdbvehiclemanagement', 'consumption', 'import')) $newButton .= dolGetButtonTitle($langs->trans('Import'), '', 'fa fa-file-import', dol_buildpath('/lmdbvehiclemanagement/consumption_import.php', 1), '', true);
+$newButton .= dolGetButtonTitle($langs->trans('NewConsumption'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&token='.newToken(), '', $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write'));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'gas-pump', 0, $newButton, '', $limit, 0, 0, 1);
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, $conf->main_checkbox_left_column);

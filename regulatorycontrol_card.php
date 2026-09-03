@@ -21,15 +21,15 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var Translate $langs */
 /** @var User $user */
 $langs->loadLangs(array('main', 'companies', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09') ?: 'view';
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionWrite = lmdbVehicleManagementCanDo($user, 'regulatorycontrol', 'write');
-$permissionValidate = lmdbVehicleManagementCanDo($user, 'regulatorycontrol', 'validate');
-$permissionDelete = lmdbVehicleManagementCanDo($user, 'regulatorycontrol', 'delete');
+$permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write');
+$permissionValidate = $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'validate');
+$permissionDelete = $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'delete');
 $object = new LmdbVehicleRegulatoryControl($db);
 if ($id > 0 && $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 

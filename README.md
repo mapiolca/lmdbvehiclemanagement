@@ -32,7 +32,7 @@
 - codes Agenda compatibles avec la limite native de 50 caractères, y compris pour les attestations d’assurance ;
 - modèles de numérotation distincts pour les véhicules et engins, événements, contrats d’assurance, consommations et contrôles réglementaires ;
 - modèle de référence véhicule basé sur l’immatriculation, activable après précontrôle et migration transactionnelle des références, documents et index ECM ;
-- droits granulaires distincts pour lire, créer/modifier, mettre en ou hors service, supprimer, exporter et importer, avec contrôle métier centralisé : élévation des administrateurs, périmètre des administrateurs Multicompany et recours aux droits natifs `$user->hasRight()` pour les utilisateurs standards ;
+- droits granulaires distincts pour lire, créer/modifier, mettre en ou hors service, supprimer, exporter et importer, contrôlés directement avec la méthode native `$user->hasRight()` ;
 - profils natifs Dolibarr d’import et d’export des véhicules, avec création des lignes importées par l’objet métier et sans effet Agenda pendant la simulation ;
 - partage Multicompany configurable des véhicules, de leur numérotation et du dictionnaire des énergies.
 - contrats d’assurance individuels ou de flotte, avec une couverture principale et des couvertures complémentaires ;

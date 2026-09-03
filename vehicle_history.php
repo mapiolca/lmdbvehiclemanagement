@@ -63,7 +63,7 @@ $filters = array(
 if ($searchStatus !== null) $filters['status'] = $searchStatus;
 
 $vehicle = new LmdbVehicle($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $history = new LmdbVehicleHistory($db);
 $total = $history->countTimeline($id, $sourceFilter, $filters);
@@ -111,8 +111,8 @@ $odometerStatusObject = new LmdbVehicleOdometerReading($db);
 $consumptionStatusObject = new LmdbVehicleConsumption($db);
 $insuranceContractStatusObject = new LmdbVehicleInsuranceContract($db);
 $insuranceCertificateStatusObject = new LmdbVehicleInsuranceCertificate($db);
-$canManageAssignments = lmdbVehicleManagementCanDo($user, 'assignment', 'write');
-$canManageOdometer = lmdbVehicleManagementCanDo($user, 'odometer', 'write');
+$canManageAssignments = $user->hasRight('lmdbvehiclemanagement', 'assignment', 'write');
+$canManageOdometer = $user->hasRight('lmdbvehiclemanagement', 'odometer', 'write');
 $typeTranslations = array(
 	'maintenance' => 'EventTypeMaintenance',
 	'breakdown' => 'EventTypeBreakdown',

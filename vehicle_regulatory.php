@@ -15,14 +15,14 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var Translate $langs */
 /** @var User $user */
 $langs->loadLangs(array('main', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !lmdbVehicleManagementCanDo($user, 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
 $vehicle = new LmdbVehicle($db);
 if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
-$permissionWrite = lmdbVehicleManagementCanDo($user, 'lmdbvehicle', 'write');
-$permissionDerogation = lmdbVehicleManagementCanDo($user, 'regulatorycontrol', 'derogation');
+$permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write');
+$permissionDerogation = $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'derogation');
 $regulatoryService = new LmdbVehicleRegulatoryService($db);
 $questionnaire = $regulatoryService->getQualificationQuestionnaire((int) $vehicle->id, (int) $vehicle->entity);
 
@@ -117,7 +117,7 @@ if ($permissionWrite) {
 }
 
 print '<div class="tabsAction">';
-if (lmdbVehicleManagementCanDo($user, 'regulatorycontrol', 'write')) print dolGetButtonAction('', $langs->trans('NewRegulatoryControl'), 'default', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&vehicle_id='.$id.'&token='.newToken());
+if ($user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write')) print dolGetButtonAction('', $langs->trans('NewRegulatoryControl'), 'default', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&vehicle_id='.$id.'&token='.newToken());
 print '</div>';
 print load_fiche_titre($langs->trans('RegulatoryRequirements'), '', 'clipboard-check');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';

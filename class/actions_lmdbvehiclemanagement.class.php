@@ -55,7 +55,7 @@ class ActionsLmdbVehicleManagement
 			return 0;
 		}
 
-		if (lmdbVehicleManagementCanDo($user, 'consumption', 'write')) {
+		if ($user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')) {
 			$this->results[] = array(
 				'url' => dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement&token='.newToken(),
 				'title' => 'NewConsumption@lmdbvehiclemanagement',
@@ -65,7 +65,7 @@ class ActionsLmdbVehicleManagement
 				'position' => 450,
 			);
 		}
-		if (lmdbVehicleManagementCanDo($user, 'regulatorycontrol', 'write')) {
+		if ($user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write')) {
 			$this->results[] = array(
 				'url' => dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement&token='.newToken(),
 				'title' => 'NewRegulatoryControl@lmdbvehiclemanagement',
@@ -100,7 +100,7 @@ class ActionsLmdbVehicleManagement
 			return 0;
 		}
 		$rightObject = $dataset === 'lmdbvehiclemanagement_vehicles' ? 'lmdbvehicle' : 'regulatorycontrol';
-		if (!lmdbVehicleManagementCanDo($user, $rightObject, 'import')) {
+		if (!$user->hasRight('lmdbvehiclemanagement', $rightObject, 'import')) {
 			$this->error = $langs->trans('NotEnoughPermissions');
 			$this->errors = array($this->error);
 			return -1;

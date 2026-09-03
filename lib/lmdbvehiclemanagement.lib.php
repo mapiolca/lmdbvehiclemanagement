@@ -8,37 +8,6 @@
  */
 
 /**
- * Identify administrators entitled to the module's functional elevation.
- * Entity, object, document and CSRF checks remain mandatory at call sites.
- *
- * @param User $user Dolibarr user
- * @return bool
- */
-function lmdbVehicleManagementUserIsFullAdmin($user)
-{
-	if (!is_object($user)) return false;
-	if (!empty($user->admin)) return true;
-
-	return isModEnabled('multicompany') && $user->hasRight('multicompany', 'entities', 'write');
-}
-
-/**
- * Apply administrator elevation before a granular module permission.
- *
- * @param User $user Dolibarr user
- * @param string $rightObject Rights object, or the top-level action when $action is empty
- * @param string $action Granular action
- * @return bool
- */
-function lmdbVehicleManagementCanDo($user, $rightObject, $action = '')
-{
-	if (lmdbVehicleManagementUserIsFullAdmin($user)) return true;
-	if (!is_object($user)) return false;
-
-	return $action === '' ? $user->hasRight('lmdbvehiclemanagement', $rightObject) : $user->hasRight('lmdbvehiclemanagement', $rightObject, $action);
-}
-
-/**
  * Translate and display errors returned by a module business object.
  *
  * Object methods may expose either a translated sentence or a stable
