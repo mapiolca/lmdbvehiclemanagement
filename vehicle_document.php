@@ -38,6 +38,9 @@ $upload_dir = getMultidirOutput($object, 'lmdbvehiclemanagement', 1);
 if (!is_string($upload_dir) || $upload_dir === '' || strpos($upload_dir, 'error-diroutput-') === 0) accessforbidden($langs->trans('AccessDeniedForEntity'));
 $modulepart = 'lmdbvehiclemanagement';
 $hookmanager->initHooks(array('lmdbvehicledocument', 'globalcard'));
+$parameters = array('id' => $id);
+$reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action);
+if ($reshook < 0) setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
 include DOL_DOCUMENT_ROOT.'/core/actions_linkedfiles.inc.php';
 if (GETPOST('sendit', 'alpha') && empty($error)) {
 	header('Location: '.$_SERVER['PHP_SELF'].'?id='.$id);
@@ -62,6 +65,8 @@ $moreparam = '&entity='.((int) $object->entity);
 $savingdocmask = '';
 $withproject = 0;
 $relativepathwithnofile = dol_sanitizeFileName($object->ref).'/';
+$dossierGeneration = $permissiontoadd && $user->hasRight('fournisseur', 'facture', 'lire') && LmdbVehicleManagementCompatibility::isFeatureAvailable('vehicle_dossier');
+if ($dossierGeneration) print $formfile->showdocuments('lmdbvehiclemanagement', dol_sanitizeFileName($object->ref), '', $_SERVER['PHP_SELF'].'?id='.$id, 1, $permissiontodelete, getDolGlobalString('LMDBVEHICLEMANAGEMENT_DOSSIER_MODEL'), 0, 0, 0, 0, 0, $moreparam, '', '', '', '', $object);
 include DOL_DOCUMENT_ROOT.'/core/tpl/document_actions_post_headers.tpl.php';
 llxFooter();
 $db->close();

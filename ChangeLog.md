@@ -1,5 +1,12 @@
 # Historique des versions
 
+## À publier
+
+- Création native de factures fournisseurs depuis les événements et contrôles, avec liaison transactionnelle et relations manuelles multiples dans les deux sens. Les contrôles validés restent immuables ; droits, tokens et entité des deux objets sont contrôlés.
+- Modèle natif **Dossier véhicule** : PDF récapitulatif de tout l’historique disponible et ZIP des originaux du véhicule, des interventions et des factures, sans justificatifs de consommation. Les prix inconnus, zéros, devises et statuts sont conservés ; les documents absents sont signalés.
+- Génération et indexation dans l’entité propriétaire, vérification du ZIP et restauration du dossier précédent en cas d’échec. Téléchargements et aperçus réservés aux lecteurs du véhicule et des factures, sans accès public ; les noms des dossiers générés sont protégés.
+- Compatibilité Dolibarr v20+/PHP 8.0+ conservée, extension ZIP requise et modèles enregistrés dans les tables natives. Après déploiement, réactiver le module puis activer le modèle documentaire dans les réglages ; aucune migration de table métier supplémentaire.
+
 ## `0.15.0` — 2026-09-03
 
 - Prix facultatif des recharges d’additif : les montants absents sont exclus des statistiques de prix, tout en conservant les quantités et fréquences. Les zéros explicites restent valorisés à zéro. La réactivation du module rend `total_ttc` nullable sans modifier les montants historiques ni les réglages ; saisie, imports CSV, exports, fiches et tableaux distinguent désormais prix inconnu et prix nul.

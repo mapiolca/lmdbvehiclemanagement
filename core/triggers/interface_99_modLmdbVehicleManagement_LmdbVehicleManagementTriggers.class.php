@@ -38,6 +38,26 @@ class InterfaceLmdbVehicleManagementTriggers extends DolibarrTriggers
 		}
 
 		$actions = LmdbVehicleAgenda::getTriggerDefinitions();
+		if (in_array($action, array('ECMFILES_CREATE', 'ECMFILES_MODIFY'), true) && $object->element === 'ecmfiles'
+			&& preg_match('/^lmdb-dossier-[0-9]+\.(pdf|zip)$/i', (string) $object->filename) && !empty($object->share)) {
+			$langs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
+			$this->error = $langs->trans('LmdbDossierNoPublicShare');
+			return -1;
+		}
+		if ($action === 'BILL_SUPPLIER_CREATE' && isset($object->context['lmdb_invoice_source'])) {
+			require_once __DIR__.'/../../class/lmdbvehiclesupplierinvoice.class.php';
+			$source = $object->context['lmdb_invoice_source'];
+			try {
+				if (!($object instanceof FactureFournisseur) || !is_array($source) || !isset($source['type'], $source['id']) || !is_string($source['type']) || !is_int($source['id'])) throw new RuntimeException('LmdbInvoiceLinkFailed');
+				$service = new LmdbVehicleSupplierInvoice($this->db);
+				$service->changeLink($source['type'], $source['id'], (int) $object->id, $user);
+				return 1;
+			} catch (Throwable $e) {
+				$langs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
+				$this->error = $langs->trans($e->getMessage());
+				return -1;
+			}
+		}
 		if (!isset($actions[$action])) {
 			return 0;
 		}

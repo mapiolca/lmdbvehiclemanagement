@@ -187,6 +187,7 @@ if ($action === 'create' || $action === 'edit') {
 	print '<div class="fichecenter"><div class="fichehalfleft">';
 	$uploadDir = getMultidirOutput($object, 'lmdbvehiclemanagement', 1);
 	if (is_string($uploadDir) && $uploadDir !== '' && strpos($uploadDir, 'error-diroutput-') !== 0) print $formfile->showdocuments('lmdbvehiclemanagement', dol_sanitizeFileName($object->ref), $uploadDir, $_SERVER['PHP_SELF'].'?id='.$id, 0, $permissionToWrite, '', 1, 0, 0, 28, 0, '&entity='.$object->entity);
+	require __DIR__.'/tpl/supplier_invoice_link.tpl.php';
 	$form->showLinkedObjectBlock($object);
 	print '</div><div class="fichehalfright"></div></div>';
 	print dol_get_fiche_end();

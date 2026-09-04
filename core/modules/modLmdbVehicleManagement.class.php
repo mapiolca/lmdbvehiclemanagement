@@ -42,11 +42,19 @@ class modLmdbVehicleManagement extends DolibarrModules
 
 		$this->module_parts = array(
 			'triggers' => 1,
+			'models' => 1,
+			'tpl' => 1,
 			'css' => array('/lmdbvehiclemanagement/css/lmdbvehiclemanagement.css'),
 			'js' => array('/lmdbvehiclemanagement/js/lmdbvehiclemanagement.js'),
 			'hooks' => array(
 				'data' => array(
 					'main',
+					'commonobject',
+					'invoicesuppliercard',
+					'fileslib',
+					'actionlinkedfiles',
+					'document',
+					'lmdbvehicledocument',
 					'lmdbvehiclecard',
 					'lmdbvehiclelist',
 					'lmdbvehicleeventcard',

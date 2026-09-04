@@ -177,6 +177,50 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	}
 
 	/**
+	 * @param string $modele
+	 * @param Translate $outputlangs
+	 * @param int $hidedetails
+	 * @param int $hidedesc
+	 * @param int $hideref
+	 * @param array|null $moreparams
+	 * @return int
+	 */
+	public function generateDocument($modele, $outputlangs, $hidedetails = 0, $hidedesc = 0, $hideref = 0, $moreparams = null)
+	{
+		global $user, $conf;
+		require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
+		if (!$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
+		$models = getListOfModels($this->db, 'lmdbvehicle');
+		if ($modele === '') $modele = getDolGlobalString('LMDBVEHICLEMANAGEMENT_DOSSIER_MODEL');
+		if ($modele !== 'lmdb_vehicle_dossier' || !is_array($models) || !isset($models[$modele])) { $this->error = $outputlangs->trans('LmdbDossierModelInactive'); return -1; }
+		if (!in_array((int) $this->entity, array_map('intval', explode(',', getEntity('lmdbvehicle'))), true)) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
+		return $this->commonGenerateDocument('core/modules/lmdbvehiclemanagement/doc/', $modele, $outputlangs, $hidedetails, $hidedesc, $hideref, $moreparams);
+	}
+
+	/**
+	 * Dossier indexing must keep the owner's ECM entity without changing the
+	 * consultation scope used to collect the vehicle and its linked invoices.
+	 * @param string $destfull Document path
+	 * @param int $update_main_doc_field Update last_main_doc
+	 * @return int
+	 */
+	public function indexFile($destfull, $update_main_doc_field)
+	{
+		global $conf, $user;
+		if (!preg_match('/^lmdb-dossier-[0-9]+\.(pdf|zip)$/i', basename($destfull))) return parent::indexFile($destfull, $update_main_doc_field);
+		$directory = getMultidirOutput($this, 'lmdbvehiclemanagement', 1);
+		if (!$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)
+			|| !in_array((int) $this->entity, array_map('intval', explode(',', getEntity('lmdbvehicle'))), true)
+			|| !is_string($directory) || realpath(dirname($destfull)) !== realpath($directory)
+			|| pathinfo($destfull, PATHINFO_FILENAME) !== 'lmdb-dossier-'.((int) $this->id)) { $this->error = 'NotEnoughPermissions'; return -1; }
+		$consultationEntity = $conf->entity;
+		try {
+			$conf->entity = (int) $this->entity;
+			return parent::indexFile($destfull, $update_main_doc_field);
+		} finally { $conf->entity = $consultationEntity; }
+	}
+
+	/**
 	 * Prevent ordinary form updates from changing lifecycle state.
 	 *
 	 * @param User $user Author
@@ -278,7 +322,10 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		return getDolGlobalString('LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON', 'mod_lmdbvehicle_standard') === 'mod_lmdbvehicle_registration';
 	}
 
-	/** @param string $registration Registration value @return string Normalized value */
+	/**
+	 * @param string $registration Registration value
+	 * @return string Normalized value
+	 */
 	public static function normalizeRegistrationNumber($registration)
 	{
 		return strtoupper(trim($registration));
@@ -547,7 +594,12 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		return $ids;
 	}
 
-	/** Persist confirmed regulatory profiles and refresh materialized requirements. @param list<int> $profileIds Profiles @param User $user Author @return int<-1,1> */
+	/**
+	 * Persist confirmed regulatory profiles and refresh materialized requirements.
+	 * @param list<int> $profileIds Profiles
+	 * @param User $user Author
+	 * @return int<-1,1>
+	 */
 	public function saveRegulatoryProfiles($profileIds, User $user)
 	{
 		$service = new LmdbVehicleRegulatoryService($this->db);
@@ -576,7 +628,14 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		return $result;
 	}
 
-	/** Grant a temporary, justified derogation without marking the equipment compliant. @param int $requirementId Requirement @param int $until Expiry @param string $reason Reason @param User $user Author @return int<-1,1> */
+	/**
+	 * Grant a temporary, justified derogation without marking the equipment compliant.
+	 * @param int $requirementId Requirement
+	 * @param int $until Expiry
+	 * @param string $reason Reason
+	 * @param User $user Author
+	 * @return int<-1,1>
+	 */
 	public function grantRegulatoryDerogation($requirementId, $until, $reason, User $user)
 	{
 		if ($until <= dol_now() || trim($reason) === '') return $this->businessRuleError('RegulatoryDerogationReasonAndDateRequired');
@@ -600,7 +659,10 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		return 1;
 	}
 
-	/** @param string $error Error key @return int<-1,-1> */
+	/**
+	 * @param string $error Error key
+	 * @return int<-1,-1>
+	 */
 	private function businessRuleError($error)
 	{
 		$this->error = $error;

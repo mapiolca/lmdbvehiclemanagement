@@ -137,6 +137,22 @@ if ($action === 'save_consumption_od_settings') {
 	exit;
 }
 
+if (in_array($action, array('enable_dossier', 'disable_dossier', 'default_dossier'), true)) {
+	require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
+	$activeModels = getListOfModels($db, 'lmdbvehicle');
+	if (!is_array($activeModels)) { setEventMessages($langs->trans('LmdbDossierReadFailed'), null, 'errors'); }
+	else {
+		$db->begin();
+		$result = 1;
+		if ($action === 'enable_dossier' && !isset($activeModels['lmdb_vehicle_dossier'])) $result = addDocumentModel('lmdb_vehicle_dossier', 'lmdbvehicle', $langs->trans('LmdbVehicleDossier'));
+		if ($action === 'disable_dossier') $result = delDocumentModel('lmdb_vehicle_dossier', 'lmdbvehicle');
+		if ($result > 0 && $action === 'default_dossier' && isset($activeModels['lmdb_vehicle_dossier'])) $result = dolibarr_set_const($db, 'LMDBVEHICLEMANAGEMENT_DOSSIER_MODEL', 'lmdb_vehicle_dossier', 'chaine', 0, '', (int) $conf->entity);
+		if ($result > 0) { $db->commit(); setEventMessages($langs->trans('RecordSaved'), null, 'mesgs'); }
+		else { $db->rollback(); setEventMessages($langs->trans('LmdbDossierWriteFailed'), null, 'errors'); }
+	}
+	header('Location: '.$_SERVER['PHP_SELF']); exit;
+}
+
 $title = $langs->trans('LmdbVehicleManagementSetup');
 $linkback = '<a href="'.($backtopage ?: DOL_URL_ROOT.'/admin/modules.php?search_keyword=lmdbvehiclemanagement').'">'.img_picto('', 'back', 'class="pictofixedwidth"').$langs->trans('BackToModuleList').'</a>';
 
@@ -175,6 +191,7 @@ if ($action === 'setmod') {
 	}
 }
 
+require __DIR__.'/dossier_models.inc.php';
 print load_fiche_titre($langs->trans('NumberingModels'), '', 'hashtag');
 print '<div class="div-table-responsive-no-min">';
 print '<table class="noborder centpercent">';
