@@ -123,7 +123,8 @@ function lmdbConsumptionPopulateFromPost($target, $financialLocked = false, $can
 		$target->fk_consumable = $nature === 'additive' ? GETPOSTINT('additive_consumable_id') : GETPOSTINT('fuel_consumable_id');
 		$target->category_snapshot = $nature;
 		$target->quantity = (float) price2num(GETPOST('quantity', 'alphanohtml'));
-		$target->total_ttc = (float) price2num(GETPOST('total_ttc', 'alphanohtml'), 'MT');
+		$totalInput = trim((string) GETPOST('total_ttc', 'alphanohtml'));
+		$target->total_ttc = $totalInput === '' ? null : (float) price2num($totalInput, 'MT');
 		$target->reading_date = dol_mktime(GETPOSTINT('reading_datehour'), GETPOSTINT('reading_datemin'), 0, GETPOSTINT('reading_datemonth'), GETPOSTINT('reading_dateday'), GETPOSTINT('reading_dateyear'));
 		if ($canSelectProject) {
 			$projectId = GETPOSTINT('fk_project');
@@ -253,9 +254,9 @@ if ($action === 'create' || $action === 'edit') {
 	}
 	print '<tr><td class="fieldrequired">'.$langs->trans('OdometerKm').'</td><td><input class="flat width100 right" inputmode="decimal" name="odometer_km" value="'.dol_escape_htmltag((string) $object->odometer_km).'"> '.$langs->trans('UnitKm').'</td></tr>';
 	if ($financialLocked) {
-		print '<tr><td>'.$langs->trans('TotalTTC').'</td><td>'.price($object->total_ttc).' '.dol_escape_htmltag($object->currency_snapshot).'</td></tr>';
+		print '<tr><td>'.$langs->trans('TotalTTC').'</td><td>'.($object->total_ttc !== null ? price($object->total_ttc).' '.dol_escape_htmltag($object->currency_snapshot) : $langs->trans('NotDefined')).'</td></tr>';
 	} else {
-		print '<tr><td class="fieldrequired">'.$langs->trans('TotalTTC').'</td><td><input class="flat width100 right" inputmode="decimal" name="total_ttc" value="'.dol_escape_htmltag((string) $object->total_ttc).'"> '.dol_escape_htmltag(getDolGlobalString('MAIN_MONNAIE', !empty($conf->currency) ? (string) $conf->currency : 'EUR')).'</td></tr>';
+		print '<tr><td id="total_ttc_label" class="'.($nature === 'fuel' ? 'fieldrequired' : '').'">'.$langs->trans('TotalTTC').'</td><td><input class="flat width100 right" inputmode="decimal" name="total_ttc" value="'.dol_escape_htmltag((string) $object->total_ttc).'"> '.dol_escape_htmltag(getDolGlobalString('MAIN_MONNAIE', !empty($conf->currency) ? (string) $conf->currency : 'EUR')).' <span id="additive_price_help" class="opacitymedium"'.($nature === 'additive' ? '' : ' style="display:none"').'>'.$langs->trans('AdditivePriceHelp').'</span></td></tr>';
 	}
 	if ($canReadProject) {
 		print '<tr><td>'.$langs->trans('Project').'</td><td>';
@@ -287,7 +288,7 @@ if ($action === 'create' || $action === 'edit') {
 		if ($entry->fetch((int) $consumableId) > 0) $metadata[(int) $consumableId] = array('unit' => LmdbVehicleConsumable::unitLabel($entry->unit), 'oil' => (int) $entry->requires_oil_reference);
 	}
 	if (!$financialLocked) {
-		print '<script>jQuery(function($){var meta='.json_encode($metadata).',compatible='.json_encode($compatibilityByVehicle).',suggestedFuel='.json_encode($suggestedConsumables).';function filterFuel(selectSuggestion){var vehicle=String($("#fk_vehicle").val()||""),allowed=(compatible[vehicle]||[]).map(String),$fuel=$("#fuel_consumable_id");$fuel.find("option").each(function(){var value=String(this.value||"");this.disabled=value!==""&&allowed.indexOf(value)===-1;});if($fuel.val()&&allowed.indexOf(String($fuel.val()))===-1)$fuel.val("");if(selectSuggestion&&suggestedFuel[vehicle])$fuel.val(String(suggestedFuel[vehicle]));$fuel.trigger("change.select2");}function refresh(){var additive=$("#nature").val()==="additive";$("#fuel_consumable_row").toggle(!additive);$("#additive_consumable_row").toggle(additive);$("#payment_mode_row,#receipt_row").toggle(!additive);$("[name=payment_mode_id],input[name=receipt]").prop("disabled",additive).prop("required",!additive);var id=additive?$("#additive_consumable_id").val():$("#fuel_consumable_id").val(),item=meta[id]||{},oil=additive&&item.oil===1;$("#consumption_unit").text(item.unit||"");$("#oil_reference_row").toggle(oil);$("#oil_reference_label").toggleClass("fieldrequired",oil);}$("#fk_vehicle").on("change",function(){filterFuel(true);refresh();});$("#nature,#fuel_consumable_id,#additive_consumable_id").on("change",refresh);filterFuel(false);refresh();});</script>';
+		print '<script>jQuery(function($){var meta='.json_encode($metadata).',compatible='.json_encode($compatibilityByVehicle).',suggestedFuel='.json_encode($suggestedConsumables).';function filterFuel(selectSuggestion){var vehicle=String($("#fk_vehicle").val()||""),allowed=(compatible[vehicle]||[]).map(String),$fuel=$("#fuel_consumable_id");$fuel.find("option").each(function(){var value=String(this.value||"");this.disabled=value!==""&&allowed.indexOf(value)===-1;});if($fuel.val()&&allowed.indexOf(String($fuel.val()))===-1)$fuel.val("");if(selectSuggestion&&suggestedFuel[vehicle])$fuel.val(String(suggestedFuel[vehicle]));$fuel.trigger("change.select2");}function refresh(){var additive=$("#nature").val()==="additive";$("#fuel_consumable_row").toggle(!additive);$("#additive_consumable_row").toggle(additive);$("#total_ttc_label").toggleClass("fieldrequired",!additive);$("#additive_price_help").toggle(additive);$("#payment_mode_row,#receipt_row").toggle(!additive);$("[name=payment_mode_id],input[name=receipt]").prop("disabled",additive).prop("required",!additive);var id=additive?$("#additive_consumable_id").val():$("#fuel_consumable_id").val(),item=meta[id]||{},oil=additive&&item.oil===1;$("#consumption_unit").text(item.unit||"");$("#oil_reference_row").toggle(oil);$("#oil_reference_label").toggleClass("fieldrequired",oil);}$("#fk_vehicle").on("change",function(){filterFuel(true);refresh();});$("#nature,#fuel_consumable_id,#additive_consumable_id").on("change",refresh);filterFuel(false);refresh();});</script>';
 	}
 } elseif ($id > 0) {
 	$head = lmdbVehicleConsumptionPrepareHead($object);
@@ -311,9 +312,9 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('Consumable').'</td><td>'.dol_escape_htmltag($consumableLabel).'</td></tr><tr><td>'.$langs->trans('Driver').'</td><td>'.$driverLink.'</td></tr>';
 	print '<tr><td>'.$langs->trans('Quantity').'</td><td>'.price($object->quantity).' '.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel($object->unit_snapshot)).'</td></tr>';
 	print '<tr><td>'.$langs->trans('OdometerKm').'</td><td>'.price($object->odometer_km).' '.$langs->trans('UnitKm').'</td></tr>';
-	print '<tr><td>'.$langs->trans('TotalTTC').'</td><td>'.price($object->total_ttc).' '.dol_escape_htmltag($object->currency_snapshot).'</td></tr>';
+	print '<tr><td>'.$langs->trans('TotalTTC').'</td><td>'.($object->total_ttc !== null ? price($object->total_ttc).' '.dol_escape_htmltag($object->currency_snapshot) : $langs->trans('NotDefined')).'</td></tr>';
 	if ($canReadProject && !empty($object->fk_project)) print '<tr><td>'.$langs->trans('Project').'</td><td>'.$projectLink.'</td></tr>';
-	print '<tr><td>'.$langs->trans('UnitPrice').'</td><td>'.price($object->getUnitPrice()).' '.dol_escape_htmltag($object->currency_snapshot).'/'.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel($object->unit_snapshot)).'</td></tr>';
+	print '<tr><td>'.$langs->trans('UnitPrice').'</td><td>'.($object->getUnitPrice() !== null ? price($object->getUnitPrice()).' '.dol_escape_htmltag($object->currency_snapshot).'/'.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel($object->unit_snapshot)) : $langs->trans('NotDefined')).'</td></tr>';
 	print '<tr><td>'.$langs->trans('RecoveredCapacity').'</td><td>'.($percentage !== null ? price($percentage).' %'.($percentage > 100 ? ' '.img_warning($langs->trans('ConsumptionCapacityExceeded', price($percentage))) : '') : '').'</td></tr>';
 	if ((string) $object->oil_reference !== '') print '<tr><td>'.$langs->trans('OilReference').'</td><td>'.dol_escape_htmltag((string) $object->oil_reference).'</td></tr>';
 	if (!empty($object->fk_payment_various)) {

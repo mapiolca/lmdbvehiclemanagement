@@ -99,7 +99,7 @@ $db->free($resCount);
 if ($offset > $total) { $page = 0; $offset = 0; }
 $sql = 'SELECT t.rowid, t.entity, t.ref, t.fk_vehicle, t.fk_consumable, COALESCE(t.fk_user_driver, t.fk_user_creat) AS fk_user_driver, t.category_snapshot, t.unit_snapshot, t.quantity, t.total_ttc, t.currency_snapshot, t.status,';
 $sql .= ' r.reading_date, r.odometer_km, v.ref AS vehicle_ref, v.registration_number, v.label AS vehicle_label, c.label AS consumable_label,';
-$sql .= ' u.login, u.firstname, u.lastname, CASE WHEN t.quantity > 0 THEN t.total_ttc / t.quantity ELSE 0 END AS unit_price,';
+$sql .= ' u.login, u.firstname, u.lastname, CASE WHEN t.total_ttc IS NULL THEN NULL WHEN t.quantity > 0 THEN t.total_ttc / t.quantity ELSE 0 END AS unit_price,';
 $sql .= ' CASE WHEN cap.capacity > 0 THEN t.quantity / cap.capacity * 100 ELSE NULL END AS capacity_percent';
 $sql .= $sqlFrom;
 $sql .= $where.$db->order($sortfield, $sortorder).$db->plimit($limit + 1, $offset);
@@ -156,8 +156,8 @@ while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 	if (!empty($arrayfields['c.label']['checked'])) print '<td>'.dol_escape_htmltag((string) $row->consumable_label).'</td>';
 	if (!empty($arrayfields['t.quantity']['checked'])) print '<td class="right">'.price($row->quantity).' '.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel((string) $row->unit_snapshot)).'</td>';
 	if (!empty($arrayfields['r.odometer_km']['checked'])) print '<td class="right">'.price($row->odometer_km).' '.$langs->trans('UnitKm').'</td>';
-	if (!empty($arrayfields['t.total_ttc']['checked'])) print '<td class="right">'.price($row->total_ttc).' '.dol_escape_htmltag((string) $row->currency_snapshot).'</td>';
-	if (!empty($arrayfields['unit_price']['checked'])) print '<td class="right">'.price($row->unit_price).' '.dol_escape_htmltag((string) $row->currency_snapshot).'/'.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel((string) $row->unit_snapshot)).'</td>';
+	if (!empty($arrayfields['t.total_ttc']['checked'])) print '<td class="right">'.($row->total_ttc !== null ? price($row->total_ttc).' '.dol_escape_htmltag((string) $row->currency_snapshot) : $langs->trans('NotDefined')).'</td>';
+	if (!empty($arrayfields['unit_price']['checked'])) print '<td class="right">'.($row->unit_price !== null ? price($row->unit_price).' '.dol_escape_htmltag((string) $row->currency_snapshot).'/'.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel((string) $row->unit_snapshot)) : $langs->trans('NotDefined')).'</td>';
 	if (!empty($arrayfields['capacity_percent']['checked'])) print '<td class="right">'.($row->capacity_percent !== null ? price($row->capacity_percent).' %'.((float) $row->capacity_percent > 100 ? ' '.img_warning() : '') : '').'</td>';
 	if ($showEntityColumn && !empty($arrayfields['t.entity']['checked'])) {
 		print '<td class="center">'.lmdbVehicleManagementEntityBadge((int) $row->entity, $entityOptions).'</td>';

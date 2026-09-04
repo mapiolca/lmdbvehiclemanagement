@@ -11,7 +11,7 @@ CREATE TABLE llx_lmdbvehiclemanagement_consumption (
 	fk_project integer DEFAULT NULL,
 	fk_payment_various integer DEFAULT NULL,
 	quantity double(24,8) NOT NULL,
-	total_ttc double(24,8) DEFAULT 0 NOT NULL,
+	total_ttc double(24,8) DEFAULT NULL,
 	currency_snapshot varchar(3) NOT NULL,
 	oil_reference varchar(128) DEFAULT NULL,
 	description text,

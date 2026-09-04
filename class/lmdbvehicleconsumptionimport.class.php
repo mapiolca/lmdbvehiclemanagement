@@ -115,7 +115,8 @@ class LmdbVehicleConsumptionImport
 		$object->reading_date = $date->getTimestamp();
 		$object->odometer_km = (float) price2num((string) $row['odometer_km']);
 		$object->quantity = (float) price2num((string) $row['quantity']);
-		$object->total_ttc = (float) price2num((string) $row['total_ttc'], 'MT');
+		$totalInput = trim((string) $row['total_ttc']);
+		$object->total_ttc = $totalInput === '' ? null : (float) price2num($totalInput, 'MT');
 		$object->oil_reference = isset($row['oil_reference']) && trim((string) $row['oil_reference']) !== '' ? trim((string) $row['oil_reference']) : null;
 		$object->reading_kind = isset($row['reading_kind']) && trim((string) $row['reading_kind']) !== '' ? trim((string) $row['reading_kind']) : 'standard';
 		$object->reading_reason = isset($row['reading_reason']) && trim((string) $row['reading_reason']) !== '' ? trim((string) $row['reading_reason']) : null;

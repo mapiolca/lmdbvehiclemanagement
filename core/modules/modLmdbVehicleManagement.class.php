@@ -1025,7 +1025,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 	}
 
 	/**
-	 * Add native project and various-payment links before loading index scripts.
+	 * Add native links and allow unknown additive prices without changing historical amounts.
 	 *
 	 * @return int<-1,1>
 	 */
@@ -1052,6 +1052,14 @@ class modLmdbVehicleManagement extends DolibarrModules
 				$this->error = $this->db->lasterror();
 				return -1;
 			}
+		}
+		$totalNullable = $this->tableFieldIsNullable($table, 'total_ttc');
+		if ($totalNullable < 0) {
+			return -1;
+		}
+		if ($totalNullable === 0 && !$this->db->query('ALTER TABLE '.$table.' MODIFY COLUMN total_ttc double(24,8) DEFAULT NULL')) {
+			$this->error = $this->db->lasterror();
+			return -1;
 		}
 
 		return 1;

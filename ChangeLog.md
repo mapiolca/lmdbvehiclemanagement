@@ -2,6 +2,7 @@
 
 ## `0.15.0` — 2026-09-03
 
+- Prix facultatif des recharges d’additif : les montants absents sont exclus des statistiques de prix, tout en conservant les quantités et fréquences. Les zéros explicites restent valorisés à zéro. La réactivation du module rend `total_ttc` nullable sans modifier les montants historiques ni les réglages ; saisie, imports CSV, exports, fiches et tableaux distinguent désormais prix inconnu et prix nul.
 - Ajout d’une option par entité pour créer une opération diverse native au débit lors de chaque plein ou recharge, avec compte bancaire et mode de règlement obligatoires. Seul le module Banques et Caisses est requis : les comptes sont libres et facultatifs sans comptabilité ou en comptabilité simplifiée ; en partie double, le compte général du plan actif est obligatoire et l’auxiliaire reste facultatif. Les réglages sont conservés lors d’un changement de module comptable.
 - Ajout du projet natif et d’un ticket PDF, JPEG ou PNG obligatoire, contrôlé côté serveur, nettoyé de ses métadonnées d’image et stocké exclusivement dans les documents de l’opération diverse.
 - Synchronisation transactionnelle de la date, du libellé, du montant et du projet avec l’opération diverse et sa ligne bancaire, sans exiger un droit bancaire supplémentaire au créateur de la consommation.

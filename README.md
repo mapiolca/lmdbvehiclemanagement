@@ -51,6 +51,7 @@
 - onglets natifs « Fiche », « Contacts/Adresses », « Notes », « Fichiers joints » et « Événements/Agenda » sur les contrats d’assurance, avec compteurs et bannière commune.
 - boutons de transition du contrat rendus avec la classe d’action native Dolibarr, sans dimensionnement CSS spécifique.
 - objet `Plein / Recharge` pour les carburants, recharges électriques, hydrogène et additifs, avec unités et devise figées historiquement ;
+- prix facultatif pour les additifs : un montant vide reste inconnu et est exclu des moyennes, pics et courbes de prix, tandis qu’un zéro explicite est un prix connu ; toutes les quantités et fréquences restent comptées. Le prix moyen pondéré utilise uniquement les quantités valorisées, et le coût cumulé reste non défini si aucun prix n’est connu ;
 - option par entité créant une opération diverse native au débit pour chaque plein ou recharge, à partir du compte bancaire, du mode de règlement et des comptes comptables configurés ;
 - comptes général et auxiliaire saisis librement et facultatifs sans comptabilité ou en comptabilité simplifiée ; en partie double, compte général obligatoire du plan comptable actif et compte auxiliaire facultatif via les composants natifs ; les valeurs sont conservées lors d’un changement de module comptable et revalidées avant les prochaines créations, sans modification des OD historiques ;
 - ticket PDF, JPEG ou PNG obligatoire lorsque l’option est active, stocké uniquement dans les documents natifs de l’opération diverse, avec contrôle MIME et suppression des métadonnées EXIF/GPS ;
@@ -74,6 +75,8 @@ Copier le répertoire `lmdbvehiclemanagement` dans le répertoire des modules ex
 
 Les réglages, la compatibilité détectée et les métadonnées du module sont accessibles depuis l'unique roue dentée du module.
 
+Après la mise à jour autorisant les prix d’additif facultatifs, désactiver puis réactiver le module pour appliquer la migration idempotente de `total_ttc` vers une colonne nullable. Les montants historiques, y compris les zéros, et les réglages sont conservés. Une ancienne recharge peut ensuite être corrigée en vidant son montant. Les imports gardent la colonne `total_ttc`, avec cellule vide autorisée pour les additifs ; les exports natifs distinguent une cellule vide d’un zéro. Les carburants et leurs OD conservent leurs règles existantes.
+
 ## Vérification locale
 
 Les règles indépendantes de la base peuvent être vérifiées avec la commande suivante :
@@ -87,6 +90,10 @@ Les règles indépendantes de la base peuvent être vérifiées avec la commande
 Les tests comportementaux des réglages OD utilisent les classes natives depuis une installation ou un checkout Dolibarr, sans connexion à la base ni écriture métier :
 
     php test/run_consumption_od_settings.php /chemin/vers/dolibarr/htdocs
+
+Les prix facultatifs disposent de tests comportementaux utilisant les classes natives de normalisation, stockage et export CSV, ainsi que des doubles de base et de graphique sans écriture métier :
+
+    php test/run_consumption_prices.php /chemin/vers/dolibarr/htdocs
 
 Une suite PHPUnit équivalente est fournie dans le répertoire test/phpunit. Les tests d'installation, de droits, de Multicompany et de documents nécessitent une instance Dolibarr configurée.
 

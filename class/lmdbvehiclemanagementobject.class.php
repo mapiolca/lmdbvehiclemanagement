@@ -176,7 +176,8 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 
 		$changedFields = array();
 		foreach (array_keys($this->fields) as $field) {
-			if (property_exists($this, $field) && property_exists($oldcopy, $field) && $this->{$field} != $oldcopy->{$field}) {
+			if (property_exists($this, $field) && property_exists($oldcopy, $field)
+				&& (($this->{$field} === null) !== ($oldcopy->{$field} === null) || $this->{$field} != $oldcopy->{$field})) {
 				$changedFields[] = $field;
 			}
 		}
