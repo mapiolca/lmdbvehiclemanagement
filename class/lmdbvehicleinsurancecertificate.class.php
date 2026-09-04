@@ -4,6 +4,7 @@
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementobject.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementrules.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementsecureupload.class.php');
 
 /** Insurance certificate submitted for a contract or one covered vehicle. */
 class LmdbVehicleInsuranceCertificate extends LmdbVehicleManagementObject
@@ -101,22 +102,26 @@ class LmdbVehicleInsuranceCertificate extends LmdbVehicleManagementObject
 	{
 		require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 
-		if (empty($this->id) || !isset($upload['tmp_name'], $upload['name'], $upload['error']) || (int) $upload['error'] !== UPLOAD_ERR_OK || !is_uploaded_file((string) $upload['tmp_name'])) {
+		if (empty($this->id)) {
 			$this->error = 'InsuranceEvidenceUploadInvalid';
 			$this->errors[] = $this->error;
 			return -1;
 		}
-		$finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : false;
-		$mime = $finfo !== false ? finfo_file($finfo, (string) $upload['tmp_name']) : false;
-		if ($finfo !== false) {
-			finfo_close($finfo);
-		}
-		$allowed = array('application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png');
-		if (!is_string($mime) || !isset($allowed[$mime])) {
-			$this->error = 'InsuranceEvidenceMimeInvalid';
-			$this->errors[] = $this->error;
+		$errorKeys = array(
+			'invalid_upload' => 'InsuranceEvidenceUploadInvalid',
+			'invalid_mime' => 'InsuranceEvidenceMimeInvalid',
+			'library' => 'InsuranceImageLibraryUnavailable',
+			'invalid_image' => 'InsuranceEvidenceImageInvalid',
+			'save' => 'InsuranceEvidenceUploadFailed',
+		);
+		$secureUpload = new LmdbVehicleManagementSecureUpload();
+		$fileInfo = $secureUpload->inspect($upload, $errorKeys);
+		if (!is_array($fileInfo)) {
+			$this->error = $secureUpload->error;
+			$this->errors = $secureUpload->errors;
 			return -1;
 		}
+		$mime = $fileInfo['mime'];
 
 		$contract = new LmdbVehicleInsuranceContract($this->db);
 		if ($contract->fetch((int) $this->fk_contract) <= 0 || (int) $contract->entity !== (int) $this->entity) {
@@ -134,27 +139,16 @@ class LmdbVehicleInsuranceCertificate extends LmdbVehicleManagementObject
 			return -1;
 		}
 		$scope = !empty($this->fk_vehicle) ? 'vehicle-'.((int) $this->fk_vehicle) : 'fleet';
-		$fileName = 'certificate-'.$scope.'-'.((int) $this->id).'.'.$allowed[$mime];
+		$fileName = 'certificate-'.$scope.'-'.((int) $this->id).'.'.$fileInfo['extension'];
 		$destination = $directory.'/'.$fileName;
 		$oldPath = $this->getDocumentPath();
-		$virusErrors = dolCheckVirus((string) $upload['tmp_name'], $destination);
-		if (!empty($virusErrors)) {
-			$this->error = 'ErrorFileIsInfectedWithAVirus';
-			$this->errors[] = $this->error;
+		if ($secureUpload->store($upload, $destination, $mime, $errorKeys) < 0) {
+			$this->error = $secureUpload->error;
+			$this->errors = $secureUpload->errors;
 			return -1;
 		}
-
-		if ($mime === 'application/pdf') {
-			$result = dol_move_uploaded_file((string) $upload['tmp_name'], $destination, 1, 1, (int) $upload['error'], 0);
-			if (!is_numeric($result) || (int) $result <= 0) {
-				$this->error = is_string($result) && $result !== '' ? $result : 'InsuranceEvidenceUploadFailed';
-				$this->errors[] = $this->error;
-				return -1;
-			}
-		} elseif ($this->sanitizeImage((string) $upload['tmp_name'], $destination, $mime) < 0) {
-			return -1;
-		}
-		$indexResult = addFileIntoDatabaseIndex($directory, $fileName, (string) $upload['name'], 'uploaded', 0, $contract);
+		$sourceName = dol_sanitizeFileName(basename((string) $upload['name']));
+		$indexResult = addFileIntoDatabaseIndex($directory, $fileName, $sourceName, 'uploaded', 0, $contract);
 		if ($indexResult < 0) {
 			$this->error = 'WarningFailedToAddFileIntoDatabaseIndex';
 			$this->deleteDocumentFile($destination);
@@ -456,57 +450,4 @@ class LmdbVehicleInsuranceCertificate extends LmdbVehicleManagementObject
 		return $result;
 	}
 
-	/**
-	 * Rewrite an image to apply its orientation and strip embedded metadata.
-	 *
-	 * @param string $source Temporary upload
-	 * @param string $destination Destination
-	 * @param string $mime MIME type
-	 * @return int<-1,1>
-	 */
-	private function sanitizeImage($source, $destination, $mime)
-	{
-		if (!function_exists('imagecreatefromjpeg') || !function_exists('imagecreatefrompng') || !function_exists('imageflip')) {
-			$this->error = 'InsuranceImageLibraryUnavailable';
-			return -1;
-		}
-		$image = $mime === 'image/jpeg' ? @imagecreatefromjpeg($source) : @imagecreatefrompng($source);
-		if ($image === false) {
-			$this->error = 'InsuranceEvidenceImageInvalid';
-			return -1;
-		}
-		if ($mime === 'image/jpeg' && function_exists('exif_read_data')) {
-			$exif = @exif_read_data($source);
-			$orientation = is_array($exif) && isset($exif['Orientation']) ? (int) $exif['Orientation'] : 1;
-			$angle = in_array($orientation, array(5, 6), true) ? -90 : (in_array($orientation, array(7, 8), true) ? 90 : ($orientation === 3 ? 180 : 0));
-			if ($angle !== 0) {
-				$rotated = imagerotate($image, $angle, 0);
-				if ($rotated === false) {
-					imagedestroy($image);
-					$this->error = 'InsuranceEvidenceImageInvalid';
-					return -1;
-				}
-				imagedestroy($image);
-				$image = $rotated;
-			}
-			$flipMode = in_array($orientation, array(2, 5, 7), true) ? IMG_FLIP_HORIZONTAL : ($orientation === 4 ? IMG_FLIP_VERTICAL : null);
-			if ($flipMode !== null && !imageflip($image, $flipMode)) {
-				imagedestroy($image);
-				$this->error = 'InsuranceEvidenceImageInvalid';
-				return -1;
-			}
-		}
-		if ($mime === 'image/png') {
-			imagealphablending($image, false);
-			imagesavealpha($image, true);
-		}
-		$result = $mime === 'image/jpeg' ? imagejpeg($image, $destination, 90) : imagepng($image, $destination, 6);
-		imagedestroy($image);
-		if (!$result) {
-			$this->error = 'InsuranceEvidenceUploadFailed';
-			return -1;
-		}
-
-		return 1;
-	}
 }

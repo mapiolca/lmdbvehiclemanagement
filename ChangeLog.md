@@ -1,5 +1,13 @@
 # Historique des versions
 
+## `0.15.0` — 2026-09-03
+
+- Ajout d’une option par entité pour créer une opération diverse native au débit lors de chaque plein ou recharge, avec compte bancaire, mode de règlement, compte comptable et compte auxiliaire configurables.
+- Ajout du projet natif et d’un ticket PDF, JPEG ou PNG obligatoire, contrôlé côté serveur, nettoyé de ses métadonnées d’image et stocké exclusivement dans les documents de l’opération diverse.
+- Synchronisation transactionnelle de la date, du libellé, du montant et du projet avec l’opération diverse et sa ligne bancaire, sans exiger un droit bancaire supplémentaire au créateur de la consommation.
+- Verrouillage des données financières, du remplacement du ticket et de la suppression après rapprochement bancaire ou transfert comptable, tout en conservant l’édition des informations non financières.
+- Refus explicite des imports CSV de pleins / recharges lorsque l’option est active, sans création rétroactive d’opérations diverses pour l’historique.
+
 ## `0.14.1` — 2026-09-02
 
 - Remplacement de la qualification manuelle par un questionnaire guidé et historisé, ajout des profils taxi/VTC, sanitaire, auto-école, dépannage et transport public particulier, et arbitrage déterministe des règles par groupe d’obligation.

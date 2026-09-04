@@ -181,7 +181,7 @@ $checks['insurance_recipient_address_and_subject_are_preserved'] = strpos($insur
 	&& strpos($insuranceCron, "html_entity_decode(strtr(\$template['subject'], \$replacements), ENT_QUOTES | ENT_HTML5, 'UTF-8')") !== false
 	&& strpos($descriptor, "transnoentitiesnoconv('InsuranceRequestEmailSubject')") !== false
 	&& strpos($descriptor, "transnoentitiesnoconv('InsuranceReviewEmailSubject')") !== false;
-$checks['module_version_is_0141'] = strpos($descriptor, "\$this->version = '0.14.1';") !== false;
+$checks['module_version_is_0150'] = strpos($descriptor, "\$this->version = '0.15.0';") !== false;
 $checks['hook_class_declares_php82_warnings_property'] = strpos($actionsHooks, 'public $warnings = array();') !== false;
 $checks['regulatory_rule_creation_uses_native_modals'] = substr_count($regulatoryAdmin, '$form->formconfirm(') === 2
 	&& strpos($regulatoryAdmin, "\$overrideButtonId = 'action-create-regulatory-rule-override';") !== false

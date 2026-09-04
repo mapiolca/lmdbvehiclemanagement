@@ -2,6 +2,7 @@
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumption.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumptionpayment.class.php');
 
 /** CSV import service that persists every row through the consumption object. */
 class LmdbVehicleConsumptionImport
@@ -70,6 +71,10 @@ class LmdbVehicleConsumptionImport
 				$this->errors[] = 'Line '.$lineNumber.': '.$this->error;
 				continue;
 			}
+			if (LmdbVehicleConsumptionPayment::isEnabled() && $object->category_snapshot === 'fuel') {
+				$this->errors[] = 'Line '.$lineNumber.': ConsumptionImportFuelBlockedByOdOption';
+				continue;
+			}
 			$result = $object->create($user);
 			if ($result <= 0) {
 				$this->errors[] = 'Line '.$lineNumber.': '.($object->error ?: 'Error');
@@ -93,7 +98,7 @@ class LmdbVehicleConsumptionImport
 		$vehicle = $resql ? $this->db->fetch_object($resql) : false;
 		if ($resql) $this->db->free($resql);
 		if (!is_object($vehicle)) { $this->error = 'InvalidVehicle'; return null; }
-		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable';
+		$sql = 'SELECT rowid, category FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable';
 		$sql .= " WHERE code = '".$this->db->escape(strtoupper(trim((string) $row['consumable_code'])))."' AND active = 1";
 		$sql .= ' AND entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
 		$resql = $this->db->query($sql);
@@ -106,6 +111,7 @@ class LmdbVehicleConsumptionImport
 		$object = new LmdbVehicleConsumption($this->db);
 		$object->fk_vehicle = (int) $vehicle->rowid;
 		$object->fk_consumable = (int) $consumable->rowid;
+		$object->category_snapshot = (string) $consumable->category;
 		$object->reading_date = $date->getTimestamp();
 		$object->odometer_km = (float) price2num((string) $row['odometer_km']);
 		$object->quantity = (float) price2num((string) $row['quantity']);

@@ -17,12 +17,14 @@ if (!$res) {
 
 require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/class/html.formaccounting.class.php';
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicle.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclereferencemigration.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleevent.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumption.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumptionpayment.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycontrol.class.php');
 
 /** @var Conf $conf */
@@ -30,7 +32,7 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycontrol.clas
 /** @var Translate $langs */
 /** @var User $user */
 
-$langs->loadLangs(array('admin', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+$langs->loadLangs(array('admin', 'banks', 'accountancy', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 if (empty($user->admin)) {
 	accessforbidden();
 }
@@ -90,6 +92,41 @@ if ($action === 'confirm_setmod' && GETPOST('confirm', 'alpha') === 'yes') {
 		setEventMessages($objectType === 'lmdbvehicle' ? $langs->trans('VehicleReferencesMigrated') : $langs->trans('SettingsSaved'), null, 'mesgs');
 	} elseif ($objectType !== 'lmdbvehicle') {
 		setEventMessages($db->lasterror(), null, 'errors');
+	}
+	header('Location: '.$_SERVER['PHP_SELF']);
+	exit;
+}
+
+if ($action === 'save_consumption_od_settings') {
+	$bankAccountId = GETPOSTINT('consumption_od_bank_account');
+	$paymentModeId = GETPOSTINT('consumption_od_payment_mode');
+	$accountingAccount = trim(GETPOST('consumption_od_accounting_account', 'alphanohtml'));
+	$subledgerAccount = trim(GETPOST('consumption_od_subledger_account', 'alphanohtml'));
+	$consumptionPayment = new LmdbVehicleConsumptionPayment($db);
+	if ($consumptionPayment->validateConfiguration($bankAccountId, $paymentModeId, $accountingAccount, $subledgerAccount, (int) $conf->entity) > 0) {
+		$settings = array(
+			LmdbVehicleConsumptionPayment::CONST_BANK_ACCOUNT => array($bankAccountId, 'integer'),
+			LmdbVehicleConsumptionPayment::CONST_PAYMENT_MODE => array($paymentModeId, 'integer'),
+			LmdbVehicleConsumptionPayment::CONST_ACCOUNTING_ACCOUNT => array($accountingAccount, 'chaine'),
+			LmdbVehicleConsumptionPayment::CONST_SUBLEDGER_ACCOUNT => array($subledgerAccount, 'chaine'),
+		);
+		$db->begin();
+		$result = 1;
+		foreach ($settings as $constant => $definition) {
+			if (dolibarr_set_const($db, $constant, $definition[0], $definition[1], 0, '', (int) $conf->entity) <= 0) {
+				$result = -1;
+				break;
+			}
+		}
+		if ($result > 0) {
+			$db->commit();
+			setEventMessages($langs->trans('SettingsSaved'), null, 'mesgs');
+		} else {
+			$db->rollback();
+			setEventMessages($db->lasterror(), null, 'errors');
+		}
+	} else {
+		lmdbVehicleManagementSetObjectErrors($consumptionPayment);
 	}
 	header('Location: '.$_SERVER['PHP_SELF']);
 	exit;
@@ -174,6 +211,48 @@ foreach ($models as $code => $definition) {
 
 print '</table>';
 print '</div>';
+
+$form = new Form($db);
+$formAccounting = new FormAccounting($db);
+$odBankAccount = getDolGlobalInt(LmdbVehicleConsumptionPayment::CONST_BANK_ACCOUNT);
+$odPaymentMode = getDolGlobalInt(LmdbVehicleConsumptionPayment::CONST_PAYMENT_MODE);
+$odAccountingAccount = getDolGlobalString(LmdbVehicleConsumptionPayment::CONST_ACCOUNTING_ACCOUNT);
+$odSubledgerAccount = getDolGlobalString(LmdbVehicleConsumptionPayment::CONST_SUBLEDGER_ACCOUNT);
+$odConfiguration = new LmdbVehicleConsumptionPayment($db);
+$odConfigurationValid = $odConfiguration->validateConfiguration($odBankAccount, $odPaymentMode, $odAccountingAccount, $odSubledgerAccount, (int) $conf->entity) > 0;
+$odEnabled = LmdbVehicleConsumptionPayment::isEnabled();
+
+print load_fiche_titre($langs->trans('ConsumptionOdSettings'), '', 'bank');
+print '<form method="POST" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'">';
+print '<input type="hidden" name="token" value="'.newToken().'">';
+print '<input type="hidden" name="action" value="save_consumption_od_settings">';
+print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
+print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('ConsumptionOdSettingsDescription').'</th></tr>';
+print '<tr class="oddeven"><td class="titlefield">'.$langs->trans('EnableConsumptionOd').'</td><td>';
+if ($odConfigurationValid || $odEnabled) {
+	print ajax_constantonoff(LmdbVehicleConsumptionPayment::CONST_ENABLED);
+} else {
+	print img_picto($langs->trans('ConsumptionOdConfigurationRequiredBeforeEnable'), 'switch_off');
+}
+print '</td></tr>';
+print '<tr class="oddeven"><td class="fieldrequired">'.$langs->trans('BankAccount').'</td><td>';
+print $form->select_comptes($odBankAccount, 'consumption_od_bank_account', 0, '', 1, '', 1, 'minwidth300', 1);
+print '</td></tr>';
+print '<tr class="oddeven"><td class="fieldrequired">'.$langs->trans('PaymentMode').'</td><td>';
+print $form->select_types_paiements($odPaymentMode, 'consumption_od_payment_mode', 'DBIT', 0, 1, 1, 0, 1, 'minwidth300', 1);
+print '</td></tr>';
+print '<tr class="oddeven"><td class="fieldrequired">'.$langs->trans('AccountAccounting').'</td><td>';
+print $formAccounting->select_account($odAccountingAccount, 'consumption_od_accounting_account', 1, array(), 1, 1, 'minwidth300');
+print '</td></tr>';
+print '<tr class="oddeven"><td class="fieldrequired">'.$langs->trans('SubledgerAccount').'</td><td>';
+print $formAccounting->select_auxaccount($odSubledgerAccount, 'consumption_od_subledger_account', 1, 'minwidth300');
+print '</td></tr>';
+print '</table></div>';
+if (!$odConfigurationValid) {
+	print '<div class="warning">'.$langs->trans($odConfiguration->error ?: 'ConsumptionOdConfigurationIncomplete').'</div>';
+}
+print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"></div>';
+print '</form>';
 print '<div class="underbanner opacitymedium">'.$langs->trans('NoMandatoryDependency').'. '.$langs->trans('OptionalDependencies').': Agenda, Multicompany, Ressources.</div>';
 
 print dol_get_fiche_end();

@@ -1,6 +1,6 @@
 # Gestion des véhicules et engins pour Dolibarr
 
-`lmdbvehiclemanagement` fournit un parc multientité intégré à Dolibarr. La version `0.14.1` couvre les véhicules routiers, utilitaires et engins, leurs affectations, kilométrages, consommations, assurances et dossiers documentaires de contrôles réglementaires.
+`lmdbvehiclemanagement` fournit un parc multientité intégré à Dolibarr. La version `0.15.0` couvre les véhicules routiers, utilitaires et engins, leurs affectations, kilométrages, consommations, assurances et dossiers documentaires de contrôles réglementaires.
 
 ## Compatibilité
 
@@ -10,8 +10,9 @@
 - Module Multicompany facultatif
 - Module Ressources facultatif pour la liaison `fk_resource`
 - Modules Agenda et Travaux planifiés recommandés pour les échéances et relances automatiques
+- Modules Banques et Caisses et Comptabilité requis uniquement lorsque la création d’opérations diverses pour les pleins / recharges est activée
 
-## Fonctionnalités de la version 0.14.1
+## Fonctionnalités de la version 0.15.0
 
 - fiche véhicule ou engin avec immatriculation facultative et cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
 - type de matériel, catégorie européenne, genre national, PTAC/PTRA, places, territoire réglementaire, date de construction, première immatriculation et mise en service ;
@@ -50,6 +51,10 @@
 - onglets natifs « Fiche », « Contacts/Adresses », « Notes », « Fichiers joints » et « Événements/Agenda » sur les contrats d’assurance, avec compteurs et bannière commune.
 - boutons de transition du contrat rendus avec la classe d’action native Dolibarr, sans dimensionnement CSS spécifique.
 - objet `Plein / Recharge` pour les carburants, recharges électriques, hydrogène et additifs, avec unités et devise figées historiquement ;
+- option par entité créant une opération diverse native au débit pour chaque plein ou recharge, à partir du compte bancaire, du mode de règlement et des comptes comptables configurés ;
+- ticket PDF, JPEG ou PNG obligatoire lorsque l’option est active, stocké uniquement dans les documents natifs de l’opération diverse, avec contrôle MIME et suppression des métadonnées EXIF/GPS ;
+- projet natif facultatif, synchronisation de la date, du libellé et du montant jusqu’au rapprochement ou au transfert comptable, puis verrouillage des données financières, du justificatif et de la suppression ;
+- import CSV des pleins et recharges refusé lorsque la gestion des tickets est active, sans reprise automatique des consommations historiques ;
 - ajout rapide natif `Plein / Recharge` dans le menu `+` de Dolibarr pour les utilisateurs disposant du droit de création ;
 - tooltips Ajax natifs et traduits sur les liens `getNomUrl()` des véhicules, affectations, relevés kilométriques, événements, consommations, contrats et attestations d’assurance ;
 - véhicules des tableaux de consommation affichés avec leur lien natif `getNomUrl()` et leur tooltip Ajax, sans requête SQL supplémentaire par ligne ;
@@ -76,6 +81,7 @@ Les règles indépendantes de la base peuvent être vérifiées avec la commande
     php test/run_agenda_contracts.php
     php test/run_regulatory_contracts.php
     php test/run_ui_contracts.php
+    php test/run_consumption_od_contracts.php
 
 Une suite PHPUnit équivalente est fournie dans le répertoire test/phpunit. Les tests d'installation, de droits, de Multicompany et de documents nécessitent une instance Dolibarr configurée.
 
