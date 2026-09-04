@@ -6,6 +6,9 @@
  */
 class LmdbVehicleConsumable
 {
+	/** @var string Dictionary identifier used by native field rendering. */
+	public $element = 'c_lmdbvehiclemanagement_consumable';
+
 	/** @var DoliDB */
 	public $db;
 	/** @var int */
@@ -245,6 +248,21 @@ class LmdbVehicleConsumable
 		$this->db->free($resql);
 
 		return $options;
+	}
+
+	/**
+	 * Native dictionary rendering contract, as for Ccountry: label without a card link.
+	 *
+	 * @param int $withpicto Native argument, unused for dictionary entries
+	 * @param string $option Native link option, unused for dictionary entries
+	 * @param int $notooltip Native tooltip option, unused for dictionary entries
+	 * @param string $morecss Native CSS option, unused for dictionary entries
+	 * @param int $save_lastsearch_value Native search option, unused for dictionary entries
+	 * @return string HTML-escaped label of the already fetched row
+	 */
+	public function getNomUrl($withpicto = 0, $option = '', $notooltip = 0, $morecss = '', $save_lastsearch_value = -1)
+	{
+		return $this->id > 0 ? dol_escape_htmltag(self::displayLabel($this->label)) : '';
 	}
 
 	/** @param string $label Stored dictionary label @return string */

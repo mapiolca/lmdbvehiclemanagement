@@ -6,7 +6,9 @@ if (!$core || !is_file($core.'/core/lib/functions.lib.php')) { fwrite(STDERR, "U
 define('DOL_DOCUMENT_ROOT', str_replace('\\', '/', $core));
 define('DOL_URL_ROOT', '');
 define('DOL_MAIN_URL_ROOT', 'https://dolibarr.invalid');
-define('DOL_DATA_ROOT', str_replace('\\', '/', __DIR__).'/.dossier-test');
+$dolibarr_main_url_root = DOL_MAIN_URL_ROOT;
+$testDataRoot = getenv('LMDB_DOSSIER_TEST_ROOT');
+define('DOL_DATA_ROOT', is_string($testDataRoot) && $testDataRoot !== '' ? str_replace('\\', '/', $testDataRoot) : str_replace('\\', '/', __DIR__).'/.dossier-test');
 define('MAIN_DB_PREFIX', 'test_dossier_');
 define('TCPDF_PATH', DOL_DOCUMENT_ROOT.'/includes/tecnickcom/tcpdf/');
 define('TCPDI_PATH', DOL_DOCUMENT_ROOT.'/includes/tcpdi/');
@@ -16,7 +18,7 @@ require_once DOL_DOCUMENT_ROOT.'/core/class/conf.class.php';
 $conf = new Conf();
 $configuration = array('entity' => 1, 'currency' => 'EUR', 'global' => (object) array('MAIN_DISABLE_TCPDI' => 1, 'MAIN_MAX_DECIMALS_TOT' => 2, 'MAIN_MAX_DECIMALS_UNIT' => 5, 'MAIN_UMASK' => '0664', 'MAIN_MONNAIE' => 'EUR'),
 	'modules' => array('lmdbvehiclemanagement' => 1, 'fournisseur' => 1), 'modules_parts' => array('triggers' => array(), 'hooks' => array(), 'substitutions' => array(), 'models' => array('/lmdbvehiclemanagement/')),
-	'file' => (object) array('dol_document_root' => array('main' => DOL_DOCUMENT_ROOT, 'alt0' => dirname(__DIR__, 2)), 'dol_url_root' => array('main' => '', 'alt0' => '/external')),
+	'file' => (object) array('instance_unique_id' => 'dossier-test', 'dol_document_root' => array('main' => DOL_DOCUMENT_ROOT, 'alt0' => dirname(__DIR__, 2)), 'dol_url_root' => array('main' => '', 'alt0' => '/external')),
 	'lmdbvehiclemanagement' => (object) array('dir_output' => DOL_DATA_ROOT.'/lmdbvehiclemanagement', 'multidir_output' => array(1 => DOL_DATA_ROOT.'/lmdbvehiclemanagement', 2 => DOL_DATA_ROOT.'/2/lmdbvehiclemanagement')));
 foreach ($configuration as $key => $value) $conf->$key = $value;
 require_once DOL_DOCUMENT_ROOT.'/core/lib/functions.lib.php';
@@ -33,6 +35,10 @@ final class DossierDb extends DoliDBMysqli
 	public function __construct() {}
 	public $links = array(); public $snapshots = array(); public $invoiceEntity = 1; public $failInsert = false; public $paged = false;
 	public $records = array(); public $invoiceCurrency = 'EUR'; public $ecm = array();
+	/** @var array<string,list<array{rowid:int,entity:int,code:string,label:string,active:int,category?:string,unit?:string,requires_oil_reference?:int}>> */
+	public $dictionaries = array();
+	/** @var int */
+	public $dictionaryReads = 0;
 	public function query($sql, $usesavepoint = 0, $type = 'auto', $result_mode = 0)
 	{
 		$rows = array();
@@ -46,6 +52,12 @@ final class DossierDb extends DoliDBMysqli
 			}
 		} elseif (preg_match('/^SELECT rowid FROM test_dossier_(lmdbvehiclemanagement_[a-z_]+) WHERE fk_vehicle = (\d+)/', $sql, $m)) {
 			foreach ($this->records[$m[1]] ?? array() as $stored) if ($stored['entity'] === 1 && $stored['fk_vehicle'] == $m[2]) $rows[] = (object) array('rowid' => $stored['rowid']);
+		} elseif (preg_match('/FROM test_dossier_(c_lmdbvehiclemanagement_energy|c_lmdbvehiclemanagement_consumable) WHERE /', $sql, $dictionary)) {
+			$this->dictionaryReads++;
+			if (!preg_match('/rowid = (\d+)/', $sql, $id) || !preg_match('/entity IN \(([0-9,]+)\)/', $sql, $scope)) throw new RuntimeException('Unscoped dictionary query');
+			foreach ($this->dictionaries[$dictionary[1]] ?? array() as $stored) {
+				if ($stored['rowid'] === (int) $id[1] && in_array($stored['entity'], array_map('intval', explode(',', $scope[1])), true)) $rows[] = (object) $stored;
+			}
 		} elseif (strpos($sql, 'FROM test_dossier_document_model') !== false) $rows[] = (object) array('id' => 'lmdb_vehicle_dossier', 'doc_template_name' => 'lmdb_vehicle_dossier', 'label' => 'Dossier véhicule', 'description' => '');
 		elseif (strpos($sql, 'FROM test_dossier_ecm_files WHERE entity') !== false) $rows = $this->ecm;
 		elseif (preg_match('/^SELECT .* FROM test_dossier_facture_fourn as t /s', $sql)) {
@@ -185,12 +197,50 @@ $unknown = html_entity_decode($langs->trans('NotDefined'), ENT_QUOTES, 'UTF-8');
 $consumption->total_ttc = null; verifyDossier(strpos($describe->invoke($builder, $consumption, $langs), $unknown) !== false, 'Unknown price stays unknown');
 $consumption->total_ttc = 0; verifyDossier(strpos($describe->invoke($builder, $consumption, $langs), $unknown) === false, 'Explicit zero stays known');
 
+$db->dictionaries = array(
+	'c_lmdbvehiclemanagement_energy' => array(
+		array('rowid' => 1, 'entity' => 1, 'code' => 'ES', 'label' => 'Essence', 'active' => 1),
+		array('rowid' => 2, 'entity' => 1, 'code' => 'EL', 'label' => 'Électricité', 'active' => 0),
+		array('rowid' => 3, 'entity' => 1, 'code' => 'CUSTOM', 'label' => 'Énergie & <spéciale>', 'active' => 1),
+		array('rowid' => 90, 'entity' => 2, 'code' => 'PRIVATE', 'label' => 'Other entity energy', 'active' => 1),
+	),
+	'c_lmdbvehiclemanagement_consumable' => array(
+		array('rowid' => 4, 'entity' => 1, 'code' => 'OIL', 'label' => 'Huile &amp; &lt;spéciale&gt;', 'active' => 1, 'category' => 'additive', 'unit' => 'L', 'requires_oil_reference' => 1),
+		array('rowid' => 90, 'entity' => 2, 'code' => 'PRIVATE', 'label' => 'Other entity consumable', 'active' => 1, 'category' => 'additive', 'unit' => 'L', 'requires_oil_reference' => 0),
+	),
+);
+$dictionaryVehicle = new LmdbVehicle($db);
+$dictionaryConsumption = new LmdbVehicleConsumption($db);
+$originalLangs = $langs;
+foreach (array('fr_FR' => 'EL — Électricité', 'en_US' => 'EL — Electricity') as $locale => $expectedEnergy) {
+	$langs = new Translate('', $conf);
+	$langs->setDefaultLang($locale);
+	$langs->loadLangs(array('main', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+	$reads = $db->dictionaryReads;
+	$output = $dictionaryVehicle->showOutputField($dictionaryVehicle->fields['fk_energy'], 'fk_energy', 2);
+	verifyDossier(html_entity_decode($output, ENT_QUOTES | ENT_HTML5, 'UTF-8') === $expectedEnergy, 'Native energy rendering '.$locale.', including inactive historical entry');
+	verifyDossier($db->dictionaryReads === $reads + 1, 'No redundant energy fetch '.$locale);
+	$output = $dictionaryConsumption->showOutputField($dictionaryConsumption->fields['fk_consumable'], 'fk_consumable', 4);
+	verifyDossier(strpos($output, '<spéciale>') === false && html_entity_decode($output, ENT_QUOTES | ENT_HTML5, 'UTF-8') === 'Huile & <spéciale>', 'Native consumable rendering escapes legacy HTML '.$locale);
+}
+$langs = $originalLangs;
+$output = $dictionaryVehicle->showOutputField($dictionaryVehicle->fields['fk_energy'], 'fk_energy', 3);
+verifyDossier(strpos($output, '<spéciale>') === false && html_entity_decode($output, ENT_QUOTES | ENT_HTML5, 'UTF-8') === 'CUSTOM — Énergie & <spéciale>', 'Custom energy label escaped');
+foreach (array(array($dictionaryVehicle, 'fk_energy'), array($dictionaryConsumption, 'fk_consumable')) as $fieldCase) {
+	foreach (array(null, 999, 90) as $unavailableId) {
+		verifyDossier($fieldCase[0]->showOutputField($fieldCase[0]->fields[$fieldCase[1]], $fieldCase[1], $unavailableId) === '', 'Empty, missing or other-entity dictionary entry is not rendered');
+	}
+}
+$energyDictionary = new LmdbVehicleEnergy($db);
+verifyDossier($energyDictionary->getDisplayLabel(2) === 'EL — Électricité', 'Existing plain-text energy label keeps accents');
+verifyDossier($energyDictionary->getDisplayLabel(999) === '' && $energyDictionary->getNomUrl() === '', 'Failed energy fetch cannot reuse previous label');
+
 dol_mkdir(DOL_DATA_ROOT.'/source/sub');
 file_put_contents(DOL_DATA_ROOT.'/source/report.txt', 'Épreuve originale');
 file_put_contents(DOL_DATA_ROOT.'/source/sub/report.txt', 'Different original');
 file_put_contents(DOL_DATA_ROOT.'/source/lmdb-dossier-7.zip', 'OLD DOSSIER MUST NOT BE INCLUDED');
 $vehicle = new DossierVehicleProbe($db); $vehicle->id = 7; $vehicle->entity = 1; $vehicle->ref = 'VEH-TEST';
-$vehicle->fields = array('ref' => $vehicle->fields['ref'], 'status' => $vehicle->fields['status']);
+$vehicle->fk_energy = 1;
 $emptyData = $builder->collect($vehicle, $langs);
 verifyDossier(count($emptyData['sections']) === 7 && !$emptyData['files'], 'Complete empty dossier collection, excluding previous dossiers');
 verifyDossier($langs->transnoentities('LmdbVehicleDossier') === 'Dossier véhicule', 'Module translations loaded');
@@ -242,7 +292,7 @@ $db->records = array(
 	'lmdbvehiclemanagement_consumption' => array(),
 	'lmdbvehiclemanagement_odometer_reading' => array(array('rowid' => 21, 'entity' => 1, 'fk_vehicle' => 7, 'reading_date' => '2026-09-03 12:00:00', 'odometer_km' => 12500, 'reading_kind' => 'standard')),
 );
-foreach (array(25, null, 0) as $n => $amount) $db->records['lmdbvehiclemanagement_consumption'][] = array('rowid' => 11 + $n, 'entity' => 1, 'fk_vehicle' => 7, 'ref' => 'CON-'.(11 + $n), 'total_ttc' => $amount, 'quantity' => 5, 'category_snapshot' => 'additive', 'unit_snapshot' => 'L', 'currency_snapshot' => 'EUR', 'status' => 1, 'fk_odometer_reading' => 21);
+foreach (array(25, null, 0) as $n => $amount) $db->records['lmdbvehiclemanagement_consumption'][] = array('rowid' => 11 + $n, 'entity' => 1, 'fk_vehicle' => 7, 'fk_consumable' => 4, 'ref' => 'CON-'.(11 + $n), 'total_ttc' => $amount, 'quantity' => 5, 'category_snapshot' => 'additive', 'unit_snapshot' => 'L', 'currency_snapshot' => 'EUR', 'status' => 1, 'fk_odometer_reading' => 21);
 $realService = new LmdbVehicleSupplierInvoice($db);
 verifyDossier($realService->changeLink('control', 8, 9, $user) === 1, 'Validated control can be linked');
 verifyDossier($db->records['lmdbvehiclemanagement_regulatory_control'][0]['status'] === 1, 'Regulatory status unchanged');
@@ -251,6 +301,10 @@ $conf->supplier_invoice = (object) array('multidir_output' => array(1 => DOL_DAT
 $conf->fournisseur->facture = (object) array('dir_output' => DOL_DATA_ROOT.'/supplier_invoice', 'dir_temp' => DOL_DATA_ROOT.'/supplier_invoice/temp');
 $db->invoiceCurrency = 'USD';
 $populated = $builder->collect($vehicle, $langs);
+verifyDossier(strpos($populated['sections'][0]['rows'][0], 'ES — Essence') !== false, 'Full vehicle fields include readable energy');
+verifyDossier(strpos($populated['sections'][5]['rows'][0], 'Huile & <spéciale>') !== false, 'Consumption dossier includes readable consumable');
+$populatedPath = $builder->build($vehicle, $langs, array($model, 'writeSummary'));
+verifyDossier(is_file($populatedPath) && is_file(substr($populatedPath, 0, -4).'.zip'), 'Full collection to PDF and ZIP with energy and consumables');
 verifyDossier(count($populated['sections'][2]['rows']) === 1 && count($populated['sections'][3]['rows']) === 1, 'Event and validated control collected');
 verifyDossier(count($populated['sections'][4]['rows']) === 1 && strpos($populated['sections'][4]['rows'][0], 'USD') !== false, 'Shared invoice summarized once in its own currency');
 verifyDossier(strpos($populated['sections'][2]['rows'][0], 'FA-9') !== false && strpos($populated['sections'][3]['rows'][0], 'FA-9') !== false, 'Every source keeps its invoice reference');
