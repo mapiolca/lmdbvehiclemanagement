@@ -1,6 +1,7 @@
 # Module
 ModuleLmdbVehicleManagementName=Vehicle management
-ModuleLmdbVehicleManagementDesc=Multi-entity management of vehicles and equipment, assignments, consumption, insurance and regulatory controls
+ModuleLmdbVehicleManagementDesc=Multi-entity management of vehicles and equipment, consumption, insurance, regulatory controls and vehicle dossiers
+ModuleLmdbVehicleManagementDescLong=Fleet, assignment, odometer and intervention management; consumption tracking with optional miscellaneous payments, insurance contracts and certificates, regulatory deadlines and reminders. Native supplier invoice links and PDF/ZIP vehicle dossiers, with granular permissions, entity-owned documents and Multicompany sharing.
 LmdbVehicleManagement=Vehicle management
 LmdbVehicleManagementSetup=Vehicle management settings
 BackToModuleList=Back to module list

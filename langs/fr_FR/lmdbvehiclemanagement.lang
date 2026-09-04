@@ -1,6 +1,7 @@
 # Module
 ModuleLmdbVehicleManagementName=Gestion des véhicules
-ModuleLmdbVehicleManagementDesc=Gestion multientité des véhicules et engins, affectations, consommations, assurances et contrôles réglementaires
+ModuleLmdbVehicleManagementDesc=Gestion multientité des véhicules et engins, consommations, assurances, contrôles réglementaires et dossiers véhicule
+ModuleLmdbVehicleManagementDescLong=Gestion du parc, des affectations, kilométrages et interventions ; suivi des consommations avec opérations diverses optionnelles, contrats et attestations d’assurance, échéances et rappels réglementaires. Liaisons natives aux factures fournisseurs et dossier véhicule PDF/ZIP, avec droits granulaires, documents par entité et partage Multicompany.
 LmdbVehicleManagement=Gestion des véhicules
 LmdbVehicleManagementSetup=Réglages de la gestion des véhicules
 BackToModuleList=Retour vers la liste des modules
