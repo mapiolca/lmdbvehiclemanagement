@@ -141,6 +141,10 @@ if ($action === 'save_consumption_od_settings') {
 if (in_array($action, array('enable_dossier', 'disable_dossier', 'default_dossier'), true)) {
 	require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
 	$activeModels = getListOfModels($db, 'lmdbvehicle');
+	// The native helper returns 0 when no model is active, and -1 on error.
+	if ($activeModels === 0) {
+		$activeModels = array();
+	}
 	if (!is_array($activeModels)) { setEventMessages($langs->trans('LmdbDossierReadFailed'), null, 'errors'); }
 	else {
 		$db->begin();
