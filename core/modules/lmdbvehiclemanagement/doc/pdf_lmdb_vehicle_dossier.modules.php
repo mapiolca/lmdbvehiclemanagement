@@ -4,7 +4,11 @@ require_once __DIR__.'/../modules_lmdbvehiclemanagement.php';
 require_once __DIR__.'/../../../../class/lmdbvehicledossier.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/pdf.lib.php';
 
-/** Native model: summary PDF plus original documents in a verified ZIP. */
+/**
+ * Native model: summary PDF plus original documents in a verified ZIP.
+ * @phpstan-import-type DossierData from LmdbVehicleDossier
+ * @phpstan-import-type DossierTable from LmdbVehicleDossier
+ */
 class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 {
 	/** @var DoliDB */ public $db;
@@ -54,7 +58,7 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 	/**
 	 * Explicit page lifecycle: reserve the measured native footer, finish each page once.
 	 * @param LmdbVehicle $object
-	 * @param array{sections:list<array{title:string,rows:list<string>}>,files:array,warnings:list<string>} $data
+	 * @param DossierData $data
 	 * @param Translate $outputlangs
 	 * @param string $path
 	 * @return void
@@ -67,6 +71,7 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 		$pdf->setPrintHeader(false);
 		$pdf->setPrintFooter(false);
 		$pdf->SetMargins($this->marge_gauche, $this->marge_haute, $this->marge_droite);
+		$pdf->setCellPaddings(0, 0, 0, 0);
 		$pdf->SetFont(pdf_getPDFFont($outputlangs), '', pdf_getPDFFontSize($outputlangs));
 		$pdf->SetTitle($outputlangs->transnoentities('LmdbVehicleDossier').' — '.$object->ref);
 		$pdf->AddPage();
@@ -85,46 +90,156 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 		$pdf->setPageOrientation('', true, $heightforfooter);
 		$width = $format['width'] - $this->marge_gauche - $this->marge_droite;
 		$fontSize = pdf_getPDFFontSize($outputlangs);
-		$blocks = array(array('text' => $outputlangs->transnoentities('LmdbVehicleDossier').' — '.$object->ref, 'size' => $fontSize + 4, 'bold' => true),
-			array('text' => $outputlangs->transnoentities('Date').': '.dol_print_date(dol_now(), 'dayhour', 'tzuser', $outputlangs), 'size' => $fontSize, 'bold' => false));
+		$pdf->SetFont('', 'B', $fontSize + 4);
+		$pdf->MultiCell($width, 0, $outputlangs->convToOutputCharset($outputlangs->transnoentities('LmdbVehicleDossier').' - '.$object->ref), 0, 'L');
+		$pdf->Ln(2);
+		$pdf->SetFont('', '', $fontSize);
+		$pdf->MultiCell($width, 0, $outputlangs->convToOutputCharset($outputlangs->transnoentities('Date').': '.dol_print_date(dol_now(), 'dayhour', 'tzuser', $outputlangs)), 0, 'L');
+		$pdf->Ln(6);
 		foreach ($data['sections'] as $section) {
-			$blocks[] = array('text' => $section['title'], 'size' => $fontSize + 1, 'bold' => true);
-			foreach ($section['rows'] ?: array($outputlangs->transnoentities('NoRecordFound')) as $row) $blocks[] = array('text' => $row, 'size' => $fontSize - 1, 'bold' => false);
-		}
-		foreach ($blocks as $block) {
-			$pdf->SetFont('', $block['bold'] ? 'B' : '', $block['size']);
-			$text = $outputlangs->convToOutputCharset(html_entity_decode(strip_tags($block['text']), ENT_QUOTES, 'UTF-8'));
-			foreach (preg_split('/\R/u', $text) ?: array() as $paragraph) {
-				// Prefer word boundaries; split an overlong filename at Unicode characters.
-				$lines = array(); $line = '';
-				foreach (preg_split('/(\s+)/u', $paragraph, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) ?: array() as $word) {
-					if ($line !== '' && $pdf->GetStringWidth($line.$word) > $width - 2) { $lines[] = rtrim($line); $line = ''; }
-					if ($line === '' && trim($word) === '') continue;
-					foreach (preg_split('//u', $word, -1, PREG_SPLIT_NO_EMPTY) ?: array() as $char) {
-						if ($line !== '' && $pdf->GetStringWidth($line.$char) > $width - 2) { $lines[] = $line; $line = ''; }
-						$line .= $char;
-					}
-				}
-				$lines[] = $line;
-				foreach ($lines as $line) {
-					$lineHeight = $pdf->getStringHeight($width, $line ?: ' ') + 1;
-					if ($pdf->GetY() + $lineHeight > $format['height'] - $heightforfooter) {
-						$pdf->SetAutoPageBreak(false, 0);
-						$this->_pagefoot($pdf, $object, $outputlangs, 1);
-						$pdf->SetMargins($this->marge_gauche, $this->marge_haute, $this->marge_droite);
-						$pdf->AddPage();
-						$pdf->SetXY($this->marge_gauche, $this->marge_haute);
-						$pdf->setPageOrientation('', true, $heightforfooter);
-						$pdf->SetFont('', $block['bold'] ? 'B' : '', $block['size']);
-					}
-					$pdf->MultiCell($width, $lineHeight, $line, 0, 'L');
-				}
+			$tables = $section['tables'] ?: array(array('title' => '', 'columns' => array($outputlangs->transnoentities('Description')), 'rows' => array()));
+			foreach ($tables as $table) {
+				$this->writeTable($pdf, $object, $table, $section['title'], $outputlangs, $heightforfooter);
 			}
-			$pdf->Ln(3);
 		}
 		$pdf->SetAutoPageBreak(false, 0);
 		$this->_pagefoot($pdf, $object, $outputlangs, 0);
 		$pdf->Output($path, 'F');
+	}
+
+	/**
+	 * Wrap plain text before drawing the grid, including long unbroken filenames.
+	 * @param TCPDF $pdf
+	 * @param string $text Already converted to the PDF output charset
+	 * @param float $width Available text width, excluding padding
+	 * @return list<string>
+	 */
+	private function wrapCell($pdf, $text, $width)
+	{
+		$lines = array();
+		foreach (preg_split('/\R/u', $text) ?: array('') as $paragraph) {
+			$line = '';
+			foreach (preg_split('/(\s+)/u', $paragraph, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) ?: array() as $word) {
+				if ($line !== '' && $pdf->GetStringWidth($line.$word) > $width) { $lines[] = rtrim($line); $line = ''; }
+				if ($line === '' && trim($word) === '') continue;
+				foreach (preg_split('//u', $word, -1, PREG_SPLIT_NO_EMPTY) ?: array() as $char) {
+					if ($line !== '' && $pdf->GetStringWidth($line.$char) > $width) { $lines[] = $line; $line = ''; }
+					$line .= $char;
+				}
+			}
+			$lines[] = rtrim($line);
+		}
+		return $lines;
+	}
+
+	/**
+	 * @param TCPDF $pdf
+	 * @param list<list<string>> $cells Wrapped cell contents
+	 * @param list<float> $widths Column widths
+	 * @param float $height Row height, including 1 mm vertical padding on each side
+	 * @param int $shade Background grey level
+	 * @return void
+	 */
+	private function drawRow($pdf, $cells, $widths, $height, $shade)
+	{
+		$x = $this->marge_gauche;
+		$y = $pdf->GetY();
+		$pdf->SetDrawColor(210, 210, 210);
+		$pdf->SetFillColor($shade, $shade, $shade);
+		$pdf->SetTextColor(30, 30, 30);
+		$pdf->SetLineWidth(0.15);
+		foreach ($widths as $column => $width) {
+			$pdf->Rect($x, $y, $width, $height, 'DF');
+			$pdf->MultiCell($width - 4, $height - 2, implode("\n", $cells[$column]), 0, 'L', false, 0, $x + 2, $y + 1, true, 0, false, false);
+			$x += $width;
+		}
+		$pdf->SetXY($this->marge_gauche, $y + $height);
+	}
+
+	/**
+	 * Keep ordinary rows together; split only rows taller than a usable page.
+	 * Every continuation repeats the section, record reference and column headers.
+	 * @param TCPDF $pdf
+	 * @param LmdbVehicle $object
+	 * @param DossierTable $table
+	 * @param string $sectionTitle
+	 * @param Translate $outputlangs
+	 * @param float $heightforfooter
+	 * @return void
+	 */
+	private function writeTable($pdf, $object, $table, $sectionTitle, $outputlangs, $heightforfooter)
+	{
+		$width = $pdf->getPageWidth() - $this->marge_gauche - $this->marge_droite;
+		$bottom = $pdf->getPageHeight() - $heightforfooter;
+		$fontSize = pdf_getPDFFontSize($outputlangs) - 1;
+		$count = count($table['columns']);
+		$ratios = $count === 2 ? array(0.34, 0.66) : ($count === 6 ? array(0.15, 0.14, 0.14, 0.30, 0.13, 0.14) : array_fill(0, $count, 1 / $count));
+		$widths = array_map(static function ($ratio) use ($width) { return $width * $ratio; }, $ratios);
+		$title = $sectionTitle.($table['title'] !== '' ? ' - '.$table['title'] : '');
+		$pdf->SetFont('', 'B', $fontSize + 2);
+		$title = implode("\n", $this->wrapCell($pdf, $outputlangs->convToOutputCharset($title), $width));
+		$titleHeight = $pdf->getStringHeight($width, $title) + 2;
+		$pdf->SetFont('', 'B', $fontSize);
+		$headers = array();
+		foreach ($table['columns'] as $column => $label) $headers[] = $this->wrapCell($pdf, $outputlangs->convToOutputCharset($label), $widths[$column] - 4);
+		$lineHeight = $pdf->getStringHeight($width, 'Ag');
+		$headerHeight = max(array_map('count', $headers)) * $lineHeight + 2;
+		$pdf->SetFont('', '', $fontSize);
+		$rows = array();
+		$totalHeight = $titleHeight + $headerHeight;
+		foreach ($table['rows'] as $row) {
+			$cells = array();
+			foreach ($widths as $column => $columnWidth) $cells[] = $this->wrapCell($pdf, $outputlangs->convToOutputCharset($row[$column]), $columnWidth - 4);
+			$rows[] = $cells;
+			$totalHeight += max(array_map('count', $cells)) * $lineHeight + 2;
+		}
+		if (!$rows) {
+			$rows[] = array($this->wrapCell($pdf, $outputlangs->convToOutputCharset($outputlangs->transnoentities('NoRecordFound')), $width - 4));
+			$totalHeight += count($rows[0][0]) * $lineHeight + 2;
+		}
+		$bodyHeight = $bottom - $this->marge_haute - $titleHeight - $headerHeight;
+		if ($bodyHeight < $lineHeight + 2) throw new RuntimeException('LmdbDossierFooterTooLarge');
+		$newPage = function () use ($pdf, $object, $outputlangs, $heightforfooter) {
+			$pdf->SetAutoPageBreak(false, 0);
+			$this->_pagefoot($pdf, $object, $outputlangs, 1);
+			$pdf->SetMargins($this->marge_gauche, $this->marge_haute, $this->marge_droite);
+			$pdf->AddPage();
+			$pdf->SetXY($this->marge_gauche, $this->marge_haute);
+			$pdf->setPageOrientation('', true, $heightforfooter);
+			$pdf->setCellPaddings(0, 0, 0, 0);
+		};
+		$heading = function () use ($pdf, $title, $width, $titleHeight, $headers, $widths, $headerHeight, $fontSize) {
+			$pdf->SetFont('', 'B', $fontSize + 2);
+			$pdf->SetTextColor(30, 30, 30);
+			$y = $pdf->GetY();
+			$pdf->MultiCell($width, $titleHeight - 2, $title, 0, 'L');
+			$pdf->SetXY($this->marge_gauche, $y + $titleHeight);
+			$pdf->SetFont('', 'B', $fontSize);
+			$this->drawRow($pdf, $headers, $widths, $headerHeight, 232);
+			$pdf->SetFont('', '', $fontSize);
+		};
+		// A short record fits on one page: move the whole table if necessary.
+		$firstHeight = max(array_map('count', $rows[0])) * $lineHeight + 2;
+		$needed = $totalHeight <= $bottom - $this->marge_haute ? $totalHeight : $titleHeight + $headerHeight + min($firstHeight, $bodyHeight);
+		if ($pdf->GetY() + $needed > $bottom) $newPage();
+		$heading();
+		foreach ($rows as $index => $cells) {
+			$remaining = max(array_map('count', $cells));
+			$rowHeight = $remaining * $lineHeight + 2;
+			if ($pdf->GetY() + $rowHeight > $bottom && $rowHeight <= $bodyHeight) { $newPage(); $heading(); }
+			$offset = 0;
+			while ($remaining > 0) {
+				$capacity = (int) floor(($bottom - $pdf->GetY() - 2) / $lineHeight + 0.00001);
+				if ($capacity < 1) { $newPage(); $heading(); continue; }
+				$take = min($remaining, $capacity);
+				$fragment = array_map(static function ($lines) use ($offset, $take) { return array_slice($lines, $offset, $take); }, $cells);
+				$this->drawRow($pdf, $fragment, $table['rows'] ? $widths : array($width), $take * $lineHeight + 2, $index % 2 ? 248 : 255);
+				$remaining -= $take;
+				$offset += $take;
+				if ($remaining > 0) { $newPage(); $heading(); }
+			}
+		}
+		$pdf->Ln(6);
 	}
 
 	/**

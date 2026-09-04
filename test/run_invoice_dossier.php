@@ -138,6 +138,8 @@ $mysoc = null;
 $checks = 0;
 function verifyDossier($condition, $label) { global $checks; if (!$condition) throw new RuntimeException($label); $checks++; }
 function rejectsDossier(callable $operation, $message) { try { $operation(); } catch (RuntimeException $e) { verifyDossier($e->getMessage() === $message, 'Wrong rejection: '.$e->getMessage()); return; } throw new RuntimeException('Missing rejection: '.$message); }
+/** @param array{title:string,columns:list<string>,rows:list<list<string>>} $table @return string */
+function dossierTableText($table) { return implode("\n", array_map(static function ($row) { return implode(' | ', $row); }, $table['rows'])); }
 
 if (($argv[2] ?? '') === 'access') {
 	require_once dirname(__DIR__).'/class/actions_lmdbvehiclemanagement.class.php';
@@ -194,8 +196,8 @@ verifyDossier(count($rows) === 621 && $rows[620]->rowid === 620, 'All pages beyo
 $describe = new ReflectionMethod($builder, 'describe');
 $consumption = new LmdbVehicleConsumption($db); $consumption->fields = array('total_ttc' => $consumption->fields['total_ttc']); $consumption->currency_snapshot = 'EUR';
 $unknown = html_entity_decode($langs->trans('NotDefined'), ENT_QUOTES, 'UTF-8');
-$consumption->total_ttc = null; verifyDossier(strpos($describe->invoke($builder, $consumption, $langs), $unknown) !== false, 'Unknown price stays unknown');
-$consumption->total_ttc = 0; verifyDossier(strpos($describe->invoke($builder, $consumption, $langs), $unknown) === false, 'Explicit zero stays known');
+$consumption->total_ttc = null; verifyDossier($describe->invoke($builder, $consumption, $langs)[0][1] === $unknown, 'Unknown price stays unknown');
+$consumption->total_ttc = 0; verifyDossier($describe->invoke($builder, $consumption, $langs)[0][1] !== $unknown, 'Explicit zero stays known');
 
 $db->dictionaries = array(
 	'c_lmdbvehiclemanagement_energy' => array(
@@ -262,9 +264,16 @@ verifyDossier(count($names) === 2 && count($data['files']) === 2, 'Hierarchy kep
 if (!class_exists('ZipArchive')) { fwrite(STDERR, "ZipArchive required for dossier integration checks\n"); exit(2); }
 $model = new pdf_lmdb_vehicle_dossier($db);
 $fixtureBuilder = new DossierBuilderProbe($db);
-$data['sections'] = array(array('title' => 'Caractéristiques techniques', 'rows' => array('Véhicule de test — Énergie électrique — 0 EUR')),
-	array('title' => 'Historique complet', 'rows' => array_map(static function ($i) { return 'Événement '.$i.' — Contrôle réalisé — facture FA-'.$i; }, range(1, 621))),
-	array('title' => 'Observations', 'rows' => array(str_repeat('Description longue avec accents et références. ', 100))));
+$data['sections'] = array(
+	array('title' => 'Caractéristiques techniques', 'tables' => array(array('title' => '', 'columns' => array('Désignation', 'Valeur'), 'rows' => array(array('Véhicule de test', 'Énergie électrique - 0 EUR'))))),
+	array('title' => 'Historique complet', 'tables' => array(array('title' => '', 'columns' => array('Date', 'Source', 'Type', 'Description', 'État', 'Kilométrage'),
+		'rows' => array_map(static function ($i) { return array('04/09/2026 12:00', 'Événement', 'Entretien', 'Événement '.$i.' - facture FA-'.$i, 'Terminé', '125 000 km'); }, range(1, 621))))),
+	array('title' => 'Observations', 'tables' => array(array('title' => 'NOTE-LONGUE', 'columns' => array('Désignation', 'Valeur'), 'rows' => array(
+		array('Description', str_repeat('Description longue avec accents et références. ', 500).' FIN-NOTE'),
+		array('Fichier', str_repeat('épreuve', 400).'.pdf FIN-FICHIER'),
+		array('Caractères littéraux', 'Huile & <spéciale> : contrôle - valeur'),
+	)))),
+);
 $fixtureBuilder->fixture = $data;
 $path = $fixtureBuilder->build($vehicle, $langs, array($model, 'writeSummary'));
 verifyDossier(is_file($path) && substr(file_get_contents($path), 0, 4) === '%PDF', 'Native PDF generated');
@@ -301,14 +310,21 @@ $conf->supplier_invoice = (object) array('multidir_output' => array(1 => DOL_DAT
 $conf->fournisseur->facture = (object) array('dir_output' => DOL_DATA_ROOT.'/supplier_invoice', 'dir_temp' => DOL_DATA_ROOT.'/supplier_invoice/temp');
 $db->invoiceCurrency = 'USD';
 $populated = $builder->collect($vehicle, $langs);
-verifyDossier(strpos($populated['sections'][0]['rows'][0], 'ES — Essence') !== false, 'Full vehicle fields include readable energy');
-verifyDossier(strpos($populated['sections'][5]['rows'][0], 'Huile & <spéciale>') !== false, 'Consumption dossier includes readable consumable');
+verifyDossier(strpos(dossierTableText($populated['sections'][0]['tables'][0]), 'ES — Essence') !== false, 'Full vehicle fields include readable energy');
+verifyDossier(strpos(dossierTableText($populated['sections'][5]['tables'][0]), 'Huile & <spéciale>') !== false, 'Consumption dossier includes readable consumable');
 $populatedPath = $builder->build($vehicle, $langs, array($model, 'writeSummary'));
 verifyDossier(is_file($populatedPath) && is_file(substr($populatedPath, 0, -4).'.zip'), 'Full collection to PDF and ZIP with energy and consumables');
-verifyDossier(count($populated['sections'][2]['rows']) === 1 && count($populated['sections'][3]['rows']) === 1, 'Event and validated control collected');
-verifyDossier(count($populated['sections'][4]['rows']) === 1 && strpos($populated['sections'][4]['rows'][0], 'USD') !== false, 'Shared invoice summarized once in its own currency');
-verifyDossier(strpos($populated['sections'][2]['rows'][0], 'FA-9') !== false && strpos($populated['sections'][3]['rows'][0], 'FA-9') !== false, 'Every source keeps its invoice reference');
-verifyDossier(count($populated['sections'][5]['rows']) === 3 && strpos($populated['sections'][5]['rows'][1], $unknown) !== false, 'All consumption records including absent and zero prices');
+verifyDossier(count($populated['sections'][2]['tables']) === 1 && count($populated['sections'][3]['tables']) === 1, 'Event and validated control collected');
+verifyDossier(count($populated['sections'][4]['tables']) === 1 && strpos(dossierTableText($populated['sections'][4]['tables'][0]), 'USD') !== false, 'Shared invoice summarized once in its own currency');
+verifyDossier(strpos(dossierTableText($populated['sections'][2]['tables'][0]), 'FA-9') !== false && strpos(dossierTableText($populated['sections'][3]['tables'][0]), 'FA-9') !== false, 'Every source keeps its invoice reference');
+verifyDossier(count($populated['sections'][5]['tables']) === 3 && strpos(dossierTableText($populated['sections'][5]['tables'][1]), $unknown) !== false, 'All consumption records including absent and zero prices');
+verifyDossier($populated['sections'][5]['tables'][0]['title'] === 'CON-11' && $populated['sections'][5]['tables'][0]['rows'][1][1] === price(12500, 0, $langs).' km', 'Consumption reference and odometer have dedicated cells');
+verifyDossier(count($populated['sections'][1]['tables'][0]['columns']) === 6 && $populated['sections'][1]['tables'][0]['rows'][0][3] === 'CTL-8', 'History has separate date, source, type, description, status and mileage columns');
+foreach ($populated['sections'] as $section) {
+	foreach ($section['tables'] as $table) {
+		foreach ($table['rows'] as $row) verifyDossier(count($row) === count($table['columns']) && count(array_filter($row, 'is_string')) === count($row), 'Rectangular, plain-text dossier table');
+	}
+}
 $originalOutput = $conf->lmdbvehiclemanagement->multidir_output[1];
 $conf->lmdbvehiclemanagement->multidir_output[1] = DOL_DATA_ROOT.'/annexes/module';
 $conf->supplier_invoice->multidir_output[1] = DOL_DATA_ROOT.'/annexes/invoices';
@@ -348,6 +364,14 @@ verifyDossier(is_file(DOL_DATA_ROOT.'/footer-empty.pdf'), 'Empty dossier and emp
 $conf->global->LMDBVEHICLEMANAGEMENT_DOSSIER_FREE_TEXT = 'Texte court.';
 $model->writeSummary($vehicle, $emptyData, $langs, DOL_DATA_ROOT.'/footer-short.pdf');
 verifyDossier(is_file(DOL_DATA_ROOT.'/footer-short.pdf'), 'Short free text footer');
+$english = new Translate('', $conf); $english->setDefaultLang('en_US');
+$french = $langs; $langs = $english; // Native object formatters use the session language.
+$englishData = $builder->collect($vehicle, $english);
+$model->writeSummary($vehicle, $englishData, $english, DOL_DATA_ROOT.'/tables-en.pdf');
+$langs = $french;
+verifyDossier($englishData['sections'][0]['tables'][0]['columns'] === array('Description', 'Value') && is_file(DOL_DATA_ROOT.'/tables-en.pdf'), 'English table headings use native catalogs');
+verifyDossier($langs->transnoentities('CancellationDate') === 'Date de l’annulation' && $english->transnoentities('CancelledBy') === 'Cancelled by', 'Cancellation fields translated in both output languages');
+verifyDossier($langs->transnoentities('FileGenerated') === 'Le fichier a été généré avec succès' && $english->transnoentities('FileGenerated') === 'The file was successfully generated', 'Native document success message in both languages');
 $hookmanager = new HookManager($db);
 $db->ecm = array((object) array('filepath' => 'missing', 'filename' => 'absent.pdf'));
 $missing = array('sections' => array(), 'files' => array(), 'warnings' => array());

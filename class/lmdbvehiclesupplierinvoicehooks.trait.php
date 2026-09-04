@@ -18,7 +18,8 @@ trait LmdbVehicleSupplierInvoiceHooks
 		if ($object instanceof LmdbVehicle && $action === 'builddoc') {
 			require_once __DIR__.'/lmdbvehicledossier.class.php';
 			if (!$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) accessforbidden();
-			if ($object->generateDocument(GETPOST('model', 'aZ09'), $langs) > 0) setEventMessages($langs->trans('FileSuccessfullyBuilt'), null, 'mesgs');
+			$langs->load('main');
+			if ($object->generateDocument(GETPOST('model', 'aZ09'), $langs) > 0) setEventMessages($langs->trans('FileGenerated'), null, 'mesgs');
 			else setEventMessages($object->error, $object->errors, 'errors');
 			header('Location: '.$_SERVER['PHP_SELF'].'?id='.((int) $object->id));
 			exit;

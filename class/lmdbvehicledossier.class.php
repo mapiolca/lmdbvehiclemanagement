@@ -13,7 +13,8 @@ require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
 
 /**
  * Assemble a vehicle dossier from authoritative objects, never from cached totals.
- * @phpstan-type DossierSection array{title:string,rows:list<string>}
+ * @phpstan-type DossierTable array{title:string,columns:list<string>,rows:list<list<string>>}
+ * @phpstan-type DossierSection array{title:string,tables:list<DossierTable>}
  * @phpstan-type DossierFile array{source:string,path:string,size:int,sha256:string}
  * @phpstan-type DossierData array{sections:list<DossierSection>,files:list<DossierFile>,warnings:list<string>}
  */
@@ -44,7 +45,7 @@ class LmdbVehicleDossier
 	 * Human-readable object fields, excluding internal identifiers and private notes.
 	 * @param CommonObject $object Source
 	 * @param Translate $langs Output language
-	 * @return string
+	 * @return list<list<string>> Label/value rows, with plain-text values
 	 */
 	private function describe($object, $langs)
 	{
@@ -69,9 +70,20 @@ class LmdbVehicleDossier
 			else $formatted = $object->showOutputField($field, $key, $value);
 			// PDF text, not arbitrary stored HTML, scripts or image URLs.
 			$text = html_entity_decode(strip_tags(str_replace(array('<br>', '<br/>', '<br />'), "\n", (string) $formatted)), ENT_QUOTES, 'UTF-8');
-			$lines[] = $langs->trans((string) $field['label']).': '.$text;
+			$lines[] = array($langs->transnoentities((string) $field['label']), $text);
 		}
-		return implode("\n", $lines);
+		return $lines;
+	}
+
+	/**
+	 * @param string $title Record reference, empty for a section-wide table
+	 * @param list<list<string>> $rows Plain-text label/value pairs
+	 * @param Translate $langs Output language
+	 * @return DossierTable
+	 */
+	private function detailsTable($title, $rows, $langs)
+	{
+		return array('title' => $title, 'columns' => array($langs->transnoentities('Designation'), $langs->transnoentities('Value')), 'rows' => $rows);
 	}
 
 	/**
@@ -134,11 +146,11 @@ class LmdbVehicleDossier
 			|| !in_array((int) $vehicle->entity, array_map('intval', explode(',', getEntity('lmdbvehicle'))), true)) throw new RuntimeException('NotEnoughPermissions');
 		$langs->loadLangs(array('main', 'bills', 'suppliers', 'companies', 'users', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 		$data = array('sections' => array(), 'files' => array(), 'warnings' => array());
-		$technical = array($this->describe($vehicle, $langs));
+		$technical = $this->describe($vehicle, $langs);
 		$sql = 'SELECT d.label, d.unit, cap.capacity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity cap INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable d ON d.rowid = cap.fk_consumable AND d.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') WHERE cap.entity = '.((int) $vehicle->entity).' AND cap.fk_vehicle = '.((int) $vehicle->id).' ORDER BY cap.rowid';
-		foreach ($this->rows($sql) as $row) $technical[] = $row->label.': '.price($row->capacity, 0, $langs).' '.$row->unit;
+		foreach ($this->rows($sql) as $row) $technical[] = array($row->label, price($row->capacity, 0, $langs).' '.$row->unit);
 		$sql = 'SELECT p.label, vp.confirmed FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_regulatory_profile vp INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_regulatory_profile p ON p.rowid = vp.fk_profile AND p.entity IN ('.getEntity('c_lmdbvehiclemanagement_regulatory_profile').') WHERE vp.entity = '.((int) $vehicle->entity).' AND vp.fk_vehicle = '.((int) $vehicle->id).' ORDER BY vp.rowid';
-		foreach ($this->rows($sql) as $row) $technical[] = $langs->trans($row->label).' — '.$langs->trans($row->confirmed ? 'QualificationConfirmed' : 'QualificationToConfirm');
+		foreach ($this->rows($sql) as $row) $technical[] = array($langs->transnoentities($row->label), $langs->transnoentities($row->confirmed ? 'QualificationConfirmed' : 'QualificationToConfirm'));
 		require_once DOL_DOCUMENT_ROOT.'/core/class/extrafields.class.php';
 		$extra = new ExtraFields($this->db);
 		$extra->fetch_name_optionals_label($vehicle->table_element);
@@ -151,9 +163,9 @@ class LmdbVehicleDossier
 			if (isset($attributes['enabled'][$key]) && !dol_eval((string) $attributes['enabled'][$key], 1, 1, '2')) continue;
 			if (isset($attributes['list'][$key]) && !dol_eval((string) $attributes['list'][$key], 1, 1, '2')) continue;
 			$value = $vehicle->array_options['options_'.$key] ?? null;
-			if ($value !== null && $value !== '') $technical[] = $langs->trans($label).': '.html_entity_decode(strip_tags($extra->showOutputField($key, $value, '', $vehicle->table_element)), ENT_QUOTES, 'UTF-8');
+			if ($value !== null && $value !== '') $technical[] = array($langs->transnoentities($label), html_entity_decode(strip_tags($extra->showOutputField($key, $value, '', $vehicle->table_element)), ENT_QUOTES, 'UTF-8'));
 		}
-		$data['sections'][] = array('title' => $langs->trans('LmdbDossierTechnical'), 'rows' => $technical);
+		$data['sections'][] = array('title' => $langs->transnoentities('LmdbDossierTechnical'), 'tables' => array($this->detailsTable('', $technical, $langs)));
 		$history = new LmdbVehicleHistory($this->db);
 		$historyRows = array();
 		$statusObjects = array('lmdbvehicleevent' => new LmdbVehicleEvent($this->db), 'lmdbvehicleassignment' => new LmdbVehicleAssignment($this->db),
@@ -170,9 +182,10 @@ class LmdbVehicleDossier
 			foreach ($batch as $entry) {
 				$statusObject = $statusObjects[$entry['source_object']] ?? null;
 				$status = $statusObject ? strip_tags($statusObject->LibStatut($entry['status'], 5)) : '';
-				$text = dol_print_date($entry['date'], 'dayhour', 'tzuser', $langs).' — '.$langs->trans('TimelineSource'.ucfirst($entry['source'])).' — '.$langs->trans($typeLabels[$entry['type']] ?? $entry['type']).' — '.$entry['label'].' — '.$status;
-				if ($entry['odometer_km'] !== null) $text .= ' — '.price($entry['odometer_km'], 0, $langs).' km';
-				$historyRows[] = array('date' => $entry['date'], 'text' => $text);
+				$cells = array(dol_print_date($entry['date'], 'dayhour', 'tzuser', $langs), $langs->transnoentities('TimelineSource'.ucfirst($entry['source'])),
+					$langs->transnoentities($typeLabels[$entry['type']] ?? $entry['type']), html_entity_decode(strip_tags($entry['label']), ENT_QUOTES, 'UTF-8'),
+					html_entity_decode($status, ENT_QUOTES, 'UTF-8'), $entry['odometer_km'] !== null ? price($entry['odometer_km'], 0, $langs).' km' : '');
+				$historyRows[] = array('date' => $entry['date'], 'cells' => $cells);
 			}
 			$offset += count($batch);
 		} while (count($batch) === 200);
@@ -186,13 +199,13 @@ class LmdbVehicleDossier
 				$service = new LmdbVehicleSupplierInvoice($this->db);
 				$source = $service->fetchSource($kind, (int) $row->rowid);
 				$description = $this->describe($source, $langs);
-				if ($kind === 'control') $historyRows[] = array('date' => (int) $source->control_date, 'text' => dol_print_date($source->control_date, 'dayhour', 'tzuser', $langs).' — '.$langs->trans('RegulatoryControl').' — '.$source->ref.' — '.strip_tags($source->getLibStatut(5)));
+				if ($kind === 'control') $historyRows[] = array('date' => (int) $source->control_date, 'cells' => array(dol_print_date($source->control_date, 'dayhour', 'tzuser', $langs), $langs->transnoentities('RegulatoryControl'), '', $source->ref, html_entity_decode(strip_tags($source->getLibStatut(5)), ENT_QUOTES, 'UTF-8'), ''));
 				$files = $this->attachments($source, getMultidirOutput($source, 'lmdbvehiclemanagement', 1), ($kind === 'event' ? 'events/' : 'controls/').((int) $source->entity).'-'.((int) $source->id).'-'.dol_sanitizeFileName($source->ref), $data, $langs);
-				$description .= "\n".$langs->trans('Files').': '.($files ? implode(', ', $files) : $langs->trans('NoFileFound'));
+				$description[] = array($langs->transnoentities('Files'), $files ? implode("\n", $files) : $langs->transnoentities('NoFileFound'));
 				if ($source->fetchObjectLinked() < 0) throw new RuntimeException('LmdbDossierReadFailed');
 				foreach (($source->linkedObjects['invoice_supplier'] ?? array()) as $invoice) {
 					if (!($invoice instanceof FactureFournisseur) || !in_array((int) $invoice->entity, array_map('intval', explode(',', getEntity('supplier_invoice'))), true)) throw new RuntimeException('NotEnoughPermissions');
-					$description .= "\n".$langs->trans('SupplierInvoice').': '.$invoice->ref;
+					$description[] = array($langs->transnoentities('SupplierInvoice'), $invoice->ref);
 					if (isset($invoiceRefs[$invoice->id])) continue;
 					$invoiceRefs[$invoice->id] = $invoice->ref;
 					$dir = getMultidirOutput($invoice).'/'.get_exdir($invoice->id, 2, 0, 0, $invoice, 'invoice_supplier').dol_sanitizeFileName($invoice->ref);
@@ -200,28 +213,40 @@ class LmdbVehicleDossier
 					if ($invoice->fetch_thirdparty() < 0) throw new RuntimeException('LmdbDossierReadFailed');
 					$currency = $invoice->multicurrency_code ?: dolibarr_get_const($this->db, 'MAIN_MONNAIE', (int) $invoice->entity);
 					$total = $invoice->multicurrency_code ? $invoice->multicurrency_total_ttc : $invoice->total_ttc;
-					$invoiceSections[] = $invoice->ref.' — '.$invoice->ref_supplier.' — '.(is_object($invoice->thirdparty) ? $invoice->thirdparty->name : '').' — '.dol_print_date($invoice->date, 'day', 'tzuser', $langs).' — '.strip_tags($invoice->getLibStatut(5))."\n".$langs->trans('TotalTTC').': '.price($total, 0, $langs).' '.$currency."\n".$langs->trans('Files').': '.($invoiceFiles ? implode(', ', $invoiceFiles) : $langs->trans('NoFileFound'));
+					$invoiceSections[] = $this->detailsTable($invoice->ref, array(
+						array($langs->transnoentities('RefSupplier'), (string) $invoice->ref_supplier),
+						array($langs->transnoentities('Supplier'), is_object($invoice->thirdparty) ? (string) $invoice->thirdparty->name : ''),
+						array($langs->transnoentities('Date'), dol_print_date($invoice->date, 'day', 'tzuser', $langs)),
+						array($langs->transnoentities('Status'), html_entity_decode(strip_tags($invoice->getLibStatut(5)), ENT_QUOTES, 'UTF-8')),
+						array($langs->transnoentities('TotalTTC'), price($total, 0, $langs).' '.$currency),
+						array($langs->transnoentities('Files'), $invoiceFiles ? implode("\n", $invoiceFiles) : $langs->transnoentities('NoFileFound')),
+					), $langs);
 				}
-				$details[] = $description;
+				$details[] = $this->detailsTable($source->ref, $description, $langs);
 			}
-			$recordSections[] = array('title' => $langs->trans($definition[2]), 'rows' => $details);
+			$recordSections[] = array('title' => $langs->transnoentities($definition[2]), 'tables' => $details);
 		}
 		usort($historyRows, static function ($a, $b) { return $a['date'] <=> $b['date']; });
-		$data['sections'][] = array('title' => $langs->trans('History'), 'rows' => array_column($historyRows, 'text'));
+		$data['sections'][] = array('title' => $langs->transnoentities('History'), 'tables' => array(array('title' => '',
+			'columns' => array($langs->transnoentities('Date'), $langs->transnoentities('TimelineSource'), $langs->transnoentities('Type'), $langs->transnoentities('Description'), $langs->transnoentities('Status'), $langs->transnoentities('OdometerKm')),
+			'rows' => array_column($historyRows, 'cells'))));
 		$data['sections'] = array_merge($data['sections'], $recordSections);
-		$data['sections'][] = array('title' => $langs->trans('SupplierInvoices'), 'rows' => $invoiceSections);
+		$data['sections'][] = array('title' => $langs->transnoentities('SupplierInvoices'), 'tables' => $invoiceSections);
 		$consumptions = array();
 		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption WHERE fk_vehicle = '.((int) $vehicle->id).' AND entity IN ('.getEntity('lmdbvehicleconsumption').') ORDER BY rowid';
 		foreach ($this->rows($sql) as $row) {
 			$consumption = new LmdbVehicleConsumption($this->db);
 			if ($consumption->fetch((int) $row->rowid) <= 0) throw new RuntimeException('LmdbDossierReadFailed');
-			$consumptions[] = dol_print_date($consumption->reading_date, 'dayhour', 'tzuser', $langs).' — '.price($consumption->odometer_km, 0, $langs).' km'."\n".$this->describe($consumption, $langs);
+			$consumptions[] = $this->detailsTable($consumption->ref, array_merge(array(
+				array($langs->transnoentities('ReadingDate'), dol_print_date($consumption->reading_date, 'dayhour', 'tzuser', $langs)),
+				array($langs->transnoentities('OdometerKm'), price($consumption->odometer_km, 0, $langs).' km'),
+			), $this->describe($consumption, $langs)), $langs);
 			// Deliberately no attachments() and no traversal of linked PaymentVarious.
 		}
-		$data['sections'][] = array('title' => $langs->trans('LmdbDossierConsumptions'), 'rows' => $consumptions);
+		$data['sections'][] = array('title' => $langs->transnoentities('LmdbDossierConsumptions'), 'tables' => $consumptions);
 		$files = $this->attachments($vehicle, getMultidirOutput($vehicle, 'lmdbvehiclemanagement', 1), 'vehicle', $data, $langs);
-		$data['sections'][] = array('title' => $langs->trans('Files'), 'rows' => $files);
-		if ($data['warnings']) $data['sections'][] = array('title' => $langs->trans('LmdbDossierMissingDocuments'), 'rows' => array_values(array_unique($data['warnings'])));
+		$data['sections'][] = array('title' => $langs->transnoentities('Files'), 'tables' => array(array('title' => '', 'columns' => array($langs->transnoentities('File')), 'rows' => array_map(static function ($file) { return array($file); }, $files))));
+		if ($data['warnings']) $data['sections'][] = array('title' => $langs->transnoentities('LmdbDossierMissingDocuments'), 'tables' => array(array('title' => '', 'columns' => array($langs->transnoentities('Description')), 'rows' => array_map(static function ($warning) { return array(html_entity_decode($warning, ENT_QUOTES, 'UTF-8')); }, array_values(array_unique($data['warnings']))))));
 		return $data;
 	}
 

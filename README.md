@@ -25,10 +25,12 @@ Après déploiement, réactiver le module pour enregistrer ses nouveaux contexte
 
 Le dossier contient :
 
-- un PDF présentant les caractéristiques, capacités, profils et champs complémentaires accessibles, la chronologie disponible, tous les événements et contrôles avec leurs statuts, leurs factures et l’inventaire de leurs documents, puis tous les pleins/recharges et l’inventaire des fichiers du véhicule ;
+- un PDF présentant en tableaux les caractéristiques, capacités, profils et champs complémentaires accessibles, la chronologie disponible, tous les événements et contrôles avec leurs statuts, leurs factures et l’inventaire de leurs documents, puis tous les pleins/recharges et l’inventaire des fichiers du véhicule ;
 - un ZIP contenant ce PDF et les fichiers originaux dans des répertoires `vehicle`, `events`, `controls` et `invoices`. Les sous-répertoires d’origine sont conservés ; une facture commune à plusieurs interventions n’est embarquée qu’une fois.
 
 Les brouillons, annulations et archives restent inclus. Le chargement s’effectue par lots de 200, sans dépendre de la pagination de l’écran. L’historique reflète les données enregistrées et ne reconstitue pas des modifications qui n’ont pas été historisées. Les prix inconnus restent non renseignés, les zéros explicites restent affichés et chaque montant conserve sa devise.
+
+Les fiches détaillées utilisent des tableaux **Désignation / Valeur** ; la chronologie sépare date, source, type, description, état et kilométrage. Les titres, références et en-têtes de colonnes sont répétés sur les pages suivantes. Les lignes ordinaires restent entières ; les textes dépassant une page sont répartis sans empiéter sur les pieds de page natifs. Régénérer un dossier existant pour appliquer cette présentation.
 
 Les justificatifs des consommations et de leurs OD, temporaires, aperçus et dossiers précédents sont exclus. Une facture sans fichier reste mentionnée ; aucune génération de facture commerciale n’est déclenchée. Les fichiers indexés mais absents sont signalés dans le PDF. Une erreur de lecture, de compression ou d’indexation annule la publication et restaure le dossier précédent.
 
