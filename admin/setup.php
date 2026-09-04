@@ -102,6 +102,11 @@ if ($action === 'save_consumption_od_settings') {
 	$paymentModeId = GETPOSTINT('consumption_od_payment_mode');
 	$accountingAccount = trim(GETPOST('consumption_od_accounting_account', 'alphanohtml'));
 	$subledgerAccount = trim(GETPOST('consumption_od_subledger_account', 'alphanohtml'));
+	if (isModEnabled('accounting')) {
+		// Native account selects submit -1 for their empty option.
+		$accountingAccount = $accountingAccount === '-1' ? '' : $accountingAccount;
+		$subledgerAccount = $subledgerAccount === '-1' ? '' : $subledgerAccount;
+	}
 	$consumptionPayment = new LmdbVehicleConsumptionPayment($db);
 	if ($consumptionPayment->validateConfiguration($bankAccountId, $paymentModeId, $accountingAccount, $subledgerAccount, (int) $conf->entity) > 0) {
 		$settings = array(
@@ -241,11 +246,19 @@ print '</td></tr>';
 print '<tr class="oddeven"><td class="fieldrequired">'.$langs->trans('PaymentMode').'</td><td>';
 print $form->select_types_paiements($odPaymentMode, 'consumption_od_payment_mode', 'DBIT', 0, 1, 1, 0, 1, 'minwidth300', 1);
 print '</td></tr>';
-print '<tr class="oddeven"><td class="fieldrequired">'.$langs->trans('AccountAccounting').'</td><td>';
-print $formAccounting->select_account($odAccountingAccount, 'consumption_od_accounting_account', 1, array(), 1, 1, 'minwidth300');
+print '<tr class="oddeven"><td'.(isModEnabled('accounting') ? ' class="fieldrequired"' : '').'>'.$langs->trans('AccountAccounting').'</td><td>';
+if (isModEnabled('accounting')) {
+	print $formAccounting->select_account($odAccountingAccount, 'consumption_od_accounting_account', 1, array(), 1, 1, 'minwidth300');
+} else {
+	print '<input type="text" class="minwidth300 maxwidthonsmartphone" name="consumption_od_accounting_account" id="consumption_od_accounting_account" maxlength="32" value="'.dol_escape_htmltag($odAccountingAccount).'">';
+}
 print '</td></tr>';
-print '<tr class="oddeven"><td class="fieldrequired">'.$langs->trans('SubledgerAccount').'</td><td>';
-print $formAccounting->select_auxaccount($odSubledgerAccount, 'consumption_od_subledger_account', 1, 'minwidth300');
+print '<tr class="oddeven"><td>'.$langs->trans('SubledgerAccount').'</td><td>';
+if (isModEnabled('accounting')) {
+	print $formAccounting->select_auxaccount($odSubledgerAccount, 'consumption_od_subledger_account', 1, 'minwidth300');
+} else {
+	print '<input type="text" class="minwidth300 maxwidthonsmartphone" name="consumption_od_subledger_account" id="consumption_od_subledger_account" maxlength="32" value="'.dol_escape_htmltag($odSubledgerAccount).'">';
+}
 print '</td></tr>';
 print '</table></div>';
 if (!$odConfigurationValid) {

@@ -71,8 +71,8 @@ class LmdbVehicleManagementCompatibility
 				'label' => 'FeatureConsumptionVariousPayment',
 				'min_dolibarr' => '20.0.0',
 				'min_php' => '8.0.0',
-				'available' => $dolibarr20 && $php80 && isModEnabled('bank') && isModEnabled('accounting') && function_exists('finfo_open') && function_exists('imagecreatefromjpeg') && function_exists('imagecreatefrompng') && function_exists('imageflip'),
-				'reason' => !isModEnabled('bank') ? 'RequiresBankModule' : (!isModEnabled('accounting') ? 'RequiresAccountingModule' : (!function_exists('finfo_open') ? 'RequiresFileinfoExtension' : ((!function_exists('imagecreatefromjpeg') || !function_exists('imagecreatefrompng') || !function_exists('imageflip')) ? 'RequiresGdExtension' : (!$dolibarr20 ? 'RequiresDolibarr20' : (!$php80 ? 'RequiresPhp80' : ''))))),
+				'available' => $dolibarr20 && $php80 && isModEnabled('bank') && function_exists('finfo_open') && function_exists('imagecreatefromjpeg') && function_exists('imagecreatefrompng') && function_exists('imageflip'),
+				'reason' => !isModEnabled('bank') ? 'RequiresBankModule' : (!function_exists('finfo_open') ? 'RequiresFileinfoExtension' : ((!function_exists('imagecreatefromjpeg') || !function_exists('imagecreatefrompng') || !function_exists('imageflip')) ? 'RequiresGdExtension' : (!$dolibarr20 ? 'RequiresDolibarr20' : (!$php80 ? 'RequiresPhp80' : '')))),
 			),
 		);
 	}

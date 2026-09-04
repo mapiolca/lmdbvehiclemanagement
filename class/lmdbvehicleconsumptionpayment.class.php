@@ -46,6 +46,8 @@ class LmdbVehicleConsumptionPayment
 
 	/**
 	 * Validate settings used for one native Various Payment.
+	 * Only double-entry accounting requires a chart account; auxiliary accounts
+	 * remain optional. Other modes accept free account numbers for external use.
 	 *
 	 * @param int $bankAccountId Native bank account
 	 * @param int $paymentModeId Native payment mode
@@ -61,11 +63,17 @@ class LmdbVehicleConsumptionPayment
 		if (!isModEnabled('bank')) {
 			return $this->businessError('ConsumptionOdRequiresBankModule');
 		}
-		if (!isModEnabled('accounting')) {
-			return $this->businessError('ConsumptionOdRequiresAccountingModule');
-		}
-		if ($bankAccountId <= 0 || $paymentModeId <= 0 || trim($accountingAccount) === '' || trim($subledgerAccount) === '') {
+		$accountingAccount = trim($accountingAccount);
+		$subledgerAccount = trim($subledgerAccount);
+		if ($bankAccountId <= 0 || $paymentModeId <= 0 || (isModEnabled('accounting') && $accountingAccount === '')) {
 			return $this->businessError('ConsumptionOdConfigurationIncomplete');
+		}
+		// Both native payment_various account columns are varchar(32) since v20.
+		if (dol_strlen($accountingAccount) > 32) {
+			return $this->businessError('ConsumptionOdAccountingAccountTooLong');
+		}
+		if (dol_strlen($subledgerAccount) > 32) {
+			return $this->businessError('ConsumptionOdSubledgerAccountTooLong');
 		}
 
 		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'bank_account';
@@ -79,18 +87,25 @@ class LmdbVehicleConsumptionPayment
 		if ($this->hasOneRow($sql) !== 1) {
 			return $this->businessError($this->error !== '' ? $this->error : 'ConsumptionOdPaymentModeInvalid');
 		}
+		if (!isModEnabled('accounting')) {
+			return 1;
+		}
+		$chartId = getDolGlobalInt('CHARTOFACCOUNTS');
+		if ($chartId <= 0) {
+			return $this->businessError('ConsumptionOdAccountingAccountInvalid');
+		}
 		$sql = 'SELECT aa.rowid FROM '.MAIN_DB_PREFIX.'accounting_account AS aa';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'accounting_system AS ast ON ast.pcg_version = aa.fk_pcg_version';
 		$sql .= ' WHERE aa.entity = '.((int) $entity).' AND aa.active = 1';
-		$sql .= " AND aa.account_number = '".$this->db->escape(trim($accountingAccount))."'";
-		$chartId = getDolGlobalInt('CHARTOFACCOUNTS');
-		if ($chartId > 0) {
-			$sql .= ' AND ast.rowid = '.((int) $chartId);
-		}
+		$sql .= " AND aa.account_number = '".$this->db->escape($accountingAccount)."'";
+		$sql .= ' AND ast.rowid = '.((int) $chartId);
 		if ($this->hasOneRow($sql) !== 1) {
 			return $this->businessError($this->error !== '' ? $this->error : 'ConsumptionOdAccountingAccountInvalid');
 		}
-		$escapedSubledger = $this->db->escape(trim($subledgerAccount));
+		if ($subledgerAccount === '') {
+			return 1;
+		}
+		$escapedSubledger = $this->db->escape($subledgerAccount);
 		$sql = 'SELECT code FROM (';
 		$sql .= 'SELECT accountancy_code AS code FROM '.MAIN_DB_PREFIX."user WHERE accountancy_code = '".$escapedSubledger."'";
 		$sql .= ' AND entity IN ('.getEntity('user').')';

@@ -10,7 +10,7 @@
 - Module Multicompany facultatif
 - Module Ressources facultatif pour la liaison `fk_resource`
 - Modules Agenda et Travaux planifiés recommandés pour les échéances et relances automatiques
-- Modules Banques et Caisses et Comptabilité requis uniquement lorsque la création d’opérations diverses pour les pleins / recharges est activée
+- Module Banques et Caisses requis lorsque la création d’opérations diverses pour les pleins / recharges est activée ; comptabilité facultative
 
 ## Fonctionnalités de la version 0.15.0
 
@@ -52,6 +52,7 @@
 - boutons de transition du contrat rendus avec la classe d’action native Dolibarr, sans dimensionnement CSS spécifique.
 - objet `Plein / Recharge` pour les carburants, recharges électriques, hydrogène et additifs, avec unités et devise figées historiquement ;
 - option par entité créant une opération diverse native au débit pour chaque plein ou recharge, à partir du compte bancaire, du mode de règlement et des comptes comptables configurés ;
+- comptes général et auxiliaire saisis librement et facultatifs sans comptabilité ou en comptabilité simplifiée ; en partie double, compte général obligatoire du plan comptable actif et compte auxiliaire facultatif via les composants natifs ; les valeurs sont conservées lors d’un changement de module comptable et revalidées avant les prochaines créations, sans modification des OD historiques ;
 - ticket PDF, JPEG ou PNG obligatoire lorsque l’option est active, stocké uniquement dans les documents natifs de l’opération diverse, avec contrôle MIME et suppression des métadonnées EXIF/GPS ;
 - projet natif facultatif, synchronisation de la date, du libellé et du montant jusqu’au rapprochement ou au transfert comptable, puis verrouillage des données financières, du justificatif et de la suppression ;
 - import CSV des pleins et recharges refusé lorsque la gestion des tickets est active, sans reprise automatique des consommations historiques ;
@@ -82,6 +83,10 @@ Les règles indépendantes de la base peuvent être vérifiées avec la commande
     php test/run_regulatory_contracts.php
     php test/run_ui_contracts.php
     php test/run_consumption_od_contracts.php
+
+Les tests comportementaux des réglages OD utilisent les classes natives depuis une installation ou un checkout Dolibarr, sans connexion à la base ni écriture métier :
+
+    php test/run_consumption_od_settings.php /chemin/vers/dolibarr/htdocs
 
 Une suite PHPUnit équivalente est fournie dans le répertoire test/phpunit. Les tests d'installation, de droits, de Multicompany et de documents nécessitent une instance Dolibarr configurée.
 

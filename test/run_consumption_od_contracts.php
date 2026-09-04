@@ -45,8 +45,9 @@ $checks['settings_use_native_controls'] = strpos($setup, 'ajax_constantonoff(Lmd
 	&& strpos($setup, "select_types_paiements(\$odPaymentMode, 'consumption_od_payment_mode', 'DBIT'") !== false
 	&& strpos($setup, "select_account(\$odAccountingAccount, 'consumption_od_accounting_account'") !== false
 	&& strpos($setup, "select_auxaccount(\$odSubledgerAccount, 'consumption_od_subledger_account'") !== false;
-$checks['configuration_requires_native_modules_and_valid_references'] = strpos($service, "isModEnabled('bank')") !== false
+$checks['configuration_uses_bank_and_conditional_accounting_validation'] = strpos($service, "isModEnabled('bank')") !== false
 	&& strpos($service, "isModEnabled('accounting')") !== false
+	&& strpos($service, 'ConsumptionOdRequiresAccountingModule') === false
 	&& strpos($service, "MAIN_DB_PREFIX.'bank_account'") !== false
 	&& strpos($service, "MAIN_DB_PREFIX.'c_paiement'") !== false
 	&& strpos($service, "MAIN_DB_PREFIX.'accounting_account AS aa'") !== false;
@@ -99,7 +100,7 @@ $checks['fuel_csv_import_is_blocked_when_feature_is_enabled'] = strpos($import, 
 $checks['compatibility_registry_covers_native_dependencies'] = strpos($compatibility, "'consumption_various_payment'") !== false
 	&& strpos($compatibility, "'FeatureConsumptionVariousPayment'") !== false
 	&& strpos($compatibility, "isModEnabled('bank')") !== false
-	&& strpos($compatibility, "isModEnabled('accounting')") !== false;
+	&& strpos($compatibility, "isModEnabled('accounting')") === false;
 $checks['translations_exist_in_both_languages'] = preg_match('/^ConsumptionOdSettings=.+$/m', $frLang) === 1
 	&& preg_match('/^ConsumptionReceiptRequired=.+$/m', $frLang) === 1
 	&& preg_match('/^ConsumptionOdLocked=.+$/m', $frLang) === 1
