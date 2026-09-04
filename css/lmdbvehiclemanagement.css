@@ -125,6 +125,10 @@
 	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield tr {
 		display: grid !important;
 		grid-template-columns: minmax(0, 1fr);
+		/* Native touch themes force 40px rows; stacked fields need their full height. */
+		height: auto !important;
+		min-height: 0;
+		box-sizing: border-box;
 		width: 100%;
 		padding: 0.35rem 0;
 	}
@@ -138,6 +142,11 @@
 	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield td:first-child,
 	.mod-lmdbvehiclemanagement .lmdb-responsive-form table.tableforfield td:nth-child(2) {
 		display: block;
+		height: auto !important;
+		min-height: 0;
+		max-width: 100%;
+		white-space: normal;
+		overflow-wrap: anywhere;
 		box-sizing: border-box;
 		width: 100% !important;
 		min-width: 0 !important;
