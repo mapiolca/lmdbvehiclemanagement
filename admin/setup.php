@@ -26,6 +26,7 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecontract.clas
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumption.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumptionpayment.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycontrol.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementcompatibility.class.php');
 
 /** @var Conf $conf */
 /** @var DoliDB $db */

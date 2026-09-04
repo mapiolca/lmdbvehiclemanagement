@@ -6,6 +6,7 @@
 - Modèle natif **Dossier véhicule** : PDF récapitulatif de tout l’historique disponible et ZIP des originaux du véhicule, des interventions et des factures, sans justificatifs de consommation. Les prix inconnus, zéros, devises et statuts sont conservés ; les documents absents sont signalés.
 - Génération et indexation dans l’entité propriétaire, vérification du ZIP et restauration du dossier précédent en cas d’échec. Téléchargements et aperçus réservés aux lecteurs du véhicule et des factures, sans accès public ; les noms des dossiers générés sont protégés.
 - Compatibilité Dolibarr v20+/PHP 8.0+ conservée, extension ZIP requise et modèles enregistrés dans les tables natives. Après déploiement, réactiver le module puis activer le modèle documentaire dans les réglages ; aucune migration de table métier supplémentaire.
+- Correction du chargement de la classe de compatibilité avant l’affichage des modèles de dossier dans les réglages, afin d’éviter une erreur fatale à l’ouverture de `admin/setup.php`.
 
 ## `0.15.0` — 2026-09-03
 

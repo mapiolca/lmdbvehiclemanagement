@@ -124,6 +124,11 @@ $checks['vehicle_reference_migration_updates_documents_and_ecm'] = strpos($vehic
 	&& strpos($vehicleReferenceMigration, 'last_main_doc') !== false;
 $checks['vehicle_numbering_change_requires_confirmation'] = strpos($setupPage, "'confirm_setmod'") !== false
 	&& strpos($setupPage, 'ConfirmVehicleReferenceMigration') !== false;
+$compatibilityIncludePosition = strpos($setupPage, "dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementcompatibility.class.php');");
+$dossierModelsIncludePosition = strpos($setupPage, "require __DIR__.'/dossier_models.inc.php';");
+$checks['setup_loads_compatibility_before_dossier_models'] = $compatibilityIncludePosition !== false
+	&& $dossierModelsIncludePosition !== false
+	&& $compatibilityIncludePosition < $dossierModelsIncludePosition;
 $checks['registration_mode_hides_redundant_ref_by_default'] = strpos($vehicleList, "'checked' => LmdbVehicle::usesRegistrationAsReference() ? 0 : 1") !== false;
 $checks['description_uses_native_wysiwyg'] = strpos($vehicleCard, "new DolEditor('description'") !== false;
 $checks['insurance_description_uses_native_wysiwyg'] = strpos($insuranceLibrary, "new DolEditor('contract_description'") !== false;
