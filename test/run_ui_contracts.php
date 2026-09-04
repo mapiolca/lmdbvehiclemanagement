@@ -140,6 +140,34 @@ $checks['actions_use_native_buttons'] = strpos($vehicleCard, "dolGetButtonAction
 $ficheEndPosition = strpos($vehicleCard, 'print dol_get_fiche_end();');
 $tabsActionPosition = strpos($vehicleCard, 'print \'<div class="tabsAction">\';');
 $checks['actions_follow_native_fiche_end'] = $ficheEndPosition !== false && $tabsActionPosition !== false && $ficheEndPosition < $tabsActionPosition;
+$eventViewPosition = strpos($vehicleEventCard, '} elseif ($id > 0) {');
+$eventView = $eventViewPosition !== false ? substr($vehicleEventCard, $eventViewPosition) : '';
+$eventRightPosition = strpos($eventView, '<div class="fichehalfright"><div class="underbanner clearboth"></div><table class="border centpercent tableforfield">');
+$eventEndPosition = strpos($eventView, 'print dol_get_fiche_end();');
+$eventActionsPosition = strpos($eventView, '<div class="tabsAction">');
+$eventClearPosition = strpos($eventView, 'print \'<div class="clearboth"></div>\';');
+$checks['event_card_has_two_native_information_columns'] = $eventRightPosition !== false
+	&& strpos($eventView, '<div class="fichecenter"><div class="fichehalfleft">') !== false
+	&& substr_count($eventView, 'class="border centpercent tableforfield"') === 2;
+foreach (array('Vehicle', 'EventType', 'EventSubtype', 'EventDate', 'Driver', 'ThirdParty') as $field) {
+	$position = strpos($eventView, "trans('".$field."')");
+	$checks['event_card_left_'.$field] = $position !== false && $eventRightPosition !== false && $position < $eventRightPosition;
+}
+foreach (array('Severity', 'VehicleImmobilized', 'ImmobilizationStart', 'ImmobilizationEnd', 'OdometerKm', 'Description') as $field) {
+	$position = strpos($eventView, "trans('".$field."')");
+	$checks['event_card_right_'.$field] = $position !== false && $eventRightPosition !== false && $eventEndPosition !== false
+		&& $position > $eventRightPosition && $position < $eventEndPosition;
+}
+$checks['event_card_status_only_in_native_banner'] = strpos($eventView, 'dol_banner_tab(') !== false
+	&& strpos($eventView, "trans('Status')") === false && strpos($eventView, 'getLibStatut(') === false;
+$checks['event_card_edit_keeps_status_selector'] = strpos($vehicleEventCard, "selectarray('status'") !== false;
+$checks['event_card_clears_columns_and_ends_before_actions'] = $eventClearPosition !== false && $eventEndPosition !== false && $eventActionsPosition !== false
+	&& $eventClearPosition < $eventEndPosition && $eventEndPosition < $eventActionsPosition && substr_count($eventView, 'dol_get_fiche_end()') === 1;
+$eventDocumentsPosition = strpos($eventView, '$formfile->showdocuments(');
+$eventLinksPosition = strpos($eventView, '$form->showLinkedObjectBlock($object);');
+$eventActionsHookPosition = strpos($eventView, "executeHooks('addMoreActionsButtons'");
+$checks['event_card_actions_and_hook_precede_native_document_blocks'] = $eventActionsPosition !== false && $eventDocumentsPosition !== false && $eventLinksPosition !== false && $eventActionsHookPosition !== false
+	&& $eventActionsPosition < $eventActionsHookPosition && $eventActionsHookPosition < $eventDocumentsPosition && $eventDocumentsPosition < $eventLinksPosition;
 $settingsPosition = strpos($library, '/admin/setup.php');
 $insurancePosition = strpos($library, '/admin/insurance.php');
 $compatibilityPosition = strpos($library, '/admin/compatibility.php');
