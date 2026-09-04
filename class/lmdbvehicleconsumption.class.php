@@ -34,8 +34,10 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		'unit_snapshot' => array('type' => 'varchar(16)', 'label' => 'Unit', 'position' => 50, 'notnull' => 1, 'visible' => 1),
 		'fk_odometer_reading' => array('type' => 'integer:LmdbVehicleOdometerReading:lmdbvehiclemanagement/class/lmdbvehicleodometerreading.class.php', 'label' => 'OdometerReading', 'position' => 60, 'notnull' => 1, 'visible' => 0, 'index' => 1),
 		'fk_user_driver' => array('type' => 'integer:User:user/class/user.class.php', 'label' => 'Driver', 'position' => 70, 'notnull' => -1, 'visible' => 1, 'index' => 1),
+		'fk_project' => array('type' => 'integer:Project:projet/class/project.class.php', 'label' => 'Project', 'position' => 75, 'notnull' => -1, 'visible' => 1, 'index' => 1),
+		'fk_payment_various' => array('type' => 'integer:PaymentVarious:compta/bank/class/paymentvarious.class.php', 'label' => 'VariousPayment', 'position' => 76, 'notnull' => -1, 'visible' => 0, 'index' => 1, 'noteditable' => 1),
 		'quantity' => array('type' => 'double(24,8)', 'label' => 'Quantity', 'position' => 80, 'notnull' => 1, 'visible' => 1),
-		'total_ttc' => array('type' => 'double(24,8)', 'label' => 'TotalTTC', 'position' => 90, 'notnull' => 1, 'visible' => 1, 'default' => 0),
+		'total_ttc' => array('type' => 'double(24,8)', 'label' => 'TotalTTC', 'position' => 90, 'notnull' => 0, 'visible' => 1, 'default' => null),
 		'currency_snapshot' => array('type' => 'varchar(3)', 'label' => 'Currency', 'position' => 100, 'notnull' => 1, 'visible' => 1),
 		'oil_reference' => array('type' => 'varchar(128)', 'label' => 'OilReference', 'position' => 110, 'notnull' => -1, 'visible' => 1),
 		'description' => array('type' => 'text', 'label' => 'Description', 'position' => 120, 'notnull' => -1, 'visible' => 3),
@@ -58,8 +60,10 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 	/** @var string */ public $unit_snapshot = '';
 	/** @var int */ public $fk_odometer_reading = 0;
 	/** @var ?int */ public $fk_user_driver;
+	/** @var ?int */ public $fk_project;
+	/** @var ?int */ public $fk_payment_various;
 	/** @var float */ public $quantity = 0.0;
-	/** @var float */ public $total_ttc = 0.0;
+	/** @var float|null NULL means an unknown additive price. */ public $total_ttc = null;
 	/** @var string */ public $currency_snapshot = '';
 	/** @var ?string */ public $oil_reference;
 	/** @var ?string */ public $description;
@@ -143,6 +147,7 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		}
 		$this->entity = (int) $current->entity;
 		$this->fk_odometer_reading = (int) $current->fk_odometer_reading;
+		$this->fk_payment_various = !empty($current->fk_payment_various) ? (int) $current->fk_payment_various : null;
 		$this->currency_snapshot = (string) $current->currency_snapshot;
 		if (empty($this->fk_user_driver)) {
 			$this->fk_user_driver = !empty($current->fk_user_driver) ? (int) $current->fk_user_driver : (int) $user->id;
@@ -259,8 +264,12 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		if ($this->quantity <= 0) {
 			return $this->businessError($langs->trans('FieldMustBeGreaterThan', $langs->trans('Quantity'), 0));
 		}
-		$this->total_ttc = (float) price2num($this->total_ttc, 'MT');
-		if ($this->total_ttc < 0) {
+		if ($this->category_snapshot === 'additive' && ($this->total_ttc === null || trim((string) $this->total_ttc) === '')) {
+			$this->total_ttc = null;
+		} else {
+			$this->total_ttc = (float) price2num($this->total_ttc, 'MT');
+		}
+		if ($this->total_ttc !== null && $this->total_ttc < 0) {
 			return $this->businessError('ConsumptionTotalCannotBeNegative');
 		}
 		if ($this->currency_snapshot === '') {
@@ -300,6 +309,22 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 			if (!$valid) {
 				return $this->businessError('InvalidDriver');
 			}
+		}
+		if ($this->fk_project !== null && (int) $this->fk_project > 0) {
+			$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'projet';
+			$sql .= ' WHERE rowid = '.((int) $this->fk_project).' AND entity IN ('.getEntity('project').')';
+			$resql = $this->db->query($sql);
+			if (!$resql) {
+				$this->error = $this->db->lasterror();
+				return -1;
+			}
+			$valid = $this->db->num_rows($resql) === 1;
+			$this->db->free($resql);
+			if (!$valid) {
+				return $this->businessError('InvalidProject');
+			}
+		} else {
+			$this->fk_project = null;
 		}
 		return 1;
 	}
@@ -372,9 +397,12 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		return dolGetStatus($label, $label, '', 'status4', $mode);
 	}
 
-	/** @return float */
+	/** @return float|null */
 	public function getUnitPrice()
 	{
+		if ($this->total_ttc === null) {
+			return null;
+		}
 		return $this->quantity > 0 ? (float) price2num($this->total_ttc / $this->quantity, 'MU') : 0.0;
 	}
 

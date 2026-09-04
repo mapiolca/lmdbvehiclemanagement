@@ -151,7 +151,7 @@ class LmdbVehicleHistory
 
 		$sql = 'SELECT timeline.* FROM ('.implode(' UNION ALL ', $queries).') AS timeline WHERE 1 = 1';
 		$sql .= $this->buildFilterSql($filters);
-		$sql .= ' ORDER BY '.$sortFields[$sortfield].' '.$sortorder.', timeline.source_id '.$sortorder;
+		$sql .= ' ORDER BY '.$sortFields[$sortfield].' '.$sortorder.', timeline.source_code '.$sortorder.', timeline.source_id '.$sortorder.', timeline.entry_type '.$sortorder;
 		$sql .= $this->db->plimit(max(1, min(500, (int) $limit)), max(0, (int) $offset));
 		$resql = $this->db->query($sql);
 		if (!$resql) {

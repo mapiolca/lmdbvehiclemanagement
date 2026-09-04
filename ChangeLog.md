@@ -1,5 +1,22 @@
 # Historique des versions
 
+## À publier
+
+- Création native de factures fournisseurs depuis les événements et contrôles, avec liaison transactionnelle et relations manuelles multiples dans les deux sens. La fiche événement répartit ses informations en deux colonnes natives, conserve l’état uniquement dans la bannière et place les actions sous les informations, avant les blocs documentaires et objets liés. Les contrôles validés restent immuables ; droits, tokens et entité des deux objets sont contrôlés.
+- Modèle natif **Dossier véhicule** : PDF récapitulatif en tableaux, avec chronologie en colonnes, fiches détaillées et en-têtes répétés sur plusieurs pages, et ZIP des originaux du véhicule, des interventions et des factures, sans justificatifs de consommation. Chaque page reprend l’en-tête Dolibarr avec logo de société, référence et date de génération à droite, marges natives et espace réservé adapté. Les consommations sont synthétisées dans un seul tableau à sept colonnes, une ligne par enregistrement : date du relevé, kilométrage, référence, consommable, nature, unité et référence/type d’huile. Les autres sections conservent leurs montants, devises et statuts ; les documents absents sont signalés. Les dictionnaires d’énergies et de consommables fournissent leur libellé au rendu natif et les informations d’annulation sont traduites. Régénérer les dossiers existants pour appliquer la nouvelle présentation.
+- Génération et indexation dans l’entité propriétaire, message de succès traduit avec la clé native Dolibarr, vérification du ZIP et restauration du dossier précédent en cas d’échec. Téléchargements et aperçus réservés aux lecteurs du véhicule et des factures, sans accès public ; les noms des dossiers générés sont protégés.
+- Compatibilité Dolibarr v20+/PHP 8.0+ conservée, extension ZIP requise et modèles enregistrés dans les tables natives. Après déploiement, réactiver le module puis activer le modèle documentaire dans les réglages ; aucune migration de table métier supplémentaire.
+- Correction des réglages documentaires : chargement de la classe de compatibilité, traduction native du titre « Modèles de documents » et première activation du modèle Dossier véhicule possible lorsque la liste des modèles actifs est vide.
+
+## `0.15.0` — 2026-09-03
+
+- Prix facultatif des recharges d’additif : les montants absents sont exclus des statistiques de prix, tout en conservant les quantités et fréquences. Les zéros explicites restent valorisés à zéro. La réactivation du module rend `total_ttc` nullable sans modifier les montants historiques ni les réglages ; saisie, imports CSV, exports, fiches et tableaux distinguent désormais prix inconnu et prix nul.
+- Ajout d’une option par entité pour créer une opération diverse native au débit lors de chaque plein ou recharge, avec compte bancaire et mode de règlement obligatoires. Seul le module Banques et Caisses est requis : les comptes sont libres et facultatifs sans comptabilité ou en comptabilité simplifiée ; en partie double, le compte général du plan actif est obligatoire et l’auxiliaire reste facultatif. Les réglages sont conservés lors d’un changement de module comptable.
+- Ajout du projet natif et d’un ticket PDF, JPEG ou PNG obligatoire, contrôlé côté serveur, nettoyé de ses métadonnées d’image et stocké exclusivement dans les documents de l’opération diverse.
+- Synchronisation transactionnelle de la date, du libellé, du montant et du projet avec l’opération diverse et sa ligne bancaire, sans exiger un droit bancaire supplémentaire au créateur de la consommation.
+- Verrouillage des données financières, du remplacement du ticket et de la suppression après rapprochement bancaire ou transfert comptable, tout en conservant l’édition des informations non financières.
+- Refus explicite des imports CSV de pleins / recharges lorsque l’option est active, sans création rétroactive d’opérations diverses pour l’historique.
+
 ## `0.14.1` — 2026-09-02
 
 - Remplacement de la qualification manuelle par un questionnaire guidé et historisé, ajout des profils taxi/VTC, sanitaire, auto-école, dépannage et transport public particulier, et arbitrage déterministe des règles par groupe d’obligation.

@@ -168,13 +168,17 @@ if ($action === 'create' || $action === 'edit') {
 		$thirdparty = new Societe($db);
 		print '<tr><td>'.$langs->trans('ThirdParty').'</td><td>'.($thirdparty->fetch((int) $object->fk_soc) > 0 ? $thirdparty->getNomUrl(1) : '').'</td></tr>';
 	}
-	print '<tr><td>'.$langs->trans('Severity').'</td><td>'.$langs->trans($object->fields['severity']['arrayofkeyval'][$object->severity]).'</td></tr>';
+	print '</table></div><div class="fichehalfright"><div class="underbanner clearboth"></div><table class="border centpercent tableforfield">';
+	print '<tr><td class="titlefield">'.$langs->trans('Severity').'</td><td>'.$langs->trans($object->fields['severity']['arrayofkeyval'][$object->severity]).'</td></tr>';
 	print '<tr><td>'.$langs->trans('VehicleImmobilized').'</td><td>'.$langs->trans($object->is_immobilized ? 'Yes' : 'No').'</td></tr>';
 	print '<tr><td>'.$langs->trans('ImmobilizationStart').'</td><td>'.($object->immobilization_start ? dol_print_date($object->immobilization_start, 'dayhour') : '').'</td></tr>';
 	print '<tr><td>'.$langs->trans('ImmobilizationEnd').'</td><td>'.($object->immobilization_end ? dol_print_date($object->immobilization_end, 'dayhour') : '').'</td></tr>';
 	print '<tr><td>'.$langs->trans('OdometerKm').'</td><td>'.($object->odometer_km !== null ? price($object->odometer_km, 0, $langs, 1, -1, -1).' km' : '').'</td></tr>';
-	print '<tr><td>'.$langs->trans('Status').'</td><td>'.$object->getLibStatut(5).'</td></tr>';
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>'.dol_htmlentitiesbr((string) $object->description).'</td></tr></table></div></div>';
+	print '<div class="clearboth"></div>';
+	print dol_get_fiche_end();
+
+	// Native action bar, outside the card and below both information columns.
 	print '<div class="tabsAction">';
 	$hookParameters = array();
 	$hookmanager->executeHooks('addMoreActionsButtons', $hookParameters, $object, $action);
@@ -187,9 +191,10 @@ if ($action === 'create' || $action === 'edit') {
 	print '<div class="fichecenter"><div class="fichehalfleft">';
 	$uploadDir = getMultidirOutput($object, 'lmdbvehiclemanagement', 1);
 	if (is_string($uploadDir) && $uploadDir !== '' && strpos($uploadDir, 'error-diroutput-') !== 0) print $formfile->showdocuments('lmdbvehiclemanagement', dol_sanitizeFileName($object->ref), $uploadDir, $_SERVER['PHP_SELF'].'?id='.$id, 0, $permissionToWrite, '', 1, 0, 0, 28, 0, '&entity='.$object->entity);
+	require __DIR__.'/tpl/supplier_invoice_link.tpl.php';
 	$form->showLinkedObjectBlock($object);
 	print '</div><div class="fichehalfright"></div></div>';
-	print dol_get_fiche_end();
+	print '<div class="clearboth"></div>';
 }
 llxFooter();
 $db->close();

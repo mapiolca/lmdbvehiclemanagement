@@ -58,7 +58,7 @@ class LmdbVehicleConsumptionStats
 				'vehicle_id' => (int) $row->fk_vehicle, 'consumable_id' => (int) $row->fk_consumable,
 				'category' => (string) $row->category_snapshot, 'unit' => (string) $row->unit_snapshot,
 				'driver_id' => $row->fk_user_driver !== null ? (int) $row->fk_user_driver : null,
-				'quantity' => (float) $row->quantity, 'total_ttc' => (float) $row->total_ttc, 'currency' => (string) $row->currency_snapshot,
+				'quantity' => (float) $row->quantity, 'total_ttc' => $row->total_ttc !== null ? (float) $row->total_ttc : null, 'currency' => (string) $row->currency_snapshot,
 				'oil_reference' => (string) $row->oil_reference, 'date' => $this->db->jdate($row->reading_date),
 				'odometer_km' => (float) $row->odometer_km, 'reading_kind' => (string) $row->reading_kind,
 				'consumable_code' => (string) $row->consumable_code, 'consumable_label' => (string) $row->consumable_label,
@@ -86,8 +86,8 @@ class LmdbVehicleConsumptionStats
 					'entity' => $row['entity'], 'vehicle_id' => $row['vehicle_id'], 'vehicle_ref' => $row['vehicle_ref'], 'registration_number' => $row['registration_number'],
 					'vehicle_label' => isset($row['vehicle_label']) ? $row['vehicle_label'] : '',
 					'consumable_id' => $row['consumable_id'], 'consumable_label' => $row['consumable_label'], 'category' => $row['category'], 'unit' => $row['unit'], 'currency' => $row['currency'],
-					'count' => 0, 'total_quantity' => 0.0, 'total_cost' => 0.0, 'total_distance' => 0.0, 'interval_quantity' => 0.0,
-					'interval_days' => 0.0, 'interval_count' => 0, 'peak_quantity' => 0.0, 'peak_unit_price' => 0.0,
+					'count' => 0, 'total_quantity' => 0.0, 'total_cost' => null, 'priced_quantity' => 0.0, 'total_distance' => 0.0, 'interval_quantity' => 0.0,
+					'interval_days' => 0.0, 'interval_count' => 0, 'peak_quantity' => 0.0, 'peak_unit_price' => null,
 					'peak_consumption_100' => null, 'last_date' => null, 'last_odometer' => null, 'average_capacity_percent' => null,
 					'capacity_percent_sum' => 0.0, 'capacity_percent_count' => 0, 'wltp_range_km' => $row['wltp_range_km'],
 					'oil_reference' => '', 'excluded_intervals' => 0, '_previous_date' => null, '_previous_odometer' => null,
@@ -95,13 +95,16 @@ class LmdbVehicleConsumptionStats
 			}
 			$group =& $groups[$key];
 			$quantity = (float) $row['quantity'];
-			$total = (float) $row['total_ttc'];
-			$unitPrice = $quantity > 0 ? $total / $quantity : 0.0;
 			$group['count'] = (int) $group['count'] + 1;
 			$group['total_quantity'] = (float) $group['total_quantity'] + $quantity;
-			$group['total_cost'] = (float) $group['total_cost'] + $total;
 			$group['peak_quantity'] = max((float) $group['peak_quantity'], $quantity);
-			$group['peak_unit_price'] = max((float) $group['peak_unit_price'], $unitPrice);
+			if ($row['total_ttc'] !== null) {
+				$total = (float) $row['total_ttc'];
+				$unitPrice = $quantity > 0 ? $total / $quantity : 0.0;
+				$group['total_cost'] = (float) $group['total_cost'] + $total;
+				$group['priced_quantity'] = (float) $group['priced_quantity'] + $quantity;
+				$group['peak_unit_price'] = $group['peak_unit_price'] === null ? $unitPrice : max((float) $group['peak_unit_price'], $unitPrice);
+			}
 			$group['last_date'] = $row['date'];
 			$group['last_odometer'] = $row['odometer_km'];
 			if ((string) $row['oil_reference'] !== '') $group['oil_reference'] = (string) $row['oil_reference'];
@@ -132,7 +135,7 @@ class LmdbVehicleConsumptionStats
 			$count = (int) $group['count'];
 			$intervalCount = (int) $group['interval_count'];
 			$group['average_quantity'] = $count > 0 ? (float) $group['total_quantity'] / $count : 0.0;
-			$group['weighted_unit_price'] = (float) $group['total_quantity'] > 0 ? (float) $group['total_cost'] / (float) $group['total_quantity'] : 0.0;
+			$group['weighted_unit_price'] = (float) $group['priced_quantity'] > 0 ? (float) $group['total_cost'] / (float) $group['priced_quantity'] : null;
 			$group['average_distance'] = $intervalCount > 0 ? (float) $group['total_distance'] / $intervalCount : null;
 			$group['average_days'] = $intervalCount > 0 ? (float) $group['interval_days'] / $intervalCount : null;
 			$group['consumption_100'] = (float) $group['total_distance'] > 0 ? (float) $group['interval_quantity'] / (float) $group['total_distance'] * 100 : null;

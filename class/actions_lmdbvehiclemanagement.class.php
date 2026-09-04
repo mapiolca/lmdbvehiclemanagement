@@ -2,12 +2,16 @@
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
+require_once __DIR__.'/lmdbvehiclesupplierinvoicehooks.trait.php';
+require_once __DIR__.'/lmdbvehicledossierhooks.trait.php';
 
 /**
  * Hooks for the vehicle management module.
  */
 class ActionsLmdbVehicleManagement
 {
+	use LmdbVehicleSupplierInvoiceHooks;
+	use LmdbVehicleDossierHooks;
 	/** @var string Multicompany payload root key */
 	public const MULTICOMPANY_SHARING_ROOT_KEY = 'lmdbvehiclemanagement';
 

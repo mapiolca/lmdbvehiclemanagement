@@ -6,6 +6,9 @@
  */
 class LmdbVehicleEnergy
 {
+	/** @var string Dictionary identifier used by native field rendering. */
+	public $element = 'c_lmdbvehiclemanagement_energy';
+
 	/** @var DoliDB */
 	public $db;
 
@@ -221,19 +224,38 @@ class LmdbVehicleEnergy
 	/**
 	 * Return a translated display label for one dictionary row.
 	 *
-	 * @param int $id Row id
+	 * @param int|null $id Row id, or null to render the already fetched row
 	 * @return string
 	 */
-	public function getDisplayLabel($id)
+	public function getDisplayLabel($id = null)
 	{
 		global $langs;
 
-		if ($this->fetch($id) <= 0) {
+		if ($id !== null && $this->fetch($id) <= 0) {
 			return '';
 		}
-		$translated = $langs->trans('VehicleEnergy'.$this->code);
+		if ($this->id <= 0) {
+			return '';
+		}
+		$langs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
+		$translated = $langs->transnoentities('VehicleEnergy'.$this->code);
 		$label = $translated !== 'VehicleEnergy'.$this->code ? $translated : $this->label;
 
 		return $this->code.' — '.$label;
+	}
+
+	/**
+	 * Native dictionary rendering contract, as for Ccountry: label without a card link.
+	 *
+	 * @param int $withpicto Native argument, unused for dictionary entries
+	 * @param string $option Native link option, unused for dictionary entries
+	 * @param int $notooltip Native tooltip option, unused for dictionary entries
+	 * @param string $morecss Native CSS option, unused for dictionary entries
+	 * @param int $save_lastsearch_value Native search option, unused for dictionary entries
+	 * @return string HTML-escaped label of the already fetched row
+	 */
+	public function getNomUrl($withpicto = 0, $option = '', $notooltip = 0, $morecss = '', $save_lastsearch_value = -1)
+	{
+		return dol_escape_htmltag($this->getDisplayLabel());
 	}
 }

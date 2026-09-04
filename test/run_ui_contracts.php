@@ -124,6 +124,11 @@ $checks['vehicle_reference_migration_updates_documents_and_ecm'] = strpos($vehic
 	&& strpos($vehicleReferenceMigration, 'last_main_doc') !== false;
 $checks['vehicle_numbering_change_requires_confirmation'] = strpos($setupPage, "'confirm_setmod'") !== false
 	&& strpos($setupPage, 'ConfirmVehicleReferenceMigration') !== false;
+$compatibilityIncludePosition = strpos($setupPage, "dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementcompatibility.class.php');");
+$dossierModelsIncludePosition = strpos($setupPage, "require __DIR__.'/dossier_models.inc.php';");
+$checks['setup_loads_compatibility_before_dossier_models'] = $compatibilityIncludePosition !== false
+	&& $dossierModelsIncludePosition !== false
+	&& $compatibilityIncludePosition < $dossierModelsIncludePosition;
 $checks['registration_mode_hides_redundant_ref_by_default'] = strpos($vehicleList, "'checked' => LmdbVehicle::usesRegistrationAsReference() ? 0 : 1") !== false;
 $checks['description_uses_native_wysiwyg'] = strpos($vehicleCard, "new DolEditor('description'") !== false;
 $checks['insurance_description_uses_native_wysiwyg'] = strpos($insuranceLibrary, "new DolEditor('contract_description'") !== false;
@@ -135,6 +140,34 @@ $checks['actions_use_native_buttons'] = strpos($vehicleCard, "dolGetButtonAction
 $ficheEndPosition = strpos($vehicleCard, 'print dol_get_fiche_end();');
 $tabsActionPosition = strpos($vehicleCard, 'print \'<div class="tabsAction">\';');
 $checks['actions_follow_native_fiche_end'] = $ficheEndPosition !== false && $tabsActionPosition !== false && $ficheEndPosition < $tabsActionPosition;
+$eventViewPosition = strpos($vehicleEventCard, '} elseif ($id > 0) {');
+$eventView = $eventViewPosition !== false ? substr($vehicleEventCard, $eventViewPosition) : '';
+$eventRightPosition = strpos($eventView, '<div class="fichehalfright"><div class="underbanner clearboth"></div><table class="border centpercent tableforfield">');
+$eventEndPosition = strpos($eventView, 'print dol_get_fiche_end();');
+$eventActionsPosition = strpos($eventView, '<div class="tabsAction">');
+$eventClearPosition = strpos($eventView, 'print \'<div class="clearboth"></div>\';');
+$checks['event_card_has_two_native_information_columns'] = $eventRightPosition !== false
+	&& strpos($eventView, '<div class="fichecenter"><div class="fichehalfleft">') !== false
+	&& substr_count($eventView, 'class="border centpercent tableforfield"') === 2;
+foreach (array('Vehicle', 'EventType', 'EventSubtype', 'EventDate', 'Driver', 'ThirdParty') as $field) {
+	$position = strpos($eventView, "trans('".$field."')");
+	$checks['event_card_left_'.$field] = $position !== false && $eventRightPosition !== false && $position < $eventRightPosition;
+}
+foreach (array('Severity', 'VehicleImmobilized', 'ImmobilizationStart', 'ImmobilizationEnd', 'OdometerKm', 'Description') as $field) {
+	$position = strpos($eventView, "trans('".$field."')");
+	$checks['event_card_right_'.$field] = $position !== false && $eventRightPosition !== false && $eventEndPosition !== false
+		&& $position > $eventRightPosition && $position < $eventEndPosition;
+}
+$checks['event_card_status_only_in_native_banner'] = strpos($eventView, 'dol_banner_tab(') !== false
+	&& strpos($eventView, "trans('Status')") === false && strpos($eventView, 'getLibStatut(') === false;
+$checks['event_card_edit_keeps_status_selector'] = strpos($vehicleEventCard, "selectarray('status'") !== false;
+$checks['event_card_clears_columns_and_ends_before_actions'] = $eventClearPosition !== false && $eventEndPosition !== false && $eventActionsPosition !== false
+	&& $eventClearPosition < $eventEndPosition && $eventEndPosition < $eventActionsPosition && substr_count($eventView, 'dol_get_fiche_end()') === 1;
+$eventDocumentsPosition = strpos($eventView, '$formfile->showdocuments(');
+$eventLinksPosition = strpos($eventView, '$form->showLinkedObjectBlock($object);');
+$eventActionsHookPosition = strpos($eventView, "executeHooks('addMoreActionsButtons'");
+$checks['event_card_actions_and_hook_precede_native_document_blocks'] = $eventActionsPosition !== false && $eventDocumentsPosition !== false && $eventLinksPosition !== false && $eventActionsHookPosition !== false
+	&& $eventActionsPosition < $eventActionsHookPosition && $eventActionsHookPosition < $eventDocumentsPosition && $eventDocumentsPosition < $eventLinksPosition;
 $settingsPosition = strpos($library, '/admin/setup.php');
 $insurancePosition = strpos($library, '/admin/insurance.php');
 $compatibilityPosition = strpos($library, '/admin/compatibility.php');
@@ -181,7 +214,7 @@ $checks['insurance_recipient_address_and_subject_are_preserved'] = strpos($insur
 	&& strpos($insuranceCron, "html_entity_decode(strtr(\$template['subject'], \$replacements), ENT_QUOTES | ENT_HTML5, 'UTF-8')") !== false
 	&& strpos($descriptor, "transnoentitiesnoconv('InsuranceRequestEmailSubject')") !== false
 	&& strpos($descriptor, "transnoentitiesnoconv('InsuranceReviewEmailSubject')") !== false;
-$checks['module_version_is_0141'] = strpos($descriptor, "\$this->version = '0.14.1';") !== false;
+$checks['module_version_is_0150'] = strpos($descriptor, "\$this->version = '0.15.0';") !== false;
 $checks['hook_class_declares_php82_warnings_property'] = strpos($actionsHooks, 'public $warnings = array();') !== false;
 $checks['regulatory_rule_creation_uses_native_modals'] = substr_count($regulatoryAdmin, '$form->formconfirm(') === 2
 	&& strpos($regulatoryAdmin, "\$overrideButtonId = 'action-create-regulatory-rule-override';") !== false

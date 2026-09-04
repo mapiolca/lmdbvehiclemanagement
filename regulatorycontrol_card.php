@@ -162,6 +162,8 @@ if ($action === 'create' || $action === 'edit') {
 	if (!empty($object->cancellation_reason)) print '<tr><td>'.$langs->trans('CancellationReason').'</td><td>'.dol_htmlentitiesbr((string) $object->cancellation_reason).'</td></tr>';
 	print '</table></div>'.dol_get_fiche_end();
 	print '<div class="tabsAction">';
+	$hookmanager->executeHooks('addMoreActionsButtons', array(), $object, $action);
+	print $hookmanager->resPrint;
 	if ($permissionWrite && (int) $object->status === LmdbVehicleRegulatoryControl::STATUS_DRAFT) print dolGetButtonAction('', $langs->trans('Modify'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=edit');
 	if ($permissionValidate && (int) $object->status === LmdbVehicleRegulatoryControl::STATUS_DRAFT) print dolGetButtonAction('', $langs->trans('Validate'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=validate&token='.newToken());
 	if ($permissionValidate && (int) $object->status === LmdbVehicleRegulatoryControl::STATUS_VALIDATED) print dolGetButtonAction('', $langs->trans('CancelRegulatoryControl'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=cancel_control&token='.newToken());
@@ -171,6 +173,7 @@ if ($action === 'create' || $action === 'edit') {
 	print '</div><div class="fichecenter"><div class="fichehalfleft">';
 	$uploadDir = getMultidirOutput($object, 'lmdbvehiclemanagement', 1);
 	if (is_string($uploadDir) && $uploadDir !== '' && strpos($uploadDir, 'error-diroutput-') !== 0) print $formfile->showdocuments('lmdbvehiclemanagement', dol_sanitizeFileName($object->ref), $uploadDir, $_SERVER['PHP_SELF'].'?id='.$id, 0, $permissionWrite && (int) $object->status === 0, '', 1, 0, 0, 28, 0, '&entity='.((int) $object->entity));
+	require __DIR__.'/tpl/supplier_invoice_link.tpl.php';
 	$form->showLinkedObjectBlock($object);
 	print '</div><div class="fichehalfright">';
 	if (isModEnabled('agenda') && ($user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) { require_once DOL_DOCUMENT_ROOT.'/core/class/html.formactions.class.php'; $formActions = new FormActions($db); $more = dolGetButtonTitle($langs->trans('SeeAll'), '', 'fa fa-bars', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_agenda.php', 1).'?id='.$id); $formActions->showactions($object, $object->element.'@'.$object->module, 0, 1, '', 10, '', $more); }

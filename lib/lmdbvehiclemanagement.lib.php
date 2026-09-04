@@ -271,7 +271,7 @@ function lmdbVehicleConsumptionRenderGraph($seriesRows, $metric, $title, $graphK
 	$previousKm = null;
 	foreach ($seriesRows as $row) {
 		$value = null;
-		if ($metric === 'unit_price' && (float) $row['quantity'] > 0) $value = (float) $row['total_ttc'] / (float) $row['quantity'];
+		if ($metric === 'unit_price' && $row['total_ttc'] !== null && (float) $row['quantity'] > 0) $value = (float) $row['total_ttc'] / (float) $row['quantity'];
 		if ($metric === 'quantity') $value = (float) $row['quantity'];
 		if ($metric === 'capacity_percent' && $row['capacity'] !== null && (float) $row['capacity'] > 0) $value = (float) $row['quantity'] / (float) $row['capacity'] * 100;
 		if ($metric === 'consumption_100' && $previousKm !== null) {

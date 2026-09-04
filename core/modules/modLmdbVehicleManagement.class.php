@@ -36,17 +36,25 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->descriptionlong = 'ModuleLmdbVehicleManagementDesc';
 		$this->editor_name = 'Pierre Ardoin';
 		$this->editor_url = 'https://github.com/mapiolca';
-		$this->version = '0.14.1';
+		$this->version = '0.15.0';
 		$this->const_name = 'MAIN_MODULE_LMDBVEHICLEMANAGEMENT';
 		$this->picto = 'car';
 
 		$this->module_parts = array(
 			'triggers' => 1,
+			'models' => 1,
+			'tpl' => 1,
 			'css' => array('/lmdbvehiclemanagement/css/lmdbvehiclemanagement.css'),
 			'js' => array('/lmdbvehiclemanagement/js/lmdbvehiclemanagement.js'),
 			'hooks' => array(
 				'data' => array(
 					'main',
+					'commonobject',
+					'invoicesuppliercard',
+					'fileslib',
+					'actionlinkedfiles',
+					'document',
+					'lmdbvehicledocument',
 					'lmdbvehiclecard',
 					'lmdbvehiclelist',
 					'lmdbvehicleeventcard',
@@ -872,6 +880,9 @@ class modLmdbVehicleManagement extends DolibarrModules
 		if ($this->prepareInsuranceContractSchema() < 0) {
 			return -1;
 		}
+		if ($this->prepareConsumptionSchema() < 0) {
+			return -1;
+		}
 		if ($this->prepareRegulatorySchema() < 0) {
 			return -1;
 		}
@@ -928,6 +939,11 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON' => 'mod_lmdbvehicle_standard',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLEEVENT_ADDON' => 'mod_lmdbvehicleevent_standard',
 			'LMDBVEHICLEMANAGEMENT_CONSUMPTION_ADDON' => 'mod_lmdbvehicleconsumption_standard',
+			'LMDBVEHICLEMANAGEMENT_CONSUMPTION_OD_ENABLED' => '0',
+			'LMDBVEHICLEMANAGEMENT_CONSUMPTION_OD_BANK_ACCOUNT' => '',
+			'LMDBVEHICLEMANAGEMENT_CONSUMPTION_OD_PAYMENT_MODE' => '',
+			'LMDBVEHICLEMANAGEMENT_CONSUMPTION_OD_ACCOUNTING_ACCOUNT' => '',
+			'LMDBVEHICLEMANAGEMENT_CONSUMPTION_OD_SUBLEDGER_ACCOUNT' => '',
 			'LMDBVEHICLEMANAGEMENT_INSURANCECONTRACT_ADDON' => 'mod_lmdbinsurancecontract_standard',
 			'LMDBVEHICLEMANAGEMENT_INSURANCE_REMINDERS_ENABLED' => '0',
 			'LMDBVEHICLEMANAGEMENT_INSURANCE_INCLUDE_ASSIGNEES' => '1',
@@ -1009,6 +1025,47 @@ class modLmdbVehicleManagement extends DolibarrModules
 			return -1;
 		}
 		if ($registrationNullable === 0 && !$this->db->query('ALTER TABLE '.$table.' MODIFY COLUMN registration_number varchar(32) DEFAULT NULL')) {
+			$this->error = $this->db->lasterror();
+			return -1;
+		}
+
+		return 1;
+	}
+
+	/**
+	 * Add native links and allow unknown additive prices without changing historical amounts.
+	 *
+	 * @return int<-1,1>
+	 */
+	private function prepareConsumptionSchema()
+	{
+		$table = MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption';
+		$tableExists = $this->tableExists($table);
+		if ($tableExists < 0) {
+			return -1;
+		}
+		if ($tableExists === 0) {
+			return 1;
+		}
+		$fields = array(
+			'fk_project' => 'ALTER TABLE '.$table.' ADD COLUMN fk_project integer DEFAULT NULL AFTER fk_user_driver',
+			'fk_payment_various' => 'ALTER TABLE '.$table.' ADD COLUMN fk_payment_various integer DEFAULT NULL AFTER fk_project',
+		);
+		foreach ($fields as $field => $sql) {
+			$fieldExists = $this->tableFieldExists($table, $field);
+			if ($fieldExists < 0) {
+				return -1;
+			}
+			if ($fieldExists === 0 && !$this->db->query($sql)) {
+				$this->error = $this->db->lasterror();
+				return -1;
+			}
+		}
+		$totalNullable = $this->tableFieldIsNullable($table, 'total_ttc');
+		if ($totalNullable < 0) {
+			return -1;
+		}
+		if ($totalNullable === 0 && !$this->db->query('ALTER TABLE '.$table.' MODIFY COLUMN total_ttc double(24,8) DEFAULT NULL')) {
 			$this->error = $this->db->lasterror();
 			return -1;
 		}

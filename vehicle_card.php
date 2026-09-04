@@ -324,7 +324,8 @@ if ($user->hasRight('lmdbvehiclemanagement', 'event', 'write')) {
 	print '<div class="fichecenter"><div class="fichehalfleft">';
 	$uploadDir = getMultidirOutput($object, 'lmdbvehiclemanagement', 1);
 	if (is_string($uploadDir) && $uploadDir !== '' && strpos($uploadDir, 'error-diroutput-') !== 0) {
-		print $formfile->showdocuments('lmdbvehiclemanagement', dol_sanitizeFileName($object->ref), $uploadDir, $_SERVER['PHP_SELF'].'?id='.$id, 0, $permissionToWrite, '', 1, 0, 0, 28, 0, '&entity='.((int) $object->entity));
+		$dossierGeneration = $permissionToWrite && $user->hasRight('fournisseur', 'facture', 'lire') && LmdbVehicleManagementCompatibility::isFeatureAvailable('vehicle_dossier');
+		print $formfile->showdocuments('lmdbvehiclemanagement', dol_sanitizeFileName($object->ref), $uploadDir, $_SERVER['PHP_SELF'].'?id='.$id, $dossierGeneration ? 1 : 0, $permissionToWrite, getDolGlobalString('LMDBVEHICLEMANAGEMENT_DOSSIER_MODEL'), 0, 0, 0, 28, 0, '&entity='.((int) $object->entity), '', '', '', '', $object);
 	}
 	$form->showLinkedObjectBlock($object);
 	print '</div><div class="fichehalfright">';

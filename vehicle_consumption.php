@@ -51,13 +51,13 @@ foreach ($groups as $group) {
 	print '<td class="right">'.($group['average_days'] !== null ? price($group['average_days']).' '.$langs->trans('Days') : '').'</td>';
 	print '<td class="right">'.($group['average_distance'] !== null ? price($group['average_distance']).' '.$langs->trans('UnitKm') : '').'</td>';
 	print '<td class="right">'.($group['consumption_100'] !== null ? price($group['consumption_100']).' '.dol_escape_htmltag($unit).'/100 km' : '').'</td>';
-	print '<td class="right">'.price($group['weighted_unit_price']).' '.dol_escape_htmltag((string) $group['currency']).'/'.dol_escape_htmltag($unit).'</td>';
-	print '<td class="right">'.price($group['total_quantity']).' '.dol_escape_htmltag($unit).'</td><td class="right">'.price($group['total_cost']).' '.dol_escape_htmltag((string) $group['currency']).'</td>';
+	print '<td class="right">'.($group['weighted_unit_price'] !== null ? price($group['weighted_unit_price']).' '.dol_escape_htmltag((string) $group['currency']).'/'.dol_escape_htmltag($unit) : $langs->trans('NotDefined')).'</td>';
+	print '<td class="right">'.price($group['total_quantity']).' '.dol_escape_htmltag($unit).'</td><td class="right">'.($group['total_cost'] !== null ? price($group['total_cost']).' '.dol_escape_htmltag((string) $group['currency']) : $langs->trans('NotDefined')).'</td>';
 	print '<td class="right">'.($group['average_capacity_percent'] !== null ? price($group['average_capacity_percent']).' %' : '').'</td>';
 	print '<td class="right">'.($group['wltp_passage_ratio'] !== null ? price($group['wltp_passage_ratio']).' %' : '').'</td>';
 	print '<td>'.($group['last_date'] !== null ? dol_print_date((int) $group['last_date'], 'dayhour') : '').'</td>';
 	print '<td class="right">'.price($group['peak_quantity']).' '.dol_escape_htmltag($unit).'</td>';
-	print '<td class="right">'.price($group['peak_unit_price']).' '.dol_escape_htmltag((string) $group['currency']).'/'.dol_escape_htmltag($unit).'</td>';
+	print '<td class="right">'.($group['peak_unit_price'] !== null ? price($group['peak_unit_price']).' '.dol_escape_htmltag((string) $group['currency']).'/'.dol_escape_htmltag($unit) : $langs->trans('NotDefined')).'</td>';
 	print '<td class="right">'.($group['peak_consumption_100'] !== null ? price($group['peak_consumption_100']).' '.dol_escape_htmltag($unit).'/100 km' : '').'</td>';
 	print '<td class="right">'.((int) $group['excluded_intervals']).'</td></tr>';
 }
@@ -84,7 +84,7 @@ foreach (array('fuel' => 'FuelsAndRecharges', 'additive' => 'Additives') as $cat
 		if ((string) $row['category'] !== $category) continue;
 		$entry = new LmdbVehicleConsumption($db);
 		$entry->id = (int) $row['id']; $entry->ref = (string) $row['ref'];
-		print '<tr class="oddeven"><td>'.$entry->getNomUrl(1).'</td><td>'.dol_print_date((int) $row['date'], 'dayhour').'</td><td>'.dol_escape_htmltag((string) $row['consumable_label']).'</td><td class="right">'.price($row['quantity']).' '.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel((string) $row['unit'])).'</td><td class="right">'.price($row['odometer_km']).' '.$langs->trans('UnitKm').'</td><td class="right">'.price($row['total_ttc']).' '.dol_escape_htmltag((string) $row['currency']).'</td><td>'.dol_escape_htmltag((string) $row['oil_reference']).'</td></tr>';
+		print '<tr class="oddeven"><td>'.$entry->getNomUrl(1).'</td><td>'.dol_print_date((int) $row['date'], 'dayhour').'</td><td>'.dol_escape_htmltag((string) $row['consumable_label']).'</td><td class="right">'.price($row['quantity']).' '.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel((string) $row['unit'])).'</td><td class="right">'.price($row['odometer_km']).' '.$langs->trans('UnitKm').'</td><td class="right">'.($row['total_ttc'] !== null ? price($row['total_ttc']).' '.dol_escape_htmltag((string) $row['currency']) : $langs->trans('NotDefined')).'</td><td>'.dol_escape_htmltag((string) $row['oil_reference']).'</td></tr>';
 		$count++;
 	}
 	if ($count === 0) print '<tr class="oddeven"><td colspan="7"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
