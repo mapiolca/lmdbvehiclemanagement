@@ -45,14 +45,16 @@ class LmdbVehicleDossier
 	 * Human-readable object fields, excluding internal identifiers and private notes.
 	 * @param CommonObject $object Source
 	 * @param Translate $langs Output language
+	 * @param list<string>|null $onlyFields Explicit field allowlist, null for all public fields
 	 * @return list<list<string>> Label/value rows, with plain-text values
 	 */
-	private function describe($object, $langs)
+	private function describe($object, $langs, $onlyFields = null)
 	{
 		$lines = array();
 		$excluded = array('rowid', 'entity', 'tms', 'import_key', 'model_pdf', 'last_main_doc', 'fk_user_creat', 'fk_user_modif', 'note_private', 'fk_vehicle', 'fk_payment_various', 'fk_odometer_reading', 'fk_requirement');
-		foreach ($object->fields as $key => $field) {
-			if (in_array($key, $excluded, true) || !property_exists($object, $key)) continue;
+		foreach ($onlyFields ?? array_keys($object->fields) as $key) {
+			if (in_array($key, $excluded, true) || !isset($object->fields[$key]) || !property_exists($object, $key)) continue;
+			$field = $object->fields[$key];
 			$value = $object->$key;
 			if ($key === 'status') $formatted = $object->getLibStatut(5);
 			elseif ($value === null || $value === '') $formatted = $langs->trans('NotDefined');
@@ -233,17 +235,22 @@ class LmdbVehicleDossier
 		$data['sections'] = array_merge($data['sections'], $recordSections);
 		$data['sections'][] = array('title' => $langs->transnoentities('SupplierInvoices'), 'tables' => $invoiceSections);
 		$consumptions = array();
+		// Keep one summary row per consumption; do not render excluded relations or amounts.
+		$consumptionFields = array('ref', 'fk_consumable', 'category_snapshot', 'unit_snapshot', 'oil_reference');
+		$consumption = new LmdbVehicleConsumption($this->db);
+		$consumptionColumns = array($langs->transnoentities('ReadingDate'), $langs->transnoentities('OdometerKm'));
+		foreach ($consumptionFields as $field) $consumptionColumns[] = $langs->transnoentities($consumption->fields[$field]['label']);
 		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption WHERE fk_vehicle = '.((int) $vehicle->id).' AND entity IN ('.getEntity('lmdbvehicleconsumption').') ORDER BY rowid';
 		foreach ($this->rows($sql) as $row) {
 			$consumption = new LmdbVehicleConsumption($this->db);
 			if ($consumption->fetch((int) $row->rowid) <= 0) throw new RuntimeException('LmdbDossierReadFailed');
-			$consumptions[] = $this->detailsTable($consumption->ref, array_merge(array(
-				array($langs->transnoentities('ReadingDate'), dol_print_date($consumption->reading_date, 'dayhour', 'tzuser', $langs)),
-				array($langs->transnoentities('OdometerKm'), price($consumption->odometer_km, 0, $langs).' km'),
-			), $this->describe($consumption, $langs)), $langs);
+			$consumptions[] = array_merge(array(
+				dol_print_date($consumption->reading_date, 'dayhour', 'tzuser', $langs),
+				price($consumption->odometer_km, 0, $langs).' km',
+			), array_column($this->describe($consumption, $langs, $consumptionFields), 1));
 			// Deliberately no attachments() and no traversal of linked PaymentVarious.
 		}
-		$data['sections'][] = array('title' => $langs->transnoentities('LmdbDossierConsumptions'), 'tables' => $consumptions);
+		$data['sections'][] = array('title' => $langs->transnoentities('LmdbDossierConsumptions'), 'tables' => array(array('title' => '', 'columns' => $consumptionColumns, 'rows' => $consumptions)));
 		$files = $this->attachments($vehicle, getMultidirOutput($vehicle, 'lmdbvehiclemanagement', 1), 'vehicle', $data, $langs);
 		$data['sections'][] = array('title' => $langs->transnoentities('Files'), 'tables' => array(array('title' => '', 'columns' => array($langs->transnoentities('File')), 'rows' => array_map(static function ($file) { return array($file); }, $files))));
 		if ($data['warnings']) $data['sections'][] = array('title' => $langs->transnoentities('LmdbDossierMissingDocuments'), 'tables' => array(array('title' => '', 'columns' => array($langs->transnoentities('Description')), 'rows' => array_map(static function ($warning) { return array(html_entity_decode($warning, ENT_QUOTES, 'UTF-8')); }, array_values(array_unique($data['warnings']))))));

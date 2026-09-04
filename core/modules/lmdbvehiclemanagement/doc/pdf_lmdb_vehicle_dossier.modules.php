@@ -18,7 +18,10 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 	/** @var string */ public $version = 'dolibarr';
 	/** @var string */ public $error = '';
 	/** @var array<string,string> */ public $result = array();
-	/** @var int */ public $option_logo = 0;
+	/** @var int */ public $option_logo = 1;
+	/** @var Societe|null */ public $emetteur;
+	/** @var int */ private $generationTimestamp = 0;
+	/** @var float */ private $headerBottom = 0;
 	/** @var float */ public $marge_gauche = 10;
 	/** @var float */ public $marge_droite = 10;
 	/** @var float */ public $marge_haute = 10;
@@ -31,6 +34,10 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 		$this->db = $db;
 		$langs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
 		$this->description = $langs->trans('LmdbVehicleDossierDescription');
+		$this->marge_gauche = getDolGlobalInt('MAIN_PDF_MARGIN_LEFT', 10);
+		$this->marge_droite = getDolGlobalInt('MAIN_PDF_MARGIN_RIGHT', 10);
+		$this->marge_haute = getDolGlobalInt('MAIN_PDF_MARGIN_TOP', 10);
+		$this->marge_basse = getDolGlobalInt('MAIN_PDF_MARGIN_BOTTOM', 10);
 	}
 
 	/**
@@ -65,6 +72,9 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 	 */
 	public function writeSummary($object, $data, $outputlangs, $path)
 	{
+		global $mysoc;
+		$this->emetteur = $mysoc instanceof Societe ? $mysoc : null;
+		$this->generationTimestamp = dol_now();
 		$outputlangs->loadLangs(array('main', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 		$format = pdf_getFormat($outputlangs);
 		$pdf = pdf_getInstance(array($format['width'], $format['height']));
@@ -88,14 +98,9 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 		unset($measurement);
 		if ($heightforfooter > $format['height'] - $this->marge_haute - 40) throw new RuntimeException('LmdbDossierFooterTooLarge');
 		$pdf->setPageOrientation('', true, $heightforfooter);
-		$width = $format['width'] - $this->marge_gauche - $this->marge_droite;
-		$fontSize = pdf_getPDFFontSize($outputlangs);
-		$pdf->SetFont('', 'B', $fontSize + 4);
-		$pdf->MultiCell($width, 0, $outputlangs->convToOutputCharset($outputlangs->transnoentities('LmdbVehicleDossier').' - '.$object->ref), 0, 'L');
-		$pdf->Ln(2);
-		$pdf->SetFont('', '', $fontSize);
-		$pdf->MultiCell($width, 0, $outputlangs->convToOutputCharset($outputlangs->transnoentities('Date').': '.dol_print_date(dol_now(), 'dayhour', 'tzuser', $outputlangs)), 0, 'L');
-		$pdf->Ln(6);
+		$this->headerBottom = $this->_pagehead($pdf, $object, $outputlangs);
+		if ($this->headerBottom + 40 > $format['height'] - $heightforfooter) throw new RuntimeException('LmdbDossierWriteFailed');
+		$pdf->setPageOrientation('', true, $heightforfooter);
 		foreach ($data['sections'] as $section) {
 			$tables = $section['tables'] ?: array(array('title' => '', 'columns' => array($outputlangs->transnoentities('Description')), 'rows' => array()));
 			foreach ($tables as $table) {
@@ -105,6 +110,74 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 		$pdf->SetAutoPageBreak(false, 0);
 		$this->_pagefoot($pdf, $object, $outputlangs, 0);
 		$pdf->Output($path, 'F');
+	}
+
+	/**
+	 * Same header layout as native Espadon: company logo left, document identity right.
+	 * Return the actual content start, including wrapped references and tall logos.
+	 * @param TCPDF $pdf
+	 * @param LmdbVehicle $object
+	 * @param Translate $outputlangs
+	 * @return float
+	 */
+	protected function _pagehead($pdf, $object, $outputlangs)
+	{
+		global $conf;
+		pdf_pagehead($pdf, $outputlangs, $pdf->getPageHeight());
+		$pdf->SetAutoPageBreak(false, 0);
+		$pdf->setCellPaddings(0, 0, 0, 0);
+		$pdf->setCellMargins(0, 0, 0, 0);
+		$fontSize = pdf_getPDFFontSize($outputlangs);
+		$width = $pdf->getPageWidth() - $this->marge_gauche - $this->marge_droite;
+		$rightWidth = min(110, $width * 0.58);
+		$leftWidth = $width - $rightWidth - 10;
+		$rightX = $pdf->getPageWidth() - $this->marge_droite - $rightWidth;
+		$leftBottom = $this->marge_haute;
+		$pdf->SetTextColor(0, 0, 60);
+		$pdf->SetFont('', 'B', $fontSize + 3);
+		$pdf->SetXY($this->marge_gauche, $this->marge_haute);
+		$logo = '';
+		if ($this->emetteur && $this->emetteur->logo) {
+			$entity = !empty($object->entity) ? (int) $object->entity : (int) $conf->entity;
+			$logodir = $conf->mycompany->multidir_output[$entity] ?? '';
+			if (!$logodir && $entity === (int) $conf->entity) $logodir = $conf->mycompany->dir_output ?? '';
+			if ($logodir) {
+				if (!getDolGlobalInt('MAIN_PDF_USE_LARGE_LOGO') && $this->emetteur->logo_small) {
+					$logo = $logodir.'/logos/thumbs/'.$this->emetteur->logo_small;
+				}
+				if (!$logo || !is_readable($logo)) $logo = $logodir.'/logos/'.$this->emetteur->logo;
+			}
+		}
+		if ($logo && is_readable($logo)) {
+			$height = pdf_getHeightForLogo($logo);
+			$size = dol_getImageSize($logo);
+			if (!empty($size['width']) && !empty($size['height'])) {
+				// Preserve the native height/aspect ratio without entering the reference block.
+				$height = min($height, $leftWidth * $size['height'] / $size['width']);
+				$pdf->Image($logo, $this->marge_gauche, $this->marge_haute, 0, $height);
+				$leftBottom += $height;
+			} else {
+				$logo = '';
+			}
+		} else {
+			$logo = '';
+		}
+		if (!$logo && $this->emetteur) {
+			$pdf->MultiCell($leftWidth, 0, $outputlangs->convToOutputCharset($this->emetteur->name), 0, 'L');
+			$leftBottom = $pdf->GetY();
+		}
+		$pdf->SetFont('', 'B', $fontSize + 2);
+		$pdf->SetXY($rightX, $this->marge_haute);
+		$pdf->MultiCell($rightWidth, 0, $outputlangs->convToOutputCharset($outputlangs->transnoentities('LmdbVehicleDossier')), 0, 'R');
+		$pdf->SetFont('', '', $fontSize + 1);
+		$pdf->SetX($rightX);
+		$pdf->MultiCell($rightWidth, 0, $outputlangs->convToOutputCharset($outputlangs->transnoentities('Ref').' : '.$object->ref), 0, 'R');
+		$pdf->SetFont('', '', $fontSize - 1);
+		$pdf->SetX($rightX);
+		$pdf->MultiCell($rightWidth, 0, $outputlangs->convToOutputCharset($outputlangs->transnoentities('DateBuild').' : '.dol_print_date($this->generationTimestamp, 'dayhour', 'tzuser', $outputlangs)), 0, 'R');
+		$bottom = max($leftBottom, $pdf->GetY()) + 8;
+		$pdf->SetXY($this->marge_gauche, $bottom);
+		return $bottom;
 	}
 
 	/**
@@ -150,7 +223,13 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 		$pdf->SetLineWidth(0.15);
 		foreach ($widths as $column => $width) {
 			$pdf->Rect($x, $y, $width, $height, 'DF');
-			$pdf->MultiCell($width - 4, $height - 2, implode("\n", $cells[$column]), 0, 'L', false, 0, $x + 2, $y + 1, true, 0, false, false);
+			// Lines are already wrapped and measured. Cell avoids a second, different
+			// TCPDF MultiCell wrap spilling into the following painted row.
+			$lineHeight = $pdf->getStringHeight($width, 'Ag');
+			foreach ($cells[$column] as $line => $text) {
+				$pdf->SetXY($x + 2, $y + 1 + $line * $lineHeight);
+				$pdf->Cell($width - 4, $lineHeight, $text, 0, 0, 'L');
+			}
 			$x += $width;
 		}
 		$pdf->SetXY($this->marge_gauche, $y + $height);
@@ -174,6 +253,7 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 		$fontSize = pdf_getPDFFontSize($outputlangs) - 1;
 		$count = count($table['columns']);
 		$ratios = $count === 2 ? array(0.34, 0.66) : ($count === 6 ? array(0.15, 0.14, 0.14, 0.30, 0.13, 0.14) : array_fill(0, $count, 1 / $count));
+		if ($count === 7) $ratios = array(0.14, 0.15, 0.14, 0.15, 0.14, 0.07, 0.21);
 		$widths = array_map(static function ($ratio) use ($width) { return $width * $ratio; }, $ratios);
 		$title = $sectionTitle.($table['title'] !== '' ? ' - '.$table['title'] : '');
 		$pdf->SetFont('', 'B', $fontSize + 2);
@@ -197,14 +277,14 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 			$rows[] = array($this->wrapCell($pdf, $outputlangs->convToOutputCharset($outputlangs->transnoentities('NoRecordFound')), $width - 4));
 			$totalHeight += count($rows[0][0]) * $lineHeight + 2;
 		}
-		$bodyHeight = $bottom - $this->marge_haute - $titleHeight - $headerHeight;
+		$bodyHeight = $bottom - $this->headerBottom - $titleHeight - $headerHeight;
 		if ($bodyHeight < $lineHeight + 2) throw new RuntimeException('LmdbDossierFooterTooLarge');
 		$newPage = function () use ($pdf, $object, $outputlangs, $heightforfooter) {
 			$pdf->SetAutoPageBreak(false, 0);
 			$this->_pagefoot($pdf, $object, $outputlangs, 1);
 			$pdf->SetMargins($this->marge_gauche, $this->marge_haute, $this->marge_droite);
 			$pdf->AddPage();
-			$pdf->SetXY($this->marge_gauche, $this->marge_haute);
+			$this->_pagehead($pdf, $object, $outputlangs);
 			$pdf->setPageOrientation('', true, $heightforfooter);
 			$pdf->setCellPaddings(0, 0, 0, 0);
 		};
@@ -220,7 +300,7 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 		};
 		// A short record fits on one page: move the whole table if necessary.
 		$firstHeight = max(array_map('count', $rows[0])) * $lineHeight + 2;
-		$needed = $totalHeight <= $bottom - $this->marge_haute ? $totalHeight : $titleHeight + $headerHeight + min($firstHeight, $bodyHeight);
+		$needed = $totalHeight <= $bottom - $this->headerBottom ? $totalHeight : $titleHeight + $headerHeight + min($firstHeight, $bodyHeight);
 		if ($pdf->GetY() + $needed > $bottom) $newPage();
 		$heading();
 		foreach ($rows as $index => $cells) {
@@ -251,7 +331,6 @@ class pdf_lmdb_vehicle_dossier extends ModelePDFLmdbvehiclemanagement
 	 */
 	protected function _pagefoot($pdf, $object, $outputlangs, $hidefreetext)
 	{
-		global $mysoc;
-		return pdf_pagefoot($pdf, $outputlangs, 'LMDBVEHICLEMANAGEMENT_DOSSIER_FREE_TEXT', $mysoc, $this->marge_basse, $this->marge_gauche, $pdf->getPageHeight(), $object, getDolGlobalInt('MAIN_GENERATE_DOCUMENTS_SHOW_FOOT_DETAILS'), $hidefreetext, $pdf->getPageWidth());
+		return pdf_pagefoot($pdf, $outputlangs, 'LMDBVEHICLEMANAGEMENT_DOSSIER_FREE_TEXT', $this->emetteur, $this->marge_basse, $this->marge_gauche, $pdf->getPageHeight(), $object, getDolGlobalInt('MAIN_GENERATE_DOCUMENTS_SHOW_FOOT_DETAILS'), $hidefreetext, $pdf->getPageWidth());
 	}
 }

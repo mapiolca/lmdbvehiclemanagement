@@ -23,6 +23,8 @@ $configuration = array('entity' => 1, 'currency' => 'EUR', 'global' => (object) 
 foreach ($configuration as $key => $value) $conf->$key = $value;
 require_once DOL_DOCUMENT_ROOT.'/core/lib/functions.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
+// Recent core snapshots split HTML helpers out of functions.lib.php.
+if (is_file(DOL_DOCUMENT_ROOT.'/core/lib/html.lib.php')) require_once DOL_DOCUMENT_ROOT.'/core/lib/html.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/translate.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/hookmanager.class.php';
 require_once DOL_DOCUMENT_ROOT.'/user/class/user.class.php';
@@ -128,6 +130,16 @@ final class DossierFooterHooks extends HookManager
 	{
 		$this->resPrint = $method === 'pdf_pagefoot' ? '<p>Annexe de pied personnalisée — contrôle qualité.</p>' : '';
 		return 0;
+	}
+}
+final class DossierHeaderProbe extends pdf_lmdb_vehicle_dossier
+{
+	/** @var list<float> */ public $starts = array();
+	protected function _pagehead($pdf, $object, $outputlangs)
+	{
+		$start = parent::_pagehead($pdf, $object, $outputlangs);
+		$this->starts[] = $start;
+		return $start;
 	}
 }
 $db = new DossierDb();
@@ -317,14 +329,33 @@ verifyDossier(is_file($populatedPath) && is_file(substr($populatedPath, 0, -4).'
 verifyDossier(count($populated['sections'][2]['tables']) === 1 && count($populated['sections'][3]['tables']) === 1, 'Event and validated control collected');
 verifyDossier(count($populated['sections'][4]['tables']) === 1 && strpos(dossierTableText($populated['sections'][4]['tables'][0]), 'USD') !== false, 'Shared invoice summarized once in its own currency');
 verifyDossier(strpos(dossierTableText($populated['sections'][2]['tables'][0]), 'FA-9') !== false && strpos(dossierTableText($populated['sections'][3]['tables'][0]), 'FA-9') !== false, 'Every source keeps its invoice reference');
-verifyDossier(count($populated['sections'][5]['tables']) === 3 && strpos(dossierTableText($populated['sections'][5]['tables'][1]), $unknown) !== false, 'All consumption records including absent and zero prices');
-verifyDossier($populated['sections'][5]['tables'][0]['title'] === 'CON-11' && $populated['sections'][5]['tables'][0]['rows'][1][1] === price(12500, 0, $langs).' km', 'Consumption reference and odometer have dedicated cells');
+$consumptionTable = $populated['sections'][5]['tables'][0];
+verifyDossier(count($populated['sections'][5]['tables']) === 1 && count($consumptionTable['rows']) === 3, 'One consumption table includes every record, irrespective of its price');
+verifyDossier($consumptionTable['columns'] === array('Date du relevé', 'Kilométrage', 'Réf.', 'Consommable', 'Nature', 'Unité', 'Référence / type d’huile'), 'Exactly the seven requested consumption columns, in order');
+verifyDossier(array_column($consumptionTable['rows'], 2) === array('CON-11', 'CON-12', 'CON-13') && $consumptionTable['rows'][0][1] === price(12500, 0, $langs).' km', 'One reference per row and native mileage formatting');
+verifyDossier($consumptionTable['rows'][0][4] === 'Additif' && $consumptionTable['rows'][0][5] === 'L' && $consumptionTable['rows'][0][6] === $unknown, 'Nature, unit and absent oil reference preserved');
+verifyDossier(count($emptyData['sections'][5]['tables']) === 1 && $emptyData['sections'][5]['tables'][0]['columns'] === $consumptionTable['columns'] && !$emptyData['sections'][5]['tables'][0]['rows'], 'Empty consumption history retains the same table structure');
+$columnProbe = new LmdbVehicleConsumption($db); $columnProbe->ref = 'REF-ONLY'; $columnProbe->oil_reference = '5W-30 & <test>';
+verifyDossier($describe->invoke($builder, $columnProbe, $langs, array('oil_reference', 'ref')) === array(array($langs->transnoentities('OilReference'), '5W-30 & <test>'), array($langs->transnoentities('Ref'), 'REF-ONLY')), 'Allowlist controls order and ignores all excluded object fields');
 verifyDossier(count($populated['sections'][1]['tables'][0]['columns']) === 6 && $populated['sections'][1]['tables'][0]['rows'][0][3] === 'CTL-8', 'History has separate date, source, type, description, status and mileage columns');
 foreach ($populated['sections'] as $section) {
 	foreach ($section['tables'] as $table) {
 		foreach ($table['rows'] as $row) verifyDossier(count($row) === count($table['columns']) && count(array_filter($row, 'is_string')) === count($row), 'Rectangular, plain-text dossier table');
 	}
 }
+$summaryData = array('sections' => array($populated['sections'][5]), 'files' => array(), 'warnings' => array());
+$summaryData['sections'][0]['tables'][0]['rows'] = array();
+for ($i = 1; $i <= 80; $i++) {
+	$summaryRow = $consumptionTable['rows'][0];
+	$summaryRow[2] = 'CON-TEST-'.str_pad((string) $i, 3, '0', STR_PAD_LEFT);
+	$summaryRow[6] = $i % 2 ? '5W-30 & <spéciale>' : $unknown;
+	$summaryData['sections'][0]['tables'][0]['rows'][] = $summaryRow;
+}
+$model->writeSummary($vehicle, $summaryData, $langs, DOL_DATA_ROOT.'/consumptions-many.pdf');
+verifyDossier(is_file(DOL_DATA_ROOT.'/consumptions-many.pdf'), 'Multipage seven-column consumption table generated');
+$summaryData['sections'] = array($emptyData['sections'][5]);
+$model->writeSummary($vehicle, $summaryData, $langs, DOL_DATA_ROOT.'/consumptions-empty.pdf');
+verifyDossier(is_file(DOL_DATA_ROOT.'/consumptions-empty.pdf'), 'Empty consumption table generated');
 $originalOutput = $conf->lmdbvehiclemanagement->multidir_output[1];
 $conf->lmdbvehiclemanagement->multidir_output[1] = DOL_DATA_ROOT.'/annexes/module';
 $conf->supplier_invoice->multidir_output[1] = DOL_DATA_ROOT.'/annexes/invoices';
@@ -352,6 +383,39 @@ $conf->lmdbvehiclemanagement->multidir_output[1] = $originalOutput;
 // Exercise the real native footer with HTML, company details and an extension hook.
 require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
 $mysoc = new Societe($db); $mysoc->name = 'Entreprise Épreuve'; $mysoc->address = 'Rue des Métiers'; $mysoc->zip = '75001'; $mysoc->town = 'Paris'; $mysoc->country_code = 'FR';
+$conf->mycompany = (object) array('dir_output' => DOL_DATA_ROOT.'/mycompany', 'multidir_output' => array(1 => DOL_DATA_ROOT.'/mycompany', 2 => DOL_DATA_ROOT.'/2/mycompany'));
+$conf->global->MAIN_PDF_MARGIN_LEFT = 12;
+$headerModel = new DossierHeaderProbe($db);
+verifyDossier($headerModel->option_logo === 1 && $headerModel->marge_gauche === 12, 'Logo option and native PDF margins');
+unset($conf->global->MAIN_PDF_MARGIN_LEFT);
+foreach (array(1, 2) as $entity) {
+	dol_mkdir($conf->mycompany->multidir_output[$entity].'/logos/thumbs');
+	verifyDossier(dol_copy(DOL_DOCUMENT_ROOT.'/theme/common/login_logo.png', $conf->mycompany->multidir_output[$entity].'/logos/company.png', 0, 1) > 0, 'Logo fixture '.$entity);
+	verifyDossier(dol_copy(DOL_DOCUMENT_ROOT.'/theme/common/login_logo.png', $conf->mycompany->multidir_output[$entity].'/logos/thumbs/company-small.png', 0, 1) > 0, 'Small logo fixture '.$entity);
+}
+$mysoc->logo = 'company.png'; $mysoc->logo_small = 'company-small.png';
+$headerModel->writeSummary($vehicle, $populated, $langs, DOL_DATA_ROOT.'/header-logo.pdf');
+verifyDossier(count($headerModel->starts) > 1 && count(array_unique($headerModel->starts)) === 1 && $headerModel->starts[0] >= 38, 'Native header repeated at a stable measured height on every page');
+$conf->global->MAIN_PDF_USE_LARGE_LOGO = 1;
+$headerModel->writeSummary($vehicle, $emptyData, $langs, DOL_DATA_ROOT.'/header-large-logo.pdf');
+$vehicle->entity = 2;
+$originalCompanyDir = $conf->mycompany->dir_output;
+$conf->mycompany->dir_output = DOL_DATA_ROOT.'/not-the-owner';
+$headerModel->writeSummary($vehicle, $emptyData, $langs, DOL_DATA_ROOT.'/header-owner-logo.pdf');
+verifyDossier($conf->entity === 1 && $vehicle->entity === 2, 'Shared vehicle logo resolved without changing entity context');
+$conf->mycompany->dir_output = $originalCompanyDir;
+$vehicle->entity = 1;
+unset($conf->global->MAIN_PDF_USE_LARGE_LOGO);
+$originalRef = $vehicle->ref;
+$vehicle->ref = str_repeat('VÉHICULE-ÉPREUVE-', 8);
+$headerModel->starts = array();
+$headerModel->writeSummary($vehicle, $emptyData, $langs, DOL_DATA_ROOT.'/header-long-reference.pdf');
+verifyDossier($headerModel->starts[0] > 38, 'Long reference increases reserved header space');
+$vehicle->ref = $originalRef;
+$mysoc->logo = 'missing.png'; $mysoc->logo_small = 'missing-small.png';
+$headerModel->writeSummary($vehicle, $emptyData, $langs, DOL_DATA_ROOT.'/header-missing-logo.pdf');
+verifyDossier(is_file(DOL_DATA_ROOT.'/header-missing-logo.pdf'), 'Missing logo falls back to company name without a physical path in the PDF');
+$mysoc->logo = ''; $mysoc->logo_small = '';
 $conf->global->MAIN_GENERATE_DOCUMENTS_SHOW_FOOT_DETAILS = 1;
 $conf->global->PDF_ALLOW_HTML_FOR_FREE_TEXT = 1;
 $conf->global->LMDBVEHICLEMANAGEMENT_DOSSIER_FREE_TEXT = '<p>'.str_repeat('Texte libre accentué du dossier. ', 30).'</p>';
@@ -370,6 +434,7 @@ $englishData = $builder->collect($vehicle, $english);
 $model->writeSummary($vehicle, $englishData, $english, DOL_DATA_ROOT.'/tables-en.pdf');
 $langs = $french;
 verifyDossier($englishData['sections'][0]['tables'][0]['columns'] === array('Description', 'Value') && is_file(DOL_DATA_ROOT.'/tables-en.pdf'), 'English table headings use native catalogs');
+verifyDossier(count($englishData['sections'][5]['tables']) === 1 && count($englishData['sections'][5]['tables'][0]['columns']) === 7 && $englishData['sections'][5]['tables'][0]['columns'][0] === $english->transnoentities('ReadingDate'), 'Single consumption summary translated in English');
 verifyDossier($langs->transnoentities('CancellationDate') === 'Date de l’annulation' && $english->transnoentities('CancelledBy') === 'Cancelled by', 'Cancellation fields translated in both output languages');
 verifyDossier($langs->transnoentities('FileGenerated') === 'Le fichier a été généré avec succès' && $english->transnoentities('FileGenerated') === 'The file was successfully generated', 'Native document success message in both languages');
 $hookmanager = new HookManager($db);
