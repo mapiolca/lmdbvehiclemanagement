@@ -1,6 +1,6 @@
 # Gestion des véhicules et engins pour Dolibarr
 
-`lmdbvehiclemanagement` fournit un parc multientité intégré à Dolibarr. La version `0.15.0` couvre les véhicules routiers, utilitaires et engins, leurs affectations, kilométrages, consommations, assurances et dossiers documentaires de contrôles réglementaires.
+`lmdbvehiclemanagement` fournit un parc multientité intégré à Dolibarr. La version `1.0.0` couvre les véhicules routiers, utilitaires et engins, leurs affectations, kilométrages, consommations, assurances et dossiers documentaires de contrôles réglementaires.
 
 ## Compatibilité
 
@@ -52,7 +52,7 @@ Les hooks `checkSecureAccess`, `downloadDocument`, `renameUploadedFile`, `moveUp
 
 Le pied de page suit le cycle PDF natif, avec une mesure séparée pour les contenus HTML et les extensions `pdf_pagefoot`. Le texte libre facultatif utilise la constante par entité `LMDBVEHICLEMANAGEMENT_DOSSIER_FREE_TEXT`. L’onglet **Compatibilité** indique les dépendances absentes et la génération reste indisponible si `ZipArchive` manque.
 
-## Fonctionnalités de la version 0.15.0
+## Fonctionnalités de la version 1.0.0
 
 - fiche véhicule ou engin avec immatriculation facultative et cycle de vie `Brouillon` → `Validé` → `En service` / `Hors service` → `Cédé/Vendu` ;
 - type de matériel, catégorie européenne, genre national, PTAC/PTRA, places, territoire réglementaire, date de construction, première immatriculation et mise en service ;

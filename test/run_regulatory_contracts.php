@@ -54,7 +54,7 @@ foreach ($runtimeFiles as $runtimeFile) {
 }
 
 $checks = array(
-	'module_version_0150' => strpos($descriptor, "\$this->version = '0.15.0';") !== false,
+	'module_version_100' => strpos($descriptor, "\$this->version = '1.0.0';") !== false,
 	'optional_registration_schema' => strpos(regulatorySource('sql/llx_lmdbvehiclemanagement_vehicle.sql'), 'registration_number varchar(32) DEFAULT NULL') !== false,
 	'material_reference_fallback' => strpos(regulatorySource('core/modules/lmdbvehiclemanagement/mod_lmdbvehicle_registration.php'), "return 'MAT'.\$period") !== false,
 	'control_numbering_model' => strpos(regulatorySource('core/modules/lmdbvehiclemanagement/mod_lmdbvehicleregulatorycontrol_standard.php'), "public \$prefix = 'CTL'") !== false,
