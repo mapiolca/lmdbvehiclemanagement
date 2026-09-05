@@ -21,7 +21,7 @@ La dissociation fonctionne aussi pour une association suspendue. Elle partage le
 
 Une nouvelle association impose une date d’installation via le datepicker natif. Les positions et kilométrages antérieurs sont refusés ; les synthèses commencent à la première journée QUARTIX complète après installation. Une date chevauchant des imports conservés sur ce véhicule est refusée. La rétention de douze mois des synthèses conserve son calendrier propre, même après dissociation.
 
-**Mise à jour d’une installation existante :** réinitialiser le module via son activation native pour ajouter la colonne nullable `qx_link.sync_from`. La migration est additive et rejouable. Les anciennes associations conservent une date vide et leur reprise historique existante : aucune date d’installation n’est inventée. Les nouvelles associations renseignent obligatoirement cette borne.
+**Mise à jour d’une installation existante :** désactiver/réactiver le module via l’administration native pour ajouter la colonne nullable `qx_link.sync_from`. Les réglages sont conservés. La migration est additive et rejouable. Les anciennes associations conservent une date vide et leur reprise historique existante : aucune date d’installation n’est inventée. Les nouvelles associations renseignent obligatoirement cette borne.
 
 ## Données et source faisant autorité
 
@@ -115,7 +115,7 @@ Contrôles exécutés avec PHP 8.5.7, le core Dolibarr 20.0.4 et le checkout de 
 
 | Suite | Résultat |
 |---|---|
-| QUARTIX | 86 contrôles initiaux réussis sur chacun des deux cores ; 201 contrôles réussis sur le core 25.0.0-alpha avec nom d'application par entité, conservation du mot de passe, invalidation des jetons et variantes VehicleId/VehicleID, dates QWS et dissociation (conservation, purge, restauration sur erreur, ancienne confirmation et réaffectation bornée) ; diagnostic HTTP, refus 422, chiffrement, transport simulé, stockage, reprises, droits, rendu GPS et graphiques natifs inclus |
+| QUARTIX | 86 contrôles initiaux réussis sur chacun des deux cores ; 215 contrôles réussis sur le core 25.0.0-alpha avec nom d'application par entité, conservation du mot de passe, invalidation des jetons et variantes VehicleId/VehicleID, dates QWS et dissociation (conservation, purge, restauration sur erreur, ancienne confirmation et réaffectation bornée) ; totaux par véhicule et journée, nombre de trajets, reprise d’une semaine interrompue et budget d’exécution ; diagnostic HTTP, refus 422, chiffrement, transport simulé, stockage, droits, rendu GPS et graphiques natifs inclus |
 | Transport QUARTIX HTTPS local | 4 contrôles supplémentaires et 4 requêtes HTTPS vérifiés avec le vrai cURL : authentification JSON, lecture expirée, renouvellement JSON et lecture réussie ; données fictives uniquement |
 | Règles métier | 50 contrôles réussis |
 | Contrats Agenda | 400 contrôles réussis |
@@ -128,16 +128,31 @@ Contrôles exécutés avec PHP 8.5.7, le core Dolibarr 20.0.4 et le checkout de 
 
 Le core historique et certains tests existants émettent des avertissements de dépréciation sous PHP 8.5, sans échec des assertions.
 PHPStan n'est pas installé dans l'environnement disponible : aucune analyse PHPStan n'a été exécutée.
-Le runtime PHP 8.0, un serveur MySQL/MariaDB de recette, les identifiants QUARTIX et une instance navigateur servant cette branche ne sont pas disponibles pour cette validation locale.
+Le runtime PHP 8.0 n’est pas disponible. Les suites locales utilisent SQLite et des réponses simulées ; les validations authentifiées sur le serveur de développement sont décrites séparément ci-dessous.
 Les essais de concurrence utilisent un refus de verrou simulé ; une exécution concurrente réelle reste à vérifier sur MySQL/MariaDB.
 Les documents, catégories et modèles de numérotation ne changent pas de fonctionnement ; aucune nouvelle génération documentaire ou modification de leurs modèles n'est introduite.
 
-À vérifier sur l'instance de recette après déploiement :
+### Validation déployée du 5 septembre 2026
 
-- activation/réactivation sur MySQL/MariaDB avec conservation des constantes (0 et chaîne vide), fréquences, états des tâches et réglages Multicompany ;
-- trois tâches visibles et exécutables, utilisateur standard de synchronisation, lecture seule, GPS, administrateur d'entité et utilisateur externe ;
+Le commit `af6ee3a0cb99ec6eb50f5b7a577676ccd44059c9` de `codex/quartix-integration` a été poussé puis chargé depuis **Update from Remote** dans cPanel. Le dépôt est directement le répertoire servi par l’instance de développement. Le HEAD cPanel et les comportements observés confirment que le code corrigé est exécuté sous Dolibarr 24.0.0 / PHP 8.3.33.
+
+- Authentification JSON réussie et catalogue de quatre véhicules chargé ; aucune valeur secrète exposée.
+- Désactivation/réactivation native réussie sur la base du serveur : colonne `sync_from` ajoutée, constantes, associations, fréquences et états des tâches conservés, vérifiés avant/après.
+- Trois travaux planifiés avec un dernier code de retour `0`. L’exécution manuelle de l’utilisation a traité un véhicule sans erreur ; les tâches de kilométrage et positions ont également terminé avec succès.
+- Sept journées importées : somme des distances et nombre de trajets identiques aux totaux QWS du même véhicule et de la même période. Kilométrage, date d’estimation, coordonnées et date de dernière position également comparés avec les réponses authentifiées et concordants.
+- Consultation de l’utilisation et des relevés : tableaux et graphiques natifs visibles ; l’estimation contradictoire est signalée, les relevés de pleins/recharges restent prioritaires.
+- Interrupteur natif vérifié et confirmation de dissociation affichée avec les deux modes, puis annulée sans modifier l’association. La purge destructive est validée par les tests locaux uniquement.
+
+L’unité de `TravelTime` et `IdlingTime` n’est pas confirmée par l’utilisateur. Le réglage de l’instance a été remis sur **À confirmer auprès de QUARTIX** : les durées restent indisponibles, même si les valeurs brutes sont conservées. Aucune unité n’est déduite des distances ou de l’ordre de grandeur des réponses.
+
+Après une exécution manuelle réussie, le cron natif Dolibarr 24.0.0 produit encore une erreur de fermeture `mysqli object is already closed` dans son gestionnaire de fin de requête (`cronjob.class.php:1364`). Le traitement QUARTIX et ses écritures sont terminés avec succès. Le même défaut est décrit dans le [ticket officiel Dolibarr #39801](https://github.com/Dolibarr/dolibarr/issues/39801). Aucun fichier core n’a été modifié ; la correction de ce défaut relève de la maintenance Dolibarr.
+
+### Vérifications restant à effectuer
+
+- exécution sur le socle PHP 8.0 / Dolibarr 20 avec l’ensemble des derniers contrôles ;
+- parcours authentifiés avec utilisateur standard de synchronisation, lecture seule, GPS, administrateur d’entité et utilisateur externe ;
 - association correcte de deux véhicules dans deux entités ; absence de fuite et écriture uniquement dans l'entité propriétaire pour un véhicule partagé ;
-- concordance du kilométrage, de la position, des journées, trajets et durées avec QUARTIX, après confirmation des unités et fuseaux ;
+- concordance des durées avec QUARTIX après confirmation de leur unité ;
 - consultation bureau/mobile, datepickers, pagination, colonnes, graphiques natifs, données absentes, position ancienne et suivi interrompu ;
 - refus des POST sans token, succès avec token, erreurs partielles et reprise après interruption/quota ;
 - relevé manuel et plein/recharge en contradiction avec une estimation, badge d'anomalie et statistiques inchangées ;
