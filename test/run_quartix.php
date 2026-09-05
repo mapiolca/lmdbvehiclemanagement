@@ -166,11 +166,18 @@ qxReject(static function () use ($summary) { LmdbVehicleQuartixRules::summaries(
 qxReject(static function () use ($summary) { LmdbVehicleQuartixRules::summaries(array($summary), 11, '2026-08-30', '2026-08-31'); }, 'QxInvalidResponse');
 
 // Native encryption, one retry after 401, invalid refresh fallback and safe errors.
+qxReject(static function () use ($db) { new QxTestClient($db, 1); }, 'QxApplicationRequired');
+qxCheck(LmdbVehicleQuartixConfig::unavailableReason('jobs') === 'QxApplicationRequired', 'Legacy settings require the provider application name before any job or request');
+qxCheck(LmdbVehicleQuartixCron::safeError(new RuntimeException('QxApplicationRequired')) === 'QxApplicationRequired', 'Missing application name has an actionable safe error');
+foreach (array('', '   ') as $missingApplication) qxReject(static function () use ($missingApplication) { LmdbVehicleQuartixConfig::validateApplication($missingApplication); }, 'QxApplicationRequired');
+foreach (array("app\nheader", str_repeat('x', 129)) as $badApplication) qxReject(static function () use ($badApplication) { LmdbVehicleQuartixConfig::validateApplication($badApplication); }, 'QxInvalidSettings');
+$conf->global->LMDBVEHICLEMANAGEMENT_QX_APPLICATION = 'test-application-A';
 $secret = LmdbVehicleQuartixConfig::encrypt('test-secret');
 qxCheck($secret !== 'test-secret' && dolDecrypt($secret) === 'test-secret', 'Native encryption round trip');
 $client = new QxTestClient($db, 1);
 $client->responses = array(qxResponse(array('AccessToken' => 'test-access', 'RefreshToken' => 'test-refresh')), qxResponse(array(array('VehicleID' => 10))));
 qxCheck(count($client->get('/vehicles')) === 1, 'Auth followed by read');
+qxCheck($client->calls[0]['values']['Application'] === 'test-application-A', 'Authentication uses the configured application, not the module key');
 $tokens = $db->pdo->query('SELECT * FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_token')->fetch(PDO::FETCH_ASSOC);
 qxCheck(strpos($tokens['access_token'], 'dolcrypt:') === 0 && strpos($tokens['refresh_token'], 'dolcrypt:') === 0, 'Tokens encrypted in storage');
 $client->responses = array(qxResponse(null, 401), qxResponse(array('AccessToken' => 'new-access', 'RefreshToken' => 'new-refresh')), qxResponse(array()));
@@ -206,10 +213,12 @@ $client->responses = array(qxResponse(null, 0));
 qxReject(static function () use ($client) { $client->get('/vehicles'); }, 'QxNetworkError');
 qxCheck($client->getDiagnostic() === array('endpoint' => '/vehicles', 'http_status' => 0, 'curl_error' => 0), 'Transport exception clears the preceding HTTP status');
 $conf->entity = 2;
+$conf->global->LMDBVEHICLEMANAGEMENT_QX_APPLICATION = 'test-application-B';
 $authFailure = new QxTestClient($db, 2);
 $authFailure->responses = array(qxResponse(null, 415));
 qxReject(static function () use ($authFailure) { $authFailure->get('/vehicles'); }, 'QxRemoteError');
 qxCheck($authFailure->getDiagnostic()['endpoint'] === '/auth' && count($authFailure->calls) === 1, 'Authentication failure is distinguished from catalogue failure');
+qxCheck($authFailure->calls[0]['values']['Application'] === 'test-application-B', 'Second entity authenticates with its own application name');
 qxCheck((int) $db->pdo->query('SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_token WHERE entity=2')->fetchColumn() === 0, 'Failed authentication creates no tokens');
 $authFailure->responses = array(array('status' => 422, 'body' => 'sensitive-validation-body', 'retry' => 0));
 qxReject(static function () use ($authFailure) { $authFailure->get('/vehicles'); }, 'QxRequestRejected');
@@ -220,6 +229,7 @@ qxCheck((int) $db->pdo->query('SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehicl
 $conf->entity = 2;
 qxReject(static function () use ($db) { new QxTestClient($db, 1); }, 'QxAccessDenied');
 $conf->entity = 1;
+$conf->global->LMDBVEHICLEMANAGEMENT_QX_APPLICATION = 'test-application-A';
 
 // Real SQL constraints and native CommonObject persistence in two entities.
 $db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_vehicle (rowid,entity,ref,label,fk_user_creat,date_creation) VALUES (1,1,'QX-A','Vehicle A',1,'2026-01-01'),(2,2,'QX-B','Vehicle B',1,'2026-01-01')");
@@ -351,13 +361,42 @@ $db->query('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle WHERE en
 
 // Configuration uses native per-entity constants and never persists a plaintext secret.
 $configuration = new LmdbVehicleQuartixConfig($db);
-$settings = array('CUSTOMER' => 'test-company', 'USERNAME' => 'test-user', 'PASSWORD' => 'test-password', 'TIME_MODE' => 'offset', 'DURATION_UNIT' => '');
+$settings = array('CUSTOMER' => 'test-company', 'USERNAME' => 'test-user', 'PASSWORD' => 'test-password', 'APPLICATION' => 'test-application-A', 'TIME_MODE' => 'offset', 'DURATION_UNIT' => '');
 $configuration->save($user, $settings);
 $storedPassword = $db->pdo->query("SELECT value FROM ".MAIN_DB_PREFIX."const WHERE entity=1 AND name='LMDBVEHICLEMANAGEMENT_QX_PASSWORD'")->fetchColumn();
 qxCheck(strpos($storedPassword, 'dolcrypt:') === 0 && dolDecrypt($storedPassword) === 'test-password', 'Native setting stores ciphertext');
 $settings['PASSWORD'] = '';
 $configuration->save($user, $settings);
 qxCheck($configuration->load(1, true)['PASSWORD'] === 'test-password' && $configuration->load(1)['DURATION_UNIT'] === '', 'Empty password preserves secret, empty unit stays unconfirmed');
+$beforeMissing = count($db->queries);
+$missingApplicationSettings = $settings;
+unset($missingApplicationSettings['APPLICATION']);
+qxReject(static function () use ($configuration, $user, $missingApplicationSettings) { $configuration->save($user, $missingApplicationSettings); }, 'QxApplicationRequired');
+qxCheck(count($db->queries) === $beforeMissing, 'Missing application cannot mutate credentials or invalidate tokens');
+$db->query('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_job SET retry_at=NULL WHERE entity=1');
+$oldApplicationClient = new QxTestClient($db, 1);
+$oldApplicationClient->responses = array(qxResponse(array('AccessToken' => 'old-app-access', 'RefreshToken' => 'old-app-refresh')), qxResponse(array()));
+$oldApplicationClient->get('/vehicles');
+$settings['APPLICATION'] = 'test-application-A-updated';
+$configuration->save($user, $settings);
+qxCheck($configuration->load(1, true)['APPLICATION'] === $settings['APPLICATION'] && $configuration->load(1, true)['PASSWORD'] === 'test-password', 'Application change preserves the saved password');
+qxCheck((int) $db->pdo->query('SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_token WHERE entity=1')->fetchColumn() === 0, 'Application change invalidates old application tokens');
+$newApplicationClient = new QxTestClient($db, 1);
+$newApplicationClient->responses = array(qxResponse(array('AccessToken' => 'new-app-access', 'RefreshToken' => 'new-app-refresh')), qxResponse(array()));
+$newApplicationClient->get('/vehicles');
+qxCheck($newApplicationClient->calls[0]['values']['Application'] === $settings['APPLICATION'], 'Next connection authenticates under the updated application');
+$savedGlobals = clone $conf->global;
+$conf->entity = 2;
+$secondEntitySettings = $settings;
+$secondEntitySettings['APPLICATION'] = 'test-application-B';
+$secondEntitySettings['PASSWORD'] = 'second-entity-password';
+$configuration->save($user, $secondEntitySettings);
+qxCheck($configuration->load(2, true)['APPLICATION'] === 'test-application-B', 'Second entity persists its application with native constants');
+$conf->entity = 1;
+$conf->global = $savedGlobals;
+qxCheck($configuration->load(1, true)['APPLICATION'] === 'test-application-A-updated'
+	&& $db->pdo->query("SELECT value FROM ".MAIN_DB_PREFIX."const WHERE entity=1 AND name='LMDBVEHICLEMANAGEMENT_QX_APPLICATION'")->fetchColumn() === 'test-application-A-updated'
+	&& (int) $db->pdo->query('SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_token WHERE entity=1')->fetchColumn() === 1, 'Other entity configuration preserves both application and tokens');
 $settings['CUSTOMER'] = 'different-company';
 qxReject(static function () use ($configuration, $user, $settings) { $configuration->save($user, $settings); }, 'QxAccountInUse');
 $instanceKey = $conf->file->instance_unique_id;

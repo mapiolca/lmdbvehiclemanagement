@@ -42,7 +42,7 @@ final class QxWireClient extends LmdbVehicleQuartixClient
 }
 
 $configuration->save($user, array('CUSTOMER' => 'test-company', 'USERNAME' => 'Test +é & "QWS"',
-	'PASSWORD' => 'fake +&="\\é/', 'TIME_MODE' => 'offset', 'DURATION_UNIT' => ''));
+	'PASSWORD' => 'fake +&="\\é/', 'APPLICATION' => 'test-provider.app', 'TIME_MODE' => 'offset', 'DURATION_UNIT' => ''));
 $conf->global->MAIN_PROXY_USE = 0;
 $db->query('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_job SET retry_at=NULL WHERE entity=1');
 $wire = new QxWireClient($db, (int) $argv[2], $argv[3]);

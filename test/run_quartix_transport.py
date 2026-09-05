@@ -21,7 +21,7 @@ def main():
     errors = []
     requests = []
     auth = {"CustomerID": "test-company", "UserName": 'Test +é & "QWS"',
-            "Password": 'fake +&="\\é/', "Application": "lmdbvehiclemanagement"}
+            "Password": 'fake +&="\\é/', "Application": "test-provider.app"}
     steps = [
         ("POST", "/v2/api/auth", auth, None, 200,
          {"AccessToken": "fake-access", "RefreshToken": "fake-refresh+&=quote\"\\/"}),

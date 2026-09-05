@@ -43,6 +43,8 @@ class LmdbVehicleQuartixConfig
 		if ($feature === 'jobs') {
 			if (!isModEnabled('cron')) return 'RequiresCronModule';
 			if (!getDolGlobalInt(self::PREFIX.'ENABLED')) return 'QxDisabled';
+			try { self::validateApplication(getDolGlobalString(self::PREFIX.'APPLICATION')); }
+			catch (RuntimeException $e) { return $e->getMessage(); }
 		} elseif ($feature === 'timestamps' && !in_array(getDolGlobalString(self::PREFIX.'TIME_MODE'), array('local', 'offset'), true)) {
 			return 'QxTimeUnconfirmed';
 		} elseif ($feature === 'durations' && !in_array(getDolGlobalString(self::PREFIX.'DURATION_UNIT'), array('seconds', 'minutes', 'hours'), true)) {
@@ -63,7 +65,7 @@ class LmdbVehicleQuartixConfig
 		$keys = array('ENABLED', 'TIME_MODE', 'DURATION_UNIT');
 		if ($secrets) {
 			if ($entity !== (int) $conf->entity) throw new RuntimeException('QxAccessDenied');
-			$keys = array_merge($keys, array('CUSTOMER', 'USERNAME', 'PASSWORD'));
+			$keys = array_merge($keys, array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION'));
 		}
 		$result = array_fill_keys($keys, '');
 		if ($entity === (int) $conf->entity) {
@@ -88,11 +90,19 @@ class LmdbVehicleQuartixConfig
 		return $encrypted;
 	}
 
+	/** Validate the provider-assigned application name before saving or making requests. @param string $application QWS name @return void */
+	public static function validateApplication($application)
+	{
+		if (trim($application) === '') throw new RuntimeException('QxApplicationRequired');
+		if (strlen($application) > 128 || preg_match('/[\x00-\x1f\x7f]/', $application)) throw new RuntimeException('QxInvalidSettings');
+	}
+
 	/** @param User $user Administrator @param array<string,string> $values Form settings @return void */
 	public function save($user, $values)
 	{
 		global $conf;
 		if (!self::can($user, 'configure')) throw new RuntimeException('QxAccessDenied');
+		self::validateApplication($values['APPLICATION'] ?? '');
 		if (!in_array($values['TIME_MODE'], array('', 'offset', 'local'), true) || !in_array($values['DURATION_UNIT'], array('', 'seconds', 'minutes', 'hours'), true)) throw new RuntimeException('QxInvalidSettings');
 		foreach (array('CUSTOMER', 'USERNAME') as $key) {
 			if ($values[$key] === '' || strlen($values[$key]) > 128 || preg_match('/[\x00-\x1f]/', $values[$key])) throw new RuntimeException('QxInvalidSettings');
@@ -111,7 +121,7 @@ class LmdbVehicleQuartixConfig
 		require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
 		$this->db->begin();
 		try {
-			foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'TIME_MODE', 'DURATION_UNIT') as $key) {
+			foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION', 'TIME_MODE', 'DURATION_UNIT') as $key) {
 				if (dolibarr_set_const($this->db, self::PREFIX.$key, $values[$key], 'chaine', 0, '', (int) $conf->entity) <= 0) throw new RuntimeException('QxDatabaseError');
 			}
 			if (!$this->db->query('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_token WHERE entity = '.((int) $conf->entity))) throw new RuntimeException('QxDatabaseError');

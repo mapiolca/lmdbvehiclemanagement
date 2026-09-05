@@ -113,7 +113,7 @@ class LmdbVehicleQuartixCron
 	/** @param Exception $e Exception @return string Stable non-sensitive code */
 	public static function safeError($e)
 	{
-		$allowed = array('QxDatabaseError', 'QxAccessDenied', 'QxInvalidSettings', 'QxAccountInUse', 'QxMappingExists', 'QxInvalidResponse', 'QxTimeUnconfirmed', 'QxAmbiguousTime', 'QxInvalidPeriod', 'QxRequiresCrypto', 'QxNetworkError', 'QxRateLimited', 'QxAuthenticationFailed', 'QxRemoteError', 'QxRequestRejected', 'QxNoVehicleData', 'QxBusy');
+		$allowed = array('QxDatabaseError', 'QxAccessDenied', 'QxInvalidSettings', 'QxApplicationRequired', 'QxAccountInUse', 'QxMappingExists', 'QxInvalidResponse', 'QxTimeUnconfirmed', 'QxAmbiguousTime', 'QxInvalidPeriod', 'QxRequiresCrypto', 'QxNetworkError', 'QxRateLimited', 'QxAuthenticationFailed', 'QxRemoteError', 'QxRequestRejected', 'QxNoVehicleData', 'QxBusy');
 		return in_array($e->getMessage(), $allowed, true) ? $e->getMessage() : 'QxInvalidResponse';
 	}
 

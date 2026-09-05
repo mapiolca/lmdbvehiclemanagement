@@ -5,13 +5,14 @@ Cette évolution de développement complète la version 1.0.0, sans publier de n
 ## Mise en service
 
 1. Déployer la branche, puis désactiver/réactiver le module pour installer les tables, les droits et les tâches. Les réglages sont conservés, y compris ceux des tâches déjà présentes.
-2. Dans **Réglages → QUARTIX**, saisir le code client, le login et le mot de passe du compte de l'environnement courant. Un mot de passe laissé vide conserve celui enregistré.
+2. Dans **Réglages → QUARTIX**, saisir le code client, le login, le mot de passe et le **Nom d’application (APPLICATION NAME)** fournis par QUARTIX pour l'environnement courant. Enregistrer avant de tester. Un mot de passe laissé vide conserve celui enregistré.
 3. Confirmer avec QUARTIX le sens des horodatages et l'unité des durées. Le texte QWS décrit des heures locales alors que ses exemples portent Z ; l'unité de TravelTime et IdlingTime n'est pas précisée. Aucune interprétation n'est choisie par défaut.
 4. Tester la connexion pour charger le catalogue, puis associer explicitement les véhicules et confirmer leur fuseau IANA. Le début de journée provient de ShiftStartTime. Vérifier ces informations lors de l'association.
 5. Activer la synchronisation dans les réglages, puis les trois tâches dans les **Travaux planifiés** natifs. Utiliser un compte interne avec lecture du parc, synchronisation QUARTIX et gestion des relevés kilométriques. Les administrateurs disposent implicitement de ces droits.
 6. Comparer les premières valeurs avec QUARTIX sur l'instance servant réellement ce code.
 
 Chaque environnement possède sa connexion, ses jetons, ses associations et son état de synchronisation.
+Le nom d'application est conservé dans une constante native par entité. Sa saisie est obligatoire : aucune valeur n'est inventée à partir du nom du module. Une installation existante doit compléter ce réglage ; tant qu'il manque, les tests de connexion et les travaux planifiés sont refusés localement avec un message explicite. La sauvegarde des identifiants ou du nom d'application invalide les jetons de cette seule entité pour renouveler l'authentification.
 Un véhicule partagé reste synchronisé depuis son environnement propriétaire. Sa consultation utilise les données de ce propriétaire.
 Les associations peuvent être suspendues ; leur remplacement ou le changement de code client après association nécessite une migration contrôlée, afin de ne pas attribuer l'historique d'un autre véhicule.
 Une modification ultérieure du fuseau ou du début de journée dans QUARTIX nécessite également de revoir l'association avant de reprendre les imports.
@@ -69,7 +70,7 @@ Les POST `/auth` et `/auth/refresh` transmettent désormais un objet JSON avec `
 
 Le PDF historique décrit les paramètres en `formData`. Après le refus HTTP 422 observé sur `/auth` avec cet encodage, le choix JSON s'appuie sur un [exemple QWS publié le 7 juillet 2026 par son auteur comme fonctionnel](https://community.fabric.microsoft.com/t5/Power-Query/Convert-Dynamic-Data-source/td-p/5276109). Cet exemple d'intégration n'est pas une spécification officielle QUARTIX ; la réussite avec le compte concerné reste à confirmer après déploiement.
 
-Pour une installation QUARTIX déjà initialisée, ce correctif ne nécessite ni migration, ni réactivation, ni nouvelle saisie du mot de passe. Déployer les fichiers modifiés puis relancer **Tester la connexion et charger les véhicules**. Si le refus persiste, conserver l'étape et le statut affichés pour le diagnostic, sans transmettre les identifiants ou les réponses API brutes.
+Le client utilisait initialement la clé du module comme champ `Application`. Il transmet maintenant exactement la valeur **APPLICATION NAME** fournie par QUARTIX et enregistrée dans l'entité. Pour une installation déjà initialisée, déployer les fichiers puis compléter ce nouveau champ et enregistrer avant de relancer **Tester la connexion et charger les véhicules**. Aucune migration ni réactivation n'est nécessaire ; le mot de passe peut rester vide pour conserver celui enregistré. Si le refus persiste, conserver l'étape et le statut affichés pour le diagnostic, sans transmettre les identifiants ou les réponses API brutes.
 
 ## Sécurité et compatibilité
 
@@ -104,7 +105,7 @@ Contrôles exécutés avec PHP 8.5.7, le core Dolibarr 20.0.4 et le checkout de 
 
 | Suite | Résultat |
 |---|---|
-| QUARTIX | 86 contrôles initiaux réussis sur chacun des deux cores ; 127 contrôles réussis sur le core 25.0.0-alpha avec diagnostic HTTP et refus 422 ; chiffrement, transport simulé, stockage, reprises, droits, rendu GPS et graphiques natifs inclus |
+| QUARTIX | 86 contrôles initiaux réussis sur chacun des deux cores ; 143 contrôles réussis sur le core 25.0.0-alpha avec nom d'application par entité, conservation du mot de passe et invalidation des jetons ; diagnostic HTTP, refus 422, chiffrement, transport simulé, stockage, reprises, droits, rendu GPS et graphiques natifs inclus |
 | Transport QUARTIX HTTPS local | 4 contrôles supplémentaires et 4 requêtes HTTPS vérifiés avec le vrai cURL : authentification JSON, lecture expirée, renouvellement JSON et lecture réussie ; données fictives uniquement |
 | Règles métier | 50 contrôles réussis |
 | Contrats Agenda | 400 contrôles réussis |

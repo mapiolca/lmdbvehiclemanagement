@@ -25,7 +25,7 @@ $service = new LmdbVehicleQuartixService($db);
 $action = GETPOST('action', 'aZ09');
 $sessionKey = 'lmdbvm_qx_catalog_'.$entity;
 $values = array();
-foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'TIME_MODE', 'DURATION_UNIT') as $key) {
+foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION', 'TIME_MODE', 'DURATION_UNIT') as $key) {
 	$raw = GETPOST('qx_'.$key, $key === 'PASSWORD' ? 'none' : 'alphanohtml');
 	$values[$key] = is_string($raw) ? $raw : '';
 }
@@ -87,9 +87,10 @@ if (!isModEnabled('cron')) print '<div class="warning">'.$langs->trans('Requires
 print '<table class="noborder centpercent"><tr class="oddeven"><td>'.$langs->trans('QxEnabled').'</td><td>'.ajax_constantonoff(LmdbVehicleQuartixConfig::PREFIX.'ENABLED').'</td></tr></table>';
 print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="save">';
 print '<div class="div-table-responsive-no-min"><table class="border centpercent">';
-foreach (array('CUSTOMER' => 'QxCustomer', 'USERNAME' => 'Login', 'PASSWORD' => 'Password') as $key => $label) {
-	print '<tr><td class="titlefield">'.$langs->trans($label).'</td><td><input class="flat minwidth200" type="'.($key === 'PASSWORD' ? 'password' : 'text').'" name="qx_'.$key.'" value="'.dol_escape_htmltag($settings[$key]).'" autocomplete="'.($key === 'PASSWORD' ? 'new-password' : 'off').'">';
+foreach (array('CUSTOMER' => 'QxCustomer', 'USERNAME' => 'Login', 'PASSWORD' => 'Password', 'APPLICATION' => 'QxApplication') as $key => $label) {
+	print '<tr><td class="titlefield"><label for="qx_'.$key.'">'.$langs->trans($label).'</label></td><td><input class="flat minwidth200" type="'.($key === 'PASSWORD' ? 'password' : 'text').'" id="qx_'.$key.'" name="qx_'.$key.'" value="'.dol_escape_htmltag($settings[$key]).'" autocomplete="'.($key === 'PASSWORD' ? 'new-password' : 'off').'"'.($key === 'APPLICATION' ? ' maxlength="128" required aria-describedby="qx_application_help"' : '').'>';
 	if ($key === 'PASSWORD') print ' <span class="opacitymedium">'.$langs->trans('QxKeepPassword').'</span>';
+	if ($key === 'APPLICATION') print ' <span class="opacitymedium" id="qx_application_help">'.$langs->trans('QxApplicationHelp').'</span>';
 	print '</td></tr>';
 }
 $timeOptions = array('' => $langs->trans('QxUnconfirmed'), 'offset' => $langs->trans('QxTimeOffset'), 'local' => $langs->trans('QxTimeLocal'));

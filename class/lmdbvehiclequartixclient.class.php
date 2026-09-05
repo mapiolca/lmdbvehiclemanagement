@@ -29,6 +29,7 @@ class LmdbVehicleQuartixClient
 		$this->db = $db;
 		$this->entity = $entity;
 		$this->config = (new LmdbVehicleQuartixConfig($db))->load($entity, true);
+		LmdbVehicleQuartixConfig::validateApplication($this->config['APPLICATION']);
 	}
 
 	/** @param string $path Allowed read endpoint @param array<string,int|string> $query Parameters @return array<int,mixed> */
@@ -70,7 +71,7 @@ class LmdbVehicleQuartixClient
 	/** @param bool $refresh Refresh existing tokens @return void */
 	private function authenticate($refresh)
 	{
-		$values = $refresh ? array('RefreshToken' => $this->refresh) : array('CustomerID' => $this->config['CUSTOMER'], 'UserName' => $this->config['USERNAME'], 'Password' => $this->config['PASSWORD'], 'Application' => 'lmdbvehiclemanagement');
+		$values = $refresh ? array('RefreshToken' => $this->refresh) : array('CustomerID' => $this->config['CUSTOMER'], 'UserName' => $this->config['USERNAME'], 'Password' => $this->config['PASSWORD'], 'Application' => $this->config['APPLICATION']);
 		$response = $this->exchange('POST', $refresh ? '/auth/refresh' : '/auth', $values, '');
 		if ($refresh && in_array($response['status'], array(401, 403), true)) { $this->authenticate(false); return; }
 		$data = $this->decode($response);
