@@ -1,9 +1,14 @@
 <!-- Titre de page suggéré : Module Gestion des véhicules et engins -->
 <!-- Périmètre documentaire : version 1.0.0, branche main au commit 094fc89. -->
+<!-- Images : importer les fichiers JPEG du dossier wiki-1.0.0 en conservant leurs noms. -->
 
 '''Gestion des véhicules et engins''' est un module externe pour Dolibarr permettant de centraliser le suivi d'un parc de véhicules routiers, d'utilitaires et d'engins. Il regroupe les caractéristiques du matériel, les affectations des conducteurs, les kilométrages, les consommations, les interventions, les assurances et les contrôles réglementaires.
 
 Le module permet également de relier les factures fournisseurs aux interventions et aux contrôles, puis de générer un dossier véhicule réunissant un récapitulatif PDF et une archive des documents associés.
+
+Cette page comprend la présentation du module, son installation et sa '''notice d'utilisation illustrée'''. Les captures ont été réalisées le 5 septembre 2026 sur une instance de démonstration Dolibarr 24 avec Multicompany. Les valeurs affichées servent uniquement d'exemples ; elles ne constituent ni des réglages recommandés ni des références de consommation. Le thème et la version de Dolibarr peuvent faire varier la présentation.
+
+__TOC__
 
 == Informations ==
 
@@ -170,35 +175,309 @@ Si une archive de déploiement Dolibarr est fournie, elle peut être installée 
 
 Les onglets '''Compatibilité''' et '''À propos''' sont accessibles depuis les réglages du module.
 
-== Utilisation ==
+=== Choisir la numérotation et activer le dossier véhicule ===
 
-=== Créer et suivre un véhicule ===
+# Ouvrir l'onglet '''Paramètres''' des réglages.
+# Dans '''Modèles de documents''', activer la ligne '''Dossier véhicule'''. La colonne '''Défaut''' permet de le proposer automatiquement lors de la génération.
+# Dans '''Modèles de numérotation''', choisir le modèle de chaque objet.
+# Pour les véhicules, choisir '''standard''' pour une référence séquentielle ou '''registration''' pour utiliser l'immatriculation normalisée. Un matériel sans immatriculation reçoit une référence de type MAT avec ce dernier modèle.
 
-# Créer une fiche véhicule ou engin et renseigner ses caractéristiques.
-# Compléter les capacités, l'énergie et les informations nécessaires à sa qualification réglementaire.
-# Enregistrer le kilométrage connu et les affectations des conducteurs.
-# Ajouter les contrats d'assurance, attestations et contrôles disponibles.
-# Enregistrer ensuite les interventions, relevés, pleins et recharges au fil de l'exploitation.
+Les exemples de référence permettent de vérifier le résultat attendu. Sur un parc existant, un changement impliquant la reprise des références doit suivre la procédure de migration proposée par le module.
 
-La chronologie et les listes permettent de retrouver les opérations enregistrées et leurs documents.
+[[File:LMDBVehicleManagement-1.0.0-15-modeles.jpg|thumb|center|1100px|Réglages des modèles documentaires et de la numérotation. Le dossier est activé ; le choix du modèle par défaut est distinct.]]
 
-=== Enregistrer un contrôle ===
+=== Configurer les dépenses des pleins et recharges ===
 
-# Créer un contrôle pour le véhicule concerné.
-# Renseigner l'organisme, les dates et le résultat.
-# Joindre le justificatif requis.
-# Vérifier les informations puis valider le contrôle.
+Dans '''Paramètres''', le bloc '''Tickets et opérations diverses des pleins / recharges''' permet d'activer la création d'une dépense native.
 
-Après validation, utiliser les actions prévues d'annulation ou de remplacement lorsqu'une correction est nécessaire. Les contrôles validés ne sont pas destinés à être réécrits librement.
+# Choisir le compte bancaire de l'entité et le mode de règlement habituel.
+# Renseigner les comptes comptables selon le mode de comptabilité utilisé. Le compte général est obligatoire en partie double ; le compte auxiliaire reste facultatif.
+# Activer l'option souhaitée et cliquer sur '''Enregistrer'''.
+# Vérifier ensuite la saisie d'un plein : les informations de règlement et le ticket sont demandés lorsque cette option est active.
 
-=== Générer le dossier véhicule ===
+Cette option concerne les nouvelles opérations. Elle ne transforme pas les anciennes consommations en dépenses et rend leur import CSV indisponible.
 
-# Ouvrir la fiche du véhicule ou son onglet '''Fichiers joints'''.
-# Dans le bloc documentaire natif, sélectionner le modèle '''Dossier véhicule'''.
+=== Configurer les relances d'assurance ===
+
+# Ouvrir l'onglet '''Assurance''' des réglages.
+# Choisir les utilisateurs et/ou groupes référents.
+# Indiquer si les personnels affectés doivent être inclus, puis sélectionner les types d'affectation concernés.
+# Sélectionner les seuils avant expiration et les délais de répétition après expiration ou absence de justificatif.
+# Choisir les modèles d'emails de dépôt et de contrôle.
+# Activer les relances et cliquer sur '''Enregistrer'''.
+# Utiliser le lien '''Ouvrir les travaux planifiés''' pour vérifier l'état de la tâche et son dernier résultat.
+
+Le bouton '''Envoyer un email de test''' déclenche un envoi réel : vérifier les destinataires avant de l'utiliser. Les délais visibles sur l'illustration sont ceux de l'environnement de démonstration.
+
+[[File:LMDBVehicleManagement-1.0.0-16-relances-assurance.jpg|thumb|center|1100px|Choix des référents, seuils de relance, modèles d'emails et accès au travail planifié d'assurance.]]
+
+=== Configurer les rappels des contrôles ===
+
+Dans l'onglet '''Contrôles réglementaires''' des réglages :
+
+# Choisir les horizons de rappel et le délai d'affichage « à échéance prochaine ».
+# Sélectionner les utilisateurs ou groupes destinataires et préciser si le conducteur affecté doit être inclus.
+# Choisir le modèle de rappel et, si nécessaire, activer les rappels journaliers après échéance.
+# Enregistrer les réglages puis vérifier le travail planifié de recalcul et de rappel.
+
+Le catalogue distingue les règles natives des adaptations propres à l'entité. Les surcharges et règles personnalisées doivent correspondre au matériel réellement exploité et conserver leur justification.
+
+== Notice — premiers pas ==
+
+=== Accéder au parc et retrouver une fiche ===
+
+Ouvrir le menu '''Gestion des véhicules et engins''' repéré par une icône de voiture. Le menu latéral regroupe le parc, les événements, les contrôles, la consommation et les contrats d'assurance.
+
+# Cliquer sur '''Liste des véhicules et engins'''.
+# Saisir un critère dans les filtres de référence, immatriculation, libellé, modèle ou état.
+# Cliquer sur la loupe pour rechercher ; la croix réinitialise les filtres.
+# Cliquer sur un en-tête de colonne pour trier, ou sur le sélecteur de colonnes pour adapter la liste.
+# Ouvrir le véhicule en cliquant sur sa référence.
+
+Le sélecteur de limite règle le nombre de lignes par page. Lorsqu'un partage multientité est actif, la colonne et le filtre '''Environnement''' permettent d'identifier l'entité d'origine.
+
+[[File:LMDBVehicleManagement-1.0.0-01-liste.jpg|thumb|center|1100px|Accès aux rubriques du module et recherche dans le parc de démonstration.]]
+
+=== Créer un véhicule ou un engin ===
+
+# Cliquer sur '''Nouveau véhicule ou engin'''.
+# Renseigner un '''Libellé''' explicite et l'immatriculation si le matériel en possède une.
+# Choisir le '''Type principal de matériel''', puis compléter les caractéristiques connues : catégorie, genre, masses, nombre de places, territoire, numéro de série, marque et modèle.
+# Choisir l'énergie et renseigner l'autonomie lorsqu'elle est connue.
+# Compléter les dates de construction, première immatriculation et mise en service selon les informations disponibles.
+# Choisir le mode de détention et le propriétaire. La liaison à une ressource Dolibarr est facultative.
+# Compléter la description et cliquer sur '''Enregistrer''' en bas du formulaire.
+
+La fiche est créée en brouillon. La référence suit le modèle de numérotation configuré ; il n'est pas nécessaire de fabriquer un identifiant manuellement. Compléter ensuite les capacités des consommables utiles au véhicule depuis sa fiche en modification.
+
+[[File:LMDBVehicleManagement-1.0.0-03-creation.jpg|thumb|center|1100px|Partie supérieure du formulaire de création : identification, caractéristiques techniques et dates.]]
+
+=== Lire la fiche et son état ===
+
+La fiche présente la référence, le libellé et un badge d'état, puis les caractéristiques techniques et la couverture d'assurance disponible. Les onglets donnent accès aux notes, documents, événements, affectations, kilométrages, consommations, contrôles et historique selon les droits.
+
+[[File:LMDBVehicleManagement-1.0.0-02-fiche.jpg|thumb|center|1100px|Extrait de la fiche d'un véhicule en service : caractéristiques, capacités et résumé d'assurance.]]
+
+{| class="wikitable"
+! État !! Utilisation
+|-
+| Brouillon || Préparer et vérifier la fiche avant validation.
+|-
+| Validé || Véhicule identifié et validé, avant sa mise en service.
+|-
+| En service || Matériel utilisé dans le parc.
+|-
+| Hors service || Matériel retiré de l'exploitation.
+|-
+| Cédé / vendu || Matériel sorti du parc à la suite d'une cession.
+|}
+
+Utiliser les actions proposées sur la fiche, notamment '''Valider''', '''Mettre en service''', '''Mettre hors service''' ou '''Céder / vendre''', selon l'état courant et les permissions. Les règles réglementaires peuvent empêcher une mise en service. Une sortie de parc doit être enregistrée par le changement d'état approprié afin de conserver son historique ; la suppression répond à un autre besoin.
+
+== Notice — utilisation quotidienne ==
+
+=== Affecter un conducteur ===
+
+# Ouvrir l'onglet '''Affectations''' du véhicule.
+# Cliquer sur '''Ajouter une affectation'''.
+# Sélectionner le conducteur et renseigner la date et l'heure de début.
+# Renseigner une fin lorsqu'elle est connue, puis le type d'affectation.
+# Préciser s'il s'agit de l'affectation principale, choisir son état et compléter le motif utile.
+# Cliquer sur '''Enregistrer'''.
+
+Plusieurs affectations peuvent coexister, mais une seule peut être principale sur une même période. Pour terminer une affectation, ouvrir sa modification avec le crayon et renseigner sa fin et son état. Vérifier le résultat dans le tableau.
+
+[[File:LMDBVehicleManagement-1.0.0-04-affectations.jpg|thumb|center|1100px|Liste des affectations : conducteur, période, type, caractère principal et état.]]
+
+=== Ajouter ou corriger un relevé kilométrique ===
+
+# Ouvrir l'onglet '''Kilométrage''' et cliquer sur '''Ajouter un relevé'''.
+# Renseigner la date du relevé et la valeur constatée au compteur.
+# Choisir la nature du relevé. Pour une correction ou un remplacement de compteur, compléter le motif correspondant.
+# Enregistrer, puis vérifier l'ordre chronologique et la différence avec les autres relevés.
+
+'''Un relevé créé par un plein ou une recharge se corrige depuis la fiche de cette consommation.''' L'icône d'information de la ligne le rappelle. Éviter d'ajouter un second relevé manuel pour corriger la même opération.
+
+[[File:LMDBVehicleManagement-1.0.0-05-kilometrage.jpg|thumb|center|1100px|Relevés kilométriques avec date, différence et source. Les lignes issues des consommations sont gérées depuis leur fiche d'origine.]]
+
+=== Enregistrer un plein, une recharge ou un additif ===
+
+# Cliquer sur '''Nouveau plein / recharge''' dans le menu latéral.
+# Renseigner la date et l'heure, puis sélectionner le véhicule.
+# Choisir la '''Nature''' et le carburant, la recharge ou l'additif correspondant. Compléter la référence d'huile lorsqu'elle est demandée.
+# Vérifier le conducteur, saisir la quantité dans l'unité proposée et le kilométrage du compteur.
+# Saisir le '''Total TTC'''. Pour un additif dont le prix est inconnu, laisser le montant vide ; zéro signifie un prix connu égal à zéro.
+# Choisir le projet si nécessaire. Lorsque les opérations diverses sont actives, vérifier le règlement et joindre le ticket PDF, JPEG ou PNG.
+# Conserver un relevé standard pour une saisie ordinaire ; justifier une correction ou un remplacement de compteur si c'est le cas.
+# Cliquer sur '''Enregistrer''' et vérifier la fiche obtenue.
+
+Un avertissement de dépassement de capacité invite à vérifier la quantité, l'unité, le véhicule et sa capacité configurée. Les champs financiers et le ticket ne sont plus librement modifiables après rapprochement bancaire ou transfert comptable.
+
+[[File:LMDBVehicleManagement-1.0.0-06-plein.jpg|thumb|center|1100px|Formulaire de plein ou recharge avec ticket de caisse et règlement, lorsque les opérations diverses sont activées.]]
+
+=== Consulter les consommations et statistiques ===
+
+# Cliquer sur '''Consommation''' pour ouvrir la synthèse globale, ou sur l'onglet '''Consommation''' d'un véhicule pour son suivi individuel.
+# Définir la période et, selon le besoin, filtrer par véhicule, conducteur, consommable ou nature.
+# Lancer la recherche avec la loupe.
+# Lire les passages, quantités, coûts, moyennes et pics par consommable et unité.
+# Consulter les courbes puis ouvrir '''Liste des pleins / recharges''' pour retrouver les saisies à l'origine d'une valeur.
+
+Les unités restent distinctes : litres, kWh et kilogrammes ne s'additionnent pas. La colonne '''Intervalles exclus''' aide à repérer les intervalles non retenus dans les calculs. Les données de démonstration peuvent produire des pics volontairement atypiques ; elles n'illustrent pas la consommation normale du véhicule.
+
+[[File:LMDBVehicleManagement-1.0.0-07-synthese.jpg|thumb|center|1100px|Synthèse filtrable et premiers graphiques : les valeurs affichées proviennent d'un jeu de données de test.]]
+
+=== Enregistrer une intervention, une panne ou un incident ===
+
+# Depuis la fiche du véhicule, cliquer sur '''Nouvel événement véhicule'''.
+# Renseigner le libellé, le type d'événement, sa date et les informations utiles sur le conducteur et le tiers intervenant.
+# Préciser la gravité, le kilométrage et, si nécessaire, l'immobilisation et sa période.
+# Décrire l'intervention puis enregistrer.
+# Ajouter les justificatifs dans les fichiers joints de l'événement.
+
+Le menu '''Événements véhicule''' permet de retrouver les interventions de l'ensemble du parc. L'historique du véhicule les regroupe avec ses autres opérations.
+
+=== Associer la facture d'une intervention ===
+
+Sur la fiche de l'événement ou du contrôle, deux parcours sont disponibles :
+
+* '''Créer une facture fournisseur''' ouvre le formulaire natif. Vérifier le fournisseur, compléter la facture puis enregistrer : le brouillon est lié à l'intervention.
+* '''Lier une facture fournisseur existante''' permet de sélectionner une facture puis de cliquer sur '''Lier'''.
+
+Vérifier ensuite la ligne dans '''Objets liés'''. Le lien de référence ouvre la facture. L'action de déliaison retire seulement l'association ; elle ne supprime ni la facture ni l'intervention.
+
+[[File:LMDBVehicleManagement-1.0.0-13-intervention-facture.jpg|thumb|center|1100px|Fiche d'entretien et actions de création ou de liaison d'une facture fournisseur ; la relation existante apparaît dans Objets liés.]]
+
+== Notice — assurances et attestations ==
+
+=== Créer un contrat et couvrir des véhicules ===
+
+# Cliquer sur '''Nouveau contrat''' dans la rubrique '''Contrats d'assurance'''.
+# Sélectionner l'assureur, puis le contact ou courtier si nécessaire.
+# Renseigner le numéro de police, le libellé, les garanties et la période du contrat.
+# Préciser le renouvellement et la date de préavis connue. Ajouter les coordonnées d'assistance utiles.
+# Sélectionner le ou les véhicules couverts, le type de couverture et sa période.
+# Cliquer sur '''Enregistrer''', puis vérifier les véhicules rattachés dans la fiche du contrat.
+
+Une couverture peut être principale ou complémentaire. Un contrat de flotte permet de regrouper plusieurs véhicules dans la même police.
+
+[[File:LMDBVehicleManagement-1.0.0-18-creation-assurance.jpg|thumb|center|1100px|Extrait du formulaire de contrat : assureur, police, période et rattachement des véhicules.]]
+
+[[File:LMDBVehicleManagement-1.0.0-11-assurance.jpg|thumb|center|1100px|Contrat d'assurance enregistré et véhicule couvert, avec type et période de couverture.]]
+
+=== Déposer et faire contrôler une attestation ===
+
+# Ouvrir le contrat depuis '''Liste des contrats'''.
+# Choisir l'onglet '''Attestations d'assurance'''.
+# Dans '''Nouvelle attestation d'assurance''', choisir la portée : flotte couverte ou véhicule concerné selon les choix proposés.
+# Renseigner la période et sélectionner le justificatif.
+# Cliquer sur '''Enregistrer le brouillon''' pour poursuivre la préparation, ou '''Soumettre au contrôle''' lorsque le dossier est prêt.
+# L'utilisateur habilité vérifie le justificatif et sa période, puis valide l'attestation ou la rejette avec un motif.
+# Lors d'un renouvellement, enregistrer la nouvelle attestation et utiliser l'archivage prévu pour conserver la traçabilité de l'ancienne.
+
+Le tableau affiche la portée, les dates, le justificatif téléchargeable et l'état. Un brouillon ne remplace pas une attestation contrôlée et validée.
+
+[[File:LMDBVehicleManagement-1.0.0-12-attestations.jpg|thumb|center|1100px|Attestation validée et formulaire de dépôt : enregistrement provisoire et soumission au contrôle sont deux actions distinctes.]]
+
+== Notice — contrôles réglementaires ==
+
+=== Qualifier le véhicule ===
+
+# Ouvrir l'onglet '''Contrôles réglementaires''' de la fiche véhicule.
+# Lire chaque question de '''Qualification réglementaire''' et sélectionner la réponse correspondant à l'usage réel.
+# Renseigner les dates d'applicabilité lorsqu'elles sont nécessaires.
+# Cliquer sur '''Enregistrer la qualification'''.
+# Examiner les '''Exigences réglementaires''' calculées : qualification, dernier contrôle, date calculée, date retenue et état.
+
+Pour un équipement de levage, l'intervalle de VGP doit être choisi après qualification technique. Le formulaire ne doit pas servir à deviner une périodicité. Une information manquante doit être complétée à partir des documents du matériel.
+
+[[File:LMDBVehicleManagement-1.0.0-09-qualification.jpg|thumb|center|1100px|Extrait du questionnaire de qualification, à compléter selon les caractéristiques et l'usage du matériel.]]
+
+=== Lire l'échéancier ===
+
+# Ouvrir '''Échéancier des contrôles''' dans le menu latéral.
+# Filtrer la période, le véhicule, le type de matériel, le profil, le contrôle ou l'état.
+# Trier les échéances par '''Date retenue''' pour préparer les interventions.
+# Ouvrir le véhicule concerné pour retrouver le détail de l'exigence.
+
+Les badges permettent de distinguer notamment une exigence '''À jour''' d'une exigence '''Échue'''. La date retenue est celle utilisée pour le suivi de l'exigence ; elle doit être lue avec la qualification et les documents correspondants.
+
+[[File:LMDBVehicleManagement-1.0.0-08-echeancier.jpg|thumb|center|1100px|Échéancier du parc de démonstration, avec dates retenues et états des exigences.]]
+
+=== Enregistrer et valider un contrôle ===
+
+# Depuis l'exigence du véhicule, cliquer sur '''Enregistrer un contrôle''' pour reprendre le véhicule et l'exigence. Le menu '''Nouveau contrôle''' permet aussi une création directe.
+# Vérifier le véhicule, l'exigence et la nature du contrôle.
+# Renseigner la date, l'organisme, la référence du procès-verbal et le résultat.
+# Saisir la date de validité officielle. Si une autre date effective est retenue, renseigner son motif.
+# Compléter les observations et cliquer sur '''Enregistrer'''.
+# Sur le contrôle en brouillon, joindre le justificatif obligatoire puis vérifier les informations avant validation.
+# Après validation, consulter l'exigence et son échéance actualisée.
+
+[[File:LMDBVehicleManagement-1.0.0-10-controle.jpg|thumb|center|1100px|Création d'un contrôle depuis une exigence : organisme, résultat, référence du procès-verbal et dates.]]
+
+Un contrôle validé est immuable. Pour corriger une erreur, utiliser l'annulation motivée et le remplacement prévus par le module. Pour une contre-visite, conserver le lien avec le contrôle concerné. Une facture peut être liée ou déliée sans réécrire les données réglementaires validées.
+
+== Notice — documents et historique ==
+
+=== Conserver les pièces et les notes ===
+
+Utiliser l'onglet '''Notes''' pour les informations publiques ou privées selon les droits, et les fichiers joints de l'objet concerné pour ses pièces. Un rapport d'intervention appartient à l'événement ; un justificatif de contrôle appartient au contrôle. Ce rattachement permet de les retrouver ensuite dans le dossier du véhicule.
+
+Les actions d'ajout, aperçu, téléchargement et suppression suivent les permissions de l'objet et les fonctionnalités disponibles dans la version de Dolibarr. Un droit de lecture n'autorise pas la modification des documents.
+
+=== Générer et lire le dossier véhicule ===
+
+# Ouvrir la '''fiche principale''' du véhicule et descendre au bloc '''Fichiers joints'''.
+# Sélectionner '''Dossier véhicule''' dans '''Modèle de document'''.
 # Cliquer sur '''Générer'''.
-# Consulter le PDF ou télécharger le ZIP depuis la liste des fichiers.
+# Après génération, vérifier la présence du PDF et du ZIP dans le bloc.
+# Cliquer sur la loupe du PDF pour l'aperçu, sur son nom pour le télécharger ou sur le ZIP pour récupérer l'archive documentaire.
 
-Pour actualiser un dossier, relancer la génération. Les fichiers réservés au dossier ne doivent pas être remplacés par un téléversement manuel. En cas d'échec de génération, le dossier précédent est restauré.
+[[File:LMDBVehicleManagement-1.0.0-14-dossier.jpg|thumb|center|754px|Bloc documentaire de la fiche : sélection du modèle, génération, aperçu du PDF et téléchargement de l'archive.]]
+
+[[File:LMDBVehicleManagement-1.0.0-19-apercu-pdf.jpg|thumb|center|793px|Extrait de la première page d'un dossier PDF existant : identification et caractéristiques du véhicule.]]
+
+Pour actualiser le dossier, relancer '''Générer'''. Les fichiers réservés au dossier ne doivent pas être remplacés manuellement. Les justificatifs des consommations et de leurs opérations diverses ne sont pas inclus dans l'archive. Les droits de lecture du véhicule et des factures fournisseurs restent requis pour consulter le dossier.
+
+=== Retrouver une opération dans l'historique ===
+
+# Ouvrir l'onglet '''Historique''' du véhicule.
+# Filtrer par période, source, type, libellé ou état selon le besoin.
+# Cliquer sur l'en-tête de la colonne Date pour trier ou sur le libellé d'une opération pour ouvrir sa fiche d'origine.
+# Consulter l'indication documentaire lorsqu'une pièce est associée.
+
+L'onglet '''Événements/Agenda''' présente les événements Agenda liés à l'objet. L'onglet '''Historique''' rassemble la chronologie métier disponible. Les deux vues répondent à des usages complémentaires.
+
+[[File:LMDBVehicleManagement-1.0.0-17-historique.jpg|thumb|center|1100px|Chronologie consolidée : interventions, relevés, consommations, assurances et affectations.]]
+
+=== Importer ou exporter ===
+
+Utiliser les fonctions d'import/export natives de Dolibarr avec les jeux de données du module et les droits correspondants. Préparer le CSV à partir des champs attendus par l'import, vérifier les références et l'entité, puis contrôler le résultat après traitement. Les contrôles réglementaires importés sont créés en brouillon.
+
+L'import des consommations est refusé lorsque la création d'opérations diverses est active. Un prix d'additif absent doit rester une cellule vide ; un zéro doit être conservé comme zéro.
+
+== Questions fréquentes ==
+
+{| class="wikitable"
+! Situation !! Vérification ou action
+|-
+| Un bouton n'apparaît pas || Vérifier les droits, l'état de l'objet et les dépendances dans Compatibilité.
+|-
+| Le dossier ne peut pas être généré || Vérifier l'activation du modèle, Factures fournisseurs, l'extension PHP ZIP et les droits sur le véhicule et les factures.
+|-
+| Le kilométrage d'une ligne ne peut pas être modifié || Si la source est une consommation, ouvrir et corriger le plein ou la recharge d'origine.
+|-
+| Une attestation n'est pas considérée comme validée || Vérifier son état, sa portée, sa période et son justificatif ; un brouillon doit encore être soumis au contrôle.
+|-
+| Une échéance manque || Vérifier les caractéristiques, les réponses de qualification et les dates nécessaires au calcul.
+|-
+| Les relances ne partent pas || Vérifier l'activation des rappels, les destinataires, les modèles d'emails, l'envoi d'emails Dolibarr et le dernier résultat des travaux planifiés.
+|-
+| Une dépense ne peut plus être corrigée || Vérifier son rapprochement bancaire ou son transfert comptable avant toute correction dans le parcours financier natif.
+|-
+| Des données d'une autre entité apparaissent || Vérifier la colonne Environnement et les partages autorisés dans Multicompany.
+|}
 
 == Mise à jour ==
 

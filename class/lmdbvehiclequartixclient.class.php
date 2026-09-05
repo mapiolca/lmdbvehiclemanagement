@@ -95,6 +95,7 @@ class LmdbVehicleQuartixClient
 			throw new RuntimeException('QxRateLimited');
 		}
 		if (in_array($response['status'], array(401, 403), true)) throw new RuntimeException('QxAuthenticationFailed');
+		if ($response['status'] === 422) throw new RuntimeException('QxRequestRejected');
 		if ($response['status'] !== 200) throw new RuntimeException('QxRemoteError');
 		$data = json_decode($response['body'], true);
 		if (!is_array($data) || !array_key_exists('Data', $data) || !isset($data['Meta']) || !is_array($data['Meta']) || !isset($data['Meta']['Code']) || !in_array($data['Meta']['Code'], array(0, 200), true)) throw new RuntimeException('QxInvalidResponse');
@@ -138,7 +139,7 @@ class LmdbVehicleQuartixClient
 	}
 
 	/**
-	 * Only this boundary is substituted in transport tests. Fixed host, no redirects,
+	 * Build and execute requests; HTTPS protocol tests keep this method intact. Fixed host, no redirects,
 	 * verified TLS, bounded response and timeouts; no cookies or verbose cURL output.
 	 * @param string $method GET/POST @param string $path Endpoint @param array<string,int|string> $values Parameters @param string $token Token
 	 * @return array{status:int,body:string,retry:int}
@@ -146,18 +147,28 @@ class LmdbVehicleQuartixClient
 	protected function request($method, $path, $values, $token)
 	{
 		if (!LmdbVehicleQuartixConfig::supported()) throw new RuntimeException('QxRequiresCrypto');
+		// Send auth fields as one JSON object, including during token renewal.
+		$payload = null;
+		if ($method === 'POST') {
+			$payload = json_encode($values, JSON_UNESCAPED_SLASHES);
+			if ($payload === false) throw new RuntimeException('QxInvalidSettings');
+		}
 		$url = self::BASE.$path.($method === 'GET' && $values ? '?'.http_build_query($values, '', '&', PHP_QUERY_RFC3986) : '');
-		$curl = curl_init($url);
+		$curl = $this->createCurlHandle($url);
 		if ($curl === false) throw new RuntimeException('QxNetworkError');
 		$body = '';
 		$retry = 900;
 		$options = array(CURLOPT_FOLLOWLOCATION => false, CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
 			CURLOPT_CONNECTTIMEOUT => max(1, min(15, getDolGlobalInt('MAIN_USE_CONNECT_TIMEOUT', 5))), CURLOPT_TIMEOUT => 30,
-			CURLOPT_HTTPHEADER => array('Accept: application/json', 'Content-Type: application/x-www-form-urlencoded'), CURLOPT_VERBOSE => false,
+			CURLOPT_HTTPHEADER => array('Accept: application/json'), CURLOPT_VERBOSE => false,
 			CURLOPT_WRITEFUNCTION => static function ($handle, $chunk) use (&$body) { if (strlen($body) + strlen($chunk) > 8388608) return 0; $body .= $chunk; return strlen($chunk); },
 			CURLOPT_HEADERFUNCTION => static function ($handle, $line) use (&$retry) { if (stripos($line, 'Retry-After:') === 0) { $value = trim(substr($line, 12)); $retry = ctype_digit($value) ? (int) $value : max(60, (int) strtotime($value) - time()); } return strlen($line); });
 		if ($token !== '') $options[CURLOPT_HTTPHEADER][] = 'AccessToken: '.$token;
-		if ($method === 'POST') { $options[CURLOPT_POST] = true; $options[CURLOPT_POSTFIELDS] = http_build_query($values, '', '&', PHP_QUERY_RFC3986); }
+		if ($method === 'POST') {
+			$options[CURLOPT_HTTPHEADER][] = 'Content-Type: application/json';
+			$options[CURLOPT_POST] = true;
+			$options[CURLOPT_POSTFIELDS] = $payload;
+		}
 		if (getDolGlobalInt('MAIN_PROXY_USE')) {
 			$options[CURLOPT_PROXY] = getDolGlobalString('MAIN_PROXY_HOST');
 			$options[CURLOPT_PROXYPORT] = getDolGlobalInt('MAIN_PROXY_PORT');
@@ -168,8 +179,18 @@ class LmdbVehicleQuartixClient
 		$status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
 		$this->lastHttpStatus = $status;
 		$this->lastCurlError = curl_errno($curl);
-		curl_close($curl);
+		unset($curl); // PHP 8 uses CurlHandle objects; curl_close() has no effect.
 		if ($result === false) throw new RuntimeException('QxNetworkError');
 		return array('status' => $status, 'body' => $body, 'retry' => $retry);
+	}
+
+	/**
+	 * Local HTTPS tests override connection routing and CA trust on this handle only.
+	 * Production keeps the fixed QWS URL and the verified TLS options above.
+	 * @param string $url Fixed QWS URL @return CurlHandle|false
+	 */
+	protected function createCurlHandle($url)
+	{
+		return curl_init($url);
 	}
 }

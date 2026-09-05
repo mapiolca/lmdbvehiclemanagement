@@ -1,6 +1,6 @@
 # Intégration QUARTIX QWS v2
 
-Cette évolution de développement complète la version 1.0.0, sans publier de nouvelle version. Elle utilise le contrat du document **QWS V2.pdf** fourni pour cette intégration.
+Cette évolution de développement complète la version 1.0.0, sans publier de nouvelle version. Elle utilise le contrat du document **QWS V2.pdf** fourni pour cette intégration, avec l'adaptation du format d'authentification décrite ci-dessous.
 
 ## Mise en service
 
@@ -59,9 +59,17 @@ Les positions/kilométrages utilisent des requêtes QWS groupées ; les synthès
 Les périodes d'utilisation et leurs curseurs sont enregistrés dans une même transaction. Une erreur sur un véhicule n'annule pas les autres.
 Les erreurs visibles et les logs emploient des codes contrôlés, sans réponse API brute, secret ou coordonnées GPS.
 Un test de connexion en échec précise maintenant l'endpoint concerné (/auth, /auth/refresh ou /vehicles) et le statut HTTP reçu ; une erreur de transport fournit son numéro cURL lorsqu'il est disponible. Ces seules métadonnées sont également journalisées. Aucun corps de réponse, paramètre, en-tête d'authentification ou message réseau brut n'est enregistré.
-Le message « erreur de service » seul ne permet pas de conclure que le mot de passe est incorrect : il peut correspondre à une redirection, une requête refusée ou une indisponibilité distante. Après déploiement du diagnostic, relancer le test et relever l'étape et le statut affichés avant de modifier la configuration.
+Le message « erreur de service » seul ne permet pas de conclure que le mot de passe est incorrect : il peut correspondre à une redirection, une requête refusée ou une indisponibilité distante. Le statut 422 est distingué comme un refus du contenu de la requête. Il interrompt le lot sans avancer le curseur et applique le délai de reprise ; aucun nouvel encodage n'est essayé automatiquement.
 Les quotas 429 et Retry-After suspendent les appels de l'environnement, y compris les tests manuels de connexion.
 Les erreurs d'authentification/réseau des tâches utilisent un délai de reprise ; un 401 provoque un renouvellement de jeton, puis une nouvelle authentification si le jeton de renouvellement est refusé.
+
+## Format des requêtes d'authentification
+
+Les POST `/auth` et `/auth/refresh` transmettent désormais un objet JSON avec `Content-Type: application/json`. Les noms des champs restent `CustomerID`, `UserName`, `Password`, `Application` et, pour le renouvellement, `RefreshToken`. Les GET conservent leurs paramètres d'URL et l'en-tête `AccessToken` ; les secrets ne passent jamais dans l'URL.
+
+Le PDF historique décrit les paramètres en `formData`. Après le refus HTTP 422 observé sur `/auth` avec cet encodage, le choix JSON s'appuie sur un [exemple QWS publié le 7 juillet 2026 par son auteur comme fonctionnel](https://community.fabric.microsoft.com/t5/Power-Query/Convert-Dynamic-Data-source/td-p/5276109). Cet exemple d'intégration n'est pas une spécification officielle QUARTIX ; la réussite avec le compte concerné reste à confirmer après déploiement.
+
+Pour une installation QUARTIX déjà initialisée, ce correctif ne nécessite ni migration, ni réactivation, ni nouvelle saisie du mot de passe. Déployer les fichiers modifiés puis relancer **Tester la connexion et charger les véhicules**. Si le refus persiste, conserver l'étape et le statut affichés pour le diagnostic, sans transmettre les identifiants ou les réponses API brutes.
 
 ## Sécurité et compatibilité
 
@@ -83,13 +91,21 @@ La suite utilise les vrais objets Dolibarr et une base SQLite en mémoire avec a
 Elle couvre le chiffrement natif, les erreurs API, les renouvellements, les quotas, les dates et unités ambiguës, les conflits kilométriques, les relevés de consommation, les rejouements, le rollback, deux entités, les véhicules partagés, les droits GPS, la reprise des tâches, la rétention et la migration additive.
 Les appels réseau sont simulés. Cette suite ne constitue pas un test du moteur MySQL, de l'authentification réelle QWS ou du navigateur.
 
+Pour vérifier aussi le contenu réellement envoyé par cURL (Python 3 et OpenSSL en ligne de commande requis) :
+
+    python3 test/run_quartix_transport.py /chemin/vers/dolibarr/htdocs
+
+Les options `--php` et `--openssl` permettent de choisir les exécutables. Le script relance la suite QUARTIX puis démarre une fixture HTTPS sur l'interface locale avec un certificat temporaire supprimé en fin de test. Le nom d'hôte et la vérification TLS du client restent actifs ; seuls le routage vers localhost et la confiance dans le certificat de test sont adaptés dans une sous-classe de test.
+Il vérifie les POST JSON d'authentification et de renouvellement après un 401, les espaces, accents et caractères spéciaux, les GET et les en-têtes, ainsi que le refus d'un JSON impossible à encoder avant toute connexion. Aucun compte réel ni accès réseau à QUARTIX n'est utilisé. Le test valide la sérialisation du client, pas l'acceptation par le service QUARTIX.
+
 ### Résultats locaux du 5 septembre 2026
 
 Contrôles exécutés avec PHP 8.5.7, le core Dolibarr 20.0.4 et le checkout de développement 25.0.0-alpha lorsque la suite charge le core :
 
 | Suite | Résultat |
 |---|---|
-| QUARTIX | 86 contrôles initiaux réussis sur chacun des deux cores ; 119 contrôles réussis sur le core 25.0.0-alpha après ajout du diagnostic HTTP ; chiffrement, transport simulé, stockage, reprises, droits, rendu GPS et graphiques natifs inclus |
+| QUARTIX | 86 contrôles initiaux réussis sur chacun des deux cores ; 127 contrôles réussis sur le core 25.0.0-alpha avec diagnostic HTTP et refus 422 ; chiffrement, transport simulé, stockage, reprises, droits, rendu GPS et graphiques natifs inclus |
+| Transport QUARTIX HTTPS local | 4 contrôles supplémentaires et 4 requêtes HTTPS vérifiés avec le vrai cURL : authentification JSON, lecture expirée, renouvellement JSON et lecture réussie ; données fictives uniquement |
 | Règles métier | 50 contrôles réussis |
 | Contrats Agenda | 400 contrôles réussis |
 | Contrats d'interface | 158 contrôles réussis |

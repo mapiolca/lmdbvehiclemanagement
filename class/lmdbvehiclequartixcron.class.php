@@ -89,7 +89,7 @@ class LmdbVehicleQuartixCron
 				} catch (Exception $e) {
 					$failed++; $this->error = self::safeError($e);
 					dol_syslog('QUARTIX entity='.$entity.' job='.$kind.' vehicle='.((int) $link->fk_vehicle).' error='.$this->error, LOG_ERR);
-					if (in_array($this->error, array('QxRateLimited', 'QxAuthenticationFailed', 'QxNetworkError', 'QxRemoteError'), true)) throw $e;
+					if (in_array($this->error, array('QxRateLimited', 'QxAuthenticationFailed', 'QxNetworkError', 'QxRemoteError', 'QxRequestRejected'), true)) throw $e;
 				}
 				$lastVehicle = (int) $link->rowid;
 			}
@@ -102,7 +102,7 @@ class LmdbVehicleQuartixCron
 			if ($client !== null) $this->output .= ' '.$client->getDiagnosticMessage($langs);
 			if ($locked) {
 				$delay = $client !== null && $client->retryAfter ? $client->retryAfter : 900;
-				$retry = in_array($this->error, array('QxRateLimited', 'QxAuthenticationFailed', 'QxNetworkError', 'QxRemoteError'), true) ? "'".$this->db->idate(dol_now() + $delay)."'" : 'NULL';
+				$retry = in_array($this->error, array('QxRateLimited', 'QxAuthenticationFailed', 'QxNetworkError', 'QxRemoteError', 'QxRequestRejected'), true) ? "'".$this->db->idate(dol_now() + $delay)."'" : 'NULL';
 				$this->db->query('UPDATE '.MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job SET last_vehicle=".$lastVehicle.",last_error='".$this->db->escape($this->error)."',retry_at=".$retry." WHERE entity=".$entity." AND job_kind='".$kind."'");
 			}
 			dol_syslog('QUARTIX entity='.$entity.' job='.$kind.' error='.$this->error, LOG_ERR);
@@ -113,7 +113,7 @@ class LmdbVehicleQuartixCron
 	/** @param Exception $e Exception @return string Stable non-sensitive code */
 	public static function safeError($e)
 	{
-		$allowed = array('QxDatabaseError', 'QxAccessDenied', 'QxInvalidSettings', 'QxAccountInUse', 'QxMappingExists', 'QxInvalidResponse', 'QxTimeUnconfirmed', 'QxAmbiguousTime', 'QxInvalidPeriod', 'QxRequiresCrypto', 'QxNetworkError', 'QxRateLimited', 'QxAuthenticationFailed', 'QxRemoteError', 'QxNoVehicleData', 'QxBusy');
+		$allowed = array('QxDatabaseError', 'QxAccessDenied', 'QxInvalidSettings', 'QxAccountInUse', 'QxMappingExists', 'QxInvalidResponse', 'QxTimeUnconfirmed', 'QxAmbiguousTime', 'QxInvalidPeriod', 'QxRequiresCrypto', 'QxNetworkError', 'QxRateLimited', 'QxAuthenticationFailed', 'QxRemoteError', 'QxRequestRejected', 'QxNoVehicleData', 'QxBusy');
 		return in_array($e->getMessage(), $allowed, true) ? $e->getMessage() : 'QxInvalidResponse';
 	}
 

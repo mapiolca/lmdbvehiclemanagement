@@ -1066,6 +1066,7 @@ QxNetworkError=QUARTIX is temporarily unavailable. Another attempt will be possi
 QxRateLimited=The QUARTIX quota was reached or a retry delay is active.
 QxAuthenticationFailed=QUARTIX rejected authentication. Check the account credentials and permissions.
 QxRemoteError=QUARTIX returned a service error.
+QxRequestRejected=QUARTIX rejected the request content (HTTP 422). Check the QWS account settings if the rejection persists.
 QxHttpDiagnostic=Step %s: HTTP response %s.
 QxNetworkDiagnostic=Step %s: cURL network error %s.
 QxNoVehicleData=QUARTIX did not provide data for an associated vehicle.

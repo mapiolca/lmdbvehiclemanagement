@@ -211,6 +211,12 @@ $authFailure->responses = array(qxResponse(null, 415));
 qxReject(static function () use ($authFailure) { $authFailure->get('/vehicles'); }, 'QxRemoteError');
 qxCheck($authFailure->getDiagnostic()['endpoint'] === '/auth' && count($authFailure->calls) === 1, 'Authentication failure is distinguished from catalogue failure');
 qxCheck((int) $db->pdo->query('SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_token WHERE entity=2')->fetchColumn() === 0, 'Failed authentication creates no tokens');
+$authFailure->responses = array(array('status' => 422, 'body' => 'sensitive-validation-body', 'retry' => 0));
+qxReject(static function () use ($authFailure) { $authFailure->get('/vehicles'); }, 'QxRequestRejected');
+qxCheck($authFailure->getDiagnostic() === array('endpoint' => '/auth', 'http_status' => 422, 'curl_error' => 0) && count($authFailure->calls) === 2, '422 stops at auth without trying another encoding or reading vehicles');
+qxCheck(LmdbVehicleQuartixCron::safeError(new RuntimeException('QxRequestRejected')) === 'QxRequestRejected'
+	&& strpos($authFailure->getDiagnosticMessage($langs), 'sensitive') === false, 'Validation refusal remains a safe, distinct error');
+qxCheck((int) $db->pdo->query('SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_token WHERE entity=2')->fetchColumn() === 0, '422 never stores tokens');
 $conf->entity = 2;
 qxReject(static function () use ($db) { new QxTestClient($db, 1); }, 'QxAccessDenied');
 $conf->entity = 1;
@@ -327,6 +333,21 @@ $cron->client->responses = array(qxResponse(null, 429, 180));
 qxCheck($cron->positions() < 0 && $cron->error === 'QxRateLimited', 'Cron returns quota error');
 $requestCount = count($cron->client->calls);
 qxCheck($cron->usage() === 0 && count($cron->client->calls) === $requestCount, 'Other workers honor entity-wide cooldown');
+
+// Validation failures abort the batch before the next vehicle and preserve the cursor.
+$db->query('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_job SET retry_at=NULL WHERE entity=1');
+$db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_vehicle (rowid,entity,ref,label,fk_user_creat,date_creation) VALUES (3,1,'QX-C','Vehicle C',1,'2026-01-01')");
+$db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_link (entity,fk_vehicle,remote_id,timezone,shift_start,date_creation,fk_user_creat) VALUES (1,3,20,'Europe/Paris','08:00:00','2026-01-01',1)");
+$db->query("UPDATE ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job SET last_vehicle=0 WHERE entity=1 AND job_kind='usage'");
+$cursorBefore = $service->link(1)->usage_cursor;
+$cron->client->responses = array(qxResponse(null, 422));
+qxCheck($cron->usage() < 0 && $cron->error === 'QxRequestRejected', 'Cron reports validation failure distinctly');
+$jobState = $db->pdo->query("SELECT * FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job WHERE entity=1 AND job_kind='usage'")->fetch(PDO::FETCH_OBJ);
+qxCheck(count($cron->client->calls) === $requestCount + 1 && $jobState->last_vehicle == 0 && $service->link(1)->usage_cursor === $cursorBefore, '422 aborts the batch without advancing progress');
+qxCheck($db->jdate($jobState->retry_at) > dol_now() && strpos($cron->output, '422') !== false && !$db->locked, '422 schedules a cooldown, reports status and releases lock');
+qxCheck($cron->positions() === 0 && count($cron->client->calls) === $requestCount + 1, 'Other workers honor the validation cooldown');
+$db->query('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link WHERE entity=1 AND fk_vehicle=3');
+$db->query('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle WHERE entity=1 AND rowid=3');
 
 // Configuration uses native per-entity constants and never persists a plaintext secret.
 $configuration = new LmdbVehicleQuartixConfig($db);

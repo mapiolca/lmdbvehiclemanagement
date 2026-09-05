@@ -1066,6 +1066,7 @@ QxNetworkError=QUARTIX est momentanément inaccessible. Une nouvelle tentative s
 QxRateLimited=Le quota QUARTIX est atteint ou un délai de reprise est en cours.
 QxAuthenticationFailed=QUARTIX a refusé l’authentification. Vérifiez les identifiants et les autorisations du compte.
 QxRemoteError=QUARTIX a renvoyé une erreur de service.
+QxRequestRejected=QUARTIX a refusé le contenu de la requête (HTTP 422). Vérifiez les paramètres du compte QWS si le refus persiste.
 QxHttpDiagnostic=Étape %s : réponse HTTP %s.
 QxNetworkDiagnostic=Étape %s : erreur réseau cURL %s.
 QxNoVehicleData=QUARTIX n’a pas fourni de donnée pour un véhicule associé.
