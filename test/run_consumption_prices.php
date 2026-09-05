@@ -26,6 +26,8 @@ $conf = (object) array(
 	'lmdbvehiclemanagement' => (object) array('dir_temp' => __DIR__.'/price-graph-test-'.getmypid()),
 );
 require_once DOL_DOCUMENT_ROOT.'/core/lib/functions.lib.php';
+// v25 development split HTML helpers out of functions.lib.php.
+if (is_file(DOL_DOCUMENT_ROOT.'/core/lib/html.lib.php')) require_once DOL_DOCUMENT_ROOT.'/core/lib/html.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/translate.class.php';
 require_once DOL_DOCUMENT_ROOT.'/user/class/user.class.php';
 $langs = new Translate(DOL_DOCUMENT_ROOT, $conf);

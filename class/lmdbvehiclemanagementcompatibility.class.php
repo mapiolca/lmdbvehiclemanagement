@@ -21,10 +21,31 @@ class LmdbVehicleManagementCompatibility
 	 */
 	public static function getCompatibilityFeatures()
 	{
+		require_once __DIR__.'/lmdbvehiclequartixconfig.class.php';
 		$dolibarr20 = version_compare(DOL_VERSION, '20.0.0', '>=');
 		$php80 = version_compare(PHP_VERSION, '8.0.0', '>=');
 
 		return array(
+			'quartix' => array(
+				'label' => 'QxTitle', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
+				'available' => LmdbVehicleQuartixConfig::unavailableReason('connection') === '',
+				'reason' => LmdbVehicleQuartixConfig::unavailableReason('connection'),
+			),
+			'quartix_jobs' => array(
+				'label' => 'QxJobs', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
+				'available' => LmdbVehicleQuartixConfig::unavailableReason('jobs') === '',
+				'reason' => LmdbVehicleQuartixConfig::unavailableReason('jobs'),
+			),
+			'quartix_timestamps' => array(
+				'label' => 'QxTimeMode', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
+				'available' => LmdbVehicleQuartixConfig::unavailableReason('timestamps') === '',
+				'reason' => LmdbVehicleQuartixConfig::unavailableReason('timestamps'),
+			),
+			'quartix_durations' => array(
+				'label' => 'QxDurationUnit', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
+				'available' => LmdbVehicleQuartixConfig::unavailableReason('durations') === '',
+				'reason' => LmdbVehicleQuartixConfig::unavailableReason('durations'),
+			),
 			'supplier_invoice_links' => array(
 				'label' => 'LmdbSupplierInvoiceLinks', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
 				'available' => $dolibarr20 && $php80 && isModEnabled('supplier_invoice'),
@@ -115,4 +136,3 @@ class LmdbVehicleManagementCompatibility
 		);
 	}
 }
-

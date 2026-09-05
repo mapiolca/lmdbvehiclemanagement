@@ -5,6 +5,8 @@ CREATE TABLE llx_lmdbvehiclemanagement_odometer_reading (
 	reading_date datetime NOT NULL,
 	odometer_km double(24,8) NOT NULL,
 	source varchar(32) DEFAULT 'manual' NOT NULL,
+	is_estimate integer DEFAULT 0 NOT NULL,
+	provider_key varchar(64) DEFAULT NULL,
 	reading_kind varchar(32) DEFAULT 'standard' NOT NULL,
 	reason text,
 	date_creation datetime NOT NULL,
@@ -13,4 +15,3 @@ CREATE TABLE llx_lmdbvehiclemanagement_odometer_reading (
 	fk_user_modif integer DEFAULT NULL,
 	import_key varchar(14) DEFAULT NULL
 ) ENGINE=innodb;
-

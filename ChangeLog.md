@@ -1,5 +1,12 @@
 # Historique des versions
 
+## À publier
+
+- Intégration QUARTIX en lecture seule : connexion chiffrée par environnement, associations explicites, kilométrage estimé quotidien, dernière position sous droit GPS et synthèses d'utilisation quotidiennes/mensuelles sur douze mois.
+- Trois travaux planifiés natifs avec lots reprenables, renouvellement des jetons, quotas et verrouillage. Les réglages des tâches sont conservés à la désactivation/réactivation.
+- Migration additive des relevés estimés : priorité aux relevés réels et aux pleins/recharges, anomalies visibles et imports sans doublon. Aucun GPS dans les documents ou pour les utilisateurs externes.
+- Réactiver le module après déploiement, configurer QUARTIX, confirmer les unités/fuseaux, associer les véhicules puis activer les trois tâches. Voir [le guide QUARTIX](doc/quartix.md). Version du module inchangée.
+
 ## `1.0.0` — 2026-09-04
 
 Première version stable. Cette entrée synthétise les versions de développement `0.1.0` à `0.15.0` et les évolutions précédemment « À publier ».

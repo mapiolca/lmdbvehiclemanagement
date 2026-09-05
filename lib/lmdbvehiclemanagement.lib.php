@@ -54,6 +54,7 @@ function lmdbVehicleManagementAdminPrepareHead()
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/setup.php', 1), $langs->trans('Settings'), 'settings');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/insurance.php', 1), $langs->trans('Insurance'), 'insurance');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/regulatory.php', 1), $langs->trans('RegulatoryControls'), 'regulatory');
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/quartix.php', 1), $langs->trans('QxTitle'), 'quartix');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/compatibility.php', 1), $langs->trans('Compatibility'), 'compatibility');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/about.php', 1), $langs->trans('About'), 'about');
 
@@ -75,15 +76,20 @@ function lmdbVehiclePrepareHead($object)
 	$head = array();
 	$h = 0;
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?id='.$id, $langs->trans('Card'), 'card');
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_note.php', 1).'?id='.$id, $langs->trans('Notes'), 'notes');
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_document.php', 1).'?id='.$id, $langs->trans('Documents'), 'documents');
+	if (isModEnabled('agenda') && ($user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) {
+		$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_agenda.php', 1).'?id='.$id, $langs->trans('EventsAgenda'), 'agenda');
+	}
+
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_assignment.php', 1).'?id='.$id, $langs->trans('VehicleAssignments'), 'assignments');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_odometer.php', 1).'?id='.$id, $langs->trans('OdometerReadings'), 'odometer');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_consumption.php', 1).'?id='.$id, $langs->trans('Consumption'), 'consumption');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_regulatory.php', 1).'?id='.$id, $langs->trans('RegulatoryControls'), 'regulatory');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_history.php', 1).'?id='.$id, $langs->trans('VehicleHistory'), 'history');
-	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_note.php', 1).'?id='.$id, $langs->trans('Notes'), 'notes');
-	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_document.php', 1).'?id='.$id, $langs->trans('Documents'), 'documents');
-	if (isModEnabled('agenda') && ($user->hasRight('agenda', 'myactions', 'read') || $user->hasRight('agenda', 'allactions', 'read'))) {
-		$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_agenda.php', 1).'?id='.$id, $langs->trans('EventsAgenda'), 'agenda');
+	require_once __DIR__.'/../class/lmdbvehiclequartixconfig.class.php';
+	if (LmdbVehicleQuartixConfig::supported() && LmdbVehicleQuartixConfig::can($user, 'read')) {
+		$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_quartix.php', 1).'?id='.$id, $langs->trans('QxUsage'), 'quartix');
 	}
 
 	return $head;

@@ -148,6 +148,18 @@ class modLmdbVehicleManagement extends DolibarrModules
 			),
 		);
 
+		// Bounded workers: daily imports/backfill resume between runs without changing native scheduling.
+		foreach (array('positions' => 'QxPositionJob', 'odometer' => 'QxOdometerJob', 'usage' => 'QxUsageJob') as $method => $label) {
+			$this->cronjobs[] = array(
+				'label' => $label, 'jobtype' => 'method',
+				'class' => '/lmdbvehiclemanagement/class/lmdbvehiclequartixcron.class.php',
+				'objectname' => 'LmdbVehicleQuartixCron', 'method' => $method,
+				'parameters' => '', 'comment' => $label.'Help',
+				'frequency' => 15, 'unitfrequency' => 60, 'status' => 0,
+				'test' => 'isModEnabled("lmdbvehiclemanagement")', 'priority' => 55,
+			);
+		}
+
 		if (!isModEnabled('lmdbvehiclemanagement')) {
 			$conf->lmdbvehiclemanagement = new stdClass();
 			$conf->lmdbvehiclemanagement->enabled = 0;
@@ -295,6 +307,18 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->rights[$r][1] = 'PermissionImportRegulatoryControls';
 		$this->rights[$r][4] = 'regulatorycontrol';
 		$this->rights[$r][5] = 'import';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'QxPermissionLocation';
+		$this->rights[$r][4] = 'quartix';
+		$this->rights[$r][5] = 'location';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'QxPermissionSync';
+		$this->rights[$r][4] = 'quartix';
+		$this->rights[$r][5] = 'sync';
 
 		$this->menu = array();
 		$r = 0;
@@ -886,6 +910,9 @@ class modLmdbVehicleManagement extends DolibarrModules
 		if ($this->prepareRegulatorySchema() < 0) {
 			return -1;
 		}
+		if ($this->prepareQuartixSchema() < 0) {
+			return -1;
+		}
 
 		$result = $this->_load_tables('/lmdbvehiclemanagement/sql/');
 		if ($result < 0) {
@@ -935,6 +962,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		}
 
 		$defaults = array(
+			'LMDBVEHICLEMANAGEMENT_QX_ENABLED' => '0',
 			'MAIN_MODULE_LMDBVEHICLEMANAGEMENT_ICON' => 'fa-car',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON' => 'mod_lmdbvehicle_standard',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLEEVENT_ADDON' => 'mod_lmdbvehicleevent_standard',
@@ -1029,6 +1057,23 @@ class modLmdbVehicleManagement extends DolibarrModules
 			return -1;
 		}
 
+		return 1;
+	}
+
+	/** Add estimate metadata before the native loader creates its unique index. @return int */
+	private function prepareQuartixSchema()
+	{
+		$table = MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading';
+		$exists = $this->tableExists($table);
+		if ($exists <= 0) return $exists < 0 ? -1 : 1;
+		foreach (array('is_estimate' => 'integer DEFAULT 0 NOT NULL', 'provider_key' => 'varchar(64) DEFAULT NULL') as $field => $definition) {
+			$present = $this->tableFieldExists($table, $field);
+			if ($present < 0) return -1;
+			if ($present === 0 && !$this->db->query('ALTER TABLE '.$table.' ADD COLUMN '.$field.' '.$definition)) {
+				$this->error = $this->db->lasterror();
+				return -1;
+			}
+		}
 		return 1;
 	}
 
@@ -1674,6 +1719,17 @@ class modLmdbVehicleManagement extends DolibarrModules
 		}
 
 		return 1;
+	}
+
+	/**
+	 * Native _remove calls this extension point. Keep job identities and administrator
+	 * settings; their native test and method guard stop execution while disabled.
+	 * Native insert_cronjobs already skips existing label/entity identities.
+	 * @return int Number of errors
+	 */
+	public function delete_cronjobs()
+	{
+		return 0;
 	}
 
 	/**

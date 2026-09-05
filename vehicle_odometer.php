@@ -86,7 +86,7 @@ $head = lmdbVehiclePrepareHead($vehicle);
 print dol_get_fiche_head($head, 'odometer', $langs->trans('Vehicle'), -1, $vehicle->picto);
 lmdbVehiclePrintBanner($vehicle);
 
-if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
+if ($permissionToManage && !$reading->is_estimate && ($action === 'create' || $action === 'edit')) {
 	print '<form class="lmdb-responsive-form" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
 	print '<input type="hidden" name="reading_id" value="'.((int) $reading->id).'"><input type="hidden" name="action" value="'.($action === 'edit' ? 'update' : 'add').'">';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
@@ -100,18 +100,25 @@ if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
 	print '</table></div><div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <a class="button button-cancel" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'">'.$langs->trans('Cancel').'</a></div></form>';
 } else {
 	if ($permissionToManage) print '<div class="tabsAction">'.dolGetButtonAction('', $langs->trans('AddOdometerReading'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=create').'</div>';
-	$records = $reading->fetchAllByVehicle($id);
+	$limit = max(1, min(1000, GETPOSTINT('limit') ?: (int) $conf->liste_limit));
+	$page = max(0, GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page'));
+	$total = $reading->countByVehicle($id);
+	if ($total < 0) lmdbVehicleManagementSetObjectErrors($reading);
+	if ($readingId > 0 && !GETPOSTISSET('page') && !GETPOSTISSET('pageplusone')) $page = (int) floor(max(0, $reading->countByVehicle($id, $reading)) / $limit);
+	if ($page * $limit >= $total) $page = 0;
+	$records = $reading->fetchAllByVehicle($id, $limit, $page * $limit);
 	if (!is_array($records)) {
 		lmdbVehicleManagementSetObjectErrors($reading);
 		$records = array();
 	}
+	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
+	print_barre_liste($langs->trans('OdometerReadings'), $page, $_SERVER['PHP_SELF'], '&id='.$id.'&limit='.$limit, '', '', '', count($records), max(0, $total), 'car', 0, '', '', $limit);
 	print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 	print '<tr class="liste_titre"><th>'.$langs->trans('ReadingDate').'</th><th class="right">'.$langs->trans('OdometerKm').'</th><th class="right">'.$langs->trans('OdometerDifference').'</th><th>'.$langs->trans('ReadingSource').'</th><th>'.$langs->trans('ReadingKind').'</th><th>'.$langs->trans('ReadingReason').'</th><th></th></tr>';
-	$recordCount = count($records);
-	foreach ($records as $recordIndex => $record) {
+	foreach ($records as $record) {
 		$differenceHtml = '<span class="opacitymedium">&mdash;</span>';
-		if ($recordIndex + 1 < $recordCount) {
-			$difference = (float) $record->odometer_km - (float) $records[$recordIndex + 1]->odometer_km;
+		if (!$record->is_estimate && $record->previous_actual_km !== null) {
+			$difference = (float) $record->odometer_km - $record->previous_actual_km;
 			$differenceClass = '';
 			$differenceSign = '';
 			if ($difference > 0) {
@@ -124,8 +131,8 @@ if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
 			$differenceHtml = '<span'.($differenceClass !== '' ? ' class="'.$differenceClass.'"' : '').'>'.$differenceSign.price(abs($difference), 0, $langs, 1, -1, -1).' km</span>';
 		}
 		print '<tr class="oddeven" id="odometer-'.((int) $record->id).'"><td>'.dol_print_date($record->reading_date, 'dayhour').'</td><td class="right">'.price($record->odometer_km, 0, $langs, 1, -1, -1).' km</td><td class="right nowraponall">'.$differenceHtml.'</td>';
-		print '<td>'.$langs->trans($record->fields['source']['arrayofkeyval'][$record->source]).'</td><td>'.$langs->trans($record->fields['reading_kind']['arrayofkeyval'][$record->reading_kind]).'</td><td>'.dol_htmlentitiesbr((string) $record->reason).'</td><td class="nowraponall">';
-		if ($permissionToManage && $record->source !== 'consumption') {
+		print '<td>'.($record->is_estimate ? dolGetStatus($langs->trans($record->estimate_conflict ? 'QxEstimateConflict' : 'QxEstimate'), '', '', $record->estimate_conflict ? 'status8' : 'status1', 5) : $langs->trans($record->fields['source']['arrayofkeyval'][$record->source])).'</td><td>'.$langs->trans($record->fields['reading_kind']['arrayofkeyval'][$record->reading_kind]).'</td><td>'.dol_htmlentitiesbr((string) $record->reason).'</td><td class="nowraponall">';
+		if ($permissionToManage && !$record->is_estimate && $record->source !== 'consumption') {
 			print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&reading_id='.$record->id.'&action=edit">'.img_edit().'</a> ';
 			print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&reading_id='.$record->id.'&action=delete&token='.newToken().'">'.img_delete().'</a>';
 		} elseif ($record->source === 'consumption') {
@@ -134,7 +141,7 @@ if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
 		print '</td></tr>';
 	}
 	if (empty($records)) print '<tr class="oddeven"><td colspan="7"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
-	print '</table></div>';
+	print '</table></div></form>';
 }
 print dol_get_fiche_end();
 llxFooter();

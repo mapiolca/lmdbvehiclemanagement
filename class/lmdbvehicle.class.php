@@ -342,6 +342,7 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	{
 		$tables = array(
 			'lmdbvehiclemanagement_vehicle_assignment',
+			'lmdbvehiclemanagement_qx_link',
 			'lmdbvehiclemanagement_odometer_reading',
 			'lmdbvehiclemanagement_consumption',
 			'lmdbvehiclemanagement_vehicle_capacity',

@@ -28,6 +28,8 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 		'reading_date' => array('type' => 'datetime', 'label' => 'ReadingDate', 'position' => 30, 'notnull' => 1, 'visible' => 1),
 		'odometer_km' => array('type' => 'double(24,8)', 'label' => 'OdometerKm', 'position' => 40, 'notnull' => 1, 'visible' => 1),
 		'source' => array('type' => 'varchar(32)', 'label' => 'ReadingSource', 'position' => 50, 'notnull' => 1, 'visible' => 1, 'default' => 'manual', 'arrayofkeyval' => array('manual' => 'SourceManual', 'import' => 'SourceImport', 'external' => 'SourceExternal', 'consumption' => 'SourceConsumption')),
+		'is_estimate' => array('type' => 'integer', 'label' => 'QxEstimate', 'position' => 51, 'notnull' => 1, 'visible' => 0, 'default' => 0),
+		'provider_key' => array('type' => 'varchar(64)', 'label' => 'ImportId', 'position' => 52, 'notnull' => -1, 'visible' => 0),
 		'reading_kind' => array('type' => 'varchar(32)', 'label' => 'ReadingKind', 'position' => 60, 'notnull' => 1, 'visible' => 1, 'default' => 'standard', 'arrayofkeyval' => array('standard' => 'ReadingKindStandard', 'correction' => 'ReadingKindCorrection', 'replacement' => 'ReadingKindReplacement')),
 		'reason' => array('type' => 'text', 'label' => 'ReadingReason', 'position' => 70, 'notnull' => -1, 'visible' => 3),
 		'date_creation' => array('type' => 'datetime', 'label' => 'DateCreation', 'position' => 500, 'notnull' => 1, 'visible' => -2),
@@ -45,6 +47,16 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	public $odometer_km = 0.0;
 	/** @var string */
 	public $source = 'manual';
+	/** @var int<0,1> Imported observation, never an authoritative progression anchor */
+	public $is_estimate = 0;
+	/** @var string|null Idempotency key owned by the QUARTIX importer */
+	public $provider_key;
+	/** @var bool Derived from real neighbors when listing; not a second stored truth */
+	public $estimate_conflict = false;
+	/** @var float|null Previous actual anchor, calculated at display time */
+	public $previous_actual_km = null;
+	/** @var bool */
+	private $quartixSync = false;
 	/** @var string */
 	public $reading_kind = 'standard';
 	/** @var ?string */
@@ -98,6 +110,10 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 			$this->errors[] = $this->error;
 			return 0;
 		}
+		if (!empty($persisted->is_estimate) && !$this->quartixSync) {
+			$this->error = 'QxOwnsReading';
+			return -1;
+		}
 		if (!$this->externalTransaction) {
 			$this->db->begin();
 		}
@@ -149,7 +165,16 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	 */
 	public function delete(User $user, $notrigger = 0)
 	{
-		if ((string) $this->source === 'consumption' && !$this->consumptionSync) {
+		$persisted = new self($this->db);
+		if (empty($this->id) || $persisted->fetch((int) $this->id) <= 0) {
+			$this->error = 'RecordNotFound';
+			return -1;
+		}
+		if ($persisted->is_estimate) {
+			$this->error = 'QxOwnsReading';
+			return -1;
+		}
+		if ((string) $persisted->source === 'consumption' && !$this->consumptionSync) {
 			$this->error = 'ConsumptionOwnsOdometerReading';
 			$this->errors[] = $this->error;
 			return 0;
@@ -248,10 +273,19 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 			$this->errors[] = $this->error;
 			return -1;
 		}
-		if ($this->odometer_km < 0) {
+		if (!is_finite((float) $this->odometer_km) || $this->odometer_km < 0) {
 			$this->error = 'OdometerMustBePositive';
 			$this->errors[] = $this->error;
 			return -1;
+		}
+		if ($this->is_estimate || $this->provider_key !== null) {
+			if (!$this->quartixSync || $this->source !== 'external' || $this->reading_kind !== 'standard' || !$this->is_estimate || !is_string($this->provider_key) || !preg_match('/^[a-f0-9]{64}$/D', $this->provider_key)) {
+				$this->error = 'QxOwnsReading';
+				return -1;
+			}
+			// Contradictory estimates remain visible as observations. They do not
+			// participate in the chain of real readings, including consumption writes.
+			return 1;
 		}
 		if (!in_array($this->source, array('manual', 'import', 'external', 'consumption'), true)
 			|| !in_array($this->reading_kind, array('standard', 'correction', 'replacement'), true)) {
@@ -343,7 +377,7 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	private function fetchNeighborReadingsAt($entity, $vehicleId, $readingDate, $rowId)
 	{
 		$neighbors = array();
-		$exclude = $rowId > 0 ? ' AND rowid <> '.((int) $rowId) : '';
+		$exclude = ' AND is_estimate = 0'.($rowId > 0 ? ' AND rowid <> '.((int) $rowId) : '');
 		$sql = 'SELECT odometer_km, reading_kind FROM '.MAIN_DB_PREFIX.$this->table_element;
 		$sql .= ' WHERE entity = '.((int) $entity).' AND fk_vehicle = '.((int) $vehicleId);
 		$sql .= $exclude;
@@ -406,15 +440,18 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 
 	/**
 	 * @param int $vehicleId Vehicle id
+	 * @param int $limit Page size (0 for full history)
+	 * @param int $offset Page offset
 	 * @return array<int,self>|int<-1,-1>
 	 */
-	public function fetchAllByVehicle($vehicleId)
+	public function fetchAllByVehicle($vehicleId, $limit = 0, $offset = 0)
 	{
 		$records = array();
 		$sql = 'SELECT * FROM '.MAIN_DB_PREFIX.$this->table_element;
 		$sql .= ' WHERE fk_vehicle = '.((int) $vehicleId);
 		$sql .= ' AND entity IN ('.getEntity('lmdbvehicle').')';
 		$sql .= ' ORDER BY reading_date DESC, rowid DESC';
+		if ($limit > 0) $sql .= $this->db->plimit(min(1000, $limit), max(0, $offset));
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			$this->error = $this->db->lasterror();
@@ -426,7 +463,118 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 			$records[] = $record;
 		}
 		$this->db->free($resql);
+		$contextRecords = $records;
+		if ($limit > 0 && $records) {
+			// Include the nearest real anchor outside each page, without loading all history.
+			foreach (array('next' => $records[0], 'previous' => $records[count($records) - 1]) as $side => $edge) {
+				$operator = $side === 'next' ? '>' : '<';
+				$order = $side === 'next' ? 'ASC' : 'DESC';
+				$sql = 'SELECT * FROM '.MAIN_DB_PREFIX.$this->table_element.' WHERE fk_vehicle='.((int) $vehicleId).' AND entity IN ('.getEntity('lmdbvehicle').') AND is_estimate=0';
+				$sql .= " AND (reading_date".$operator."'".$this->db->idate($edge->reading_date)."' OR (reading_date='".$this->db->idate($edge->reading_date)."' AND rowid".$operator.((int) $edge->id).')) ORDER BY reading_date '.$order.',rowid '.$order.' LIMIT 1';
+				$res = $this->db->query($sql);
+				if (!$res) { $this->error = $this->db->lasterror(); return -1; }
+				$anchor = $this->db->fetch_object($res);
+				$this->db->free($res);
+				if (is_object($anchor)) {
+					$neighbor = new self($this->db); $neighbor->setVarsFromFetchObj($anchor);
+					if ($side === 'next') array_unshift($contextRecords, $neighbor);
+					else $contextRecords[] = $neighbor;
+				}
+			}
+		}
+		self::classifyEstimates($contextRecords);
 		return $records;
+	}
+
+	/** @param int $vehicleId Vehicle @param self|null $after Count rows newer than this reading @return int Count or -1 */
+	public function countByVehicle($vehicleId, $after = null)
+	{
+		$sql = 'SELECT COUNT(*) AS nb FROM '.MAIN_DB_PREFIX.$this->table_element.' WHERE fk_vehicle='.((int) $vehicleId).' AND entity IN ('.getEntity('lmdbvehicle').')';
+		if ($after !== null) $sql .= " AND (reading_date>'".$this->db->idate($after->reading_date)."' OR (reading_date='".$this->db->idate($after->reading_date)."' AND rowid>".((int) $after->id).'))';
+		$res = $this->db->query($sql);
+		if (!$res) { $this->error = $this->db->lasterror(); return -1; }
+		$row = $this->db->fetch_object($res); $this->db->free($res);
+		return is_object($row) ? (int) $row->nb : -1;
+	}
+
+	/**
+	 * Re-evaluate observations after real readings change, without rewriting history.
+	 * @param array<int,self> $records Records sorted by descending date/id
+	 * @return void
+	 */
+	public static function classifyEstimates(&$records)
+	{
+		$next = null;
+		foreach ($records as $record) {
+			$record->estimate_conflict = false;
+			if (!$record->is_estimate) { $next = $record; continue; }
+			if ($next !== null && (($next->reading_kind === 'standard' && $record->odometer_km > $next->odometer_km)
+				|| ($record->reading_date === $next->reading_date && $record->odometer_km != $next->odometer_km))) $record->estimate_conflict = true;
+		}
+		$previous = null;
+		foreach (array_reverse($records) as $record) {
+			$record->previous_actual_km = null;
+			if (!$record->is_estimate) {
+				$record->previous_actual_km = $previous !== null ? (float) $previous->odometer_km : null;
+				$previous = $record;
+				continue;
+			}
+			if ($previous !== null && ($record->odometer_km < $previous->odometer_km
+				|| ($record->reading_date === $previous->reading_date && $record->odometer_km != $previous->odometer_km))) $record->estimate_conflict = true;
+		}
+	}
+
+	/**
+	 * One observation per source day. Replays may refresh that observation, never a real reading.
+	 * Caller owns the entity-wide QUARTIX lock; this method also locks the parent vehicle.
+	 * @param User $user Sync actor @param int $vehicleId Local vehicle @param int $remoteId Remote vehicle
+	 * @param int $date Observation timestamp @param string $day Day in the vehicle timezone @param float $km Estimate
+	 * @return int Positive id, or -1
+	 */
+	public function saveQuartix(User $user, $vehicleId, $remoteId, $date, $day, $km)
+	{
+		global $conf, $langs;
+		require_once __DIR__.'/lmdbvehiclequartixconfig.class.php';
+		require_once __DIR__.'/lmdbvehiclequartixrules.class.php';
+		if (!LmdbVehicleQuartixConfig::can($user, 'sync') || (!LmdbVehicleQuartixConfig::isAdmin($user) && !$user->hasRight('lmdbvehiclemanagement', 'odometer', 'write')) || $date <= 0 || $date > dol_now() + 300 || !is_finite($km) || $km < 0 || $remoteId <= 0) {
+			$this->error = 'QxAccessDenied'; return -1;
+		}
+		$this->db->begin();
+		try {
+			LmdbVehicleQuartixRules::day($day);
+			// Reusing a loaded real reading must never turn it into an estimate.
+			$this->id = 0;
+			$this->oldcopy = null;
+			if ($this->lockVehicleRow($vehicleId) < 0) throw new RuntimeException('QxDatabaseError');
+			$mapping = $this->db->query('SELECT l.timezone FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid=l.fk_vehicle AND v.entity=l.entity WHERE l.entity='.((int) $conf->entity).' AND l.fk_vehicle='.((int) $vehicleId).' AND l.remote_id='.((int) $remoteId).' AND l.active=1');
+			if (!$mapping) throw new RuntimeException('QxDatabaseError');
+			$owner = $this->db->fetch_object($mapping);
+			$this->db->free($mapping);
+			if (!is_object($owner) || (new DateTimeImmutable('@'.$date))->setTimezone(new DateTimeZone($owner->timezone))->format('Y-m-d') !== $day) throw new RuntimeException('QxAccessDenied');
+			$key = hash('sha256', $remoteId.':'.$day);
+			$res = $this->db->query('SELECT rowid, reading_date FROM '.MAIN_DB_PREFIX.$this->table_element.' WHERE entity = '.((int) $conf->entity).' AND fk_vehicle = '.((int) $vehicleId)." AND provider_key = '".$key."'");
+			if (!$res) throw new RuntimeException('QxDatabaseError');
+			$row = $this->db->fetch_object($res);
+			$this->db->free($res);
+			if (is_object($row)) {
+				if ($this->fetch((int) $row->rowid) <= 0) throw new RuntimeException('QxDatabaseError');
+				if ($this->reading_date > $date || ($this->reading_date === $date && (float) $this->odometer_km === $km)) { $this->db->commit(); return (int) $this->id; }
+			}
+			$this->fk_vehicle = $vehicleId;
+			if ($this->loadVehicleEntity() < 0 || (int) $this->entity !== (int) $conf->entity) throw new RuntimeException('QxAccessDenied');
+			$langs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
+			$this->source = 'external'; $this->is_estimate = 1; $this->provider_key = $key;
+			$this->reading_kind = 'standard'; $this->reading_date = $date; $this->odometer_km = $km;
+			$this->reason = $langs->transnoentities('QxEstimate');
+			$this->context = array('trigger_reason' => 'quartix_estimate');
+			$this->quartixSync = true; $this->externalTransaction = true;
+			$result = empty($this->id) ? $this->create($user) : $this->update($user);
+			if ($result <= 0) throw new RuntimeException('QxDatabaseError');
+			$this->db->commit();
+			return (int) $this->id;
+		} catch (Exception $e) {
+			$this->db->rollback(); $this->error = $e->getMessage(); return -1;
+		} finally { $this->quartixSync = false; $this->externalTransaction = false; }
 	}
 
 	/** @inheritdoc */

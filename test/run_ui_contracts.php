@@ -73,13 +73,14 @@ $checks = array();
 
 $orderedTabs = array(
 	'vehicle_card.php',
+	'vehicle_note.php',
+	'vehicle_document.php',
+	'vehicle_agenda.php',
 	'vehicle_assignment.php',
 	'vehicle_odometer.php',
 	'vehicle_consumption.php',
 	'vehicle_history.php',
-	'vehicle_note.php',
-	'vehicle_document.php',
-	'vehicle_agenda.php',
+	'vehicle_quartix.php',
 );
 $previousPosition = -1;
 foreach ($orderedTabs as $tabFile) {
@@ -242,7 +243,8 @@ $checks['insurance_certificate_actions_are_translated'] = strpos($insuranceCerti
 	&& preg_match('/^RejectInsuranceCertificate=.+$/m', $enLang) === 1
 	&& preg_match('/^ArchiveInsuranceCertificate=.+$/m', $enLang) === 1;
 $checks['odometer_list_calculates_difference_at_render_time'] = strpos($vehicleOdometer, "trans('OdometerDifference')") !== false
-	&& strpos($vehicleOdometer, '$records[$recordIndex + 1]->odometer_km') !== false
+	&& strpos($vehicleOdometer, '$record->previous_actual_km') !== false
+	&& strpos($vehicleOdometer, '!$record->is_estimate') !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-success';") !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-danger';") !== false
 	&& strpos($vehicleOdometer, "colspan=\"7\"") !== false;
