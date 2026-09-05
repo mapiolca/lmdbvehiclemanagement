@@ -274,6 +274,23 @@ foreach (array(array('VehicleID' => 10, 'VehicleId' => 20), array('VehicleID' =>
 	qxReject(static function () use ($client) { $client->get('/vehicles'); }, 'QxInvalidResponse');
 }
 
+// Per-vehicle totals use a sentinel date; only a single reporting day can replace it.
+$periodSummary = $summary; $periodSummary['Date'] = '0001-01-01';
+$dayQuery = array('VehicleIDList' => '10', 'GroupBy' => 'vehicle', 'StartDay' => '2026-08-30', 'EndDay' => '2026-08-30');
+$client->responses = array(qxResponse(array($periodSummary)));
+$dailyData = $client->get('/vehicles/tripsummary', $dayQuery);
+qxCheck($dailyData[0]['Date'] === '2026-08-30' && $dailyData[0]['NumberOfTrips'] === $summary['NumberOfTrips'], 'Single-day vehicle total preserves the true trip count and reporting date');
+foreach (array(array(), array('VehicleIDList' => '10,20'), array('GroupBy' => 'day'), array('EndDay' => '2026-08-31'), array('VehicleIDList' => '0'), array('VehicleIDList' => '9999999999999999999999999')) as $override) {
+	$query = $override === array() ? array() : array_replace($dayQuery, $override);
+	$client->responses = array(qxResponse(array($periodSummary)));
+	$data = $client->get('/vehicles/tripsummary', $query);
+	qxReject(static function () use ($data) { LmdbVehicleQuartixRules::summaries($data, 10, '2026-08-30', '2026-08-31'); }, 'QxInvalidResponse');
+}
+foreach (array(array('VehicleID' => 20), array('VehicleID' => null), array('Date' => '2026-08-30'), array('VehicleID' => null, 'VehicleId' => 10)) as $badRow) {
+	$client->responses = array(qxResponse(array($badRow)));
+	qxReject(static function () use ($client, $dayQuery) { $client->get('/vehicles/tripsummary', $dayQuery); }, 'QxInvalidResponse');
+}
+
 // Real SQL constraints and native CommonObject persistence in two entities.
 $db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_vehicle (rowid,entity,ref,label,fk_user_creat,date_creation) VALUES (1,1,'QX-A','Vehicle A',1,'2026-01-01'),(2,2,'QX-B','Vehicle B',1,'2026-01-01')");
 $db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_link (entity,fk_vehicle,remote_id,timezone,shift_start,date_creation,fk_user_creat) VALUES (1,1,10,'Europe/Paris','08:00:00','2026-01-01',1),(2,2,10,'Europe/Paris','08:00:00','2026-01-01',1)");
@@ -359,22 +376,32 @@ $user->socid = 0;
 qxCheck(LmdbVehicleQuartixConfig::can($user, 'location') && LmdbVehicleQuartixConfig::can($user, 'sync'), 'Admin has functional rights without granular grants');
 
 // Execute real cron orchestration against the offline transport.
+$db->query("UPDATE ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_usage SET date_sync='2026-01-01' WHERE entity=1");
 $cron = new QxTestCron($db);
 $cron->client = new QxTestClient($db, 1);
 $now = new DateTimeImmutable('now', new DateTimeZone('Europe/Paris'));
 $lastDay = $now->modify($now->format('H:i:s') < '08:00:00' ? '-2 days' : '-1 day')->format('Y-m-d');
-$cron->client->responses = array(qxResponse(array()));
+$cron->client->responses = array_fill(0, 7, qxResponse(array()));
 qxCheck($cron->usage() === 0, 'Usage job runs through native orchestration: '.$cron->error);
 $firstCall = $cron->client->calls[0];
-qxCheck($firstCall['values']['EndDay'] === $lastDay && $firstCall['values']['StartDay'] === LmdbVehicleQuartixRules::day($lastDay)->modify('-6 days')->format('Y-m-d'), 'Usage only rereads seven completed reporting days');
-qxCheck($firstCall['values']['GroupBy'] === 'day|vehicle', 'Daily usage groups by vehicle too, preventing null VehicleID summaries');
-$cron->client->responses = array(qxResponse(array()));
-qxCheck($cron->usage() === 0, 'Backfill resumes');
-$secondCall = $cron->client->calls[1];
+qxCheck($firstCall['values']['StartDay'] === $firstCall['values']['EndDay'] && count($cron->client->calls) === 7 && $cron->client->calls[6]['values']['EndDay'] === $lastDay && $firstCall['values']['StartDay'] === LmdbVehicleQuartixRules::day($lastDay)->modify('-6 days')->format('Y-m-d'), 'Usage only rereads seven completed reporting days');
+qxCheck($firstCall['values']['GroupBy'] === 'vehicle' && $firstCall['values']['VehicleIDList'] === '10', 'Daily usage requests one vehicle with the supported daily grouping');
+$beforeCalls = count($cron->client->calls);
+$usageMethod = new ReflectionMethod(LmdbVehicleQuartixCron::class, 'syncUsage');
+qxCheck($usageMethod->invoke($cron, $service, $cron->client, $service->link(1), microtime(true) - 1) === false && count($cron->client->calls) === $beforeCalls, 'Expired batch deadline makes no API request or cursor advance');
+$cron->client->responses = array(qxResponse(array()), qxResponse(null, 422));
+qxCheck($cron->usage() < 0 && $service->link(1)->usage_cursor === null, 'Partial daily backfill preserves its weekly cursor');
+$completedDay = $cron->client->calls[$beforeCalls]['values']['StartDay'];
+qxCheck(count($service->usage(1, $completedDay, $completedDay, 'day')) === 1, 'The day completed before an API refusal stays committed');
+$db->query('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_job SET retry_at=NULL WHERE entity=1');
+$beforeResume = count($cron->client->calls);
+$cron->client->responses = array_fill(0, 6, qxResponse(array()));
+qxCheck($cron->usage() === 0 && count($cron->client->calls) === $beforeResume + 6 && $cron->client->calls[$beforeResume]['values']['StartDay'] > $completedDay, 'Backfill resumes without rereading the completed day');
+$secondCall = $cron->client->calls[count($cron->client->calls) - 1];
 qxCheck($secondCall['values']['EndDay'] === LmdbVehicleQuartixRules::day($lastDay)->modify('-7 days')->format('Y-m-d'), 'Backfill follows previous week');
 $db->query("UPDATE ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_link SET usage_refreshed='2020-01-01',usage_cursor='2020-01-01' WHERE entity=1");
 $db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_usage (entity,fk_vehicle,usage_day,has_data,date_sync) VALUES (1,1,'2020-01-01',0,'2020-01-01'),(2,2,'2020-01-01',0,'2020-01-01')");
-$cron->client->responses = array(qxResponse(array()));
+$cron->client->responses = array_fill(0, 7, qxResponse(array()));
 qxCheck($cron->usage() === 0, 'Long outage recovery');
 qxCheck($service->link(1)->usage_cursor === LmdbVehicleQuartixRules::day($lastDay)->modify('-7 days')->format('Y-m-d'), 'Outage resets backfill so missed weeks are revisited');
 qxCheck($db->pdo->query("SELECT COUNT(*) FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_usage WHERE usage_day='2020-01-01' AND entity=1")->fetchColumn() == 0
@@ -395,6 +422,7 @@ $db->query('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_job SET retry_at=N
 $db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_vehicle (rowid,entity,ref,label,fk_user_creat,date_creation) VALUES (3,1,'QX-C','Vehicle C',1,'2026-01-01')");
 $db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_link (entity,fk_vehicle,remote_id,timezone,shift_start,date_creation,fk_user_creat) VALUES (1,3,20,'Europe/Paris','08:00:00','2026-01-01',1)");
 $db->query("UPDATE ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job SET last_vehicle=0 WHERE entity=1 AND job_kind='usage'");
+$db->query("UPDATE ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_usage SET date_sync='2026-01-01' WHERE entity=1 AND fk_vehicle=1");
 $cursorBefore = $service->link(1)->usage_cursor;
 $cron->client->responses = array(qxResponse(null, 422));
 qxCheck($cron->usage() < 0 && $cron->error === 'QxRequestRejected', 'Cron reports validation failure distinctly');

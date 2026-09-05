@@ -51,11 +51,20 @@ class LmdbVehicleQuartixClient
 		}
 		$data = $this->decode($response);
 		if (!is_array($data) || array_keys($data) !== range(0, count($data) - 1) && $data !== array()) throw new RuntimeException('QxInvalidResponse');
+		// QWS vehicle totals contain reliable trip counts but use a sentinel date.
+		// A single requested day and vehicle make that reporting period unambiguous.
+		$filter = isset($query['VehicleIDList']) ? (string) $query['VehicleIDList'] : '';
+		$dailyVehicle = $path === '/vehicles/tripsummary' && ($query['GroupBy'] ?? '') === 'vehicle'
+			&& isset($query['StartDay'], $query['EndDay']) && is_string($query['StartDay']) && $query['StartDay'] === $query['EndDay']
+			&& (string) ((int) $filter) === $filter && (int) $filter > 0 ? (int) $filter : 0;
+		$summaryDay = $dailyVehicle > 0 ? LmdbVehicleQuartixRules::day($query['StartDay'])->format('Y-m-d') : '';
 		// Live QWS uses VehicleId; the historical PDF uses VehicleID. Normalize
 		// only this known alias, before catalogue, position, mileage or usage reads.
 		foreach ($data as $index => $row) {
 			if (!is_array($row)) throw new RuntimeException('QxInvalidResponse');
 			$id = LmdbVehicleQuartixRules::id(array_key_exists('VehicleID', $row) ? $row['VehicleID'] : ($row['VehicleId'] ?? null));
+			if ($dailyVehicle > 0 && $id !== $dailyVehicle) throw new RuntimeException('QxInvalidResponse');
+			if ($summaryDay !== '' && ($row['Date'] ?? '') === '0001-01-01') $row['Date'] = $summaryDay;
 			if (array_key_exists('VehicleId', $row) && $row['VehicleId'] !== $id) throw new RuntimeException('QxInvalidResponse');
 			$row['VehicleID'] = $id;
 			unset($row['VehicleId']);

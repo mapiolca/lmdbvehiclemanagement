@@ -70,7 +70,9 @@ class LmdbVehicleQuartixCron
 			foreach ($links as $link) {
 				if (microtime(true) >= $deadline) break;
 				try {
-					if ($kind === 'usage') $this->syncUsage($service, $client, $link);
+					if ($kind === 'usage') {
+						if (!$this->syncUsage($service, $client, $link, $deadline)) break;
+					}
 					else {
 						$data = isset($byVehicle[(int) $link->remote_id]) ? array($byVehicle[(int) $link->remote_id]) : array();
 						if (!$data) throw new RuntimeException('QxNoVehicleData');
@@ -123,15 +125,15 @@ class LmdbVehicleQuartixCron
 		return new LmdbVehicleQuartixClient($this->db, $entity);
 	}
 
-	/** @param LmdbVehicleQuartixService $service Storage @param LmdbVehicleQuartixClient $client API @param object $link Association @return void */
-	private function syncUsage($service, $client, $link)
+	/** @param LmdbVehicleQuartixService $service Storage @param LmdbVehicleQuartixClient $client API @param object $link Association @param float $deadline Batch deadline @return bool Period completed */
+	private function syncUsage($service, $client, $link, $deadline)
 	{
 		$now = (new DateTimeImmutable('@'.dol_now()))->setTimezone(new DateTimeZone((string) $link->timezone));
 		// A QWS reporting day ends at the following shift start, not at midnight.
 		$lastDay = $now->modify($now->format('H:i:s') < $link->shift_start ? '-2 days' : '-1 day')->format('Y-m-d');
 		$cutoff = $now->modify('-12 months')->format('Y-m-d');
 		if (!empty($link->sync_from)) $cutoff = max($cutoff, LmdbVehicleQuartixRules::firstUsageDay($this->db->jdate($link->sync_from), (string) $link->timezone, (string) $link->shift_start));
-		if ($lastDay < $cutoff) return;
+		if ($lastDay < $cutoff) return true;
 		if ((string) $link->usage_refreshed !== $lastDay) {
 			$end = $lastDay; $start = max($cutoff, LmdbVehicleQuartixRules::day($end)->modify('-6 days')->format('Y-m-d'));
 			$field = "usage_refreshed='".$lastDay."'";
@@ -141,19 +143,31 @@ class LmdbVehicleQuartixCron
 			}
 		} else {
 			$end = $link->usage_cursor ?: LmdbVehicleQuartixRules::day($lastDay)->modify('-7 days')->format('Y-m-d');
-			if ($end < $cutoff) return;
+			if ($end < $cutoff) return true;
 			$start = max($cutoff, LmdbVehicleQuartixRules::day($end)->modify('-6 days')->format('Y-m-d'));
 			$field = "usage_cursor='".LmdbVehicleQuartixRules::day($start)->modify('-1 day')->format('Y-m-d')."'";
 		}
-		$data = $client->get('/vehicles/tripsummary', array('VehicleIDList' => (string) $link->remote_id, 'StartDay' => $start, 'EndDay' => $end, 'GroupBy' => 'day|vehicle'));
+		// Daily grouping loses NumberOfTrips in live QWS. Read vehicle totals for
+		// each reporting day. Persist each day so a deadline or API failure resumes.
+		$completed = array();
+		$since = $now->setTime(0, 0)->getTimestamp();
+		$rows = $service->rows('SELECT usage_day FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_usage WHERE entity='.((int) $link->entity).' AND fk_vehicle='.((int) $link->fk_vehicle)." AND usage_day>='".$start."' AND usage_day<='".$end."' AND date_sync>='".$this->db->idate($since)."'");
+		foreach ($rows as $row) $completed[(string) $row->usage_day] = true;
+		for ($day = LmdbVehicleQuartixRules::day($start); $day->format('Y-m-d') <= $end; $day = $day->modify('+1 day')) {
+			$date = $day->format('Y-m-d');
+			if (isset($completed[$date])) continue;
+			if (microtime(true) >= $deadline) return false;
+			$data = $client->get('/vehicles/tripsummary', array('VehicleIDList' => (string) $link->remote_id, 'StartDay' => $date, 'EndDay' => $date, 'GroupBy' => 'vehicle'));
+			$service->saveUsage($link, $data, $date, $date);
+		}
 		$this->db->begin();
 		try {
-			$service->saveUsage($link, $data, $start, $end);
 			$service->write('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link SET '.$field.' WHERE entity='.((int) $link->entity).' AND rowid='.((int) $link->rowid));
 			// Retention applies to all vehicle history, including previous associations.
 			$retention = $now->modify('-12 months')->format('Y-m-d');
 			$service->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_usage WHERE entity='.((int) $link->entity).' AND fk_vehicle='.((int) $link->fk_vehicle)." AND usage_day<'".$retention."'");
 			$this->db->commit();
 		} catch (Exception $e) { $this->db->rollback(); throw $e; }
+		return true;
 	}
 }

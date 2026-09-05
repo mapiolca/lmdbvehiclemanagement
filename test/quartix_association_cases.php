@@ -75,7 +75,7 @@ qxReject(static function () use ($associationService, $user, $targetLink) { $ass
 qxCheck($associationService->link(4) !== null, 'Stale confirmation cannot remove a replacement association');
 $db->query('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_job SET retry_at=NULL,last_vehicle=0 WHERE entity=1');
 $boundaryCron = new QxTestCron($db); $boundaryCron->client = new QxTestClient($db, 1);
-$boundaryCron->client->responses = array(qxResponse(array()), qxResponse(array()));
+$boundaryCron->client->responses = array_fill(0, 21, qxResponse(array()));
 qxCheck($boundaryCron->usage() === 0, 'Reassigned tracker runs through the actual worker');
 $targetCall = $boundaryCron->client->calls[count($boundaryCron->client->calls) - 1];
 qxCheck($targetCall['values']['VehicleIDList'] === '30' && $targetCall['values']['StartDay'] >= '2026-09-01', 'Worker bounds the first refresh at the installation day');
