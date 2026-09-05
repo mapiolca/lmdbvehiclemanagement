@@ -29,7 +29,7 @@ def main():
         ("POST", "/v2/api/auth/refresh", {"RefreshToken": "fake-refresh+&=quote\"\\/"}, None, 200,
          {"AccessToken": "fake-new-access", "RefreshToken": "fake-new-refresh"}),
         ("GET", "/v2/api/vehicles?VehicleIDList=10%2C20", None, "fake-new-access", 200,
-         [{"VehicleID": 10}]),
+         [{"VehicleId": 10}]),
     ]
 
     class Handler(BaseHTTPRequestHandler):

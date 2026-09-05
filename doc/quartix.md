@@ -68,9 +68,11 @@ Les erreurs d'authentification/réseau des tâches utilisent un délai de repris
 
 Les POST `/auth` et `/auth/refresh` transmettent désormais un objet JSON avec `Content-Type: application/json`. Les noms des champs restent `CustomerID`, `UserName`, `Password`, `Application` et, pour le renouvellement, `RefreshToken`. Les GET conservent leurs paramètres d'URL et l'en-tête `AccessToken` ; les secrets ne passent jamais dans l'URL.
 
-Le PDF historique décrit les paramètres en `formData`. Après le refus HTTP 422 observé sur `/auth` avec cet encodage, le choix JSON s'appuie sur un [exemple QWS publié le 7 juillet 2026 par son auteur comme fonctionnel](https://community.fabric.microsoft.com/t5/Power-Query/Convert-Dynamic-Data-source/td-p/5276109). Cet exemple d'intégration n'est pas une spécification officielle QUARTIX ; la réussite avec le compte concerné reste à confirmer après déploiement.
+Le PDF historique décrit les paramètres en `formData`. Après le refus HTTP 422 observé sur `/auth` avec cet encodage, le choix JSON s'appuie sur un [exemple QWS publié le 7 juillet 2026 par son auteur comme fonctionnel](https://community.fabric.microsoft.com/t5/Power-Query/Convert-Dynamic-Data-source/td-p/5276109). Cet exemple d'intégration n'est pas une spécification officielle QUARTIX. Le 5 septembre 2026, l'authentification JSON a été validée sur l'instance Dolibarr de développement après saisie du nom d'application fourni par QUARTIX : le catalogue a répondu HTTP 200.
 
 Le client utilisait initialement la clé du module comme champ `Application`. Il transmet maintenant exactement la valeur **APPLICATION NAME** fournie par QUARTIX et enregistrée dans l'entité. Pour une installation déjà initialisée, déployer les fichiers puis compléter ce nouveau champ et enregistrer avant de relancer **Tester la connexion et charger les véhicules**. Aucune migration ni réactivation n'est nécessaire ; le mot de passe peut rester vide pour conserver celui enregistré. Si le refus persiste, conserver l'étape et le statut affichés pour le diagnostic, sans transmettre les identifiants ou les réponses API brutes.
+
+Le catalogue réel renvoie le champ `VehicleId`, alors que le PDF décrit `VehicleID`. Le client normalise cette seule variante vers `VehicleID` dès la lecture des réponses, pour tous les consommateurs du module. Les identifiants doivent rester des entiers positifs ; deux variantes présentes avec des valeurs différentes sont refusées. Les noms des paramètres envoyés à QWS restent ceux du contrat, notamment `VehicleIDList`. Cette adaptation ne nécessite aucune migration de données.
 
 ## Sécurité et compatibilité
 
@@ -105,7 +107,7 @@ Contrôles exécutés avec PHP 8.5.7, le core Dolibarr 20.0.4 et le checkout de 
 
 | Suite | Résultat |
 |---|---|
-| QUARTIX | 86 contrôles initiaux réussis sur chacun des deux cores ; 143 contrôles réussis sur le core 25.0.0-alpha avec nom d'application par entité, conservation du mot de passe et invalidation des jetons ; diagnostic HTTP, refus 422, chiffrement, transport simulé, stockage, reprises, droits, rendu GPS et graphiques natifs inclus |
+| QUARTIX | 86 contrôles initiaux réussis sur chacun des deux cores ; 156 contrôles réussis sur le core 25.0.0-alpha avec nom d'application par entité, conservation du mot de passe, invalidation des jetons et variantes VehicleId/VehicleID ; diagnostic HTTP, refus 422, chiffrement, transport simulé, stockage, reprises, droits, rendu GPS et graphiques natifs inclus |
 | Transport QUARTIX HTTPS local | 4 contrôles supplémentaires et 4 requêtes HTTPS vérifiés avec le vrai cURL : authentification JSON, lecture expirée, renouvellement JSON et lecture réussie ; données fictives uniquement |
 | Règles métier | 50 contrôles réussis |
 | Contrats Agenda | 400 contrôles réussis |

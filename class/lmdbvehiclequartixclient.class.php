@@ -51,6 +51,16 @@ class LmdbVehicleQuartixClient
 		}
 		$data = $this->decode($response);
 		if (!is_array($data) || array_keys($data) !== range(0, count($data) - 1) && $data !== array()) throw new RuntimeException('QxInvalidResponse');
+		// Live QWS uses VehicleId; the historical PDF uses VehicleID. Normalize
+		// only this known alias, before catalogue, position, mileage or usage reads.
+		foreach ($data as $index => $row) {
+			if (!is_array($row)) throw new RuntimeException('QxInvalidResponse');
+			$id = LmdbVehicleQuartixRules::id(array_key_exists('VehicleID', $row) ? $row['VehicleID'] : ($row['VehicleId'] ?? null));
+			if (array_key_exists('VehicleId', $row) && $row['VehicleId'] !== $id) throw new RuntimeException('QxInvalidResponse');
+			$row['VehicleID'] = $id;
+			unset($row['VehicleId']);
+			$data[$index] = $row;
+		}
 		if (!$this->db->query('UPDATE '.MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job SET retry_at=NULL,last_error=NULL WHERE entity=".$this->entity." AND job_kind='api'")) throw new RuntimeException('QxDatabaseError');
 		return $data;
 	}

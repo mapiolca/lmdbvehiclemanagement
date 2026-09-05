@@ -231,6 +231,19 @@ qxReject(static function () use ($db) { new QxTestClient($db, 1); }, 'QxAccessDe
 $conf->entity = 1;
 $conf->global->LMDBVEHICLEMANAGEMENT_QX_APPLICATION = 'test-application-A';
 
+// Live QWS returns VehicleId; the historical PDF uses VehicleID. Preserve one
+// canonical field for every consumer, while rejecting conflicting identities.
+foreach (array('/vehicles', '/vehicles/live', '/vehicles/odometer', '/vehicles/tripsummary') as $endpoint) {
+	$client->responses = array(qxResponse(array(array('VehicleId' => 10, 'Description' => 'Test vehicle'), array('VehicleID' => 20))));
+	qxCheck($client->get($endpoint) === array(array('Description' => 'Test vehicle', 'VehicleID' => 10), array('VehicleID' => 20)), 'Both documented and live ID spellings work for '.$endpoint);
+}
+$client->responses = array(qxResponse(array(array('VehicleID' => 10, 'VehicleId' => 10))));
+qxCheck($client->get('/vehicles') === array(array('VehicleID' => 10)), 'Matching aliases leave only the canonical identifier');
+foreach (array(array('VehicleID' => 10, 'VehicleId' => 20), array('VehicleID' => null, 'VehicleId' => 10), array('VehicleID' => 10, 'VehicleId' => '10'), array('VehicleId' => '10'), array('VehicleId' => 0), array('vehicleid' => 10), array(), null) as $badRow) {
+	$client->responses = array(qxResponse(array($badRow)));
+	qxReject(static function () use ($client) { $client->get('/vehicles'); }, 'QxInvalidResponse');
+}
+
 // Real SQL constraints and native CommonObject persistence in two entities.
 $db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_vehicle (rowid,entity,ref,label,fk_user_creat,date_creation) VALUES (1,1,'QX-A','Vehicle A',1,'2026-01-01'),(2,2,'QX-B','Vehicle B',1,'2026-01-01')");
 $db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_link (entity,fk_vehicle,remote_id,timezone,shift_start,date_creation,fk_user_creat) VALUES (1,1,10,'Europe/Paris','08:00:00','2026-01-01',1),(2,2,10,'Europe/Paris','08:00:00','2026-01-01',1)");
@@ -337,8 +350,10 @@ qxCheck($db->pdo->query("SELECT COUNT(*) FROM ".MAIN_DB_PREFIX."lmdbvehiclemanag
 	&& $db->pdo->query("SELECT COUNT(*) FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_usage WHERE usage_day='2020-01-01' AND entity=2")->fetchColumn() == 1, 'Twelve-month retention is owner scoped');
 $cron->client->responses = array(qxResponse(array()));
 qxCheck($cron->positions() < 0 && $cron->error === 'QxNoVehicleData', 'Missing vehicle is a partial job failure');
-$cron->client->responses = array(qxResponse(array(array_replace($position, array('Latitude' => 48.6, 'LastEventDatetime' => '2026-08-31T12:00:00Z')))));
-qxCheck($cron->positions() === 0 && $service->position(1)->latitude == 48.6, 'Position retries recover without duplicate rows');
+$livePosition = array_replace($position, array('VehicleId' => 10, 'Latitude' => 48.6, 'LastEventDatetime' => '2026-08-31T12:00:00Z'));
+unset($livePosition['VehicleID']);
+$cron->client->responses = array(qxResponse(array($livePosition)));
+qxCheck($cron->positions() === 0 && $service->position(1)->latitude == 48.6, 'Position retries accept the live ID spelling and recover without duplicate rows');
 $cron->client->responses = array(qxResponse(null, 429, 180));
 qxCheck($cron->positions() < 0 && $cron->error === 'QxRateLimited', 'Cron returns quota error');
 $requestCount = count($cron->client->calls);
