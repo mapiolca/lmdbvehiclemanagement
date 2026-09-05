@@ -17,6 +17,9 @@ class LmdbVehicleQuartixClient
 	/** @var string */ private $access = '';
 	/** @var string */ private $refresh = '';
 	/** @var int Seconds before another request is permitted */ public $retryAfter = 0;
+	/** @var string Fixed endpoint, without query parameters */ private $lastEndpoint = '';
+	/** @var int HTTP status, or zero when no response was received */ private $lastHttpStatus = 0;
+	/** @var int cURL error number, without its potentially sensitive message */ private $lastCurlError = 0;
 
 	/** @param DoliDB $db Database @param int $entity Current entity */
 	public function __construct($db, $entity)
@@ -31,6 +34,7 @@ class LmdbVehicleQuartixClient
 	/** @param string $path Allowed read endpoint @param array<string,int|string> $query Parameters @return array<int,mixed> */
 	public function get($path, $query = array())
 	{
+		$this->lastEndpoint = ''; $this->lastHttpStatus = 0; $this->lastCurlError = 0;
 		if (!in_array($path, array('/vehicles', '/vehicles/live', '/vehicles/odometer', '/vehicles/tripsummary'), true)) throw new RuntimeException('QxInvalidEndpoint');
 		$res = $this->db->query('SELECT MAX(retry_at) AS retry_at FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_job WHERE entity='.$this->entity);
 		if (!$res) throw new RuntimeException('QxDatabaseError');
@@ -39,10 +43,10 @@ class LmdbVehicleQuartixClient
 		if (is_object($throttle) && !empty($throttle->retry_at) && $this->db->jdate($throttle->retry_at) > dol_now()) throw new RuntimeException('QxRateLimited');
 		if ($this->access === '') $this->loadTokens();
 		if ($this->access === '') $this->authenticate(false);
-		$response = $this->request('GET', $path, $query, $this->access);
+		$response = $this->exchange('GET', $path, $query, $this->access);
 		if ($response['status'] === 401) {
 			$this->authenticate($this->refresh !== '');
-			$response = $this->request('GET', $path, $query, $this->access);
+			$response = $this->exchange('GET', $path, $query, $this->access);
 		}
 		$data = $this->decode($response);
 		if (!is_array($data) || array_keys($data) !== range(0, count($data) - 1) && $data !== array()) throw new RuntimeException('QxInvalidResponse');
@@ -67,7 +71,7 @@ class LmdbVehicleQuartixClient
 	private function authenticate($refresh)
 	{
 		$values = $refresh ? array('RefreshToken' => $this->refresh) : array('CustomerID' => $this->config['CUSTOMER'], 'UserName' => $this->config['USERNAME'], 'Password' => $this->config['PASSWORD'], 'Application' => 'lmdbvehiclemanagement');
-		$response = $this->request('POST', $refresh ? '/auth/refresh' : '/auth', $values, '');
+		$response = $this->exchange('POST', $refresh ? '/auth/refresh' : '/auth', $values, '');
 		if ($refresh && in_array($response['status'], array(401, 403), true)) { $this->authenticate(false); return; }
 		$data = $this->decode($response);
 		if (!is_array($data) || !isset($data['AccessToken'], $data['RefreshToken']) || !is_string($data['AccessToken']) || !is_string($data['RefreshToken'])) throw new RuntimeException('QxInvalidResponse');
@@ -95,6 +99,42 @@ class LmdbVehicleQuartixClient
 		$data = json_decode($response['body'], true);
 		if (!is_array($data) || !array_key_exists('Data', $data) || !isset($data['Meta']) || !is_array($data['Meta']) || !isset($data['Meta']['Code']) || !in_array($data['Meta']['Code'], array(0, 200), true)) throw new RuntimeException('QxInvalidResponse');
 		return $data['Data'];
+	}
+
+	/** @return array{endpoint:string,http_status:int,curl_error:int} Metadata safe for support; never credentials or response content */
+	public function getDiagnostic()
+	{
+		return array('endpoint' => $this->lastEndpoint, 'http_status' => $this->lastHttpStatus, 'curl_error' => $this->lastCurlError);
+	}
+
+	/** @param Translate $langs Output language @return string Safe detail for the native error message */
+	public function getDiagnosticMessage($langs)
+	{
+		if ($this->lastEndpoint === '') return '';
+		$parts = array();
+		if ($this->lastHttpStatus > 0) $parts[] = $langs->transnoentities('QxHttpDiagnostic', $this->lastEndpoint, $this->lastHttpStatus);
+		if ($this->lastCurlError > 0) $parts[] = $langs->transnoentities('QxNetworkDiagnostic', $this->lastEndpoint, $this->lastCurlError);
+		return implode(' ', $parts);
+	}
+
+	/**
+	 * Record only the fixed endpoint and numeric transport result, including auth failures.
+	 * The protected transport remains replaceable in offline tests.
+	 * @param string $method GET/POST @param string $path Allowed endpoint @param array<string,int|string> $values Parameters @param string $token Token
+	 * @return array{status:int,body:string,retry:int}
+	 */
+	private function exchange($method, $path, $values, $token)
+	{
+		$this->lastEndpoint = $path;
+		$this->lastHttpStatus = 0;
+		$this->lastCurlError = 0;
+		try {
+			$response = $this->request($method, $path, $values, $token);
+			$this->lastHttpStatus = $response['status'];
+			return $response;
+		} finally {
+			dol_syslog('QUARTIX entity='.$this->entity.' endpoint='.$this->lastEndpoint.' http='.$this->lastHttpStatus.' curl='.$this->lastCurlError, $this->lastHttpStatus === 200 ? LOG_DEBUG : LOG_WARNING);
+		}
 	}
 
 	/**
@@ -126,6 +166,8 @@ class LmdbVehicleQuartixClient
 		curl_setopt_array($curl, $options);
 		$result = curl_exec($curl);
 		$status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+		$this->lastHttpStatus = $status;
+		$this->lastCurlError = curl_errno($curl);
 		curl_close($curl);
 		if ($result === false) throw new RuntimeException('QxNetworkError');
 		return array('status' => $status, 'body' => $body, 'retry' => $retry);

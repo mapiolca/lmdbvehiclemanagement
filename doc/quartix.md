@@ -58,6 +58,8 @@ Un verrou MySQL nommé, isolé par préfixe de base et environnement, sérialise
 Les positions/kilométrages utilisent des requêtes QWS groupées ; les synthèses sont demandées par véhicule pour vérifier strictement chaque réponse.
 Les périodes d'utilisation et leurs curseurs sont enregistrés dans une même transaction. Une erreur sur un véhicule n'annule pas les autres.
 Les erreurs visibles et les logs emploient des codes contrôlés, sans réponse API brute, secret ou coordonnées GPS.
+Un test de connexion en échec précise maintenant l'endpoint concerné (/auth, /auth/refresh ou /vehicles) et le statut HTTP reçu ; une erreur de transport fournit son numéro cURL lorsqu'il est disponible. Ces seules métadonnées sont également journalisées. Aucun corps de réponse, paramètre, en-tête d'authentification ou message réseau brut n'est enregistré.
+Le message « erreur de service » seul ne permet pas de conclure que le mot de passe est incorrect : il peut correspondre à une redirection, une requête refusée ou une indisponibilité distante. Après déploiement du diagnostic, relancer le test et relever l'étape et le statut affichés avant de modifier la configuration.
 Les quotas 429 et Retry-After suspendent les appels de l'environnement, y compris les tests manuels de connexion.
 Les erreurs d'authentification/réseau des tâches utilisent un délai de reprise ; un 401 provoque un renouvellement de jeton, puis une nouvelle authentification si le jeton de renouvellement est refusé.
 
@@ -87,7 +89,7 @@ Contrôles exécutés avec PHP 8.5.7, le core Dolibarr 20.0.4 et le checkout de 
 
 | Suite | Résultat |
 |---|---|
-| QUARTIX | 86 contrôles réussis sur chacun des deux cores ; chiffrement, transport simulé, stockage, reprises, droits, rendu GPS et graphiques natifs inclus |
+| QUARTIX | 86 contrôles initiaux réussis sur chacun des deux cores ; 119 contrôles réussis sur le core 25.0.0-alpha après ajout du diagnostic HTTP ; chiffrement, transport simulé, stockage, reprises, droits, rendu GPS et graphiques natifs inclus |
 | Règles métier | 50 contrôles réussis |
 | Contrats Agenda | 400 contrôles réussis |
 | Contrats d'interface | 158 contrôles réussis |

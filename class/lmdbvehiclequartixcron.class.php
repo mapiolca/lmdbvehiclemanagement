@@ -99,6 +99,7 @@ class LmdbVehicleQuartixCron
 		} catch (Exception $e) {
 			$this->error = self::safeError($e); $this->errors = array($this->error);
 			$this->output = $langs->transnoentities($this->error);
+			if ($client !== null) $this->output .= ' '.$client->getDiagnosticMessage($langs);
 			if ($locked) {
 				$delay = $client !== null && $client->retryAfter ? $client->retryAfter : 900;
 				$retry = in_array($this->error, array('QxRateLimited', 'QxAuthenticationFailed', 'QxNetworkError', 'QxRemoteError'), true) ? "'".$this->db->idate(dol_now() + $delay)."'" : 'NULL';

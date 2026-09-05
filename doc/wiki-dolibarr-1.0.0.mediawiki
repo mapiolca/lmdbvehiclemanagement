@@ -1,0 +1,233 @@
+<!-- Titre de page suggéré : Module Gestion des véhicules et engins -->
+<!-- Périmètre documentaire : version 1.0.0, branche main au commit 094fc89. -->
+
+'''Gestion des véhicules et engins''' est un module externe pour Dolibarr permettant de centraliser le suivi d'un parc de véhicules routiers, d'utilitaires et d'engins. Il regroupe les caractéristiques du matériel, les affectations des conducteurs, les kilométrages, les consommations, les interventions, les assurances et les contrôles réglementaires.
+
+Le module permet également de relier les factures fournisseurs aux interventions et aux contrôles, puis de générer un dossier véhicule réunissant un récapitulatif PDF et une archive des documents associés.
+
+== Informations ==
+
+{| class="wikitable"
+! Information !! Valeur
+|-
+| Nom || Gestion des véhicules et engins
+|-
+| Identifiant technique || <code>lmdbvehiclemanagement</code>
+|-
+| Auteur || Pierre Ardoin
+|-
+| Famille || Les Métiers du Bâtiment
+|-
+| Version présentée || 1.0.0 — première version stable du 4 septembre 2026
+|-
+| Dolibarr minimum || 20.0
+|-
+| PHP minimum || 8.0
+|-
+| Base de données || MySQL ou MariaDB
+|-
+| Langues fournies || Français et anglais
+|-
+| Multicompany || Compatible ; module Multicompany facultatif
+|-
+| Licence || GNU GPL version 3 ou ultérieure
+|-
+| Code source || [https://github.com/mapiolca/lmdbvehiclemanagement Dépôt GitHub]
+|}
+
+== Fonctionnalités ==
+
+=== Gestion du parc ===
+
+* Fiches pour les véhicules routiers, utilitaires et engins, avec immatriculation facultative.
+* Caractéristiques techniques, énergie, capacités et autonomie WLTP.
+* Suivi du cycle de vie, du brouillon à la cession.
+* Affectations des conducteurs, avec plusieurs affectations simultanées possibles et une seule affectation principale par période.
+* Relevés kilométriques et prise en charge des corrections ou remplacements de compteur.
+* Événements d'entretien, pannes et incidents.
+* Chronologie regroupant événements, contrôles et consommations.
+* Modèles de numérotation, dont un modèle fondé sur l'immatriculation.
+
+Les listes proposent des filtres, le tri, la pagination et des colonnes personnalisables. Les fiches utilisent les notes, contacts, fichiers joints et objets liés de Dolibarr selon les fonctions concernées.
+
+=== Pleins, recharges et consommations ===
+
+Le module suit les carburants, les recharges électriques, l'hydrogène et les additifs. Les consommables sont associés à leurs unités et aux énergies compatibles. Les capacités du véhicule permettent de signaler un dépassement lors de la saisie.
+
+* Synchronisation des consommations avec les relevés kilométriques.
+* Synthèses par véhicule, consommable et unité.
+* Statistiques de coûts, distances et consommations, avec graphiques Dolibarr.
+* Import CSV et export natif.
+* Prix facultatif pour les additifs : un montant absent est distingué d'un montant égal à zéro et n'entre pas dans les statistiques de prix.
+
+Une option par entité permet de créer une '''opération diverse''' native pour un plein ou une recharge. Elle nécessite un compte bancaire, les informations de règlement et un justificatif PDF, JPEG ou PNG. Les métadonnées des images justificatives sont nettoyées.
+
+La comptabilité reste facultative. En comptabilité en partie double, un compte général du plan actif est requis. Les données financières et le justificatif sont verrouillés après rapprochement bancaire ou transfert comptable.
+
+'''Lorsque la création d'opérations diverses est activée, l'import CSV des consommations est indisponible.''' L'activation de cette option ne crée pas d'opérations pour les consommations historiques.
+
+=== Assurances ===
+
+* Contrats individuels ou contrats de flotte couvrant plusieurs véhicules.
+* Couverture principale et couvertures complémentaires.
+* Contacts de l'assureur et du courtier.
+* Attestations communes ou propres à un véhicule, avec justificatifs, validation, rejet et archivage.
+* Référents utilisateurs ou groupes et personnels affectés éligibles.
+* Relances avant et après échéance, avec modèles d'emails et travaux planifiés natifs.
+
+=== Contrôles réglementaires ===
+
+Un questionnaire guidé permet de qualifier les véhicules et engins et de déterminer les exigences applicables à partir des informations enregistrées.
+
+La version 1.0.0 fournit un catalogue français versionné couvrant notamment les contrôles routiers, la pollution, la catégorie L, les usages spécialisés, les vérifications générales périodiques (VGP), la mise ou remise en service, le tachygraphe, l'ADR et l'ATP. Des surcharges par entité et des règles personnalisées complètent le catalogue.
+
+* Contrôles numérotés avec organisme, résultat, dates et justificatif obligatoire.
+* Validation immuable, annulation motivée, remplacement, contre-visite et archivage encadré.
+* Échéancier et registre de sécurité.
+* Export et import de contrôles en brouillon.
+* Blocage configurable des nouvelles affectations et mises en service.
+* Recalcul quotidien et rappels par travail planifié, avec événement Agenda unique par exigence.
+
+Lorsqu'une information indispensable manque, le module ne calcule pas d'échéance arbitraire. Il constitue une aide au suivi documentaire : il ne réalise pas les contrôles et ne délivre aucun rapport officiel.
+
+=== Factures fournisseurs liées ===
+
+Depuis un événement ou un contrôle, l'action '''Créer une facture fournisseur''' ouvre le formulaire natif Dolibarr. Le fournisseur de l'intervention est proposé lorsqu'il est renseigné et accessible ; il peut être modifié. La facture est créée en brouillon et liée à l'objet d'origine.
+
+Il est également possible de sélectionner une facture existante ou d'utiliser l'action '''Lier à''' depuis une facture fournisseur. Les relations sont visibles dans les blocs '''Objets liés''' des deux fiches. Plusieurs factures peuvent être associées à une même intervention.
+
+Une déliaison retire uniquement la relation. Elle ne supprime pas la facture et ne modifie pas les données réglementaires d'un contrôle validé. Les objets liés doivent appartenir à l'entité courante et les droits requis sur chacun d'eux restent nécessaires.
+
+=== Dossier véhicule PDF et ZIP ===
+
+Le modèle '''Dossier véhicule''' produit deux fichiers :
+
+* un '''PDF''' regroupant les caractéristiques du véhicule, la chronologie disponible, les événements, les contrôles, les factures liées, une synthèse des pleins et recharges et l'inventaire documentaire ;
+* un '''ZIP''' contenant ce PDF et les fichiers originaux du véhicule, des événements, des contrôles et des factures liées.
+
+Les brouillons, annulations et archives sont inclus. Une facture liée à plusieurs interventions n'est embarquée qu'une fois. Les fichiers indexés mais absents sont signalés dans le PDF.
+
+Les justificatifs des consommations et de leurs opérations diverses, les fichiers temporaires, les aperçus et les dossiers précédents sont exclus de l'archive. Le tableau de synthèse des consommations présente les dates, kilométrages, références, consommables, natures, unités et références d'huile ; il ne présente ni les quantités ni les montants.
+
+La génération utilise les données et documents déjà disponibles : elle ne génère pas les documents commerciaux des factures et ne reconstitue pas un historique non enregistré.
+
+La génération nécessite les droits de lecture et d'écriture du véhicule ainsi que la lecture des factures fournisseurs. La consultation du dossier nécessite les droits cumulés de lecture correspondants. Le dossier n'est pas accessible aux utilisateurs externes ni par lien public.
+
+=== Gestion multientité ===
+
+Avec Multicompany, les objets partageables sont configurables dans les réglages natifs de partage. Les listes concernées affichent un filtre et une colonne '''Environnement'''.
+
+Les documents restent stockés dans l'entité propriétaire de l'objet, y compris lorsqu'il est consulté depuis une autre entité autorisée. Les réglages par entité, modèles et choix de partage sont conservés lors d'une désactivation puis réactivation du module.
+
+== Prérequis et dépendances ==
+
+Le socle requis est Dolibarr 20 ou supérieur, PHP 8.0 ou supérieur et MySQL/MariaDB. Les dépendances supplémentaires varient selon les fonctions utilisées.
+
+{| class="wikitable"
+! Module ou extension !! Utilisation
+|-
+| Agenda || Échéances et événements ; recommandé pour le suivi automatique.
+|-
+| Travaux planifiés || Exécution périodique des recalculs et relances.
+|-
+| Banques et Caisses || Requis pour créer les opérations diverses des consommations.
+|-
+| Comptabilité || Facultative ; règles de compte adaptées au mode comptable actif.
+|-
+| Factures fournisseurs || Requis pour les liaisons de factures et les dossiers véhicule.
+|-
+| Extension PHP ZIP (<code>ZipArchive</code>) || Requise pour générer le dossier PDF/ZIP.
+|-
+| Multicompany || Facultatif ; partage et gestion de plusieurs entités.
+|-
+| Ressources || Facultatif ; liaison à une ressource Dolibarr.
+|}
+
+L'onglet '''Compatibilité''' des réglages indique les dépendances et fonctionnalités disponibles dans l'environnement courant.
+
+== Installation ==
+
+# Récupérer une distribution du module correspondant à la version 1.0.0.
+# Placer le répertoire <code>lmdbvehiclemanagement</code> dans le répertoire des modules externes de l'installation Dolibarr. Les fichiers du module doivent se trouver directement dans ce répertoire, sans second répertoire imbriqué du même nom.
+# Se connecter à Dolibarr avec un compte administrateur.
+# Ouvrir '''Accueil → Configuration → Modules/Applications'''.
+# Rechercher et activer '''Gestion des véhicules et engins''', dans la famille '''Les Métiers du Bâtiment'''.
+# Ouvrir les réglages avec la roue dentée du module et consulter l'onglet '''Compatibilité'''.
+# Attribuer aux utilisateurs et groupes les permissions correspondant à leurs fonctions.
+
+Si une archive de déploiement Dolibarr est fournie, elle peut être installée depuis l'écran natif de déploiement des modules externes.
+
+== Configuration initiale ==
+
+# Vérifier les dictionnaires utiles au parc : énergies, consommables, types de matériel, profils, types et résultats de contrôles.
+# Choisir les modèles de numérotation des objets.
+# Configurer les options d'assurance, les référents et les modèles d'emails de relance.
+# Vérifier les règles réglementaires et les options de blocage souhaitées.
+# Dans les '''Travaux planifiés''' de Dolibarr, vérifier et activer les traitements nécessaires aux recalculs et aux rappels automatiques.
+# Si les opérations diverses sont utilisées, configurer cette option et ses paramètres bancaires dans chaque entité concernée.
+# Pour les dossiers véhicule, activer '''Dossier véhicule''' dans le bloc '''Modèles de document''' et, si souhaité, le choisir comme modèle par défaut.
+# En environnement Multicompany, configurer les partages et les permissions d'accès aux entités.
+
+Les onglets '''Compatibilité''' et '''À propos''' sont accessibles depuis les réglages du module.
+
+== Utilisation ==
+
+=== Créer et suivre un véhicule ===
+
+# Créer une fiche véhicule ou engin et renseigner ses caractéristiques.
+# Compléter les capacités, l'énergie et les informations nécessaires à sa qualification réglementaire.
+# Enregistrer le kilométrage connu et les affectations des conducteurs.
+# Ajouter les contrats d'assurance, attestations et contrôles disponibles.
+# Enregistrer ensuite les interventions, relevés, pleins et recharges au fil de l'exploitation.
+
+La chronologie et les listes permettent de retrouver les opérations enregistrées et leurs documents.
+
+=== Enregistrer un contrôle ===
+
+# Créer un contrôle pour le véhicule concerné.
+# Renseigner l'organisme, les dates et le résultat.
+# Joindre le justificatif requis.
+# Vérifier les informations puis valider le contrôle.
+
+Après validation, utiliser les actions prévues d'annulation ou de remplacement lorsqu'une correction est nécessaire. Les contrôles validés ne sont pas destinés à être réécrits librement.
+
+=== Générer le dossier véhicule ===
+
+# Ouvrir la fiche du véhicule ou son onglet '''Fichiers joints'''.
+# Dans le bloc documentaire natif, sélectionner le modèle '''Dossier véhicule'''.
+# Cliquer sur '''Générer'''.
+# Consulter le PDF ou télécharger le ZIP depuis la liste des fichiers.
+
+Pour actualiser un dossier, relancer la génération. Les fichiers réservés au dossier ne doivent pas être remplacés par un téléversement manuel. En cas d'échec de génération, le dossier précédent est restauré.
+
+== Mise à jour ==
+
+Avant toute mise à jour, sauvegarder la base de données et les documents de l'installation.
+
+Après remplacement des fichiers du module, le désactiver puis le réactiver pour appliquer les migrations et enregistrer les déclarations natives nécessaires. Les réglages existants sont conservés.
+
+Pour une mise à jour depuis une version de développement :
+
+* consulter le fichier <code>ChangeLog.md</code> de la distribution ;
+* vérifier les modèles documentaires et les travaux planifiés ;
+* régénérer les dossiers existants pour bénéficier de leur présentation finale ;
+* vérifier les paramètres bancaires avant d'activer la création d'opérations diverses.
+
+Les nouveaux libellés Agenda s'appliquent aux événements futurs. Les historiques et contrôles validés ne sont pas réécrits.
+
+== Limites de la version 1.0.0 ==
+
+* Les contrôles détaillés des extincteurs, appareils sous pression, accessoires de levage et fluides frigorigènes ne sont pas préconfigurés.
+* La gestion dédiée des cartes grises, sinistres, primes, franchises et contraventions n'est pas couverte.
+* La gestion commerciale des factures d'achat reste assurée par le module natif Factures fournisseurs.
+* Les rappels périodiques nécessitent une configuration opérationnelle des travaux planifiés et de l'envoi d'emails Dolibarr.
+
+== Sources et liens utiles ==
+
+* [https://github.com/mapiolca/lmdbvehiclemanagement Code source du module]
+* [https://github.com/mapiolca/lmdbvehiclemanagement/blob/094fc89/README.md Documentation de référence de la version présentée]
+* [https://github.com/mapiolca/lmdbvehiclemanagement/blob/094fc89/ChangeLog.md Historique de la version 1.0.0]
+* [https://github.com/mapiolca Profil de l'auteur]
+
+[[Category:Modules complémentaires]]
+[[Category:DocUserFR]]

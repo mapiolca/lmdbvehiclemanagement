@@ -28,7 +28,7 @@ require_once $coreRoot.'/core/lib/functions.lib.php';
 if (is_file($coreRoot.'/core/lib/html.lib.php')) require_once $coreRoot.'/core/lib/html.lib.php';
 require_once $coreRoot.'/core/class/translate.class.php';
 require_once $coreRoot.'/user/class/user.class.php';
-$langs = new Translate($coreRoot, $conf);
+$langs = new Translate('', $conf);
 $langs->setDefaultLang('en_US');
 $langs->loadLangs(array('main', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 require_once dirname(__DIR__).'/class/lmdbvehiclequartixcron.class.php';
@@ -119,6 +119,7 @@ final class QxTestClient extends LmdbVehicleQuartixClient
 		$this->calls[] = compact('method', 'path', 'values', 'token');
 		$response = array_shift($this->responses);
 		if ($response === null) throw new RuntimeException('Unexpected request');
+		if ($response['status'] === 0) throw new RuntimeException('QxNetworkError');
 		return $response;
 	}
 }
@@ -182,10 +183,34 @@ qxCheck($client->retryAfter === 120, 'Retry-After honored');
 $callCount = count($client->calls);
 qxReject(static function () use ($client) { $client->get('/vehicles'); }, 'QxRateLimited');
 qxCheck(count($client->calls) === $callCount, 'Quota prevents manual retry traffic too');
+qxCheck($client->getDiagnosticMessage($langs) === '', 'A quota refusal does not reuse the previous HTTP diagnostic');
 $db->query("DELETE FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job WHERE job_kind='api' AND entity=1");
 $client->responses = array(array('status' => 200, 'body' => '{"Meta":"secret","Data":[]}', 'retry' => 0));
 qxReject(static function () use ($client) { $client->get('/vehicles'); }, 'QxInvalidResponse');
 qxReject(static function () use ($client) { $client->get('/vehicles/trips'); }, 'QxInvalidEndpoint');
+qxCheck($client->getDiagnostic()['endpoint'] === '', 'Rejected local endpoint has no stale transport result');
+
+// Reproduce the generic service error: preserve the HTTP status and failed stage,
+// while excluding the provider body, query parameters and credentials from diagnostics.
+foreach (array(301, 400, 404, 405, 415, 500, 502, 503) as $status) {
+	$client->responses = array(array('status' => $status, 'body' => 'sensitive-provider-body', 'retry' => 0));
+	qxReject(static function () use ($client) { $client->get('/vehicles', array('SiteID' => 'sensitive-query')); }, 'QxRemoteError');
+	qxCheck($client->getDiagnostic() === array('endpoint' => '/vehicles', 'http_status' => $status, 'curl_error' => 0), 'Safe exact HTTP diagnostic for '.$status);
+	$diagnostic = $client->getDiagnosticMessage($langs);
+	qxCheck(strpos($diagnostic, '/vehicles') !== false && strpos($diagnostic, (string) $status) !== false && strpos($diagnostic, 'sensitive') === false && strpos($diagnostic, 'access') === false, 'Translated diagnostic excludes response and request secrets');
+}
+$client->responses = array(qxResponse(null, 401), qxResponse(null, 503));
+qxReject(static function () use ($client) { $client->get('/vehicles'); }, 'QxRemoteError');
+qxCheck($client->getDiagnostic()['endpoint'] === '/auth/refresh', 'Refresh failure reports the refresh stage');
+$client->responses = array(qxResponse(null, 0));
+qxReject(static function () use ($client) { $client->get('/vehicles'); }, 'QxNetworkError');
+qxCheck($client->getDiagnostic() === array('endpoint' => '/vehicles', 'http_status' => 0, 'curl_error' => 0), 'Transport exception clears the preceding HTTP status');
+$conf->entity = 2;
+$authFailure = new QxTestClient($db, 2);
+$authFailure->responses = array(qxResponse(null, 415));
+qxReject(static function () use ($authFailure) { $authFailure->get('/vehicles'); }, 'QxRemoteError');
+qxCheck($authFailure->getDiagnostic()['endpoint'] === '/auth' && count($authFailure->calls) === 1, 'Authentication failure is distinguished from catalogue failure');
+qxCheck((int) $db->pdo->query('SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_token WHERE entity=2')->fetchColumn() === 0, 'Failed authentication creates no tokens');
 $conf->entity = 2;
 qxReject(static function () use ($db) { new QxTestClient($db, 1); }, 'QxAccessDenied');
 $conf->entity = 1;

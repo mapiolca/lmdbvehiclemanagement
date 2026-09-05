@@ -33,6 +33,7 @@ foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'TIME_MODE', 'DURATION_UNIT')
 if (in_array($action, array('save', 'test', 'associate', 'toggle'), true)) {
 	if ($_SERVER['REQUEST_METHOD'] !== 'POST') accessforbidden();
 	$locked = false;
+	$client = null;
 	try {
 		if (!LmdbVehicleQuartixConfig::supported()) throw new RuntimeException('QxRequiresCrypto');
 		if (!$service->lock($entity)) throw new RuntimeException('QxBusy');
@@ -60,7 +61,9 @@ if (in_array($action, array('save', 'test', 'associate', 'toggle'), true)) {
 		}
 		setEventMessages($langs->trans($action === 'test' ? 'QxConnectionOk' : 'RecordSaved'), null, 'mesgs');
 	} catch (Exception $e) {
-		setEventMessages($langs->trans(LmdbVehicleQuartixCron::safeError($e)), null, 'errors');
+		$message = $langs->trans(LmdbVehicleQuartixCron::safeError($e));
+		if ($client !== null) $message .= ' '.dol_escape_htmltag($client->getDiagnosticMessage($langs));
+		setEventMessages($message, null, 'errors');
 	} finally {
 		if ($locked) $service->unlock($entity);
 	}
