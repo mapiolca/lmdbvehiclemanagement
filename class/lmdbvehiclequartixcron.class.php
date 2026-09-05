@@ -1,9 +1,9 @@
 <?php
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
-require_once __DIR__.'/lmdbvehiclequartixservice.class.php';
+require_once __DIR__.'/lmdbvehiclequartixtrips.class.php';
 
-/** Three native, bounded and restartable QWS jobs. */
+/** Four native, bounded and restartable QWS jobs. */
 class LmdbVehicleQuartixCron
 {
 	/** @var DoliDB */ public $db;
@@ -15,25 +15,36 @@ class LmdbVehicleQuartixCron
 	/** @return int */ public function positions() { return $this->run('positions'); }
 	/** @return int */ public function odometer() { return $this->run('odometer'); }
 	/** @return int */ public function usage() { return $this->run('usage'); }
+	/** @return int */ public function trips() { return $this->run('trips'); }
 
-	/** @param string $kind positions/odometer/usage @return int 0 success, -1 failure */
+	/** @param string $kind positions/odometer/usage/trips @return int 0 success, -1 failure */
 	public function run($kind)
 	{
 		global $conf, $user, $langs;
 		$this->error = ''; $this->errors = array(); $this->output = '';
 		$entity = (int) $conf->entity;
-		$service = new LmdbVehicleQuartixService($this->db);
+		$service = new LmdbVehicleQuartixTrips($this->db);
 		$locked = false; $client = null; $processed = 0; $failed = 0; $lastVehicle = 0;
 		try {
-			if (!in_array($kind, array('positions', 'odometer', 'usage'), true)) throw new RuntimeException('QxInvalidEndpoint');
+			if (!in_array($kind, array('positions', 'odometer', 'usage', 'trips'), true)) throw new RuntimeException('QxInvalidEndpoint');
 			$langs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
-			if (!isModEnabled('lmdbvehiclemanagement') || !getDolGlobalInt(LmdbVehicleQuartixConfig::PREFIX.'ENABLED')) { $this->output = $langs->transnoentities('QxDisabled'); return 0; }
+			if (!isModEnabled('lmdbvehiclemanagement') || ($kind !== 'trips' && !getDolGlobalInt(LmdbVehicleQuartixConfig::PREFIX.'ENABLED'))) { $this->output = $langs->transnoentities('QxDisabled'); return 0; }
 			$unavailable = LmdbVehicleQuartixConfig::unavailableReason('jobs');
-			if ($unavailable !== '') { $this->error = $unavailable; $this->output = $langs->transnoentities($unavailable); return -1; }
+			if ($unavailable !== '' && !($kind === 'trips' && !in_array($unavailable, array('QxRequiresCrypto', 'RequiresCronModule'), true))) { $this->error = $unavailable; $this->output = $langs->transnoentities($unavailable); return -1; }
 			if (!LmdbVehicleQuartixConfig::can($user, 'sync') || ($kind === 'odometer' && !LmdbVehicleQuartixConfig::isAdmin($user) && !$user->hasRight('lmdbvehiclemanagement', 'odometer', 'write'))) throw new RuntimeException('QxAccessDenied');
 			if (!$service->lock($entity)) { $this->output = $langs->transnoentities('QxBusy'); return 0; }
 			$locked = true;
+			$deadline = microtime(true) + 45;
 			$cfg = (new LmdbVehicleQuartixConfig($this->db))->load($entity);
+			if ($kind === 'trips') {
+				$service->write('INSERT IGNORE INTO '.MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job (entity,job_kind) VALUES (".$entity.",'trips')");
+				$service->purge($entity, LmdbVehicleQuartixTrips::retention($cfg['TRIP_RETENTION_DAYS']), $deadline);
+				if ($cfg['ENABLED'] !== '1') {
+					$service->write('UPDATE '.MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job SET last_attempt='".$this->db->idate(dol_now())."',last_success='".$this->db->idate(dol_now())."',last_error=NULL WHERE entity=".$entity." AND job_kind='trips'");
+					$this->output = $langs->transnoentities('QxTripsPurgedPaused'); return 0;
+				}
+			}
+			if ($unavailable !== '') throw new RuntimeException($unavailable);
 			if (!LmdbVehicleQuartixConfig::supported()) throw new RuntimeException('QxRequiresCrypto');
 			$service->write('INSERT IGNORE INTO '.MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job (entity,job_kind) VALUES (".$entity.",'".$kind."')");
 			$state = $service->rows('SELECT * FROM '.MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job WHERE entity=".$entity." AND job_kind='".$kind."'")[0];
@@ -52,12 +63,11 @@ class LmdbVehicleQuartixCron
 			// The worker wakes every 15 minutes; each odometer is imported once per UTC day.
 			$today = gmdate('Y-m-d', dol_now());
 			if ($kind === 'odometer') $base .= " AND (l.odometer_synced IS NULL OR l.odometer_synced<'".$today."')";
-			$batchSize = $kind === 'usage' ? 20 : 100;
+			$batchSize = in_array($kind, array('usage', 'trips'), true) ? 20 : 100;
 			$links = $service->rows($base.' AND l.rowid>'.$lastVehicle.' ORDER BY l.rowid LIMIT '.$batchSize);
 			if (!$links) $links = $service->rows($base.' ORDER BY l.rowid LIMIT '.$batchSize);
-			$deadline = microtime(true) + 45;
 			$byVehicle = array();
-			if ($links && $kind !== 'usage') {
+			if ($links && in_array($kind, array('positions', 'odometer'), true)) {
 				$ids = array_map(static function ($link) { return (int) $link->remote_id; }, $links);
 				$data = $client->get('/vehicles/'.($kind === 'positions' ? 'live' : 'odometer'), array('VehicleIDList' => implode(',', $ids)));
 				foreach ($data as $row) {
@@ -70,7 +80,9 @@ class LmdbVehicleQuartixCron
 			foreach ($links as $link) {
 				if (microtime(true) >= $deadline) break;
 				try {
-					if ($kind === 'usage') {
+					if ($kind === 'trips') {
+						if (!$service->synchronize($client, $link, $cfg, $deadline)) { $lastVehicle = (int) $link->rowid; break; }
+					} elseif ($kind === 'usage') {
 						if (!$this->syncUsage($service, $client, $link, $deadline)) break;
 					}
 					else {
@@ -115,7 +127,7 @@ class LmdbVehicleQuartixCron
 	/** @param Exception $e Exception @return string Stable non-sensitive code */
 	public static function safeError($e)
 	{
-		$allowed = array('QxDatabaseError', 'QxAccessDenied', 'QxInvalidSettings', 'QxApplicationRequired', 'QxAccountInUse', 'QxMappingExists', 'QxInvalidResponse', 'QxTimeUnconfirmed', 'QxAmbiguousTime', 'QxInvalidPeriod', 'QxRequiresCrypto', 'QxNetworkError', 'QxRateLimited', 'QxAuthenticationFailed', 'QxRemoteError', 'QxRequestRejected', 'QxNoVehicleData', 'QxBusy', 'QxInvalidAssociationDate', 'QxAssociationHistoryOverlap', 'QxAssociationChanged', 'QxBeforeAssociation');
+		$allowed = array('QxDatabaseError', 'QxAccessDenied', 'QxInvalidSettings', 'QxApplicationRequired', 'QxAccountInUse', 'QxMappingExists', 'QxInvalidResponse', 'QxTimeUnconfirmed', 'QxAmbiguousTime', 'QxInvalidPeriod', 'QxRequiresCrypto', 'QxNetworkError', 'QxRateLimited', 'QxAuthenticationFailed', 'QxRemoteError', 'QxRequestRejected', 'QxNoVehicleData', 'QxBusy', 'QxInvalidAssociationDate', 'QxAssociationHistoryOverlap', 'QxAssociationChanged', 'QxBeforeAssociation', 'QxInvalidRetention');
 		return in_array($e->getMessage(), $allowed, true) ? $e->getMessage() : 'QxInvalidResponse';
 	}
 

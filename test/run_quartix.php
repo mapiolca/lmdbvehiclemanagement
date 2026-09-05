@@ -163,11 +163,11 @@ function qxResponse($data, $status = 200, $retry = 900) { return array('status' 
 $db = new QxTestDb();
 $user = new User($db); $user->id = 1; $user->admin = 1; $user->socid = 0;
 $extrafields = (object) array('attributes' => array('lmdbvehiclemanagement_odometer_reading' => array('loaded' => 1), 'lmdbvehiclemanagement_vehicle' => array('loaded' => 1)));
-foreach (array('odometer_reading', 'vehicle', 'qx_link', 'qx_position', 'qx_usage', 'qx_token', 'qx_job') as $table) {
+foreach (array('odometer_reading', 'vehicle', 'qx_link', 'qx_position', 'qx_usage', 'qx_token', 'qx_job', 'qx_tripday', 'qx_trip') as $table) {
 	$sql = file_get_contents(dirname(__DIR__).'/sql/llx_lmdbvehiclemanagement_'.$table.'.sql');
 	$db->query(str_replace('llx_', MAIN_DB_PREFIX, $sql));
 }
-foreach (array('qx_link' => array('entity,fk_vehicle', 'entity,remote_id'), 'qx_position' => array('entity,fk_vehicle'), 'qx_usage' => array('entity,fk_vehicle,usage_day'), 'qx_job' => array('entity,job_kind'), 'odometer_reading' => array('entity,fk_vehicle,provider_key')) as $table => $keys) {
+foreach (array('qx_link' => array('entity,fk_vehicle', 'entity,remote_id'), 'qx_position' => array('entity,fk_vehicle'), 'qx_usage' => array('entity,fk_vehicle,usage_day'), 'qx_tripday' => array('entity,fk_vehicle,trip_day'), 'qx_job' => array('entity,job_kind'), 'odometer_reading' => array('entity,fk_vehicle,provider_key')) as $table => $keys) {
 	foreach ($keys as $i => $columns) $db->query('CREATE UNIQUE INDEX qx_'.$table.'_'.$i.' ON '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$table.' ('.$columns.')');
 }
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'const (rowid integer PRIMARY KEY, entity integer, name text, value text, type text, visible integer, note text)');
@@ -224,7 +224,7 @@ qxCheck($client->getDiagnosticMessage($langs) === '', 'A quota refusal does not 
 $db->query("DELETE FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job WHERE job_kind='api' AND entity=1");
 $client->responses = array(array('status' => 200, 'body' => '{"Meta":"secret","Data":[]}', 'retry' => 0));
 qxReject(static function () use ($client) { $client->get('/vehicles'); }, 'QxInvalidResponse');
-qxReject(static function () use ($client) { $client->get('/vehicles/trips'); }, 'QxInvalidEndpoint');
+qxReject(static function () use ($client) { $client->get('/vehicles/route'); }, 'QxInvalidEndpoint');
 qxCheck($client->getDiagnostic()['endpoint'] === '', 'Rejected local endpoint has no stale transport result');
 
 // Reproduce the generic service error: preserve the HTTP status and failed stage,
@@ -498,6 +498,7 @@ $graph->draw('qx_test_native_graph');
 qxCheck(strpos($graph->show(), '42.5') !== false && strpos($graph->show(), 'qx_test_native_graph') !== false, 'Native graph backend renders without a generated file');
 
 require __DIR__.'/quartix_association_cases.php';
+require __DIR__.'/quartix_trip_cases.php';
 
 // Upgrade twice, preserving real data and avoiding duplicate columns.
 $db->query('ALTER TABLE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link DROP COLUMN sync_from');

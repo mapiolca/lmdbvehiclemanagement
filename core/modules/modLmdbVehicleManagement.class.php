@@ -149,7 +149,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		);
 
 		// Bounded workers: daily imports/backfill resume between runs without changing native scheduling.
-		foreach (array('positions' => 'QxPositionJob', 'odometer' => 'QxOdometerJob', 'usage' => 'QxUsageJob') as $method => $label) {
+		foreach (array('positions' => 'QxPositionJob', 'odometer' => 'QxOdometerJob', 'usage' => 'QxUsageJob', 'trips' => 'QxTripsJob') as $method => $label) {
 			$this->cronjobs[] = array(
 				'label' => $label, 'jobtype' => 'method',
 				'class' => '/lmdbvehiclemanagement/class/lmdbvehiclequartixcron.class.php',
@@ -393,6 +393,15 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement,fk_leftmenu=lmdbvehiclemanagement_vehicles',
+			'type' => 'left', 'titre' => 'QxDashboard', 'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_dashboard', 'url' => '/lmdbvehiclemanagement/quartix_dashboard.php',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement', 'position' => 104,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => 'empty($user->socid) && ($user->admin || $user->hasRight("lmdbvehiclemanagement", "read"))',
+			'target' => '', 'user' => 0,
 		);
 		$this->menu[$r++] = array(
 			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement',
@@ -963,6 +972,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 
 		$defaults = array(
 			'LMDBVEHICLEMANAGEMENT_QX_ENABLED' => '0',
+			'LMDBVEHICLEMANAGEMENT_QX_TRIP_RETENTION_DAYS' => '30',
 			'MAIN_MODULE_LMDBVEHICLEMANAGEMENT_ICON' => 'fa-car',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON' => 'mod_lmdbvehicle_standard',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLEEVENT_ADDON' => 'mod_lmdbvehicleevent_standard',

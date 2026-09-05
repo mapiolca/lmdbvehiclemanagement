@@ -340,38 +340,55 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	 */
 	public function delete(User $user, $notrigger = 0)
 	{
-		$tables = array(
-			'lmdbvehiclemanagement_vehicle_assignment',
-			'lmdbvehiclemanagement_qx_link',
-			'lmdbvehiclemanagement_odometer_reading',
-			'lmdbvehiclemanagement_consumption',
-			'lmdbvehiclemanagement_vehicle_capacity',
-			'lmdbvehiclemanagement_vehicle_event',
-			'lmdbvehiclemanagement_insurance_contract_vehicle',
-			'lmdbvehiclemanagement_insurance_certificate',
-			'lmdbvehiclemanagement_vehicle_regulatory_profile',
-			'lmdbvehiclemanagement_control_requirement',
-			'lmdbvehiclemanagement_regulatory_control',
-		);
-		foreach ($tables as $table) {
-			$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.$table;
-			$sql .= ' WHERE fk_vehicle = '.((int) $this->id);
-			$sql .= ' AND entity = '.((int) $this->entity).' LIMIT 1';
-			$resql = $this->db->query($sql);
-			if (!$resql) {
-				$this->error = $this->db->lasterror();
-				return -1;
+		require_once __DIR__.'/lmdbvehiclequartixservice.class.php';
+		$quartix = new LmdbVehicleQuartixService($this->db);
+		try { $owner = $quartix->vehicle((int) $this->id); }
+		catch (Exception $e) { $this->error = 'QxAccessDenied'; return -1; }
+		if ((int) $owner->entity !== (int) $this->entity || !LmdbVehicleQuartixConfig::can($user, 'configure') && !$user->hasRight('lmdbvehiclemanagement', 'delete')) { $this->error = 'QxAccessDenied'; return -1; }
+		if (!$quartix->lock((int) $this->entity)) { $this->error = 'QxBusy'; return -1; }
+		try {
+			$tables = array(
+				'lmdbvehiclemanagement_vehicle_assignment',
+				'lmdbvehiclemanagement_qx_link',
+				'lmdbvehiclemanagement_odometer_reading',
+				'lmdbvehiclemanagement_consumption',
+				'lmdbvehiclemanagement_vehicle_capacity',
+				'lmdbvehiclemanagement_vehicle_event',
+				'lmdbvehiclemanagement_insurance_contract_vehicle',
+				'lmdbvehiclemanagement_insurance_certificate',
+				'lmdbvehiclemanagement_vehicle_regulatory_profile',
+				'lmdbvehiclemanagement_control_requirement',
+				'lmdbvehiclemanagement_regulatory_control',
+			);
+			foreach ($tables as $table) {
+				$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.$table;
+				$sql .= ' WHERE fk_vehicle = '.((int) $this->id);
+				$sql .= ' AND entity = '.((int) $this->entity).' LIMIT 1';
+				$resql = $this->db->query($sql);
+				if (!$resql) {
+					$this->error = $this->db->lasterror();
+					return -1;
+				}
+				$hasRecord = $this->db->num_rows($resql) > 0;
+				$this->db->free($resql);
+				if ($hasRecord) {
+					$this->error = 'VehicleHasRelatedRecords';
+					$this->errors[] = $this->error;
+					return 0;
+				}
 			}
-			$hasRecord = $this->db->num_rows($resql) > 0;
-			$this->db->free($resql);
-			if ($hasRecord) {
-				$this->error = 'VehicleHasRelatedRecords';
-				$this->errors[] = $this->error;
-				return 0;
-			}
-		}
 
-		return parent::delete($user, $notrigger);
+			$this->db->begin();
+			try {
+				$quartix->deleteTripCache((int) $this->entity, (int) $this->id);
+				$result = parent::delete($user, $notrigger);
+				if ($result <= 0) { $this->db->rollback(); return $result; }
+				$this->db->commit();
+				return $result;
+			} catch (Exception $e) {
+				$this->db->rollback(); $this->error = 'QxDatabaseError'; $this->errors = array($this->error); return -1;
+			}
+		} finally { $quartix->unlock((int) $this->entity); }
 	}
 
 	/**

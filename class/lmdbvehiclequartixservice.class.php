@@ -84,7 +84,10 @@ class LmdbVehicleQuartixService
 		$firstDay = LmdbVehicleQuartixRules::firstUsageDay($syncFrom, $timezone, $selected['ShiftStartTime']);
 		$history = $this->rows('SELECT usage_day FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_usage WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.$id." AND usage_day>='".$firstDay."' AND has_data=1 LIMIT 1");
 		$readings = $this->rows('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.$id." AND is_estimate=1 AND provider_key IS NOT NULL AND reading_date>='".$this->db->idate($syncFrom)."' LIMIT 1");
-		if ($history || $readings) throw new RuntimeException('QxAssociationHistoryOverlap');
+		require_once __DIR__.'/lmdbvehiclequartixtrips.class.php';
+		$firstTripDay = LmdbVehicleQuartixTrips::reportingDay($syncFrom, $timezone, $selected['ShiftStartTime']);
+		$tripHistory = $this->rows('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.$id." AND trip_day>='".$firstTripDay."' LIMIT 1");
+		if ($history || $readings || $tripHistory) throw new RuntimeException('QxAssociationHistoryOverlap');
 		$this->db->begin();
 		try {
 			$this->write('INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link (entity,fk_vehicle,remote_id,timezone,shift_start,sync_from,date_creation,fk_user_creat) VALUES ('.((int) $conf->entity).','.$id.','.$remoteId.",'".$this->db->escape($timezone)."','".$this->db->escape($selected['ShiftStartTime'])."','".$this->db->idate($syncFrom)."','".$this->db->idate(dol_now())."',".((int) $user->id).')');
@@ -122,6 +125,7 @@ class LmdbVehicleQuartixService
 					}
 				} while (count($readings) === 100);
 				$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_usage'.$filter);
+				$this->deleteTripCache((int) $conf->entity, (int) $vehicle->id);
 			}
 			$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_position WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.((int) $vehicle->id));
 			$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.((int) $vehicle->id).' AND rowid='.$linkId);
@@ -129,6 +133,18 @@ class LmdbVehicleQuartixService
 			if ($vehicle->call_trigger($vehicle->TRIGGER_PREFIX.'_UPDATE', $user) < 0) throw new RuntimeException('QxDatabaseError');
 			$this->db->commit();
 		} catch (Exception $e) { $this->db->rollback(); throw $e; }
+	}
+
+	/** Caller owns transaction and authorizes the vehicle mutation. @param int $entity Owner @param int $vehicleId Vehicle @return void */
+	public function deleteTripCache($entity, $vehicleId)
+	{
+		global $conf, $user;
+		$vehicle = $this->vehicle($vehicleId);
+		if ($entity !== (int) $vehicle->entity
+			|| (!LmdbVehicleQuartixConfig::can($user, 'configure') && !$user->hasRight('lmdbvehiclemanagement', 'delete'))) throw new RuntimeException('QxAccessDenied');
+		$filter = ' WHERE entity='.$entity.' AND fk_vehicle='.$vehicleId;
+		$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_trip WHERE entity='.$entity.' AND fk_tripday IN (SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday'.$filter.')');
+		$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday'.$filter);
 	}
 
 	/** Native reading object; replaceable in offline trigger tests. @return LmdbVehicleOdometerReading */
@@ -176,7 +192,7 @@ class LmdbVehicleQuartixService
 	}
 
 	/** @param stdClass $link Association @return void */
-	private function assertOwner($link)
+	protected function assertOwner($link)
 	{
 		global $conf, $user;
 		if (!LmdbVehicleQuartixConfig::can($user, 'sync') || (int) $link->entity !== (int) $conf->entity || !(int) $link->active) throw new RuntimeException('QxAccessDenied');

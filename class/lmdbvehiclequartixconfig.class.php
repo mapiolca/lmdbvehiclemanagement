@@ -62,14 +62,15 @@ class LmdbVehicleQuartixConfig
 	public function load($entity, $secrets = false)
 	{
 		global $conf;
-		$keys = array('ENABLED', 'TIME_MODE', 'DURATION_UNIT');
+		$keys = array('ENABLED', 'TIME_MODE', 'DURATION_UNIT', 'TRIP_RETENTION_DAYS');
 		if ($secrets) {
 			if ($entity !== (int) $conf->entity) throw new RuntimeException('QxAccessDenied');
 			$keys = array_merge($keys, array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION'));
 		}
 		$result = array_fill_keys($keys, '');
+		$result['TRIP_RETENTION_DAYS'] = '30';
 		if ($entity === (int) $conf->entity) {
-			foreach ($keys as $key) $result[$key] = getDolGlobalString(self::PREFIX.$key);
+			foreach ($keys as $key) $result[$key] = getDolGlobalString(self::PREFIX.$key, $key === 'TRIP_RETENTION_DAYS' ? '30' : '');
 		} else {
 			$names = array_map(static function ($key) { return "'".self::PREFIX.$key."'"; }, $keys);
 			$res = $this->db->query('SELECT name, value FROM '.MAIN_DB_PREFIX.'const WHERE entity = '.((int) $entity).' AND name IN ('.implode(',', $names).')');
@@ -108,6 +109,9 @@ class LmdbVehicleQuartixConfig
 			if ($values[$key] === '' || strlen($values[$key]) > 128 || preg_match('/[\x00-\x1f]/', $values[$key])) throw new RuntimeException('QxInvalidSettings');
 		}
 		$old = $this->load((int) $conf->entity, true);
+		require_once __DIR__.'/lmdbvehiclequartixtrips.class.php';
+		$values['TRIP_RETENTION_DAYS'] = $values['TRIP_RETENTION_DAYS'] ?? $old['TRIP_RETENTION_DAYS'];
+		LmdbVehicleQuartixTrips::retention($values['TRIP_RETENTION_DAYS']);
 		if ($values['PASSWORD'] === '') $values['PASSWORD'] = $old['PASSWORD'];
 		if ($values['PASSWORD'] === '' || strlen($values['PASSWORD']) > 1024) throw new RuntimeException('QxInvalidSettings');
 		if ($old['CUSTOMER'] !== '' && $old['CUSTOMER'] !== $values['CUSTOMER']) {
@@ -121,7 +125,7 @@ class LmdbVehicleQuartixConfig
 		require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
 		$this->db->begin();
 		try {
-			foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION', 'TIME_MODE', 'DURATION_UNIT') as $key) {
+			foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION', 'TIME_MODE', 'DURATION_UNIT', 'TRIP_RETENTION_DAYS') as $key) {
 				if (dolibarr_set_const($this->db, self::PREFIX.$key, $values[$key], 'chaine', 0, '', (int) $conf->entity) <= 0) throw new RuntimeException('QxDatabaseError');
 			}
 			if (!$this->db->query('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_token WHERE entity = '.((int) $conf->entity))) throw new RuntimeException('QxDatabaseError');

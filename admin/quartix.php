@@ -30,7 +30,7 @@ $vehicleId = GETPOSTINT('vehicle_id');
 $linkId = GETPOSTINT('link_id');
 $sessionKey = 'lmdbvm_qx_catalog_'.$entity;
 $values = array();
-foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION', 'TIME_MODE', 'DURATION_UNIT') as $key) {
+foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION', 'TIME_MODE', 'DURATION_UNIT', 'TRIP_RETENTION_DAYS') as $key) {
 	$raw = GETPOST('qx_'.$key, $key === 'PASSWORD' ? 'none' : 'alphanohtml');
 	$values[$key] = is_string($raw) ? $raw : '';
 }
@@ -127,6 +127,11 @@ $unitOptions = array('' => $langs->trans('QxUnconfirmed'), 'seconds' => $langs->
 foreach (array('TIME_MODE' => array('QxTimeMode', $timeOptions), 'DURATION_UNIT' => array('QxDurationUnit', $unitOptions)) as $key => $definition) {
 	print '<tr><td>'.$langs->trans($definition[0]).'</td><td>'.$form->selectarray('qx_'.$key, $definition[1], $settings[$key], 0, 0, 0, '', 0, 0, 0, '', 'minwidth200', 1).'</td></tr>';
 }
+print '<tr><td><label for="qx_TRIP_RETENTION_DAYS">'.$langs->trans('QxTripRetention').'</label></td><td><input class="flat width75" type="number" min="1" step="1" required id="qx_TRIP_RETENTION_DAYS" name="qx_TRIP_RETENTION_DAYS" value="'.dol_escape_htmltag($settings['TRIP_RETENTION_DAYS']).'"></td></tr>';
+try {
+	$tripCount = (int) $service->rows('SELECT COUNT(*) AS nb FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_trip WHERE entity='.$entity)[0]->nb;
+	print '<tr><td>'.$langs->trans('QxStoredTrips').'</td><td>'.$tripCount.'<br><span class="opacitymedium">'.$langs->trans('QxTripRetentionHelp').'</span></td></tr>';
+} catch (Exception $e) { print '<tr><td colspan="2">'.$langs->trans('QxDataUnavailable').'</td></tr>'; }
 print '</table></div><p class="opacitymedium">'.$langs->trans('QxSemanticsHelp').'</p><div class="center"><button class="button button-save" type="submit">'.$langs->trans('Save').'</button></div></form>';
 print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="test"><div class="center"><button class="button" type="submit">'.$langs->trans('QxTestConnection').'</button></div></form>';
 
@@ -163,11 +168,13 @@ try {
 	if (count($links) > 100) print '<a class="button" href="'.$_SERVER['PHP_SELF'].'?page='.($mapPage + 1).'">'.$langs->trans('Next').'</a>';
 	print load_fiche_titre($langs->trans('QxJobs'), '', '');
 	print '<p>'.$langs->trans('QxJobsHelp').' <a href="'.DOL_URL_ROOT.'/cron/list.php">'.$langs->trans('QxJobs').'</a></p>';
-	$nativeJobs = $service->rows('SELECT status FROM '.MAIN_DB_PREFIX."cronjob WHERE entity=".$entity." AND classesname='/lmdbvehiclemanagement/class/lmdbvehiclequartixcron.class.php' AND objectname='LmdbVehicleQuartixCron' AND methodename IN ('positions','odometer','usage')");
+	$nativeJobs = $service->rows('SELECT methodename,status FROM '.MAIN_DB_PREFIX."cronjob WHERE entity=".$entity." AND classesname='/lmdbvehiclemanagement/class/lmdbvehiclequartixcron.class.php' AND objectname='LmdbVehicleQuartixCron' AND methodename IN ('positions','odometer','usage','trips')");
 	$activeJobs = array_filter($nativeJobs, static function ($job) { return (int) $job->status === 1; });
-	if (count($activeJobs) !== 3) print '<div class="warning">'.$langs->trans('QxJobsInactive').'</div>';
-	$jobs = $service->rows('SELECT * FROM '.MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job WHERE entity=".$entity." AND job_kind IN ('positions','odometer','usage') ORDER BY job_kind");
-	$jobLabels = array('positions' => 'QxPositionJob', 'odometer' => 'QxOdometerJob', 'usage' => 'QxUsageJob');
+	if (count($activeJobs) !== 4) print '<div class="warning">'.$langs->trans('QxJobsInactive').'</div>';
+	$tripJobs = array_filter($activeJobs, static function ($job) { return $job->methodename === 'trips'; });
+	if (!$tripJobs || !isModEnabled('cron')) print '<div class="warning">'.$langs->trans('QxTripsPurgeStopped').'</div>';
+	$jobs = $service->rows('SELECT * FROM '.MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job WHERE entity=".$entity." AND job_kind IN ('positions','odometer','usage','trips') ORDER BY job_kind");
+	$jobLabels = array('positions' => 'QxPositionJob', 'odometer' => 'QxOdometerJob', 'usage' => 'QxUsageJob', 'trips' => 'QxTripsJob');
 	print '<table class="noborder centpercent"><tr class="liste_titre"><td>'.$langs->trans('Label').'</td><td>'.$langs->trans('QxLastAttempt').'</td><td>'.$langs->trans('QxLastSuccess').'</td><td>'.$langs->trans('Error').'</td></tr>';
 	foreach ($jobs as $job) print '<tr class="oddeven"><td>'.$langs->trans($jobLabels[$job->job_kind] ?? 'QxJobs').'</td><td>'.dol_print_date($db->jdate($job->last_attempt), 'dayhour').'</td><td>'.dol_print_date($db->jdate($job->last_success), 'dayhour').'</td><td>'.(!empty($job->last_error) ? dol_escape_htmltag($langs->trans($job->last_error)) : '').'</td></tr>';
 	if (!$jobs) print '<tr class="oddeven"><td colspan="4"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';

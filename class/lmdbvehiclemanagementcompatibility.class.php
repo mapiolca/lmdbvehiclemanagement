@@ -31,6 +31,16 @@ class LmdbVehicleManagementCompatibility
 				'available' => LmdbVehicleQuartixConfig::unavailableReason('connection') === '',
 				'reason' => LmdbVehicleQuartixConfig::unavailableReason('connection'),
 			),
+			'quartix_journal' => array(
+				'label' => 'QxJournal', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
+				'available' => LmdbVehicleQuartixConfig::supported(),
+				'reason' => LmdbVehicleQuartixConfig::unavailableReason('connection'),
+			),
+			'quartix_dashboard' => array(
+				'label' => 'QxDashboardTitle', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
+				'available' => LmdbVehicleQuartixConfig::supported(),
+				'reason' => LmdbVehicleQuartixConfig::unavailableReason('connection'),
+			),
 			'quartix_jobs' => array(
 				'label' => 'QxJobs', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
 				'available' => LmdbVehicleQuartixConfig::unavailableReason('jobs') === '',

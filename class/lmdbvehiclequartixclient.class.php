@@ -36,7 +36,7 @@ class LmdbVehicleQuartixClient
 	public function get($path, $query = array())
 	{
 		$this->lastEndpoint = ''; $this->lastHttpStatus = 0; $this->lastCurlError = 0;
-		if (!in_array($path, array('/vehicles', '/vehicles/live', '/vehicles/odometer', '/vehicles/tripsummary'), true)) throw new RuntimeException('QxInvalidEndpoint');
+		if (!in_array($path, array('/vehicles', '/vehicles/live', '/vehicles/odometer', '/vehicles/tripsummary', '/vehicles/trips'), true)) throw new RuntimeException('QxInvalidEndpoint');
 		$res = $this->db->query('SELECT MAX(retry_at) AS retry_at FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_job WHERE entity='.$this->entity);
 		if (!$res) throw new RuntimeException('QxDatabaseError');
 		$throttle = $this->db->fetch_object($res);

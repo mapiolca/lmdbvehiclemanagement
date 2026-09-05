@@ -8,13 +8,13 @@ Cette évolution de développement complète la version 1.0.0, sans publier de n
 2. Dans **Réglages → QUARTIX**, saisir le code client, le login, le mot de passe et le **Nom d’application (APPLICATION NAME)** fournis par QUARTIX pour l'environnement courant. Enregistrer avant de tester. Un mot de passe laissé vide conserve celui enregistré.
 3. Confirmer avec QUARTIX le sens des horodatages et l'unité des durées. Le mode **Convention QWS** respecte un décalage explicite lorsqu’il est présent et lit les dates sans suffixe dans le fuseau du véhicule, conformément à la page 1 du document QWS. Les modes forcés historiques restent disponibles ; l'unité de TravelTime et IdlingTime n'est pas précisée. Aucune interprétation n'est choisie par défaut.
 4. Tester la connexion pour charger le catalogue, puis associer explicitement les véhicules et confirmer leur fuseau IANA et la date/heure réelle d’installation du boîtier sur ce véhicule. Le début de journée provient de ShiftStartTime. Vérifier ces informations lors de l'association.
-5. Activer la synchronisation dans les réglages, puis les trois tâches dans les **Travaux planifiés** natifs. Utiliser un compte interne avec lecture du parc, synchronisation QUARTIX et gestion des relevés kilométriques. Les administrateurs disposent implicitement de ces droits.
+5. Activer la synchronisation dans les réglages, puis les quatre tâches dans les **Travaux planifiés** natifs. Utiliser un compte interne avec lecture du parc, synchronisation QUARTIX et gestion des relevés kilométriques. Les administrateurs disposent implicitement de ces droits.
 6. Comparer les premières valeurs avec QUARTIX sur l'instance servant réellement ce code.
 
 Chaque environnement possède sa connexion, ses jetons, ses associations et son état de synchronisation.
 Le nom d'application est conservé dans une constante native par entité. Sa saisie est obligatoire : aucune valeur n'est inventée à partir du nom du module. Une installation existante doit compléter ce réglage ; tant qu'il manque, les tests de connexion et les travaux planifiés sont refusés localement avec un message explicite. La sauvegarde des identifiants ou du nom d'application invalide les jetons de cette seule entité pour renouveler l'authentification.
 Un véhicule partagé reste synchronisé depuis son environnement propriétaire. Sa consultation utilise les données de ce propriétaire.
-Les associations peuvent être suspendues et réactivées depuis l'interrupteur natif ON/OFF de leur ligne, avec contrôle CSRF, droits et entité propriétaire. Le bouton **Dissocier** ouvre une confirmation native avec deux choix : **Réaffectation du boîtier** conserve les imports sur l’ancien véhicule ; **Association erronée** supprime définitivement toutes les synthèses et estimations QUARTIX de ce véhicule. Dans les deux cas, la dernière position est effacée et le boîtier devient disponible pour une nouvelle association. Les relevés manuels et ceux des pleins/recharges sont toujours conservés.
+Les associations peuvent être suspendues et réactivées depuis l'interrupteur natif ON/OFF de leur ligne, avec contrôle CSRF, droits et entité propriétaire. Le bouton **Dissocier** ouvre une confirmation native avec deux choix : **Réaffectation du boîtier** conserve les imports sur l’ancien véhicule ; **Association erronée** supprime définitivement tous les trajets, synthèses et estimations QUARTIX de ce véhicule. Dans les deux cas, la dernière position est effacée et le boîtier devient disponible pour une nouvelle association. Les relevés manuels et ceux des pleins/recharges sont toujours conservés.
 Une modification ultérieure du fuseau ou du début de journée dans QUARTIX nécessite également de revoir l'association avant de reprendre les imports.
 
 La dissociation fonctionne aussi pour une association suspendue. Elle partage le verrou des tâches QUARTIX, utilise une transaction et contrôle l’identifiant de l’association confirmée pour refuser une ancienne confirmation après réassociation. La suppression d’estimations passe par l’objet de relevé et ses triggers CRUD ; le véhicule émet un UPDATE avec `trigger_reason=quartix_unlink` et `quartix_cleanup` indiquant une purge. Aucun événement ni email parallèle n’est créé.
@@ -44,11 +44,11 @@ Un jour absent de la réponse QWS est enregistré comme **sans donnée**, jamais
 Les totaux et graphiques portent uniquement sur les jours renseignés ; la couverture indique les jours renseignés sur la période demandée.
 Les durées brutes sont conservées et converties en heures seulement après confirmation de l'unité.
 Les heures locales inexistantes ou répétées lors du changement d'heure sont refusées. Les dates futures incohérentes et les nombres invalides sont rejetés.
-Les données de trajets détaillés, conducteurs, écoconduite et distances privées ne sont pas importées.
+Les conducteurs, parcours GPS détaillés et données d’écoconduite ne sont pas importés. Le journal applique la protection des trajets privés décrite ci-dessous.
 
 ## Travaux planifiés
 
-Les trois tâches sont créées **désactivées**, avec un réveil toutes les quinze minutes. L'administrateur conserve la maîtrise de leur fréquence et de leur activation.
+Les quatre tâches sont créées **désactivées**, avec un réveil toutes les quinze minutes. L'administrateur conserve la maîtrise de leur fréquence et de leur activation.
 
 | Tâche | Traitement à chaque passage |
 |---|---|
@@ -61,7 +61,7 @@ Les bornes métier sont les débuts de journée QUARTIX dans le fuseau du véhic
 Après une interruption de plus de sept journées, la reprise historique revisite la fenêtre conservée pour combler les trous.
 La purge est bornée ; elle inclut les associations suspendues tant que la synchronisation globale et la tâche d'utilisation sont actives. Si les tâches sont arrêtées, aucune purge ne s'exécute.
 
-Un verrou MySQL nommé, isolé par préfixe de base et environnement, sérialise les trois tâches et les actions de configuration.
+Un verrou MySQL nommé, isolé par préfixe de base et environnement, sérialise les quatre tâches et les actions de configuration.
 Les positions/kilométrages utilisent des requêtes QWS groupées ; les synthèses sont demandées par véhicule pour vérifier strictement chaque réponse.
 Chaque journée d’utilisation est enregistrée dans une transaction ; le curseur de période avance après tous les jours attendus. Une erreur sur un véhicule n'annule pas les autres.
 Les erreurs visibles et les logs emploient des codes contrôlés, sans réponse API brute, secret ou coordonnées GPS.
@@ -159,3 +159,33 @@ Après une exécution manuelle réussie, le cron natif Dolibarr 24.0.0 produit e
 - absence de GPS dans le dossier et la chronologie ; libellé d'estimation explicite.
 
 Les vérifications locales ne nécessitent aucun compte QUARTIX. PHPStan doit être lancé avec l'outillage du projet lorsqu'il est disponible ; aucun baseline ni niveau affaibli n'est ajouté par cette évolution.
+
+
+## Journal des trajets et tableau de bord du parc
+
+L’onglet **Trajets** suit les onglets métier du véhicule et utilise le droit GPS existant. Il propose les sept derniers jours avec dates natives, état, tri, colonnes personnalisables et pagination SQL. Une arrivée provisoire retournée par QWS n’est jamais affichée comme définitive. Les horaires suivent le fuseau de la session Dolibarr ; le jour de départ conserve le découpage QUARTIX du véhicule. Les jours synchronisés sans trajet comptent dans la couverture ; les jours jamais importés restent inconnus.
+
+Le client lit `GET /vehicles/trips` pour **un véhicule et une journée QUARTIX**. Le schéma a été vérifié par une requête authentifiée le 5 septembre 2026 : réponse HTTP 200, 13 lignes, dates `StartDateTime`/`EndDateTime` avec décalage explicite, `InProgress` et `IsPrivate` booléens. `StartDateTimeLocal`/`EndDateTimeLocal` sont ignorés. Le contrat retourne aussi des trajets terminant dans la journée : seuls ceux dont le départ appartient à la journée demandée sont conservés. Les doublons identiques sont retirés ; des départs contradictoires au même instant font refuser la réponse complète.
+
+Deux tables sont ajoutées : `qx_tripday` identifie la journée, son propriétaire, le véhicule, le fuseau, le début de journée, la provenance historique de l’association et la dernière synchronisation ; `qx_trip` contient ses trajets. L’identifiant de provenance reste historique après suppression de l’association. Aucun identifiant stable de trajet n’est présumé : validation complète en mémoire, puis remplacement transactionnel d’une journée. Réponse invalide, transport interrompu ou erreur SQL : le cache précédent est conservé. Les lignes n’ont pas de référence métier ni d’édition manuelle, de document ou d’API publique.
+
+Dès que `IsPrivate` est vrai **ou** que `PrivacyDistance` est positive, seuls le jour et les distances sont conservés dans le résumé. Les lieux, coordonnées, horaires précis, durées et statut précis du trajet sont absents. Si les deux indications de confidentialité manquent, la même protection s’applique. L’état technique de la journée indique seulement si elle doit encore être relue. Aucun conducteur, parcours GPS, export GPS, document ou événement de chronologie n’est alimenté. Les durées publiques restent brutes en cache et indisponibles à l’affichage tant que leur unité n’est pas confirmée ; l’unité du compte de test reste non confirmée.
+
+Le réglage **Conservation des trajets (jours)** est un entier strictement positif, propre à l’environnement. La constante native `LMDBVEHICLEMANAGEMENT_QX_TRIP_RETENTION_DAYS` reçoit 30 **uniquement si absente**. Le calendrier UTC borne la conservation (journée courante comprise), comme les autres purges de l’intégration. Une réduction filtre immédiatement les vues et purge les journées expirées par lots de 100 au prochain passage ; une augmentation reprend les jours antérieurs disponibles. Une longue conservation consomme davantage de stockage, d’appels API et de temps de reprise. La page indique le nombre de trajets stockés, y compris ceux en attente de purge.
+
+Le quatrième travail natif **QUARTIX — journal des trajets**, désactivé à l’installation, se réveille toutes les quinze minutes. Il traite en priorité le jour courant et les journées encore ouvertes, puis relit quotidiennement les sept journées terminées et reprend les journées historiques manquantes. Budget de lot d’environ 45 secondes, au plus 10 appels par véhicule et curseur entre véhicules ; chaque journée réussie constitue son propre point de reprise. Le verrou d’entité, les jetons, quotas et délais de reprise sont communs aux quatre travaux. La purge précède les appels QWS et reste active lorsque la synchronisation est suspendue, si le module et ce travail restent actifs. Une désactivation du module ou du travail arrête la purge ; l’interface le signale.
+
+Une réaffectation conserve le journal de l’ancien véhicule ; une association erronée le supprime dans la transaction de dissociation. Une nouvelle association ne peut couvrir une journée possédant déjà une autre provenance. Choisir une journée d’installation ultérieure évite d’écraser cet historique. La suppression autorisée d’un véhicule nettoie son cache de trajets, après les contrôles existants sur les autres données métier.
+
+Le menu **Tableau de bord** du parc est accessible avec le droit de lecture des véhicules. Il présente par défaut les trente journées terminées précédant le jour UTC courant : véhicules associés, suspendus et non associés, kilomètres, trajets, jours actifs et jours renseignés/demandés. Un jour actif a une distance ou un nombre de trajets positif. Les totaux restent limités aux jours réellement renseignés. La comparaison graphique affiche les vingt distances les plus élevées de la sélection ; l’évolution quotidienne et les totaux couvrent toute la sélection, indépendamment de la pagination.
+
+Les lieux, dates de position et liens vers le journal sont exclus des requêtes et du rendu sans droit GPS. Les travaux et leurs erreurs sont présentés par environnement, séparément de l’ancienneté des positions. Une position ancienne ne permet pas de conclure à une panne ou à une immobilisation. Les véhicules partagés se lisent dans leur environnement propriétaire, avec badges et filtre Multicompany natifs ; l’import, la configuration et la purge appartiennent exclusivement au propriétaire. Les utilisateurs externes sont refusés. L’affichage ne déclenche aucun appel QWS.
+
+Les composants utilisés existent dans Dolibarr v20 : `Form::selectDate`, sélection de colonnes et pagination natives, Select2/multiselect2, `DolGraph` avec moteur `jflot`, droits et travaux planifiés. Le module reste en version 1.0.0, compatible PHP 8.0. Les réglages, associations et trois travaux précédents doivent rester identiques après réactivation.
+
+### Vérification locale de cette extension
+
+- 297 contrôles QUARTIX sur le core de développement 25.0.0-alpha ; 296 contrôles sur Dolibarr 20.0.4 avant l’ajout du contrôle explicite du droit GPS d’un utilisateur standard. Les tests incluent les snapshots ouverts/terminés, doublons, journées chevauchantes, DST, confidentialité, transactions, réaffectation, purge bornée, suppression du véhicule, quota, reprise, droits et agrégats multientités.
+- Suites existantes : 50 règles métier, 400 contrats Agenda, 80 réglementaires, 158 d’interface, 17 contrats OD, 168 réglages OD et 95 prix de consommation ; transport HTTPS local vérifié avec le véritable cURL.
+- Syntaxe des fichiers PHP modifiés vérifiée avec PHP 8.5.7. PHP 8.0 n’est pas installé et PHPStan n’est pas disponible ; aucune nouvelle dépendance ni règle d’exclusion d’analyse n’est ajoutée.
+- Les migrations MySQL et les écrans authentifiés restent à vérifier sur le code déployé. Les trajets privés réels et ouverts ne figuraient pas dans l’échantillon QWS du 4 septembre ; leurs cas sont testés avec des données synthétiques reprenant les types observés.
