@@ -1,6 +1,9 @@
 <?php
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
+// Require the native token check for the association switch's action link too.
+define('CSRFCHECK_WITH_TOKEN', 1);
+
 $res = 0;
 if (!$res && !empty($_SERVER['CONTEXT_DOCUMENT_ROOT'])) $res = @include str_replace('..', '', $_SERVER['CONTEXT_DOCUMENT_ROOT']).'/main.inc.php';
 if (!$res && file_exists('../../../main.inc.php')) $res = @include '../../../main.inc.php';
@@ -29,9 +32,9 @@ foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION', 'TIME_MODE', '
 	$raw = GETPOST('qx_'.$key, $key === 'PASSWORD' ? 'none' : 'alphanohtml');
 	$values[$key] = is_string($raw) ? $raw : '';
 }
-// main.inc.php enforces the native CSRF token; mutations additionally require POST.
-if (in_array($action, array('save', 'test', 'associate', 'toggle'), true)) {
-	if ($_SERVER['REQUEST_METHOD'] !== 'POST') accessforbidden();
+// Only the native ON/OFF link accepts GET; other mutations keep their POST form.
+if (in_array($action, array('save', 'test', 'associate', 'toggle', 'setactive'), true)) {
+	if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !($action === 'setactive' && $_SERVER['REQUEST_METHOD'] === 'GET')) accessforbidden();
 	$locked = false;
 	$client = null;
 	try {
@@ -124,7 +127,7 @@ try {
 	print '</tr>';
 	foreach (array_slice($links, 0, 100) as $link) {
 		print '<tr class="oddeven"><td><a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_quartix.php', 1).'?id='.((int) $link->fk_vehicle).'">'.dol_escape_htmltag($link->ref).'</a></td><td>'.dol_escape_htmltag($remoteOptions[(int) $link->remote_id] ?? $langs->trans('QxAssociatedVehicle')).'</td><td>'.dol_escape_htmltag($link->timezone).'</td><td>'.dol_escape_htmltag($link->shift_start).'</td><td>'.dolGetStatus($langs->trans((int) $link->active ? 'Enabled' : 'Disabled'), '', '', (int) $link->active ? 'status4' : 'status5', 5).'</td><td>'.(!empty($link->usage_cursor) ? dol_print_date($db->jdate($link->usage_cursor), 'day') : $langs->trans('QxPending')).'</td><td>';
-		print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="toggle"><input type="hidden" name="vehicle_id" value="'.((int) $link->fk_vehicle).'"><input type="hidden" name="active" value="'.((int) $link->active ? 0 : 1).'"><button class="button small" type="submit" aria-label="'.$langs->trans((int) $link->active ? 'Disable' : 'Enable').'">'.img_picto($langs->trans((int) $link->active ? 'Enabled' : 'Disabled'), (int) $link->active ? 'switch_on' : 'switch_off').'</button></form></td></tr>';
+		print '<a class="reposition" href="'.$_SERVER['PHP_SELF'].'?action=setactive&amp;token='.newToken().'&amp;vehicle_id='.((int) $link->fk_vehicle).'&amp;active='.((int) $link->active ? 0 : 1).'" aria-label="'.dol_escape_htmltag($langs->trans((int) $link->active ? 'Disable' : 'Enable')).'">'.img_picto($langs->trans((int) $link->active ? 'Enabled' : 'Disabled'), (int) $link->active ? 'switch_on' : 'switch_off').'</a></td></tr>';
 	}
 	if (!$links) print '<tr class="oddeven"><td colspan="7"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
 	print '</table></div>';

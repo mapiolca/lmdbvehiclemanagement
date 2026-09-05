@@ -14,7 +14,7 @@ Cette évolution de développement complète la version 1.0.0, sans publier de n
 Chaque environnement possède sa connexion, ses jetons, ses associations et son état de synchronisation.
 Le nom d'application est conservé dans une constante native par entité. Sa saisie est obligatoire : aucune valeur n'est inventée à partir du nom du module. Une installation existante doit compléter ce réglage ; tant qu'il manque, les tests de connexion et les travaux planifiés sont refusés localement avec un message explicite. La sauvegarde des identifiants ou du nom d'application invalide les jetons de cette seule entité pour renouveler l'authentification.
 Un véhicule partagé reste synchronisé depuis son environnement propriétaire. Sa consultation utilise les données de ce propriétaire.
-Les associations peuvent être suspendues ; leur remplacement ou le changement de code client après association nécessite une migration contrôlée, afin de ne pas attribuer l'historique d'un autre véhicule.
+Les associations peuvent être suspendues et réactivées depuis l'interrupteur natif ON/OFF de leur ligne, avec contrôle CSRF, droits et entité propriétaire. Leur remplacement ou le changement de code client après association nécessite une migration contrôlée, afin de ne pas attribuer l'historique d'un autre véhicule.
 Une modification ultérieure du fuseau ou du début de journée dans QUARTIX nécessite également de revoir l'association avant de reprendre les imports.
 
 ## Données et source faisant autorité
