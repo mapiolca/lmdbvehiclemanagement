@@ -66,24 +66,73 @@ class LmdbVehicleQuartixService
 		return $rows[0] ?? null;
 	}
 
-	/** @param User $user Admin @param int $id Local vehicle @param int $remoteId Remote id @param string $timezone Confirmed IANA timezone @param array<int,mixed> $catalog Fresh /vehicles response @return void */
-	public function associate($user, $id, $remoteId, $timezone, $catalog)
+	/** @param User $user Admin @param int $id Local vehicle @param int $remoteId Remote id @param string $timezone Confirmed IANA timezone @param array<int,mixed> $catalog Fresh /vehicles response @param int $syncFrom Confirmed installation timestamp @return void */
+	public function associate($user, $id, $remoteId, $timezone, $catalog, $syncFrom)
 	{
 		global $conf;
+		if (!LmdbVehicleQuartixConfig::can($user, 'configure') || !is_int($id) || $id <= 0) throw new RuntimeException('QxAccessDenied');
 		$vehicle = $this->vehicle($id, 'configure');
 		if ((int) $vehicle->entity !== (int) $conf->entity || !in_array($timezone, DateTimeZone::listIdentifiers(), true)) throw new RuntimeException('QxAccessDenied');
+		LmdbVehicleQuartixRules::id($remoteId);
+		if (!is_int($syncFrom) || $syncFrom <= 0 || $syncFrom > dol_now() + 300) throw new RuntimeException('QxInvalidAssociationDate');
 		$selected = null;
 		foreach ($catalog as $row) if (is_array($row) && ($row['VehicleID'] ?? null) === $remoteId) $selected = $row;
 		if ($selected === null || !isset($selected['ShiftStartTime']) || !is_string($selected['ShiftStartTime']) || !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/D', $selected['ShiftStartTime'])) throw new RuntimeException('QxInvalidResponse');
 		if ($this->link($id) !== null) throw new RuntimeException('QxMappingExists');
+		if ($this->rows('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link WHERE entity='.((int) $conf->entity).' AND remote_id='.$remoteId)) throw new RuntimeException('QxMappingExists');
+		// Retained observations belong to this vehicle. A new association may not overwrite them.
+		$firstDay = LmdbVehicleQuartixRules::firstUsageDay($syncFrom, $timezone, $selected['ShiftStartTime']);
+		$history = $this->rows('SELECT usage_day FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_usage WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.$id." AND usage_day>='".$firstDay."' AND has_data=1 LIMIT 1");
+		$readings = $this->rows('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.$id." AND is_estimate=1 AND provider_key IS NOT NULL AND reading_date>='".$this->db->idate($syncFrom)."' LIMIT 1");
+		if ($history || $readings) throw new RuntimeException('QxAssociationHistoryOverlap');
 		$this->db->begin();
 		try {
-			$this->write('INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link (entity,fk_vehicle,remote_id,timezone,shift_start,date_creation,fk_user_creat) VALUES ('.((int) $conf->entity).','.$id.','.$remoteId.",'".$this->db->escape($timezone)."','".$this->db->escape($selected['ShiftStartTime'])."','".$this->db->idate(dol_now())."',".((int) $user->id).')');
+			$this->write('INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link (entity,fk_vehicle,remote_id,timezone,shift_start,sync_from,date_creation,fk_user_creat) VALUES ('.((int) $conf->entity).','.$id.','.$remoteId.",'".$this->db->escape($timezone)."','".$this->db->escape($selected['ShiftStartTime'])."','".$this->db->idate($syncFrom)."','".$this->db->idate(dol_now())."',".((int) $user->id).')');
 			$vehicle->context = array('trigger_reason' => 'quartix_link', 'changed_fields' => array('quartix_link'));
 			if ($vehicle->call_trigger($vehicle->TRIGGER_PREFIX.'_UPDATE', $user) < 0) throw new RuntimeException('QxDatabaseError');
 			$this->db->commit();
 		} catch (Exception $e) { $this->db->rollback(); throw $e; }
 	}
+
+	/**
+	 * Caller owns the entity QUARTIX lock, shared with workers and configuration.
+	 * Reassignment retains history; an erroneous association explicitly purges imports.
+	 * @param User $user Admin @param int $id Vehicle @param int $linkId Confirmed association
+	 * @param string $mode reassignment/error @return void
+	 */
+	public function disassociate($user, $id, $linkId, $mode)
+	{
+		global $conf;
+		$vehicle = $this->vehicle($id, 'configure');
+		if (!LmdbVehicleQuartixConfig::can($user, 'configure') || (int) $vehicle->entity !== (int) $conf->entity) throw new RuntimeException('QxAccessDenied');
+		if (!in_array($mode, array('reassignment', 'error'), true)) throw new RuntimeException('QxInvalidSettings');
+		$link = $this->link($id);
+		if ($link === null) return; // Replaying a completed confirmation has no effect.
+		if ((int) $link->rowid !== $linkId) throw new RuntimeException('QxAssociationChanged');
+		$this->db->begin();
+		try {
+			if ($mode === 'error') {
+				$filter = ' WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.((int) $vehicle->id);
+				do {
+					$readings = $this->rows('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading'.$filter." AND source='external' AND is_estimate=1 AND provider_key IS NOT NULL ORDER BY rowid LIMIT 100");
+					foreach ($readings as $row) {
+						$reading = $this->createReading();
+						$reading->id = (int) $row->rowid;
+						if ($reading->deleteQuartix($user) < 0) throw new RuntimeException('QxDatabaseError');
+					}
+				} while (count($readings) === 100);
+				$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_usage'.$filter);
+			}
+			$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_position WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.((int) $vehicle->id));
+			$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.((int) $vehicle->id).' AND rowid='.$linkId);
+			$vehicle->context = array('trigger_reason' => 'quartix_unlink', 'changed_fields' => array('quartix_link'), 'quartix_cleanup' => $mode === 'error');
+			if ($vehicle->call_trigger($vehicle->TRIGGER_PREFIX.'_UPDATE', $user) < 0) throw new RuntimeException('QxDatabaseError');
+			$this->db->commit();
+		} catch (Exception $e) { $this->db->rollback(); throw $e; }
+	}
+
+	/** Native reading object; replaceable in offline trigger tests. @return LmdbVehicleOdometerReading */
+	protected function createReading() { return new LmdbVehicleOdometerReading($this->db); }
 
 	/** @param User $user Admin @param int $id Vehicle @param int $active Desired state @return void */
 	public function setActive($user, $id, $active)
@@ -110,6 +159,7 @@ class LmdbVehicleQuartixService
 		if (LmdbVehicleQuartixRules::id($row['VehicleID'] ?? null) !== (int) $link->remote_id || !isset($row['NonTracking']) || !is_bool($row['NonTracking']) || !isset($row['LocationText']) || !is_string($row['LocationText'])) throw new RuntimeException('QxInvalidResponse');
 		$date = LmdbVehicleQuartixRules::timestamp($row['LastEventDatetime'] ?? null, $mode, (string) $link->timezone);
 		if ($date > dol_now() + 300) throw new RuntimeException('QxInvalidResponse');
+		if (!empty($link->sync_from) && $date < $this->db->jdate($link->sync_from)) throw new RuntimeException('QxBeforeAssociation');
 		foreach (array('Latitude' => 90, 'Longitude' => 180) as $key => $bound) {
 			$value = $row[$key] ?? null;
 			if ((!is_int($value) && !is_float($value)) || !is_finite((float) $value) || abs($value) > $bound) throw new RuntimeException('QxInvalidResponse');
@@ -139,6 +189,7 @@ class LmdbVehicleQuartixService
 	{
 		$this->assertOwner($link);
 		if ($start > $end || LmdbVehicleQuartixRules::day($start)->diff(LmdbVehicleQuartixRules::day($end))->days > 6) throw new RuntimeException('QxInvalidPeriod');
+		if (!empty($link->sync_from) && $start < LmdbVehicleQuartixRules::firstUsageDay($this->db->jdate($link->sync_from), (string) $link->timezone, (string) $link->shift_start)) throw new RuntimeException('QxBeforeAssociation');
 		$rows = LmdbVehicleQuartixRules::summaries($data, (int) $link->remote_id, $start, $end);
 		$this->db->begin();
 		try {

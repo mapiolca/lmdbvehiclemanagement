@@ -113,7 +113,7 @@ class LmdbVehicleQuartixCron
 	/** @param Exception $e Exception @return string Stable non-sensitive code */
 	public static function safeError($e)
 	{
-		$allowed = array('QxDatabaseError', 'QxAccessDenied', 'QxInvalidSettings', 'QxApplicationRequired', 'QxAccountInUse', 'QxMappingExists', 'QxInvalidResponse', 'QxTimeUnconfirmed', 'QxAmbiguousTime', 'QxInvalidPeriod', 'QxRequiresCrypto', 'QxNetworkError', 'QxRateLimited', 'QxAuthenticationFailed', 'QxRemoteError', 'QxRequestRejected', 'QxNoVehicleData', 'QxBusy');
+		$allowed = array('QxDatabaseError', 'QxAccessDenied', 'QxInvalidSettings', 'QxApplicationRequired', 'QxAccountInUse', 'QxMappingExists', 'QxInvalidResponse', 'QxTimeUnconfirmed', 'QxAmbiguousTime', 'QxInvalidPeriod', 'QxRequiresCrypto', 'QxNetworkError', 'QxRateLimited', 'QxAuthenticationFailed', 'QxRemoteError', 'QxRequestRejected', 'QxNoVehicleData', 'QxBusy', 'QxInvalidAssociationDate', 'QxAssociationHistoryOverlap', 'QxAssociationChanged', 'QxBeforeAssociation');
 		return in_array($e->getMessage(), $allowed, true) ? $e->getMessage() : 'QxInvalidResponse';
 	}
 
@@ -130,8 +130,10 @@ class LmdbVehicleQuartixCron
 		// A QWS reporting day ends at the following shift start, not at midnight.
 		$lastDay = $now->modify($now->format('H:i:s') < $link->shift_start ? '-2 days' : '-1 day')->format('Y-m-d');
 		$cutoff = $now->modify('-12 months')->format('Y-m-d');
+		if (!empty($link->sync_from)) $cutoff = max($cutoff, LmdbVehicleQuartixRules::firstUsageDay($this->db->jdate($link->sync_from), (string) $link->timezone, (string) $link->shift_start));
+		if ($lastDay < $cutoff) return;
 		if ((string) $link->usage_refreshed !== $lastDay) {
-			$end = $lastDay; $start = LmdbVehicleQuartixRules::day($end)->modify('-6 days')->format('Y-m-d');
+			$end = $lastDay; $start = max($cutoff, LmdbVehicleQuartixRules::day($end)->modify('-6 days')->format('Y-m-d'));
 			$field = "usage_refreshed='".$lastDay."'";
 			// Rebuild the retained window after a long outage so no unobserved gap is left behind.
 			if (!empty($link->usage_refreshed) && $link->usage_refreshed < LmdbVehicleQuartixRules::day($lastDay)->modify('-7 days')->format('Y-m-d')) {
@@ -143,12 +145,14 @@ class LmdbVehicleQuartixCron
 			$start = max($cutoff, LmdbVehicleQuartixRules::day($end)->modify('-6 days')->format('Y-m-d'));
 			$field = "usage_cursor='".LmdbVehicleQuartixRules::day($start)->modify('-1 day')->format('Y-m-d')."'";
 		}
-		$data = $client->get('/vehicles/tripsummary', array('VehicleIDList' => (string) $link->remote_id, 'StartDay' => $start, 'EndDay' => $end, 'GroupBy' => 'day'));
+		$data = $client->get('/vehicles/tripsummary', array('VehicleIDList' => (string) $link->remote_id, 'StartDay' => $start, 'EndDay' => $end, 'GroupBy' => 'day|vehicle'));
 		$this->db->begin();
 		try {
 			$service->saveUsage($link, $data, $start, $end);
 			$service->write('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link SET '.$field.' WHERE entity='.((int) $link->entity).' AND rowid='.((int) $link->rowid));
-			$service->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_usage WHERE entity='.((int) $link->entity).' AND fk_vehicle='.((int) $link->fk_vehicle)." AND usage_day<'".$cutoff."'");
+			// Retention applies to all vehicle history, including previous associations.
+			$retention = $now->modify('-12 months')->format('Y-m-d');
+			$service->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_usage WHERE entity='.((int) $link->entity).' AND fk_vehicle='.((int) $link->fk_vehicle)." AND usage_day<'".$retention."'");
 			$this->db->commit();
 		} catch (Exception $e) { $this->db->rollback(); throw $e; }
 	}

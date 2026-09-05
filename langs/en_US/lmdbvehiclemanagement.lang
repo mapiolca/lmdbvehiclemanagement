@@ -1078,3 +1078,17 @@ QxInvalidEndpoint=QUARTIX operation not allowed.
 QxDataUnavailable=QUARTIX data is unavailable.
 QxSpeed=Speed at last event
 QxJobsInactive=Not all three QUARTIX jobs are active. Check their activation in scheduled jobs.
+
+QxTimeQws=QWS convention: explicit offset, otherwise vehicle local time
+QxUnlink=Unlink
+QxUnlinked=QUARTIX association removed. The tracker can be associated with another vehicle.
+QxUnlinkMode=Reason for unlinking
+QxUnlinkReassignment=Tracker reassignment — keep imports
+QxUnlinkError=Incorrect association — delete QUARTIX imports
+QxUnlinkConfirm=Unlink QUARTIX from vehicle %s? The latest position will be cleared. For an incorrect association, all QUARTIX summaries and mileage estimates on this vehicle will be permanently deleted. Manual readings, refuels and charges will be retained.
+QxSyncFrom=Tracker installed on this vehicle since
+QxSyncFromHelp=Date and time in your Dolibarr session timezone. Earlier observations are excluded; summaries begin with the first complete QUARTIX reporting day.
+QxInvalidAssociationDate=Enter a valid installation date and time, not in the future.
+QxAssociationHistoryOverlap=The installation date overlaps retained imports. Choose a later date or correct the erroneous association before recreating it.
+QxAssociationChanged=This association no longer exists or has changed. Reload the page before unlinking.
+QxBeforeAssociation=The QUARTIX observation predates the tracker installation on this vehicle and was not imported.

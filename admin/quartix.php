@@ -26,6 +26,8 @@ $entity = (int) $conf->entity;
 $config = new LmdbVehicleQuartixConfig($db);
 $service = new LmdbVehicleQuartixService($db);
 $action = GETPOST('action', 'aZ09');
+$vehicleId = GETPOSTINT('vehicle_id');
+$linkId = GETPOSTINT('link_id');
 $sessionKey = 'lmdbvm_qx_catalog_'.$entity;
 $values = array();
 foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION', 'TIME_MODE', 'DURATION_UNIT') as $key) {
@@ -33,8 +35,11 @@ foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION', 'TIME_MODE', '
 	$values[$key] = is_string($raw) ? $raw : '';
 }
 // Only the native ON/OFF link accepts GET; other mutations keep their POST form.
-if (in_array($action, array('save', 'test', 'associate', 'toggle', 'setactive'), true)) {
+if (in_array($action, array('save', 'test', 'associate', 'toggle', 'setactive', 'confirm_unlink'), true)) {
 	if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !($action === 'setactive' && $_SERVER['REQUEST_METHOD'] === 'GET')) accessforbidden();
+	if ($action === 'confirm_unlink' && GETPOST('confirm', 'alpha') !== 'yes') {
+		header('Location: '.$_SERVER['PHP_SELF']); exit;
+	}
 	$locked = false;
 	$client = null;
 	try {
@@ -44,6 +49,8 @@ if (in_array($action, array('save', 'test', 'associate', 'toggle', 'setactive'),
 		if ($action === 'save') {
 			$config->save($user, $values);
 			unset($_SESSION[$sessionKey]);
+		} elseif ($action === 'confirm_unlink') {
+			$service->disassociate($user, $vehicleId, $linkId, (string) GETPOST('unlink_mode', 'aZ09'));
 		} elseif ($action === 'test' || $action === 'associate') {
 			// A fresh catalogue prevents stale or forged remote associations.
 			$client = new LmdbVehicleQuartixClient($db, $entity);
@@ -58,11 +65,18 @@ if (in_array($action, array('save', 'test', 'associate', 'toggle', 'setactive'),
 				$options[$remoteId] = dol_substr(trim($label.' — '.$description), 0, 255);
 			}
 			$_SESSION[$sessionKey] = array('expires' => dol_now() + 900, 'options' => $options);
-			if ($action === 'associate') $service->associate($user, GETPOSTINT('vehicle_id'), GETPOSTINT('remote_id'), (string) GETPOST('timezone', 'alphanohtml'), $catalog);
+			if ($action === 'associate') {
+				$month = GETPOSTINT('syncfrommonth'); $day = GETPOSTINT('syncfromday'); $year = GETPOSTINT('syncfromyear');
+				$hour = GETPOSTINT('syncfromhour'); $minute = GETPOSTINT('syncfrommin');
+				if (!checkdate($month, $day, $year) || $hour < 0 || $hour > 23 || $minute < 0 || $minute > 59) throw new RuntimeException('QxInvalidAssociationDate');
+				$syncFrom = dol_mktime($hour, $minute, 0, $month, $day, $year);
+				if (!is_int($syncFrom)) throw new RuntimeException('QxInvalidAssociationDate');
+				$service->associate($user, $vehicleId, GETPOSTINT('remote_id'), (string) GETPOST('timezone', 'alphanohtml'), $catalog, $syncFrom);
+			}
 		} else {
 			$service->setActive($user, GETPOSTINT('vehicle_id'), GETPOSTINT('active'));
 		}
-		setEventMessages($langs->trans($action === 'test' ? 'QxConnectionOk' : 'RecordSaved'), null, 'mesgs');
+		setEventMessages($langs->trans($action === 'test' ? 'QxConnectionOk' : ($action === 'confirm_unlink' ? 'QxUnlinked' : 'RecordSaved')), null, 'mesgs');
 	} catch (Exception $e) {
 		$message = $langs->trans(LmdbVehicleQuartixCron::safeError($e));
 		if ($client !== null) $message .= ' '.dol_escape_htmltag($client->getDiagnosticMessage($langs));
@@ -81,6 +95,18 @@ $linkback = '<a href="'.DOL_URL_ROOT.'/admin/modules.php?search_keyword=lmdbvehi
 llxHeader('', $langs->trans('QxTitle'));
 print load_fiche_titre($langs->trans('QxTitle'), $linkback, 'technic');
 print dol_get_fiche_head(lmdbVehicleManagementAdminPrepareHead(), 'quartix', $langs->trans('QxTitle'), -1, 'car');
+if ($action === 'unlink') {
+	try {
+		$unlinkVehicle = $service->vehicle($vehicleId, 'configure');
+		$unlinkLink = $service->link($vehicleId);
+		if ((int) $unlinkVehicle->entity !== $entity || $unlinkLink === null || (int) $unlinkLink->rowid !== $linkId) throw new RuntimeException('QxAssociationChanged');
+		$unlinkOptions = array('reassignment' => $langs->trans('QxUnlinkReassignment'), 'error' => $langs->trans('QxUnlinkError'));
+		$questions = array(array('type' => 'other', 'label' => $langs->trans('QxUnlinkMode'), 'value' => $form->selectarray('unlink_mode', $unlinkOptions, 'reassignment', 0, 0, 0, '', 0, 0, 0, '', 'minwidth200', 1)));
+		print $form->formconfirm($_SERVER['PHP_SELF'].'?vehicle_id='.$vehicleId.'&link_id='.$linkId, $langs->trans('QxUnlink'), $langs->trans('QxUnlinkConfirm', dol_escape_htmltag($unlinkVehicle->ref)), 'confirm_unlink', $questions, 'no', 0);
+	} catch (Exception $e) {
+		print '<div class="error">'.$langs->trans(LmdbVehicleQuartixCron::safeError($e)).'</div>';
+	}
+}
 print '<div class="info">'.$langs->trans('QxSetupHelp').'</div>';
 if (!LmdbVehicleQuartixConfig::supported()) {
 	print '<div class="warning">'.$langs->trans('QxRequiresCrypto').'</div>';
@@ -96,7 +122,7 @@ foreach (array('CUSTOMER' => 'QxCustomer', 'USERNAME' => 'Login', 'PASSWORD' => 
 	if ($key === 'APPLICATION') print ' <span class="opacitymedium" id="qx_application_help">'.$langs->trans('QxApplicationHelp').'</span>';
 	print '</td></tr>';
 }
-$timeOptions = array('' => $langs->trans('QxUnconfirmed'), 'offset' => $langs->trans('QxTimeOffset'), 'local' => $langs->trans('QxTimeLocal'));
+$timeOptions = array('' => $langs->trans('QxUnconfirmed'), 'qws' => $langs->trans('QxTimeQws'), 'offset' => $langs->trans('QxTimeOffset'), 'local' => $langs->trans('QxTimeLocal'));
 $unitOptions = array('' => $langs->trans('QxUnconfirmed'), 'seconds' => $langs->trans('Seconds'), 'minutes' => $langs->trans('Minutes'), 'hours' => $langs->trans('Hours'));
 foreach (array('TIME_MODE' => array('QxTimeMode', $timeOptions), 'DURATION_UNIT' => array('QxDurationUnit', $unitOptions)) as $key => $definition) {
 	print '<tr><td>'.$langs->trans($definition[0]).'</td><td>'.$form->selectarray('qx_'.$key, $definition[1], $settings[$key], 0, 0, 0, '', 0, 0, 0, '', 'minwidth200', 1).'</td></tr>';
@@ -118,6 +144,7 @@ try {
 		print '<tr><td class="titlefield">'.$langs->trans('Vehicle').'</td><td>'.$form->selectarray('vehicle_id', $localOptions, '', 1, 0, 0, '', 0, 0, 0, '', 'minwidth200', 1).'</td></tr>';
 		print '<tr><td>'.$langs->trans('QxRemoteVehicle').'</td><td>'.$form->selectarray('remote_id', $remoteOptions, '', 1, 0, 0, '', 0, 0, 0, '', 'minwidth200', 1).'</td></tr>';
 		print '<tr><td>'.$langs->trans('QxTimezone').'</td><td>'.$form->selectarray('timezone', $timezones, '', 1, 0, 0, '', 0, 0, 0, '', 'minwidth200', 1).'</td></tr>';
+		print '<tr><td class="fieldrequired">'.$langs->trans('QxSyncFrom').'</td><td>'.$form->selectDate(dol_now(), 'syncfrom', 1, 1, 0, '', 1, 1).' <span class="opacitymedium">'.$langs->trans('QxSyncFromHelp').'</span></td></tr>';
 		print '</table></div><div class="center"><button class="button" type="submit">'.$langs->trans('QxAssociate').'</button></div></form>';
 	}
 	$mapPage = max(0, GETPOSTINT('page'));
@@ -127,7 +154,8 @@ try {
 	print '</tr>';
 	foreach (array_slice($links, 0, 100) as $link) {
 		print '<tr class="oddeven"><td><a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_quartix.php', 1).'?id='.((int) $link->fk_vehicle).'">'.dol_escape_htmltag($link->ref).'</a></td><td>'.dol_escape_htmltag($remoteOptions[(int) $link->remote_id] ?? $langs->trans('QxAssociatedVehicle')).'</td><td>'.dol_escape_htmltag($link->timezone).'</td><td>'.dol_escape_htmltag($link->shift_start).'</td><td>'.dolGetStatus($langs->trans((int) $link->active ? 'Enabled' : 'Disabled'), '', '', (int) $link->active ? 'status4' : 'status5', 5).'</td><td>'.(!empty($link->usage_cursor) ? dol_print_date($db->jdate($link->usage_cursor), 'day') : $langs->trans('QxPending')).'</td><td>';
-		print '<a class="reposition" href="'.$_SERVER['PHP_SELF'].'?action=setactive&amp;token='.newToken().'&amp;vehicle_id='.((int) $link->fk_vehicle).'&amp;active='.((int) $link->active ? 0 : 1).'" aria-label="'.dol_escape_htmltag($langs->trans((int) $link->active ? 'Disable' : 'Enable')).'">'.img_picto($langs->trans((int) $link->active ? 'Enabled' : 'Disabled'), (int) $link->active ? 'switch_on' : 'switch_off').'</a></td></tr>';
+		print '<a class="reposition" href="'.$_SERVER['PHP_SELF'].'?action=setactive&amp;token='.newToken().'&amp;vehicle_id='.((int) $link->fk_vehicle).'&amp;active='.((int) $link->active ? 0 : 1).'" aria-label="'.dol_escape_htmltag($langs->trans((int) $link->active ? 'Disable' : 'Enable')).'">'.img_picto($langs->trans((int) $link->active ? 'Enabled' : 'Disabled'), (int) $link->active ? 'switch_on' : 'switch_off').'</a>';
+		print ' <a class="reposition marginleftonly" href="'.$_SERVER['PHP_SELF'].'?action=unlink&amp;token='.newToken().'&amp;vehicle_id='.((int) $link->fk_vehicle).'&amp;link_id='.((int) $link->rowid).'">'.img_picto($langs->trans('QxUnlink'), 'unlink').' '.$langs->trans('QxUnlink').'</a></td></tr>';
 	}
 	if (!$links) print '<tr class="oddeven"><td colspan="7"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
 	print '</table></div>';

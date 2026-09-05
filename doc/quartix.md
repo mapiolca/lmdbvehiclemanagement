@@ -6,16 +6,22 @@ Cette évolution de développement complète la version 1.0.0, sans publier de n
 
 1. Déployer la branche, puis désactiver/réactiver le module pour installer les tables, les droits et les tâches. Les réglages sont conservés, y compris ceux des tâches déjà présentes.
 2. Dans **Réglages → QUARTIX**, saisir le code client, le login, le mot de passe et le **Nom d’application (APPLICATION NAME)** fournis par QUARTIX pour l'environnement courant. Enregistrer avant de tester. Un mot de passe laissé vide conserve celui enregistré.
-3. Confirmer avec QUARTIX le sens des horodatages et l'unité des durées. Le texte QWS décrit des heures locales alors que ses exemples portent Z ; l'unité de TravelTime et IdlingTime n'est pas précisée. Aucune interprétation n'est choisie par défaut.
-4. Tester la connexion pour charger le catalogue, puis associer explicitement les véhicules et confirmer leur fuseau IANA. Le début de journée provient de ShiftStartTime. Vérifier ces informations lors de l'association.
+3. Confirmer avec QUARTIX le sens des horodatages et l'unité des durées. Le mode **Convention QWS** respecte un décalage explicite lorsqu’il est présent et lit les dates sans suffixe dans le fuseau du véhicule, conformément à la page 1 du document QWS. Les modes forcés historiques restent disponibles ; l'unité de TravelTime et IdlingTime n'est pas précisée. Aucune interprétation n'est choisie par défaut.
+4. Tester la connexion pour charger le catalogue, puis associer explicitement les véhicules et confirmer leur fuseau IANA et la date/heure réelle d’installation du boîtier sur ce véhicule. Le début de journée provient de ShiftStartTime. Vérifier ces informations lors de l'association.
 5. Activer la synchronisation dans les réglages, puis les trois tâches dans les **Travaux planifiés** natifs. Utiliser un compte interne avec lecture du parc, synchronisation QUARTIX et gestion des relevés kilométriques. Les administrateurs disposent implicitement de ces droits.
 6. Comparer les premières valeurs avec QUARTIX sur l'instance servant réellement ce code.
 
 Chaque environnement possède sa connexion, ses jetons, ses associations et son état de synchronisation.
 Le nom d'application est conservé dans une constante native par entité. Sa saisie est obligatoire : aucune valeur n'est inventée à partir du nom du module. Une installation existante doit compléter ce réglage ; tant qu'il manque, les tests de connexion et les travaux planifiés sont refusés localement avec un message explicite. La sauvegarde des identifiants ou du nom d'application invalide les jetons de cette seule entité pour renouveler l'authentification.
 Un véhicule partagé reste synchronisé depuis son environnement propriétaire. Sa consultation utilise les données de ce propriétaire.
-Les associations peuvent être suspendues et réactivées depuis l'interrupteur natif ON/OFF de leur ligne, avec contrôle CSRF, droits et entité propriétaire. Leur remplacement ou le changement de code client après association nécessite une migration contrôlée, afin de ne pas attribuer l'historique d'un autre véhicule.
+Les associations peuvent être suspendues et réactivées depuis l'interrupteur natif ON/OFF de leur ligne, avec contrôle CSRF, droits et entité propriétaire. Le bouton **Dissocier** ouvre une confirmation native avec deux choix : **Réaffectation du boîtier** conserve les imports sur l’ancien véhicule ; **Association erronée** supprime définitivement toutes les synthèses et estimations QUARTIX de ce véhicule. Dans les deux cas, la dernière position est effacée et le boîtier devient disponible pour une nouvelle association. Les relevés manuels et ceux des pleins/recharges sont toujours conservés.
 Une modification ultérieure du fuseau ou du début de journée dans QUARTIX nécessite également de revoir l'association avant de reprendre les imports.
+
+La dissociation fonctionne aussi pour une association suspendue. Elle partage le verrou des tâches QUARTIX, utilise une transaction et contrôle l’identifiant de l’association confirmée pour refuser une ancienne confirmation après réassociation. La suppression d’estimations passe par l’objet de relevé et ses triggers CRUD ; le véhicule émet un UPDATE avec `trigger_reason=quartix_unlink` et `quartix_cleanup` indiquant une purge. Aucun événement ni email parallèle n’est créé.
+
+Une nouvelle association impose une date d’installation via le datepicker natif. Les positions et kilométrages antérieurs sont refusés ; les synthèses commencent à la première journée QUARTIX complète après installation. Une date chevauchant des imports conservés sur ce véhicule est refusée. La rétention de douze mois des synthèses conserve son calendrier propre, même après dissociation.
+
+**Mise à jour d’une installation existante :** réinitialiser le module via son activation native pour ajouter la colonne nullable `qx_link.sync_from`. La migration est additive et rejouable. Les anciennes associations conservent une date vide et leur reprise historique existante : aucune date d’installation n’est inventée. Les nouvelles associations renseignent obligatoirement cette borne.
 
 ## Données et source faisant autorité
 
@@ -23,7 +29,7 @@ Une modification ultérieure du fuseau ou du début de journée dans QUARTIX né
 |---|---|---|
 | Kilométrage estimé | /vehicles/odometer, OdoEstimateKm, EstimateDateTime | Une observation par véhicule, source et jour local. Rejeu sans doublon ; une observation plus ancienne ne remplace pas une plus récente du même jour. Historique des relevés conservé. |
 | Dernière position | /vehicles/live | Une seule ligne par véhicule : coordonnées, lieu, date d'événement, date de réception et état du suivi. Une réponse plus ancienne ne remplace pas la position connue. |
-| Utilisation | /vehicles/tripsummary, GroupBy=day | Distance en km, nombre de trajets, conduite et ralenti. Conservation glissante de douze mois et agrégation mensuelle à la lecture. |
+| Utilisation | /vehicles/tripsummary, GroupBy=day\|vehicle | Distance en km, nombre de trajets, conduite et ralenti. Conservation glissante de douze mois et agrégation mensuelle à la lecture. |
 
 Les relevés réels, y compris ceux des pleins et recharges, restent les seuls points de référence des contrôles de progression.
 Les estimations QUARTIX ne bloquent jamais leur création ou correction. Une estimation contredisant les relevés réels voisins reste consultable avec le badge **Estimation QUARTIX contradictoire**.
@@ -72,7 +78,9 @@ Le PDF historique décrit les paramètres en `formData`. Après le refus HTTP 42
 
 Le client utilisait initialement la clé du module comme champ `Application`. Il transmet maintenant exactement la valeur **APPLICATION NAME** fournie par QUARTIX et enregistrée dans l'entité. Pour une installation déjà initialisée, déployer les fichiers puis compléter ce nouveau champ et enregistrer avant de relancer **Tester la connexion et charger les véhicules**. Aucune migration ni réactivation n'est nécessaire ; le mot de passe peut rester vide pour conserver celui enregistré. Si le refus persiste, conserver l'étape et le statut affichés pour le diagnostic, sans transmettre les identifiants ou les réponses API brutes.
 
-Le catalogue réel renvoie le champ `VehicleId`, alors que le PDF décrit `VehicleID`. Le client normalise cette seule variante vers `VehicleID` dès la lecture des réponses, pour tous les consommateurs du module. Les identifiants doivent rester des entiers positifs ; deux variantes présentes avec des valeurs différentes sont refusées. Les noms des paramètres envoyés à QWS restent ceux du contrat, notamment `VehicleIDList`. Cette adaptation ne nécessite aucune migration de données.
+Le catalogue réel renvoie le champ `VehicleId`, alors que le PDF décrit `VehicleID`. Le client normalise cette seule variante vers `VehicleID` dès la lecture des réponses, pour tous les consommateurs du module. Les identifiants doivent rester des entiers positifs ; deux variantes présentes avec des valeurs différentes sont refusées. Les noms des paramètres envoyés à QWS restent ceux du contrat, notamment `VehicleIDList`. Le champ réel des positions `LastEventDateTime` est également normalisé vers `LastEventDatetime`, avec refus de deux valeurs contradictoires. Pour les synthèses, `GroupBy=day|vehicle` est nécessaire : le regroupement `day` seul renvoie `VehicleID=null`, y compris avec un filtre sur un véhicule. Ces deux formats ont été vérifiés sur QWS le 5 septembre 2026. Les identifiants absents ou contradictoires restent refusés.
+
+Les réponses observées contiennent un décalage explicite pour les positions et aucun suffixe pour les estimations kilométriques. Le mode **Convention QWS** permet de traiter ces deux formes sans ignorer un décalage présent. Il doit être sélectionné et enregistré dans l’environnement concerné ; aucune migration ne remplace un choix existant. Les heures locales ambiguës au changement d’heure restent refusées.
 
 ## Sécurité et compatibilité
 
@@ -83,7 +91,7 @@ Le catalogue réel renvoie le champ `VehicleId`, alors que le PDF décrit `Vehic
 - Permission GPS indépendante de la lecture du parc ; tous les accès QUARTIX sont refusés aux utilisateurs externes. La synchronisation n'accorde pas le droit de consulter le GPS.
 - Réglages et associations réservés aux administrateurs de l'environnement propriétaire. Formulaires protégés par le CSRF natif et redirection après traitement.
 - Disponibilité centralisée dans LmdbVehicleQuartixConfig, exposée dans l'onglet **Compatibilité**. Les données d'utilisation restent lisibles dans le cache lorsque la synchronisation est suspendue.
-- Tables complémentaires liées par fk_vehicle, index courts, aucune recopie des données métier Dolibarr. Migration additive is_estimate / provider_key, rejouable sans reclassement des relevés historiques.
+- Tables complémentaires liées par fk_vehicle, index courts, aucune recopie des données métier Dolibarr. Migration additive is_estimate / provider_key / sync_from, rejouable sans reclassement des relevés historiques.
 - Identifiant du module conservé : **450026**. Nouveaux droits aux offsets **24** (GPS) et **25** (synchronisation), sans renumérotation des droits existants.
 
 ## Validation
@@ -107,7 +115,7 @@ Contrôles exécutés avec PHP 8.5.7, le core Dolibarr 20.0.4 et le checkout de 
 
 | Suite | Résultat |
 |---|---|
-| QUARTIX | 86 contrôles initiaux réussis sur chacun des deux cores ; 156 contrôles réussis sur le core 25.0.0-alpha avec nom d'application par entité, conservation du mot de passe, invalidation des jetons et variantes VehicleId/VehicleID ; diagnostic HTTP, refus 422, chiffrement, transport simulé, stockage, reprises, droits, rendu GPS et graphiques natifs inclus |
+| QUARTIX | 86 contrôles initiaux réussis sur chacun des deux cores ; 201 contrôles réussis sur le core 25.0.0-alpha avec nom d'application par entité, conservation du mot de passe, invalidation des jetons et variantes VehicleId/VehicleID, dates QWS et dissociation (conservation, purge, restauration sur erreur, ancienne confirmation et réaffectation bornée) ; diagnostic HTTP, refus 422, chiffrement, transport simulé, stockage, reprises, droits, rendu GPS et graphiques natifs inclus |
 | Transport QUARTIX HTTPS local | 4 contrôles supplémentaires et 4 requêtes HTTPS vérifiés avec le vrai cURL : authentification JSON, lecture expirée, renouvellement JSON et lecture réussie ; données fictives uniquement |
 | Règles métier | 50 contrôles réussis |
 | Contrats Agenda | 400 contrôles réussis |

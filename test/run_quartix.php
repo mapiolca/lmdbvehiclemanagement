@@ -71,8 +71,12 @@ final class QxTestDb
 				$sql = "SELECT COUNT(*) AS nb FROM pragma_table_info('".$table[1]."') WHERE name='".$field[1]."'";
 			}
 		}
+		if (preg_match('/^DELETE ec FROM (\w+) AS ec INNER JOIN (\w+) AS ctc ON ctc.rowid = ec.fk_c_type_contact WHERE (.+)$/D', $sql, $del)) {
+			$sql = 'DELETE FROM '.$del[1].' WHERE rowid IN (SELECT ec.rowid FROM '.$del[1].' AS ec INNER JOIN '.$del[2].' AS ctc ON ctc.rowid=ec.fk_c_type_contact WHERE '.$del[3].')';
+		}
 		$sql = preg_replace('/\s+FOR UPDATE\b/i', '', $sql);
 		$sql = str_replace('INSERT IGNORE INTO', 'INSERT OR IGNORE INTO', $sql);
+		$sql = preg_replace('/rowid integer AUTO_INCREMENT PRIMARY KEY/i', 'rowid integer PRIMARY KEY AUTOINCREMENT', $sql);
 		$sql = preg_replace('/\bAUTO_INCREMENT\b/i', '', $sql);
 		$sql = preg_replace('/\s+ENGINE\s*=\s*innodb\s*/i', '', $sql);
 		$sql = preg_replace('/\s+ON UPDATE CURRENT_TIMESTAMP/i', '', $sql);
@@ -129,6 +133,23 @@ final class QxTestReading extends LmdbVehicleOdometerReading
 	/** @var bool */ public static $failTrigger = false;
 	public function call_trigger($triggerName, $user) { self::$events++; return self::$failTrigger ? -1 : 1; }
 }
+final class QxTestVehicle extends LmdbVehicle
+{
+	public static $events = 0;
+	public static $failTrigger = false;
+	public function call_trigger($triggerName, $user) { self::$events++; return self::$failTrigger ? -1 : 1; }
+}
+final class QxTestService extends LmdbVehicleQuartixService
+{
+	public function vehicle($id, $action = 'read')
+	{
+		parent::vehicle($id, $action); // Exercise production permissions and entity checks.
+		$vehicle = new QxTestVehicle($this->db);
+		if ($vehicle->fetch($id) <= 0) throw new RuntimeException('QxAccessDenied');
+		return $vehicle;
+	}
+	protected function createReading() { return new QxTestReading($this->db); }
+}
 final class QxTestCron extends LmdbVehicleQuartixCron
 {
 	/** @var QxTestClient */ public $client;
@@ -152,6 +173,10 @@ foreach (array('qx_link' => array('entity,fk_vehicle', 'entity,remote_id'), 'qx_
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'const (rowid integer PRIMARY KEY, entity integer, name text, value text, type text, visible integer, note text)');
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'extrafields (rowid integer PRIMARY KEY, elementtype text)');
 
+$db->query('CREATE TABLE '.MAIN_DB_PREFIX.'element_contact (rowid integer PRIMARY KEY, element_id integer, fk_c_type_contact integer)');
+$db->query('CREATE TABLE '.MAIN_DB_PREFIX.'c_type_contact (rowid integer PRIMARY KEY, element text)');
+$db->query('CREATE TABLE '.MAIN_DB_PREFIX.'element_element (rowid integer PRIMARY KEY, fk_source integer, sourcetype text, fk_target integer, targettype text)');
+
 // Strict boundaries, including the two DST ambiguities and explicit zero.
 qxCheck(LmdbVehicleQuartixRules::number(0) === 0.0, 'Zero is known, not missing');
 foreach (array(null, '', '12', -1, INF, NAN, array()) as $bad) qxReject(static function () use ($bad) { LmdbVehicleQuartixRules::number($bad); }, 'QxInvalidResponse');
@@ -161,6 +186,11 @@ qxCheck(LmdbVehicleQuartixRules::timestamp('2026-09-01T10:00:00Z', 'offset', 'Eu
 qxReject(static function () { LmdbVehicleQuartixRules::timestamp('2026-10-25T02:30:00Z', 'local', 'Europe/Paris'); }, 'QxAmbiguousTime');
 qxReject(static function () { LmdbVehicleQuartixRules::timestamp('2026-03-29T02:30:00Z', 'local', 'Europe/Paris'); }, 'QxInvalidResponse');
 qxCheck(LmdbVehicleQuartixRules::hours(60.0, '') === null && LmdbVehicleQuartixRules::hours(60.0, 'minutes') === 1.0 && LmdbVehicleQuartixRules::hours(3600.0, 'seconds') === 1.0, 'Duration confirmation is mandatory');
+qxCheck(LmdbVehicleQuartixRules::timestamp('2026-09-01T10:00:00', 'qws', 'Europe/Paris') === strtotime('2026-09-01T08:00:00Z'), 'Unsuffixed QWS odometer uses the vehicle timezone');
+qxCheck(LmdbVehicleQuartixRules::timestamp('2026-09-01T10:00:00+01:00', 'qws', 'Europe/Paris') === strtotime('2026-09-01T09:00:00Z'), 'Explicit live event offset is authoritative');
+qxReject(static function () { LmdbVehicleQuartixRules::timestamp('2026-10-25T02:30:00', 'qws', 'Europe/Paris'); }, 'QxAmbiguousTime');
+qxReject(static function () { LmdbVehicleQuartixRules::timestamp('2026-03-29T02:30:00', 'qws', 'Europe/Paris'); }, 'QxInvalidResponse');
+qxReject(static function () { LmdbVehicleQuartixRules::timestamp('2026-09-01T10:00:00', 'offset', 'Europe/Paris'); }, 'QxTimeUnconfirmed');
 $summary = array('VehicleID' => 10, 'Date' => '2026-08-30', 'NumberOfTrips' => 2, 'Distance' => 42.5, 'TravelTime' => 60, 'IdlingTime' => 3);
 qxReject(static function () use ($summary) { LmdbVehicleQuartixRules::summaries(array($summary, $summary), 10, '2026-08-30', '2026-08-31'); }, 'QxInvalidResponse');
 qxReject(static function () use ($summary) { LmdbVehicleQuartixRules::summaries(array($summary), 11, '2026-08-30', '2026-08-31'); }, 'QxInvalidResponse');
@@ -337,6 +367,7 @@ $cron->client->responses = array(qxResponse(array()));
 qxCheck($cron->usage() === 0, 'Usage job runs through native orchestration: '.$cron->error);
 $firstCall = $cron->client->calls[0];
 qxCheck($firstCall['values']['EndDay'] === $lastDay && $firstCall['values']['StartDay'] === LmdbVehicleQuartixRules::day($lastDay)->modify('-6 days')->format('Y-m-d'), 'Usage only rereads seven completed reporting days');
+qxCheck($firstCall['values']['GroupBy'] === 'day|vehicle', 'Daily usage groups by vehicle too, preventing null VehicleID summaries');
 $cron->client->responses = array(qxResponse(array()));
 qxCheck($cron->usage() === 0, 'Backfill resumes');
 $secondCall = $cron->client->calls[1];
@@ -350,8 +381,8 @@ qxCheck($db->pdo->query("SELECT COUNT(*) FROM ".MAIN_DB_PREFIX."lmdbvehiclemanag
 	&& $db->pdo->query("SELECT COUNT(*) FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_usage WHERE usage_day='2020-01-01' AND entity=2")->fetchColumn() == 1, 'Twelve-month retention is owner scoped');
 $cron->client->responses = array(qxResponse(array()));
 qxCheck($cron->positions() < 0 && $cron->error === 'QxNoVehicleData', 'Missing vehicle is a partial job failure');
-$livePosition = array_replace($position, array('VehicleId' => 10, 'Latitude' => 48.6, 'LastEventDatetime' => '2026-08-31T12:00:00Z'));
-unset($livePosition['VehicleID']);
+$livePosition = array_replace($position, array('VehicleId' => 10, 'Latitude' => 48.6, 'LastEventDateTime' => '2026-08-31T12:00:00+00:00'));
+unset($livePosition['VehicleID'], $livePosition['LastEventDatetime']);
 $cron->client->responses = array(qxResponse(array($livePosition)));
 qxCheck($cron->positions() === 0 && $service->position(1)->latitude == 48.6, 'Position retries accept the live ID spelling and recover without duplicate rows');
 $cron->client->responses = array(qxResponse(null, 429, 180));
@@ -438,7 +469,11 @@ $graph->SetHeight(260);
 $graph->draw('qx_test_native_graph');
 qxCheck(strpos($graph->show(), '42.5') !== false && strpos($graph->show(), 'qx_test_native_graph') !== false, 'Native graph backend renders without a generated file');
 
+require __DIR__.'/quartix_association_cases.php';
+
 // Upgrade twice, preserving real data and avoiding duplicate columns.
+$db->query('ALTER TABLE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link DROP COLUMN sync_from');
+$readingCountBeforeMigration = $db->pdo->query('SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading')->fetchColumn();
 $db->query('ALTER TABLE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading DROP COLUMN is_estimate');
 $db->query('DROP INDEX qx_odometer_reading_0');
 $db->query('ALTER TABLE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading DROP COLUMN provider_key');
@@ -446,7 +481,10 @@ $descriptor = (new ReflectionClass(modLmdbVehicleManagement::class))->newInstanc
 $migration = new ReflectionMethod($descriptor, 'prepareQuartixSchema');
 if (PHP_VERSION_ID < 80100) $migration->setAccessible(true);
 qxCheck($migration->invoke($descriptor) === 1 && $migration->invoke($descriptor) === 1, 'Migration is replayable');
-qxCheck($db->pdo->query('SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading')->fetchColumn() == 5, 'Migration preserves historical rows');
+qxCheck($db->pdo->query('SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading')->fetchColumn() == $readingCountBeforeMigration, 'Migration preserves historical rows');
+qxCheck($service->link(1)->sync_from === null, 'Migration never invents historical tracker installation times');
+$db->query("UPDATE ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_link SET sync_from='2026-09-01 00:00:00' WHERE entity=1 AND fk_vehicle=1");
+qxCheck($migration->invoke($descriptor) === 1 && $service->link(1)->sync_from === '2026-09-01 00:00:00', 'Reactivation preserves an explicit installation date');
 $before = count($db->queries);
 qxCheck($descriptor->delete_cronjobs() === 0 && count($db->queries) === $before, 'Disable preserves native cron settings');
 foreach (glob(dirname(__DIR__).'/sql/*qx*.key.sql') as $file) {

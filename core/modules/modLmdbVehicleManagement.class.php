@@ -1063,15 +1063,22 @@ class modLmdbVehicleManagement extends DolibarrModules
 	/** Add estimate metadata before the native loader creates its unique index. @return int */
 	private function prepareQuartixSchema()
 	{
-		$table = MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading';
-		$exists = $this->tableExists($table);
-		if ($exists <= 0) return $exists < 0 ? -1 : 1;
-		foreach (array('is_estimate' => 'integer DEFAULT 0 NOT NULL', 'provider_key' => 'varchar(64) DEFAULT NULL') as $field => $definition) {
-			$present = $this->tableFieldExists($table, $field);
-			if ($present < 0) return -1;
-			if ($present === 0 && !$this->db->query('ALTER TABLE '.$table.' ADD COLUMN '.$field.' '.$definition)) {
-				$this->error = $this->db->lasterror();
-				return -1;
+		$tables = array(
+			'odometer_reading' => array('is_estimate' => 'integer DEFAULT 0 NOT NULL', 'provider_key' => 'varchar(64) DEFAULT NULL'),
+			'qx_link' => array('sync_from' => 'datetime DEFAULT NULL'),
+		);
+		foreach ($tables as $suffix => $fields) {
+			$table = MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$suffix;
+			$exists = $this->tableExists($table);
+			if ($exists < 0) return -1;
+			if ($exists === 0) continue;
+			foreach ($fields as $field => $definition) {
+				$present = $this->tableFieldExists($table, $field);
+				if ($present < 0) return -1;
+				if ($present === 0 && !$this->db->query('ALTER TABLE '.$table.' ADD COLUMN '.$field.' '.$definition)) {
+					$this->error = $this->db->lasterror();
+					return -1;
+				}
 			}
 		}
 		return 1;

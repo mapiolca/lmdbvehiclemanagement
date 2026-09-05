@@ -71,6 +71,7 @@ print '<p>'.$langs->trans('QxUsageHelp').'</p>';
 if ($link === null) print '<div class="warning">'.$langs->trans('QxNotAssociated').'</div>';
 elseif (!(int) $link->active || $cfg['ENABLED'] !== '1') print '<div class="warning">'.$langs->trans('QxPaused').'</div>';
 else print '<p class="opacitymedium">'.$langs->trans('QxReportingZone', dol_escape_htmltag($link->timezone), dol_escape_htmltag($link->shift_start)).'</p>';
+if ($link !== null && !empty($link->sync_from)) print '<p>'.$langs->trans('QxSyncFrom').': '.dol_print_date($db->jdate($link->sync_from), 'dayhour').'</p>';
 if ($cfg['DURATION_UNIT'] === '') print '<div class="warning">'.$langs->trans('QxDurationUnconfirmed').'</div>';
 if ($link !== null) print '<p>'.$langs->trans('QxBackfill').': '.(!empty($link->usage_cursor) ? dol_print_date($db->jdate($link->usage_cursor), 'day') : $langs->trans('QxPending')).'</p>';
 

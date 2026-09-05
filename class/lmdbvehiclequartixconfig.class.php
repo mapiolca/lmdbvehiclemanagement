@@ -45,7 +45,7 @@ class LmdbVehicleQuartixConfig
 			if (!getDolGlobalInt(self::PREFIX.'ENABLED')) return 'QxDisabled';
 			try { self::validateApplication(getDolGlobalString(self::PREFIX.'APPLICATION')); }
 			catch (RuntimeException $e) { return $e->getMessage(); }
-		} elseif ($feature === 'timestamps' && !in_array(getDolGlobalString(self::PREFIX.'TIME_MODE'), array('local', 'offset'), true)) {
+		} elseif ($feature === 'timestamps' && !in_array(getDolGlobalString(self::PREFIX.'TIME_MODE'), array('local', 'offset', 'qws'), true)) {
 			return 'QxTimeUnconfirmed';
 		} elseif ($feature === 'durations' && !in_array(getDolGlobalString(self::PREFIX.'DURATION_UNIT'), array('seconds', 'minutes', 'hours'), true)) {
 			return 'QxDurationUnconfirmed';
@@ -103,7 +103,7 @@ class LmdbVehicleQuartixConfig
 		global $conf;
 		if (!self::can($user, 'configure')) throw new RuntimeException('QxAccessDenied');
 		self::validateApplication($values['APPLICATION'] ?? '');
-		if (!in_array($values['TIME_MODE'], array('', 'offset', 'local'), true) || !in_array($values['DURATION_UNIT'], array('', 'seconds', 'minutes', 'hours'), true)) throw new RuntimeException('QxInvalidSettings');
+		if (!in_array($values['TIME_MODE'], array('', 'offset', 'local', 'qws'), true) || !in_array($values['DURATION_UNIT'], array('', 'seconds', 'minutes', 'hours'), true)) throw new RuntimeException('QxInvalidSettings');
 		foreach (array('CUSTOMER', 'USERNAME') as $key) {
 			if ($values[$key] === '' || strlen($values[$key]) > 128 || preg_match('/[\x00-\x1f]/', $values[$key])) throw new RuntimeException('QxInvalidSettings');
 		}

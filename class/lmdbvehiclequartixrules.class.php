@@ -28,18 +28,30 @@ class LmdbVehicleQuartixRules
 		return $date;
 	}
 
+	/** @param int $from Installation timestamp @param string $timezone IANA timezone @param string $shiftStart QWS shift @return string First complete reporting day */
+	public static function firstUsageDay($from, $timezone, $shiftStart)
+	{
+		$local = (new DateTimeImmutable('@'.$from))->setTimezone(new DateTimeZone($timezone));
+		$shift = strlen($shiftStart) === 5 ? $shiftStart.':00' : $shiftStart;
+		// A partial reporting day may contain trips from the previous vehicle.
+		return $local->format('H:i:s') > $shift ? $local->modify('+1 day')->format('Y-m-d') : $local->format('Y-m-d');
+	}
+
 	/**
 	 * QWS prose says local time while examples contain Z. Require an explicit contract.
-	 * @param mixed $value API date @param string $mode offset or local @param string $timezone Vehicle timezone
+	 * @param mixed $value API date @param string $mode offset, local or qws (offset if present, local otherwise) @param string $timezone Vehicle timezone
 	 * @return int UTC timestamp
 	 */
 	public static function timestamp($value, $mode, $timezone)
 	{
-		if (!is_string($value) || !in_array($mode, array('offset', 'local'), true)
+		if (!is_string($value) || !in_array($mode, array('offset', 'local', 'qws'), true)
 			|| !preg_match('/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(?:\.\d{1,7})?(Z|[+-]\d{2}:\d{2})?$/D', $value, $match)) {
 			throw new UnexpectedValueException('QxTimeUnconfirmed');
 		}
 		self::day($match[1]);
+		// QWS documents unsuffixed dates in the vehicle timezone. Explicit offsets
+		// on live events describe an instant and must not be discarded in this mode.
+		if ($mode === 'qws') $mode = empty($match[3]) ? 'local' : 'offset';
 		if ($mode === 'offset' && empty($match[3])) throw new UnexpectedValueException('QxTimeUnconfirmed');
 		if (!empty($match[3]) && $match[3] !== 'Z') {
 			$hours = (int) substr($match[3], 1, 2); $minutes = (int) substr($match[3], 4, 2);

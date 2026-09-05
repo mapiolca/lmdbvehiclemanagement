@@ -6,6 +6,7 @@ CREATE TABLE llx_lmdbvehiclemanagement_qx_link (
 	active integer DEFAULT 1 NOT NULL,
 	timezone varchar(64) NOT NULL,
 	shift_start varchar(16) NOT NULL,
+	sync_from datetime DEFAULT NULL,
 	usage_cursor date DEFAULT NULL,
 	usage_refreshed date DEFAULT NULL,
 	odometer_synced date DEFAULT NULL,

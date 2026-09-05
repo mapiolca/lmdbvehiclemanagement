@@ -262,6 +262,30 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 		return $result;
 	}
 
+	/**
+	 * Remove an erroneous QUARTIX import, never a manual or consumption reading.
+	 * Called inside the association transaction and entity QUARTIX lock.
+	 * @param User $user Configuration administrator @return int 1 success, -1 failure
+	 */
+	public function deleteQuartix(User $user)
+	{
+		global $conf;
+		require_once __DIR__.'/lmdbvehiclequartixconfig.class.php';
+		if (!LmdbVehicleQuartixConfig::can($user, 'configure') || empty($this->id) || $this->fetch((int) $this->id) <= 0
+			|| (int) $this->entity !== (int) $conf->entity || !$this->is_estimate || $this->source !== 'external'
+			|| !is_string($this->provider_key) || !preg_match('/^[a-f0-9]{64}$/D', $this->provider_key)) {
+			$this->error = 'QxAccessDenied'; return -1;
+		}
+		$this->db->begin();
+		if ($this->lockVehicleRow((int) $this->fk_vehicle) < 0) { $this->db->rollback(); return -1; }
+		$this->context['quartix_cleanup'] = true;
+		// Estimates never participate in the real-reading progression constraints.
+		$result = parent::delete($user);
+		if ($result < 0) $this->db->rollback();
+		else $this->db->commit();
+		return $result;
+	}
+
 	/** @inheritdoc */
 	protected function validateBusinessRules()
 	{
@@ -546,11 +570,12 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 			$this->id = 0;
 			$this->oldcopy = null;
 			if ($this->lockVehicleRow($vehicleId) < 0) throw new RuntimeException('QxDatabaseError');
-			$mapping = $this->db->query('SELECT l.timezone FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid=l.fk_vehicle AND v.entity=l.entity WHERE l.entity='.((int) $conf->entity).' AND l.fk_vehicle='.((int) $vehicleId).' AND l.remote_id='.((int) $remoteId).' AND l.active=1');
+			$mapping = $this->db->query('SELECT l.timezone,l.sync_from FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid=l.fk_vehicle AND v.entity=l.entity WHERE l.entity='.((int) $conf->entity).' AND l.fk_vehicle='.((int) $vehicleId).' AND l.remote_id='.((int) $remoteId).' AND l.active=1');
 			if (!$mapping) throw new RuntimeException('QxDatabaseError');
 			$owner = $this->db->fetch_object($mapping);
 			$this->db->free($mapping);
 			if (!is_object($owner) || (new DateTimeImmutable('@'.$date))->setTimezone(new DateTimeZone($owner->timezone))->format('Y-m-d') !== $day) throw new RuntimeException('QxAccessDenied');
+			if (!empty($owner->sync_from) && $date < $this->db->jdate($owner->sync_from)) throw new RuntimeException('QxBeforeAssociation');
 			$key = hash('sha256', $remoteId.':'.$day);
 			$res = $this->db->query('SELECT rowid, reading_date FROM '.MAIN_DB_PREFIX.$this->table_element.' WHERE entity = '.((int) $conf->entity).' AND fk_vehicle = '.((int) $vehicleId)." AND provider_key = '".$key."'");
 			if (!$res) throw new RuntimeException('QxDatabaseError');

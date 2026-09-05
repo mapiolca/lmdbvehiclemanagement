@@ -1078,3 +1078,17 @@ QxInvalidEndpoint=Opération QUARTIX non autorisée.
 QxDataUnavailable=Les données QUARTIX ne sont pas disponibles.
 QxSpeed=Vitesse au dernier événement
 QxJobsInactive=Les trois tâches QUARTIX ne sont pas toutes actives. Vérifiez leur activation dans les travaux planifiés.
+
+QxTimeQws=Convention QWS : décalage explicite, sinon heure locale du véhicule
+QxUnlink=Dissocier
+QxUnlinked=Association QUARTIX supprimée. Le boîtier peut être associé à un autre véhicule.
+QxUnlinkMode=Motif de la dissociation
+QxUnlinkReassignment=Réaffectation du boîtier — conserver les imports
+QxUnlinkError=Association erronée — supprimer les imports QUARTIX
+QxUnlinkConfirm=Dissocier QUARTIX du véhicule %s ? La dernière position sera effacée. En cas d’association erronée, toutes les synthèses et estimations kilométriques QUARTIX de ce véhicule seront définitivement supprimées. Les relevés manuels, pleins et recharges seront conservés.
+QxSyncFrom=Boîtier installé sur ce véhicule depuis le
+QxSyncFromHelp=Date et heure dans le fuseau de votre session Dolibarr. Aucun import antérieur ; les synthèses commencent à la première journée QUARTIX complète.
+QxInvalidAssociationDate=Indiquez une date et une heure d’installation valides, non futures.
+QxAssociationHistoryOverlap=La date d’installation recouvre des imports conservés. Choisissez une date ultérieure ou corrigez l’association erronée avant de la recréer.
+QxAssociationChanged=Cette association n’existe plus ou a changé. Rechargez la page avant de dissocier.
+QxBeforeAssociation=La donnée QUARTIX précède l’installation du boîtier sur ce véhicule. Elle n’a pas été importée.

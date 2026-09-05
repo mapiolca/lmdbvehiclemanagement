@@ -59,6 +59,11 @@ class LmdbVehicleQuartixClient
 			if (array_key_exists('VehicleId', $row) && $row['VehicleId'] !== $id) throw new RuntimeException('QxInvalidResponse');
 			$row['VehicleID'] = $id;
 			unset($row['VehicleId']);
+			if ($path === '/vehicles/live' && array_key_exists('LastEventDateTime', $row)) {
+				if (array_key_exists('LastEventDatetime', $row) && $row['LastEventDatetime'] !== $row['LastEventDateTime']) throw new RuntimeException('QxInvalidResponse');
+				$row['LastEventDatetime'] = $row['LastEventDateTime'];
+				unset($row['LastEventDateTime']);
+			}
 			$data[$index] = $row;
 		}
 		if (!$this->db->query('UPDATE '.MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job SET retry_at=NULL,last_error=NULL WHERE entity=".$this->entity." AND job_kind='api'")) throw new RuntimeException('QxDatabaseError');
