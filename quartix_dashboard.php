@@ -78,6 +78,10 @@ print '<div class="liste_titre">';
 foreach ($dates as $key => $value) print $form->selectDate($valid ? LmdbVehicleQuartixRules::day($value)->getTimestamp() : -1, $key, 0, 0, 0, '', 1, 0, 0, '', '', '', '', 1, '', '', 'gmt').' ';
 print '<button class="button" name="button_search" value="1">'.$langs->trans('Search').'</button><button class="button" name="button_removefilter" value="1">'.$langs->trans('Reset').'</button> '.$selectedfields.'</div>';
 $visible = array_filter($arrayfields, static function ($field) { return !empty($field['checked']); });
+// Hidden columns must not silently remove an active SQL filter on the next POST.
+if (!isset($visible['vehicle'])) print '<input type="hidden" name="search_vehicle" value="'.dol_escape_htmltag($search).'">';
+if (!isset($visible['association'])) print '<input type="hidden" name="search_association" value="'.dol_escape_htmltag($association).'">';
+if (!isset($visible['entity'])) foreach ($entities as $entity) print '<input type="hidden" name="search_entity[]" value="'.((int) $entity).'">';
 $states = array('associated' => 'QxAssociated', 'suspended' => 'QxSuspended', 'unlinked' => 'QxUnassociated');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent"><tr class="liste_titre_filter">';
 foreach ($visible as $key => $field) {
@@ -142,7 +146,9 @@ if ($result !== null) {
 	foreach (array('Label', 'Status', 'QxLastAttempt', 'QxLastSuccess', 'Error') as $label) print '<td>'.$langs->trans($label).'</td>';
 	print '</tr>';
 	$jobLabels = array('positions' => 'QxPositionJob', 'odometer' => 'QxOdometerJob', 'usage' => 'QxUsageJob', 'trips' => 'QxTripsJob');
+	$tripJobEntities = array();
 	foreach ($result['jobs'] as $job) {
+		if ($job->methodename === 'trips') $tripJobEntities[(int) $job->entity] = true;
 		print '<tr class="oddeven">';
 		if ($entityOptions) print '<td class="center">'.lmdbVehicleManagementEntityBadge((int) $job->entity, $entityOptions).'</td>';
 		print '<td>'.$langs->trans($jobLabels[$job->methodename]).'</td><td>'.dolGetStatus($langs->trans((int) $job->status ? 'Enabled' : 'Disabled'), '', '', (int) $job->status ? 'status4' : 'status5', 5);
@@ -151,5 +157,10 @@ if ($result !== null) {
 	}
 	if (!$result['jobs']) print '<tr class="oddeven"><td colspan="'.($entityOptions ? 6 : 5).'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
 	print '</table></div>';
+	foreach ($result['rows'] as $row) {
+		if (isset($tripJobEntities[(int) $row->entity])) continue;
+		print '<div class="warning">'.($entityOptions ? lmdbVehicleManagementEntityBadge((int) $row->entity, $entityOptions).' ' : '').$langs->trans('QxTripsPurgeStopped').'</div>';
+		$tripJobEntities[(int) $row->entity] = true;
+	}
 }
 llxFooter(); $db->close();
