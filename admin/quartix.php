@@ -30,7 +30,7 @@ $vehicleId = GETPOSTINT('vehicle_id');
 $linkId = GETPOSTINT('link_id');
 $sessionKey = 'lmdbvm_qx_catalog_'.$entity;
 $values = array();
-foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION', 'TIME_MODE', 'DURATION_UNIT', 'TRIP_RETENTION_DAYS') as $key) {
+foreach (array('CUSTOMER', 'USERNAME', 'PASSWORD', 'APPLICATION', 'TIME_MODE', 'DURATION_UNIT', 'TRIP_RETENTION_DAYS', 'TILE_URL', 'TILE_ATTRIBUTION') as $key) {
 	$raw = GETPOST('qx_'.$key, $key === 'PASSWORD' ? 'none' : 'alphanohtml');
 	$values[$key] = is_string($raw) ? $raw : '';
 }
@@ -114,6 +114,7 @@ if (!LmdbVehicleQuartixConfig::supported()) {
 }
 if (!isModEnabled('cron')) print '<div class="warning">'.$langs->trans('RequiresCronModule').'</div>';
 print '<table class="noborder centpercent"><tr class="oddeven"><td>'.$langs->trans('QxEnabled').'</td><td>'.ajax_constantonoff(LmdbVehicleQuartixConfig::PREFIX.'ENABLED').'</td></tr></table>';
+print '<table class="noborder centpercent"><tr class="oddeven"><td>'.$langs->trans('QxRoutesEnabled').'</td><td>'.ajax_constantonoff(LmdbVehicleQuartixConfig::PREFIX.'ROUTES_ENABLED').'</td></tr></table>';
 print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="save">';
 print '<div class="div-table-responsive-no-min"><table class="border centpercent">';
 foreach (array('CUSTOMER' => 'QxCustomer', 'USERNAME' => 'Login', 'PASSWORD' => 'Password', 'APPLICATION' => 'QxApplication') as $key => $label) {
@@ -128,6 +129,8 @@ foreach (array('TIME_MODE' => array('QxTimeMode', $timeOptions), 'DURATION_UNIT'
 	print '<tr><td>'.$langs->trans($definition[0]).'</td><td>'.$form->selectarray('qx_'.$key, $definition[1], $settings[$key], 0, 0, 0, '', 0, 0, 0, '', 'minwidth200', 1).'</td></tr>';
 }
 print '<tr><td><label for="qx_TRIP_RETENTION_DAYS">'.$langs->trans('QxTripRetention').'</label></td><td><input class="flat width75" type="number" min="1" step="1" required id="qx_TRIP_RETENTION_DAYS" name="qx_TRIP_RETENTION_DAYS" value="'.dol_escape_htmltag($settings['TRIP_RETENTION_DAYS']).'"></td></tr>';
+foreach (array('TILE_URL' => 'QxTileUrl', 'TILE_ATTRIBUTION' => 'QxTileAttribution') as $key => $label) print '<tr><td><label for="qx_'.$key.'">'.$langs->trans($label).'</label></td><td><input class="flat minwidth300" type="text" id="qx_'.$key.'" name="qx_'.$key.'" value="'.dol_escape_htmltag($settings[$key]).'" required></td></tr>';
+print '<tr><td colspan="2"><span class="opacitymedium">'.$langs->trans('QxRouteSettingsHelp').'</span></td></tr>';
 try {
 	$tripCount = (int) $service->rows('SELECT COUNT(*) AS nb FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_trip WHERE entity='.$entity)[0]->nb;
 	print '<tr><td>'.$langs->trans('QxStoredTrips').'</td><td>'.$tripCount.'<br><span class="opacitymedium">'.$langs->trans('QxTripRetentionHelp').'</span></td></tr>';

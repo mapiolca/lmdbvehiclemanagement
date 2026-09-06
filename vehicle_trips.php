@@ -112,8 +112,15 @@ foreach ($visible as $key => $field) print getTitleFieldOfList($field['label'], 
 if (!$actionsLeft) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch actioncolumn ');
 print '</tr></thead><tbody>';
 foreach ($result['rows'] as $row) {
+	$routeAction = '';
+	if (!(int) $row->is_private && $row->departure !== null && LmdbVehicleQuartixRoutes::unavailable($cfg) === '') {
+		$routeUrl = dol_buildpath('/lmdbvehiclemanagement/vehicle_route.php', 1).'?day='.(int) $row->fk_tripday.'&trip='.LmdbVehicleQuartixRoutes::tripKey($db->jdate($row->departure));
+		// Native helper prepends DOL_URL_ROOT itself, including subdirectory installations.
+		if (DOL_URL_ROOT !== '' && strpos($routeUrl, DOL_URL_ROOT) === 0) $routeUrl = substr($routeUrl, strlen(DOL_URL_ROOT));
+		$routeAction = dolButtonToOpenUrlInDialogPopup('qxroute'.(int) $row->rowid, $langs->trans('QxRouteView'), img_picto($langs->trans('QxRouteView'), 'eye'), $routeUrl, '', '');
+	}
 	print '<tr class="oddeven">';
-	if ($actionsLeft) print '<td class="center actioncolumn"></td>';
+	if ($actionsLeft) print '<td class="center actioncolumn">'.$routeAction.'</td>';
 	foreach ($visible as $key => $field) {
 		print '<td class="'.($field['align'] ?? 'left').'" data-col="'.$key.'">';
 		if ($key === 'day') print dol_print_date(LmdbVehicleQuartixRules::day($row->trip_day)->getTimestamp(), 'day', 'gmt');
@@ -128,7 +135,7 @@ foreach ($result['rows'] as $row) {
 		}
 		print '</td>';
 	}
-	if (!$actionsLeft) print '<td class="center actioncolumn"></td>';
+	if (!$actionsLeft) print '<td class="center actioncolumn">'.$routeAction.'</td>';
 	print '</tr>';
 }
 if (!$result['rows']) print '<tr class="oddeven"><td colspan="'.(1 + count($visible)).'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';

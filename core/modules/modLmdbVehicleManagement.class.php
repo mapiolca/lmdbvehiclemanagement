@@ -976,6 +976,9 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$defaults = array(
 			'LMDBVEHICLEMANAGEMENT_QX_ENABLED' => '0',
 			'LMDBVEHICLEMANAGEMENT_QX_TRIP_RETENTION_DAYS' => '30',
+			'LMDBVEHICLEMANAGEMENT_QX_ROUTES_ENABLED' => '0',
+			'LMDBVEHICLEMANAGEMENT_QX_TILE_URL' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+			'LMDBVEHICLEMANAGEMENT_QX_TILE_ATTRIBUTION' => '© OpenStreetMap contributors',
 			'MAIN_MODULE_LMDBVEHICLEMANAGEMENT_ICON' => 'fa-car',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON' => 'mod_lmdbvehicle_standard',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLEEVENT_ADDON' => 'mod_lmdbvehicleevent_standard',

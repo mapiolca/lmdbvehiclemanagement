@@ -128,6 +128,7 @@ class LmdbVehicleQuartixService
 				$this->deleteTripCache((int) $conf->entity, (int) $vehicle->id);
 			}
 			$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_position WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.((int) $vehicle->id));
+			$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_routequeue WHERE entity='.((int) $conf->entity).' AND fk_tripday IN (SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.((int) $vehicle->id).')');
 			$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link WHERE entity='.((int) $conf->entity).' AND fk_vehicle='.((int) $vehicle->id).' AND rowid='.$linkId);
 			$vehicle->context = array('trigger_reason' => 'quartix_unlink', 'changed_fields' => array('quartix_link'), 'quartix_cleanup' => $mode === 'error');
 			if ($vehicle->call_trigger($vehicle->TRIGGER_PREFIX.'_UPDATE', $user) < 0) throw new RuntimeException('QxDatabaseError');
@@ -143,6 +144,7 @@ class LmdbVehicleQuartixService
 		if ($entity !== (int) $vehicle->entity
 			|| (!LmdbVehicleQuartixConfig::can($user, 'configure') && !$user->hasRight('lmdbvehiclemanagement', 'delete'))) throw new RuntimeException('QxAccessDenied');
 		$filter = ' WHERE entity='.$entity.' AND fk_vehicle='.$vehicleId;
+		foreach (array('qx_route', 'qx_routequeue') as $table) $this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$table.' WHERE entity='.$entity.' AND fk_tripday IN (SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday'.$filter.')');
 		$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_trip WHERE entity='.$entity.' AND fk_tripday IN (SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday'.$filter.')');
 		$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday'.$filter);
 	}

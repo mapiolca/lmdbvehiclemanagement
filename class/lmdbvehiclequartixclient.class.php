@@ -20,23 +20,39 @@ class LmdbVehicleQuartixClient
 	/** @var string Fixed endpoint, without query parameters */ private $lastEndpoint = '';
 	/** @var int HTTP status, or zero when no response was received */ private $lastHttpStatus = 0;
 	/** @var int cURL error number, without its potentially sensitive message */ private $lastCurlError = 0;
+	/** @var stdClass|null Strict scope for a GPS reader, never a general sync permission. */ private $routeScope = null;
+	/** @var float */ private $deadline = INF;
 
 	/** @param DoliDB $db Database @param int $entity Current entity */
-	public function __construct($db, $entity)
+	public function __construct($db, $entity, $routeDay = 0)
 	{
 		global $user;
-		if (!LmdbVehicleQuartixConfig::can($user, 'sync') && !LmdbVehicleQuartixConfig::can($user, 'configure')) throw new RuntimeException('QxAccessDenied');
+		if ($routeDay > 0) {
+			require_once __DIR__.'/lmdbvehiclequartixroutes.class.php';
+			$routes = new LmdbVehicleQuartixRoutes($db);
+			$this->routeScope = $routes->day($routeDay);
+			if ((int) $this->routeScope->entity !== $entity || !$routes->canRetrieve($this->routeScope)) throw new RuntimeException('QxAccessDenied');
+		} elseif (!LmdbVehicleQuartixConfig::can($user, 'sync') && !LmdbVehicleQuartixConfig::can($user, 'configure')) throw new RuntimeException('QxAccessDenied');
 		$this->db = $db;
 		$this->entity = $entity;
 		$this->config = (new LmdbVehicleQuartixConfig($db))->load($entity, true);
 		LmdbVehicleQuartixConfig::validateApplication($this->config['APPLICATION']);
 	}
 
+	/** @param float $deadline Absolute batch deadline including authentication @return void */
+	public function setDeadline($deadline) { $this->deadline = $deadline; }
+
 	/** @param string $path Allowed read endpoint @param array<string,int|string> $query Parameters @return array<int,mixed> */
 	public function get($path, $query = array())
 	{
 		$this->lastEndpoint = ''; $this->lastHttpStatus = 0; $this->lastCurlError = 0;
-		if (!in_array($path, array('/vehicles', '/vehicles/live', '/vehicles/odometer', '/vehicles/tripsummary', '/vehicles/trips'), true)) throw new RuntimeException('QxInvalidEndpoint');
+		if (!in_array($path, array('/vehicles', '/vehicles/live', '/vehicles/odometer', '/vehicles/tripsummary', '/vehicles/trips', '/vehicles/route'), true)) throw new RuntimeException('QxInvalidEndpoint');
+		if ($this->routeScope !== null && ($path !== '/vehicles/route' || $query !== array('VehicleID' => (int) $this->routeScope->remote_id, 'StartDay' => $this->routeScope->trip_day))) throw new RuntimeException('QxAccessDenied');
+		if ($path === '/vehicles/route') {
+			LmdbVehicleQuartixRules::id($query['VehicleID'] ?? null);
+			LmdbVehicleQuartixRules::day($query['StartDay'] ?? '');
+			if (count($query) !== 2) throw new RuntimeException('QxInvalidResponse');
+		}
 		$res = $this->db->query('SELECT MAX(retry_at) AS retry_at FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_job WHERE entity='.$this->entity);
 		if (!$res) throw new RuntimeException('QxDatabaseError');
 		$throttle = $this->db->fetch_object($res);
@@ -50,6 +66,8 @@ class LmdbVehicleQuartixClient
 			$response = $this->exchange('GET', $path, $query, $this->access);
 		}
 		$data = $this->decode($response);
+		// Live /route returns one object, unlike the list returned by /trips.
+		if ($path === '/vehicles/route' && is_array($data) && isset($data['Summary'], $data['Trips'])) $data = array($data);
 		if (!is_array($data) || array_keys($data) !== range(0, count($data) - 1) && $data !== array()) throw new RuntimeException('QxInvalidResponse');
 		// QWS vehicle totals contain reliable trip counts but use a sentinel date.
 		// A single requested day and vehicle make that reporting period unambiguous.
@@ -62,6 +80,13 @@ class LmdbVehicleQuartixClient
 		// only this known alias, before catalogue, position, mileage or usage reads.
 		foreach ($data as $index => $row) {
 			if (!is_array($row)) throw new RuntimeException('QxInvalidResponse');
+			// Route replies wrap trips in a per-vehicle summary. Never run the flat
+			// vehicle alias normalization over this distinct response contract.
+			if ($path === '/vehicles/route') {
+				if (!isset($row['Summary'], $row['Trips']) || !is_array($row['Summary']) || !is_array($row['Trips'])
+					|| LmdbVehicleQuartixRules::id($row['Summary']['VehicleID'] ?? null) !== LmdbVehicleQuartixRules::id($query['VehicleID'] ?? null)) throw new RuntimeException('QxInvalidResponse');
+				continue;
+			}
 			$id = LmdbVehicleQuartixRules::id(array_key_exists('VehicleID', $row) ? $row['VehicleID'] : ($row['VehicleId'] ?? null));
 			if ($dailyVehicle > 0 && $id !== $dailyVehicle) throw new RuntimeException('QxInvalidResponse');
 			if ($summaryDay !== '' && ($row['Date'] ?? '') === '0001-01-01') $row['Date'] = $summaryDay;
@@ -151,6 +176,7 @@ class LmdbVehicleQuartixClient
 	 */
 	private function exchange($method, $path, $values, $token)
 	{
+		if (microtime(true) >= $this->deadline) throw new RuntimeException('QxNetworkError');
 		$this->lastEndpoint = $path;
 		$this->lastHttpStatus = 0;
 		$this->lastCurlError = 0;
@@ -184,7 +210,7 @@ class LmdbVehicleQuartixClient
 		$body = '';
 		$retry = 900;
 		$options = array(CURLOPT_FOLLOWLOCATION => false, CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
-			CURLOPT_CONNECTTIMEOUT => max(1, min(15, getDolGlobalInt('MAIN_USE_CONNECT_TIMEOUT', 5))), CURLOPT_TIMEOUT => 30,
+			CURLOPT_CONNECTTIMEOUT => max(1, min(15, getDolGlobalInt('MAIN_USE_CONNECT_TIMEOUT', 5))), CURLOPT_TIMEOUT_MS => (int) max(1, min(30000, ($this->deadline - microtime(true)) * 1000)),
 			CURLOPT_HTTPHEADER => array('Accept: application/json'), CURLOPT_VERBOSE => false,
 			CURLOPT_WRITEFUNCTION => static function ($handle, $chunk) use (&$body) { if (strlen($body) + strlen($chunk) > 8388608) return 0; $body .= $chunk; return strlen($chunk); },
 			CURLOPT_HEADERFUNCTION => static function ($handle, $line) use (&$retry) { if (stripos($line, 'Retry-After:') === 0) { $value = trim(substr($line, 12)); $retry = ctype_digit($value) ? (int) $value : max(60, (int) strtotime($value) - time()); } return strlen($line); });

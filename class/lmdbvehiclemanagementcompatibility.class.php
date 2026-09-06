@@ -26,6 +26,11 @@ class LmdbVehicleManagementCompatibility
 		$php80 = version_compare(PHP_VERSION, '8.0.0', '>=');
 
 		return array(
+			'quartix_routes' => array(
+				'label' => 'QxRouteTitle', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
+				'available' => LmdbVehicleQuartixConfig::unavailableReason('routes') === '',
+				'reason' => LmdbVehicleQuartixConfig::unavailableReason('routes'),
+			),
 			'quartix' => array(
 				'label' => 'QxTitle', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
 				'available' => LmdbVehicleQuartixConfig::unavailableReason('connection') === '',

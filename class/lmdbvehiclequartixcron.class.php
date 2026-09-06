@@ -2,6 +2,7 @@
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 require_once __DIR__.'/lmdbvehiclequartixtrips.class.php';
+require_once __DIR__.'/lmdbvehiclequartixroutes.class.php';
 
 /** Four native, bounded and restartable QWS jobs. */
 class LmdbVehicleQuartixCron
@@ -53,6 +54,11 @@ class LmdbVehicleQuartixCron
 			$service->write('UPDATE '.MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job SET last_attempt='".$this->db->idate(dol_now())."' WHERE entity=".$entity." AND job_kind='".$kind."'");
 			if ($kind !== 'usage' && LmdbVehicleQuartixConfig::unavailableReason('timestamps') !== '') throw new RuntimeException('QxTimeUnconfirmed');
 			$client = $this->createClient($entity);
+			if ($kind === 'trips') {
+				$routeError = (new LmdbVehicleQuartixRoutes($this->db))->processPending($client, $entity, $deadline);
+				if ($routeError !== '') { $failed++; $this->error = $routeError; }
+				$client->setDeadline($deadline);
+			}
 			if ($kind === 'usage') {
 				// Bound retention work, including paused associations. UTC is the retention clock.
 				$cutoff = (new DateTimeImmutable('@'.dol_now()))->modify('-12 months')->format('Y-m-d');

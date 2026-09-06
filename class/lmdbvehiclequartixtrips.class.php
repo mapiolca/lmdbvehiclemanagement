@@ -104,6 +104,8 @@ class LmdbVehicleQuartixTrips extends LmdbVehicleQuartixService
 			$this->write('INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday (entity,fk_vehicle,source_link_id,remote_id,trip_day,timezone,shift_start,synced_at,has_open,trip_count) VALUES ('
 				.((int) $link->entity).','.((int) $link->fk_vehicle).','.((int) $link->rowid).','.((int) $link->remote_id).",'".$day."','".$this->db->escape($link->timezone)."','".$this->db->escape($link->shift_start)."','".$this->db->idate(dol_now())."',".((int) $normalized['open']).','.count($normalized['rows']).') ON DUPLICATE KEY UPDATE synced_at=VALUES(synced_at),has_open=VALUES(has_open),trip_count=VALUES(trip_count)');
 			$dayId = (int) $this->rows('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday'.$filter)[0]->rowid;
+			require_once __DIR__.'/lmdbvehiclequartixroutes.class.php';
+			(new LmdbVehicleQuartixRoutes($this->db))->reconcile((int) $link->entity, $dayId, $normalized['rows']);
 			$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_trip WHERE entity='.((int) $link->entity).' AND fk_tripday='.$dayId);
 			foreach ($normalized['rows'] as $row) {
 				$values = array((string) (int) $link->entity, (string) $dayId);
@@ -129,6 +131,7 @@ class LmdbVehicleQuartixTrips extends LmdbVehicleQuartixService
 			if (microtime(true) >= $deadline) break;
 			$this->db->begin();
 			try {
+				foreach (array('qx_route', 'qx_routequeue') as $table) $this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$table.' WHERE entity='.$entity.' AND fk_tripday='.((int) $day->rowid));
 				$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_trip WHERE entity='.$entity.' AND fk_tripday='.((int) $day->rowid));
 				$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday WHERE entity='.$entity.' AND rowid='.((int) $day->rowid));
 				$this->db->commit();
