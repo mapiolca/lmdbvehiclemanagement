@@ -2,7 +2,7 @@
 
 ## À publier
 
-- Tableaux QUARTIX alignés sur la référence native Dolibarr : en-têtes et cellules cohérents, filtres et sélection des colonnes dans leurs emplacements natifs, comptages entiers et conservation de la navigation. Correction du basculement des tris ascendants/descendants générés par le core.
+- Tableaux QUARTIX alignés sur la référence native Dolibarr : en-têtes et cellules cohérents, filtres et sélection des colonnes dans leurs emplacements natifs, comptages entiers et conservation de la navigation. Correction du basculement des tris ascendants/descendants et de l’affichage des liens vers les pages suivantes.
 - Graphiques d’utilisation et du parc rendus avec le moteur natif configuré par Dolibarr, en cohérence avec les scripts chargés par la page.
 - Accès au tableau de bord et à ses menus parents rétabli pour les administrateurs sans droits granulaires : condition compatible avec l’évaluation sécurisée native de Dolibarr, accès conservé pour les lecteurs internes et refusé aux utilisateurs externes. Réactiver le module pour actualiser les menus déjà installés.
 

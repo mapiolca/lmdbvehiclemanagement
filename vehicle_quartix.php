@@ -88,7 +88,9 @@ $actionsLeft = !empty($conf->main_checkbox_left_column);
 print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'" name="qxusage"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
 print '<input type="hidden" name="formfilteraction" id="formfilteraction" value="list"><input type="hidden" name="action" value="list"><input type="hidden" name="page" value="'.$page.'">';
 print '<input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.$sortorder.'">';
-print_barre_liste($langs->trans('QxUsage'), $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', count($rows), count($allRows), 'car', 0, '', '', $limit);
+// The native navigation needs a count above limit when another page exists.
+$num = min($limit + 1, max(0, count($allRows) - $page * $limit));
+print_barre_liste($langs->trans('QxUsage'), $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, count($allRows), 'car', 0, '', '', $limit);
 print '<div class="liste_titre liste_titre_bydiv centpercent">';
 foreach ($dates as $key => $value) print '<div class="divsearchfield">'.$langs->trans($key === 'start' ? 'From' : 'To').' '.$form->selectDate($validPeriod ? LmdbVehicleQuartixRules::day($value)->getTimestamp() : -1, $key, 0, 0, 0, '', 1, 0, 0, '', '', '', '', 1, '', '', 'gmt').'</div>';
 print '<div class="divsearchfield">'.$form->selectarray('group', array('day' => $langs->trans('QxDaily'), 'month' => $langs->trans('QxMonthly')), $group, 0, 0, 0, '', 0, 0, 0, '', '', 1).'</div></div>';
