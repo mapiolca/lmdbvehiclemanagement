@@ -32,9 +32,10 @@ $group = GETPOST('group', 'alpha') === 'month' ? 'month' : 'day';
 $limit = max(1, min(1000, GETPOSTINT('limit') ?: (int) $conf->liste_limit));
 $page = max(0, GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page'));
 $sortfield = GETPOST('sortfield', 'aZ09') ?: 'period';
-$sortorder = GETPOST('sortorder', 'alpha') === 'ASC' ? 'ASC' : 'DESC';
+$sortorder = strtoupper(GETPOST('sortorder', 'alpha')) === 'ASC' ? 'ASC' : 'DESC';
 $dates = array();
-$reset = GETPOST('button_removefilter', 'alpha');
+$reset = GETPOSTISSET('button_removefilter_x') || GETPOSTISSET('button_removefilter');
+if ($reset || GETPOSTISSET('button_search_x') || GETPOSTISSET('button_search')) $page = 0;
 foreach (array('start', 'end') as $key) {
 	$day = GETPOSTINT($key.'day'); $month = GETPOSTINT($key.'month'); $year = GETPOSTINT($key.'year');
 	$default = dol_print_date(dol_now(), $key === 'start' ? '%Y-%m-01' : '%Y-%m-%d');
@@ -42,12 +43,12 @@ foreach (array('start', 'end') as $key) {
 }
 if ($reset) { $page = 0; $group = 'day'; }
 $arrayfields = array(
-	'period' => array('label' => 'Period', 'checked' => 1),
-	'known_days' => array('label' => 'QxCoverage', 'checked' => 1),
-	'distance' => array('label' => 'QxDistance', 'checked' => 1),
-	'trips' => array('label' => 'QxTrips', 'checked' => 1),
-	'travel' => array('label' => 'QxDriving', 'checked' => 1),
-	'idling' => array('label' => 'QxIdling', 'checked' => 1),
+	'period' => array('label' => 'Period', 'checked' => 1, 'align' => 'center'),
+	'known_days' => array('label' => 'QxCoverage', 'checked' => 1, 'align' => 'center'),
+	'distance' => array('label' => 'QxDistance', 'checked' => 1, 'align' => 'right'),
+	'trips' => array('label' => 'QxTrips', 'checked' => 1, 'align' => 'right'),
+	'travel' => array('label' => 'QxDriving', 'checked' => 1, 'align' => 'right'),
+	'idling' => array('label' => 'QxIdling', 'checked' => 1, 'align' => 'right'),
 );
 $contextpage = 'lmdbvehiclequartix';
 $action = GETPOST('action', 'aZ09');
@@ -83,26 +84,36 @@ foreach ($dates as $key => $dayValue) {
 	}
 }
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $contextpage, !empty($conf->main_checkbox_left_column));
-print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'" name="qxusage"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
+$actionsLeft = !empty($conf->main_checkbox_left_column);
+print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'" name="qxusage"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
+print '<input type="hidden" name="formfilteraction" id="formfilteraction" value="list"><input type="hidden" name="action" value="list"><input type="hidden" name="page" value="'.$page.'">';
 print '<input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.$sortorder.'">';
 print_barre_liste($langs->trans('QxUsage'), $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', count($rows), count($allRows), 'car', 0, '', '', $limit);
-print '<div class="liste_titre">'.$form->selectDate($validPeriod ? LmdbVehicleQuartixRules::day($dates['start'])->getTimestamp() : -1, 'start', 0, 0, 0, '', 1, 0, 0, '', '', '', '', 1, '', '', 'gmt').' — '.$form->selectDate($validPeriod ? LmdbVehicleQuartixRules::day($dates['end'])->getTimestamp() : -1, 'end', 0, 0, 0, '', 1, 0, 0, '', '', '', '', 1, '', '', 'gmt');
-print ' '.$form->selectarray('group', array('day' => $langs->trans('QxDaily'), 'month' => $langs->trans('QxMonthly')), $group, 0, 0, 0, '', 0, 0, 0, '', '', 1);
-print ' <button type="submit" class="button">'.$langs->trans('Search').'</button><button class="button" type="submit" name="button_removefilter" value="1">'.$langs->trans('Reset').'</button> '.$selectedfields.'</div>';
-print '<div class="div-table-responsive-no-min"><table class="noborder centpercent"><tr class="liste_titre">';
+print '<div class="liste_titre liste_titre_bydiv centpercent">';
+foreach ($dates as $key => $value) print '<div class="divsearchfield">'.$langs->trans($key === 'start' ? 'From' : 'To').' '.$form->selectDate($validPeriod ? LmdbVehicleQuartixRules::day($value)->getTimestamp() : -1, $key, 0, 0, 0, '', 1, 0, 0, '', '', '', '', 1, '', '', 'gmt').'</div>';
+print '<div class="divsearchfield">'.$form->selectarray('group', array('day' => $langs->trans('QxDaily'), 'month' => $langs->trans('QxMonthly')), $group, 0, 0, 0, '', 0, 0, 0, '', '', 1).'</div></div>';
 $visible = array_filter($arrayfields, static function ($field) { return !empty($field['checked']); });
-foreach ($visible as $key => $field) print getTitleFieldOfList($field['label'], 0, $_SERVER['PHP_SELF'], $key, '', $param, '', $sortfield, $sortorder);
-print '</tr>';
+print '<div class="div-table-responsive-no-min"><table class="tagtable liste listwithfilterbefore" id="quartix-usage-list"><thead><tr class="liste_titre_filter">';
+if ($actionsLeft) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons('left').'</td>';
+foreach ($visible as $field) print '<td class="'.$field['align'].'"></td>';
+if (!$actionsLeft) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons().'</td>';
+print '</tr><tr class="liste_titre">';
+if ($actionsLeft) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch actioncolumn ');
+foreach ($visible as $key => $field) print getTitleFieldOfList($field['label'], 0, $_SERVER['PHP_SELF'], $key, '', $param, 'data-col="'.$key.'"', $sortfield, $sortorder, $field['align'].' ');
+if (!$actionsLeft) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch actioncolumn ');
+print '</tr></thead><tbody>';
 foreach ($rows as $row) {
 	$periodDay = LmdbVehicleQuartixRules::day($row->period.($group === 'month' ? '-01' : ''));
 	$first = max($dates['start'], $periodDay->format('Y-m-d'));
 	$last = min($dates['end'], $group === 'month' ? $periodDay->format('Y-m-t') : $first);
 	$expected = 1 + (int) LmdbVehicleQuartixRules::day($first)->diff(LmdbVehicleQuartixRules::day($last))->days;
 	print '<tr class="oddeven">';
+	if ($actionsLeft) print '<td class="center actioncolumn"></td>';
 	foreach ($visible as $key => $field) {
-		print '<td'.($key === 'period' ? '' : ' class="right"').'>';
+		print '<td class="'.$field['align'].'" data-col="'.$key.'">';
 		if ($key === 'period') print dol_print_date($periodDay->getTimestamp(), $group === 'month' ? '%B %Y' : 'day', 'gmt');
 		elseif ($key === 'known_days') print ((int) $row->known_days).' / '.$expected;
+		elseif ($key === 'trips') print $row->trips === null ? '<span class="opacitymedium">—</span>' : (string) (int) $row->trips;
 		else {
 			$value = $row->{$key} !== null ? (float) $row->{$key} : null;
 			if ($key === 'travel' || $key === 'idling') $value = LmdbVehicleQuartixRules::hours($value, $cfg['DURATION_UNIT']);
@@ -110,10 +121,11 @@ foreach ($rows as $row) {
 		}
 		print '</td>';
 	}
+	if (!$actionsLeft) print '<td class="center actioncolumn"></td>';
 	print '</tr>';
 }
-if (!$rows) print '<tr class="oddeven"><td colspan="'.max(1, count($visible)).'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
-print '</table></div></form>';
+if (!$rows) print '<tr class="oddeven"><td colspan="'.(1 + count($visible)).'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
+print '</tbody></table></div></form>';
 // jflot is a native v20+ backend: no graph file containing usage data is generated.
 $chartSeries = array(
 	'distance' => array('labels' => array($langs->trans('QxDistance')), 'data' => array()),

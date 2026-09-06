@@ -29,10 +29,10 @@ $action = GETPOST('action', 'aZ09');
 $limit = max(1, min(1000, GETPOSTINT('limit') ?: (int) $conf->liste_limit));
 $page = max(0, GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page'));
 $sortfield = GETPOST('sortfield', 'aZ09') ?: 'departure';
-$sortorder = GETPOST('sortorder', 'alpha') === 'ASC' ? 'ASC' : 'DESC';
+$sortorder = strtoupper(GETPOST('sortorder', 'alpha')) === 'ASC' ? 'ASC' : 'DESC';
 $status = GETPOST('search_status', 'alpha');
-$reset = GETPOST('button_removefilter', 'alpha');
-if ($reset || GETPOST('button_search', 'alpha')) $page = 0;
+$reset = GETPOSTISSET('button_removefilter_x') || GETPOSTISSET('button_removefilter');
+if ($reset || GETPOSTISSET('button_search_x') || GETPOSTISSET('button_search')) $page = 0;
 if ($reset) $status = '';
 $today = $link ? LmdbVehicleQuartixTrips::reportingDay(dol_now(), $link->timezone, $link->shift_start) : gmdate('Y-m-d', dol_now());
 $dates = array();
@@ -42,18 +42,18 @@ foreach (array('start', 'end') as $key) {
 	$dates[$key] = !$reset && ($day || $month || $year) ? sprintf('%04d-%02d-%02d', $year, $month, $day) : $default;
 }
 $arrayfields = array(
-	'day' => array('label' => 'Date', 'checked' => 1),
-	'departure' => array('label' => 'QxDeparture', 'checked' => 1),
-	'arrival' => array('label' => 'QxArrival', 'checked' => 1),
-	'from' => array('label' => 'QxStartLocation', 'checked' => 1),
-	'to' => array('label' => 'QxEndLocation', 'checked' => 1),
-	'distance' => array('label' => 'QxDistance', 'checked' => 1),
-	'private_distance' => array('label' => 'QxPrivateDistance', 'checked' => 0),
-	'status' => array('label' => 'Status', 'checked' => 1),
+	'day' => array('label' => 'Date', 'checked' => 1, 'align' => 'center'),
+	'departure' => array('label' => 'QxDeparture', 'checked' => 1, 'align' => 'center'),
+	'arrival' => array('label' => 'QxArrival', 'checked' => 1, 'align' => 'center'),
+	'from' => array('label' => 'QxStartLocation', 'checked' => 1, 'align' => 'left'),
+	'to' => array('label' => 'QxEndLocation', 'checked' => 1, 'align' => 'left'),
+	'distance' => array('label' => 'QxDistance', 'checked' => 1, 'align' => 'right'),
+	'private_distance' => array('label' => 'QxPrivateDistance', 'checked' => 0, 'align' => 'right'),
+	'status' => array('label' => 'Status', 'checked' => 1, 'align' => 'center'),
 );
 if ($cfg['DURATION_UNIT'] !== '') {
-	$arrayfields['travel'] = array('label' => 'QxDriving', 'checked' => 0);
-	$arrayfields['idling'] = array('label' => 'QxIdling', 'checked' => 0);
+	$arrayfields['travel'] = array('label' => 'QxDriving', 'checked' => 0, 'align' => 'right');
+	$arrayfields['idling'] = array('label' => 'QxIdling', 'checked' => 0, 'align' => 'right');
 }
 $contextpage = 'lmdbvehicletrips';
 $parameters = array('arrayfields' => &$arrayfields);
@@ -86,21 +86,34 @@ foreach ($dates as $key => $value) if ($valid) {
 	$d = LmdbVehicleQuartixRules::day($value); $param .= '&'.$key.'day='.$d->format('d').'&'.$key.'month='.$d->format('m').'&'.$key.'year='.$d->format('Y');
 }
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $contextpage, !empty($conf->main_checkbox_left_column));
-print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'" name="qxtrips"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
+$actionsLeft = !empty($conf->main_checkbox_left_column);
+print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'" name="qxtrips"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
+print '<input type="hidden" name="formfilteraction" id="formfilteraction" value="list"><input type="hidden" name="action" value="list"><input type="hidden" name="page" value="'.$page.'">';
 print '<input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.$sortorder.'">';
 print_barre_liste($langs->trans('QxJournal'), $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', count($result['rows']), $result['total'], 'car', 0, '', '', $limit);
-print '<div class="liste_titre">';
-foreach ($dates as $key => $value) print $form->selectDate($valid ? LmdbVehicleQuartixRules::day($value)->getTimestamp() : -1, $key, 0, 0, 0, '', 1, 0, 0, '', '', '', '', 1, '', '', 'gmt').' ';
-print $form->selectarray('search_status', array('' => $langs->trans('All'), 'open' => $langs->trans('QxTripOpen'), 'done' => $langs->trans('QxTripDone'), 'private' => $langs->trans('QxTripPrivate')), $status, 0, 0, 0, '', 0, 0, 0, '', '', 1);
-print ' <button class="button" name="button_search" value="1">'.$langs->trans('Search').'</button><button class="button" name="button_removefilter" value="1">'.$langs->trans('Reset').'</button> '.$selectedfields.'</div>';
+print '<div class="liste_titre liste_titre_bydiv centpercent">';
+foreach ($dates as $key => $value) print '<div class="divsearchfield">'.$langs->trans($key === 'start' ? 'From' : 'To').' '.$form->selectDate($valid ? LmdbVehicleQuartixRules::day($value)->getTimestamp() : -1, $key, 0, 0, 0, '', 1, 0, 0, '', '', '', '', 1, '', '', 'gmt').'</div>';
+print '</div>';
 $visible = array_filter($arrayfields, static function ($field) { return !empty($field['checked']); });
-print '<div class="div-table-responsive-no-min"><table class="noborder centpercent"><tr class="liste_titre">';
-foreach ($visible as $key => $field) print getTitleFieldOfList($field['label'], 0, $_SERVER['PHP_SELF'], $key, '', $param, '', $sortfield, $sortorder);
-print '</tr>';
+if (!isset($visible['status'])) print '<input type="hidden" name="search_status" value="'.dol_escape_htmltag($status).'">';
+print '<div class="div-table-responsive-no-min"><table class="tagtable liste listwithfilterbefore" id="quartix-trips-list"><thead><tr class="liste_titre_filter">';
+if ($actionsLeft) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons('left').'</td>';
+foreach ($visible as $key => $field) {
+	print '<td class="'.($field['align'] ?? 'left').'">';
+	if ($key === 'status') print $form->selectarray('search_status', array('' => $langs->trans('All'), 'open' => $langs->trans('QxTripOpen'), 'done' => $langs->trans('QxTripDone'), 'private' => $langs->trans('QxTripPrivate')), $status, 0, 0, 0, '', 0, 0, 0, '', 'maxwidth150', 1);
+	print '</td>';
+}
+if (!$actionsLeft) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons().'</td>';
+print '</tr><tr class="liste_titre">';
+if ($actionsLeft) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch actioncolumn ');
+foreach ($visible as $key => $field) print getTitleFieldOfList($field['label'], 0, $_SERVER['PHP_SELF'], $key, '', $param, 'data-col="'.$key.'"', $sortfield, $sortorder, ($field['align'] ?? 'left').' ');
+if (!$actionsLeft) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch actioncolumn ');
+print '</tr></thead><tbody>';
 foreach ($result['rows'] as $row) {
 	print '<tr class="oddeven">';
+	if ($actionsLeft) print '<td class="center actioncolumn"></td>';
 	foreach ($visible as $key => $field) {
-		print '<td>';
+		print '<td class="'.($field['align'] ?? 'left').'" data-col="'.$key.'">';
 		if ($key === 'day') print dol_print_date(LmdbVehicleQuartixRules::day($row->trip_day)->getTimestamp(), 'day', 'gmt');
 		elseif ($key === 'status') print dolGetStatus($langs->trans($row->is_private ? 'QxTripPrivate' : ($row->in_progress ? 'QxTripOpen' : 'QxTripDone')), '', '', $row->is_private ? 'status5' : ($row->in_progress ? 'status1' : 'status4'), 5);
 		elseif ($key === 'departure' || $key === 'arrival') print $row->{$key} !== null ? dol_print_date($db->jdate($row->{$key}), 'dayhour') : '<span class="opacitymedium">—</span>';
@@ -113,8 +126,9 @@ foreach ($result['rows'] as $row) {
 		}
 		print '</td>';
 	}
+	if (!$actionsLeft) print '<td class="center actioncolumn"></td>';
 	print '</tr>';
 }
-if (!$result['rows']) print '<tr class="oddeven"><td colspan="'.max(1, count($visible)).'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
-print '</table></div></form>';
+if (!$result['rows']) print '<tr class="oddeven"><td colspan="'.(1 + count($visible)).'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
+print '</tbody></table></div></form>';
 print dol_get_fiche_end(); llxFooter(); $db->close();
