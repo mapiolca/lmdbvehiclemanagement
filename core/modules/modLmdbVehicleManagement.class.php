@@ -321,6 +321,9 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->rights[$r][5] = 'sync';
 
 		$this->menu = array();
+		// Keep the dashboard and its parents consistent with the server read policy.
+		// dol_eval() does not allow empty() in menu expressions on recent cores.
+		$vehicleReadMenuPermission = '!$user->socid && ($user->admin || $user->hasRight("lmdbvehiclemanagement", "read"))';
 		$r = 0;
 		$this->menu[$r++] = array(
 			'fk_menu' => '',
@@ -333,7 +336,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 30,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -348,7 +351,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 100,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -400,7 +403,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'leftmenu' => 'lmdbvehiclemanagement_dashboard', 'url' => '/lmdbvehiclemanagement/quartix_dashboard.php',
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement', 'position' => 104,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => 'empty($user->socid) && ($user->admin || $user->hasRight("lmdbvehiclemanagement", "read"))',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '', 'user' => 0,
 		);
 		$this->menu[$r++] = array(

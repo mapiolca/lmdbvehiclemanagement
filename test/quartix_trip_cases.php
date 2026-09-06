@@ -1,5 +1,33 @@
 <?php
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
+
+// Evaluate the real menu declarations with the same native evaluator as menu edit/load.
+// Testing can() alone misses expressions rejected before PHP evaluates the admin branch.
+$menuDescriptor = new modLmdbVehicleManagement($db);
+$menuUser = $user;
+$readMenus = array_filter($menuDescriptor->menu, static function ($menu) {
+	return in_array($menu['titre'], array('VehicleManagementTopMenu', 'VehicleMenuSection', 'QxDashboard'), true);
+});
+qxCheck(count($readMenus) === 3, 'Dashboard and both navigation parents are declared');
+foreach (array(
+	'admin without granular rights' => array(1, 0, 0, true),
+	'admin with null third party' => array(1, null, 0, true),
+	'standard reader' => array(0, 0, 1, true),
+	'standard without rights' => array(0, 0, 0, false),
+	'external reader' => array(0, 12, 1, false),
+	'external admin' => array(1, 12, 1, false),
+) as $profile => $values) {
+	$user = new User($db);
+	$user->admin = $values[0]; $user->socid = $values[1];
+	$user->rights = (object) array('lmdbvehiclemanagement' => (object) array('read' => $values[2]));
+	foreach ($readMenus as $menu) {
+		$result = dol_eval($menu['perms'], 1, 1, '1');
+		qxCheck(!is_string($result) && (bool) $result === $values[3], 'Native menu evaluation: '.$menu['titre'].' / '.$profile);
+		qxCheck((bool) verifCond($menu['perms']) === LmdbVehicleQuartixConfig::can($user, 'read'), 'Menu and server agree: '.$menu['titre'].' / '.$profile);
+	}
+}
+$user = $menuUser;
+
 // Synthetic values; field names/types verified against an authenticated QWS response.
 $trips = new LmdbVehicleQuartixTrips($db);
 $tripLink = $trips->link(1);
