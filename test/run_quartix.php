@@ -488,7 +488,7 @@ ob_start(); lmdbVehicleQuartixPrintPosition($vehicle); $deniedHtml = ob_get_clea
 qxCheck($deniedHtml === '', 'No GPS fragment for read-only users');
 $user->admin = 1;
 require_once DOL_DOCUMENT_ROOT.'/core/class/dolgraph.class.php';
-$graph = new DolGraph('jflot');
+$graph = new DolGraph();
 $graph->SetData(array(array('Known day', 42.5)));
 $graph->SetLegend(array('Distance'));
 $graph->SetType(array('bars'));

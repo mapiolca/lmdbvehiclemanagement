@@ -143,7 +143,7 @@ if ($result !== null) {
 		foreach ($result[$kind] as $row) if ($row->distance !== null) $data[] = array($kind === 'daily' ? dol_print_date(LmdbVehicleQuartixRules::day($row->usage_day)->getTimestamp(), 'day', 'gmt') : $row->ref, (float) $row->distance);
 		if (!$data) continue;
 		print load_fiche_titre($langs->trans($title), '', '');
-		$graph = new DolGraph('jflot'); $graph->SetData($data); $graph->SetLegend(array($langs->trans('QxDistance'))); $graph->SetType(array('bars')); $graph->SetWidth('100%'); $graph->SetHeight(260); $graph->draw('qxfleet_'.$kind); print $graph->show();
+		$graph = new DolGraph(); $graph->SetData($data); $graph->SetLegend(array($langs->trans('QxDistance'))); $graph->SetType(array('bars')); $graph->SetWidth('100%'); $graph->SetHeight(260); $graph->draw('qxfleet_'.$kind); print $graph->show();
 	}
 	print load_fiche_titre($langs->trans('QxEntitySync'), '', '');
 	print '<p>'.$langs->trans('QxEntitySyncHelp').'</p>';

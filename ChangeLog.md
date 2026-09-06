@@ -3,6 +3,7 @@
 ## À publier
 
 - Tableaux QUARTIX alignés sur la référence native Dolibarr : en-têtes et cellules cohérents, filtres et sélection des colonnes dans leurs emplacements natifs, comptages entiers et conservation de la navigation. Correction du basculement des tris ascendants/descendants générés par le core.
+- Graphiques d’utilisation et du parc rendus avec le moteur natif configuré par Dolibarr, en cohérence avec les scripts chargés par la page.
 - Accès au tableau de bord et à ses menus parents rétabli pour les administrateurs sans droits granulaires : condition compatible avec l’évaluation sécurisée native de Dolibarr, accès conservé pour les lecteurs internes et refusé aux utilisateurs externes. Réactiver le module pour actualiser les menus déjà installés.
 
 - Intégration QUARTIX en lecture seule : connexion chiffrée par environnement avec nom d'application QWS configurable, associations explicites suspendables par interrupteur natif ON/OFF et dissociables avec conservation ou suppression des imports erronés, kilométrage estimé quotidien, dernière position sous droit GPS et synthèses d'utilisation quotidiennes/mensuelles sur douze mois.

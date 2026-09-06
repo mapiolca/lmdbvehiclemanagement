@@ -126,7 +126,7 @@ foreach ($rows as $row) {
 }
 if (!$rows) print '<tr class="oddeven"><td colspan="'.(1 + count($visible)).'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
 print '</tbody></table></div></form>';
-// jflot is a native v20+ backend: no graph file containing usage data is generated.
+// Use the native backend selected by Dolibarr so it matches the scripts in llxHeader().
 $chartSeries = array(
 	'distance' => array('labels' => array($langs->trans('QxDistance')), 'data' => array()),
 	'duration' => array('labels' => array($langs->trans('QxDriving'), $langs->trans('QxIdling')), 'data' => array()),
@@ -140,7 +140,7 @@ foreach ($allRows as $row) {
 }
 foreach ($chartSeries as $key => $series) {
 	if (!$series['data']) continue;
-	$graph = new DolGraph('jflot');
+	$graph = new DolGraph();
 	$graph->SetData($series['data']);
 	$graph->SetLegend($series['labels']);
 	$graph->SetType(array_fill(0, count($series['labels']), 'bars'));
