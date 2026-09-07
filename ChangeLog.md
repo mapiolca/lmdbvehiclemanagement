@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Import natif : le bilan de simulation et d’import affiche désormais les insertions réalisées par le hook métier, au lieu de rester à zéro. Les lignes vides et refusées ne sont pas comptabilisées.
+
 - Import : message traduit indiquant la valeur du type de matériel rejetée ; suppression des erreurs répétées et accumulées entre les lignes.
 
 - Menus du parc : exclusion des utilisateurs externes confiée au filtre natif, sans expression `$user->socid` rejetée par l’évaluation sécurisée. Réactiver le module après déploiement pour actualiser les menus installés.

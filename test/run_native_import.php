@@ -72,3 +72,22 @@ foreach (array(0, 1) as $base) {
 	$row[$base + 2]['val'] = 'UNKNOWN';
 	check($assetImport->createVehicleFromNativeRow($row, $assetMapping, '', $user, false) === -1, 'Unknown asset type rejected with source base '.$base);
 }
+
+// The native summary reads obj->nbinsert, not nbok.
+$user->admin = 1; $user->socid = 0; $moduleEnabled = true;
+foreach (array(5, 6) as $step) {
+	$driver = (object) array('nbinsert' => 0, 'nbupdate' => 0);
+	$nbok = 0;
+	$params = array('datatoimport' => 'lmdbvehiclemanagement_vehicles', 'obj' => $driver, 'arrayrecord' => $cells, 'array_match_file_to_database' => $mapping, 'step' => $step, 'nbok' => &$nbok);
+	for ($i = 0; $i < 6; $i++) {
+		check($hooks->ImportInsert($params, $object, $action, null) === 1, 'Successful row '.$i.' at step '.$step);
+	}
+	check($driver->nbinsert === 6 && $driver->nbupdate === 0 && $nbok === 6, 'Native summary reports six inserts at step '.$step);
+	$params['arrayrecord'] = array(array('val' => null));
+	$hooks->ImportInsert($params, $object, $action, null);
+	check($driver->nbinsert === 6, 'Blank row does not increment native counter');
+	$user->socid = 10;
+	$hooks->ImportInsert($params, $object, $action, null);
+	check($driver->nbinsert === 6, 'Denied row does not increment native counter');
+	$user->socid = 0;
+}

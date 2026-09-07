@@ -144,6 +144,11 @@ class ActionsLmdbVehicleManagement
 			return -1;
 		}
 
+		// Native summaries read the driver's counter, separately from successful rows.
+		if (isset($parameters['obj']) && is_object($parameters['obj']) && property_exists($parameters['obj'], 'nbinsert')) {
+			$parameters['obj']->nbinsert = (int) $parameters['obj']->nbinsert + 1;
+		}
+
 		if (isset($parameters['nbok'])) {
 			$parameters['nbok'] = (int) $parameters['nbok'] + 1;
 		}
