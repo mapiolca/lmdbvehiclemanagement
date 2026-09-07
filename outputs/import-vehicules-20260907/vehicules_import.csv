@@ -1,7 +1,7 @@
 Immatriculation (t.registration_number),VIN / numéro de série (t.vin),Libellé* (t.label),Type principal de matériel (t.fk_asset_type),Catégorie européenne (t.eu_category),Genre national (t.national_genre),GrossVehicleWeightKg (t.gvw_kg),GrossCombinationWeightKg (t.gcw_kg),Seats (t.seats),Territoire réglementaire (t.regulatory_territory),Marque (t.brand),Modèle du véhicule (t.model),Version (t.vehicle_version),Code énergie P.3 (t.fk_energy),Autonomie WLTP (t.wltp_range_km),Date de construction (t.construction_date),Date de première immatriculation (t.first_registration_date),Date de mise en service (t.commissioning_date),Mode de détention (t.ownership_type),Propriétaire (t.fk_soc_owner),Description (t.description)
-EN-026-EX,VF15R0J0A57328221,Renault Clio EN-026-EX,,M1,VASP,1695,2595,2,,RENAULT,CLIO,5R0J0A,GO,,,2017-06-12,,,,
-ET-068-DD,WF0XXXTTGXHA44698,Ford Transit ET-068-DD,,,CTTE,,,3,,FORD,Transit 2.0 TDCi 130,N10FRDCT1782765,GO,,,2017-12-29,,,,
-FY-765-CT,VF3YBANFA12S34266,Peugeot Boxer FY-765-CT,,N1,CTTE,3300,5800,3,,PEUGEOT,BOXER,YBANFA/KS,GO,,,2021-03-25,,,,
-FZ-333-VR,VR7BBYHZBME012351,Citroën C4 FZ-333-VR,,M1,VASP,1795,2995,2,,CITROËN,C4,BBYHZB-A2BF00,GO,,,2021-06-08,,,,
-GC-709-LB,VF1MA000566956321,Renault Master GC-709-LB,,N1,CTTE,3500,6000,3,,RENAULT,MASTER,MAFM0DM86TC113D3T0,GO,,,2021-10-18,,,,
-FM-750-EM,ZFA25000002M44620,Fiat Ducato FM-750-EM,,N1,CTTE,3500,6000,3,,FIAT,DUCATO,250CHNFBHW,GN,,,2019-12-10,,,,
+EN-026-EX,VF15R0J0A57328221,Renault Clio EN-026-EX,light_commercial,M1,VASP,1695,2595,2,,RENAULT,CLIO,5R0J0A,GO,,,2017-06-12,,,,
+ET-068-DD,WF0XXXTTGXHA44698,Ford Transit ET-068-DD,light_commercial,,CTTE,,,3,,FORD,Transit 2.0 TDCi 130,N10FRDCT1782765,GO,,,2017-12-29,,,,
+FY-765-CT,VF3YBANFA12S34266,Peugeot Boxer FY-765-CT,light_commercial,N1,CTTE,3300,5800,3,,PEUGEOT,BOXER,YBANFA/KS,GO,,,2021-03-25,,,,
+FZ-333-VR,VR7BBYHZBME012351,Citroën C4 FZ-333-VR,light_commercial,M1,VASP,1795,2995,2,,CITROËN,C4,BBYHZB-A2BF00,GO,,,2021-06-08,,,,
+GC-709-LB,VF1MA000566956321,Renault Master GC-709-LB,light_commercial,N1,CTTE,3500,6000,3,,RENAULT,MASTER,MAFM0DM86TC113D3T0,GO,,,2021-10-18,,,,
+FM-750-EM,ZFA25000002M44620,Fiat Ducato FM-750-EM,light_commercial,N1,CTTE,3500,6000,3,,FIAT,DUCATO,250CHNFBHW,GN,,,2019-12-10,,,,

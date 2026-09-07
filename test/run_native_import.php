@@ -91,3 +91,25 @@ foreach (array(5, 6) as $step) {
 	check($driver->nbinsert === 6, 'Denied row does not increment native counter');
 	$user->socid = 0;
 }
+
+// Exercise the real resolver: a code supplied as the first argument must survive.
+define('MAIN_DB_PREFIX', 'test_');
+function getEntity($element) { return '2'; }
+$db = new class {
+	public $sql = '';
+	public function escape($value) { return str_replace("'", "''", $value); }
+	public function query($sql) { $this->sql = $sql; return true; }
+	public function fetch_object($result) { return (object) array('rowid' => 12); }
+	public function free($result) {}
+};
+$resolver = new LmdbVehicleImport($db);
+foreach (array(array('light_commercial'), array(0, 'light_commercial'), array(0, '', 'Utilitaire léger')) as $args) {
+	check($resolver->fetchAssetType(...$args) === 12, 'Dictionary resolver returns the matched id');
+	$expected = $args[count($args) - 1];
+	check(strpos($db->sql, "code = '".$expected."'") !== false, 'Dictionary lookup retains code or label');
+	check(strpos($db->sql, 'active = 1 AND entity IN (2)') !== false, 'Dictionary lookup preserves activity and entity filters');
+}
+$resolver->fetchAssetType(12);
+check(strpos($db->sql, 'AND rowid = 12') !== false, 'Numeric asset id still supported');
+$row = array(1 => array('val' => 'AA-123-BB'), 2 => array('val' => 'Transit'), 3 => array('val' => 'light_commercial'));
+check($resolver->createVehicleFromNativeRow($row, $assetMapping, '', $user, false) === 42 && LmdbVehicle::$last->fk_asset_type === 12, 'XLSX code resolves through real importer and resolver');

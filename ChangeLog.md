@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Import véhicules : correction de la recherche du type principal lorsque son code est fourni en premier argument ; le code n’est plus remplacé par une chaîne vide. Les filtres d’activité et d’entité restent appliqués.
+
 - Imports et exports : libellés PTAC (kg) et PTRA (kg) traduits en français et en anglais, sans affichage des clés techniques.
 
 - Import natif : le bilan de simulation et d’import affiche désormais les insertions réalisées par le hook métier, au lieu de rester à zéro. Les lignes vides et refusées ne sont pas comptabilisées.

@@ -90,7 +90,10 @@ class LmdbVehicleImport
 	 */
 	public function fetchAssetType($id = 0, $code = '', $label = '')
 	{
-		$value = (int) $id > 0 ? (string) ((int) $id) : trim($code !== '' ? $code : $label);
+		$identifier = trim((string) $id);
+		$value = ctype_digit($identifier) && (int) $identifier > 0
+			? (string) ((int) $identifier)
+			: trim($code !== '' ? $code : ($label !== '' ? $label : $identifier));
 		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_asset_type WHERE active = 1 AND entity IN ('.getEntity('c_lmdbvehiclemanagement_asset_type').')';
 		if (ctype_digit($value)) $sql .= ' AND rowid = '.((int) $value);
 		else $sql .= " AND (code = '".$this->db->escape($value)."' OR label = '".$this->db->escape($value)."')";
