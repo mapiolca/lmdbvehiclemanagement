@@ -28,8 +28,10 @@ class LmdbVehicleRegulatoryControlImport
 
 		$langs->loadLangs(array('main', 'errors', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 		$values = array();
+		// Keep the native CSV (zero) and XLSX (one) record positions distinct.
+		$recordPositionBase = array_key_exists(0, $record) ? 0 : 1;
 		foreach ($fieldMapping as $sourceColumn => $targetField) {
-			$sourceIndex = ((int) $sourceColumn) - 1;
+			$sourceIndex = ((int) $sourceColumn) - 1 + $recordPositionBase;
 			if ($sourceIndex < 0 || !array_key_exists($sourceIndex, $record)) continue;
 			$field = preg_replace('/^[^.]+\./', '', (string) $targetField);
 			if (is_string($field) && $field !== '') $values[$field] = $this->cellValue($record[$sourceIndex]);

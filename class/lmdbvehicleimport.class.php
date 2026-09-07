@@ -25,7 +25,7 @@ class LmdbVehicleImport
 
 	/**
 	 * @param array<int,array<string,mixed>> $record Import row
-	 * @param array<int,string> $fields Mapped fields
+	 * @param array<string,int> $fields Target field to zero-based record position
 	 * @param int $index Current column
 	 * @return int
 	 */
@@ -38,7 +38,7 @@ class LmdbVehicleImport
 
 	/**
 	 * @param array<int,array<string,mixed>> $record Import row
-	 * @param array<int,string> $fields Mapped fields
+	 * @param array<string,int> $fields Target field to zero-based record position
 	 * @param int $index Current column
 	 * @return string
 	 */
@@ -54,19 +54,19 @@ class LmdbVehicleImport
 	 * supported versions, so the value is narrowed without relying on internals.
 	 *
 	 * @param array<int,mixed> $record Import row
-	 * @param array<int,string> $fields Mapped fields
+	 * @param array<string,int> $fields Target field to zero-based record position
 	 * @param int $index Current column
 	 * @return string
 	 */
 	public function getRegistrationReference(&$record, $fields, $index)
 	{
-		$fieldIndex = array_search('t.registration_number', $fields, true);
-		if ($fieldIndex === false || !array_key_exists($fieldIndex, $record)) {
+		$fieldIndex = $fields['t.registration_number'] ?? null;
+		if (!is_int($fieldIndex) || !array_key_exists($fieldIndex, $record)) {
 			return '';
 		}
 		$value = $record[$fieldIndex];
 		if (is_array($value)) {
-			foreach (array('value', 'imported_value', 'raw') as $key) {
+			foreach (array('val', 'value', 'imported_value', 'raw') as $key) {
 				if (isset($value[$key]) && is_scalar($value[$key])) {
 					$value = $value[$key];
 					break;
@@ -119,8 +119,10 @@ class LmdbVehicleImport
 		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicle.class.php');
 		$langs->loadLangs(array('main', 'errors', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 		$values = array();
+		// CSV records start at zero; native XLSX records start at one.
+		$recordPositionBase = array_key_exists(0, $record) ? 0 : 1;
 		foreach ($fieldMapping as $sourceColumn => $targetField) {
-			$sourceIndex = ((int) $sourceColumn) - 1;
+			$sourceIndex = ((int) $sourceColumn) - 1 + $recordPositionBase;
 			if ($sourceIndex < 0 || !array_key_exists($sourceIndex, $record)) {
 				continue;
 			}

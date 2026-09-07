@@ -2,6 +2,9 @@
 
 ## À publier
 
+- Menus du parc : exclusion des utilisateurs externes confiée au filtre natif, sans expression `$user->socid` rejetée par l’évaluation sécurisée. Réactiver le module après déploiement pour actualiser les menus installés.
+- Import natif : correspondance des colonnes XLSX corrigée, lignes CSV vides ignorées, référence calculée depuis les cellules natives et accès administrateur au traitement restauré. Les contrôles réglementaires partagent la correction XLSX ; simulation et création par les objets métier conservées.
+
 - Unités PTAC/PTRA corrigées dans les formulaires et la fiche véhicule : réutilisation de la traduction native Dolibarr du kilogramme, sans affichage de la clé technique `UnitKg`.
 
 - Documentation utilisateur du wiki complétée pour QUARTIX QWS v2 : configuration, associations, droits GPS, quatre travaux planifiés, utilisation, trajets, cartes et conservation. Notices complètes en français, anglais, italien, allemand et espagnol ; illustrations anonymisées pour la publication.

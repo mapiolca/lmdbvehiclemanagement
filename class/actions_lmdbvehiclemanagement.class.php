@@ -104,10 +104,20 @@ class ActionsLmdbVehicleManagement
 			return 0;
 		}
 		$rightObject = $dataset === 'lmdbvehiclemanagement_vehicles' ? 'lmdbvehicle' : 'regulatorycontrol';
-		if (!$user->hasRight('lmdbvehiclemanagement', $rightObject, 'import')) {
+		$langs->loadLangs(array('main', 'errors', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		if (!isModEnabled('lmdbvehiclemanagement') || !empty($user->socid) || (empty($user->admin) && !$user->hasRight('lmdbvehiclemanagement', $rightObject, 'import'))) {
 			$this->error = $langs->trans('NotEnoughPermissions');
 			$this->errors = array($this->error);
 			return -1;
+		}
+		// Native import ignores empty CSV records, including template spacer rows.
+		if (isset($parameters['arrayrecord']) && is_array($parameters['arrayrecord'])) {
+			$record = $parameters['arrayrecord'];
+			$firstCell = reset($record);
+			$firstValue = is_array($firstCell) ? ($firstCell['val'] ?? null) : $firstCell;
+			if (count($record) === 0 || (count($record) === 1 && ($firstValue === null || $firstValue === ''))) {
+				return 1;
+			}
 		}
 		if (empty($parameters['arrayrecord']) || !is_array($parameters['arrayrecord']) || empty($parameters['array_match_file_to_database']) || !is_array($parameters['array_match_file_to_database'])) {
 			$this->error = $langs->trans('VehicleImportInvalidRow');

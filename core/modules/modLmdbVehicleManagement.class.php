@@ -322,8 +322,8 @@ class modLmdbVehicleManagement extends DolibarrModules
 
 		$this->menu = array();
 		// Keep the dashboard and its parents consistent with the server read policy.
-		// dol_eval() does not allow empty() in menu expressions on recent cores.
-		$vehicleReadMenuPermission = '!$user->socid && ($user->admin || $user->hasRight("lmdbvehiclemanagement", "read"))';
+		// Native user=0 filters external users; dol_eval() rejects direct socid access.
+		$vehicleReadMenuPermission = '$user->admin || $user->hasRight("lmdbvehiclemanagement", "read")';
 		$r = 0;
 		$this->menu[$r++] = array(
 			'fk_menu' => '',
@@ -746,7 +746,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->import_run_sql_after_array = array();
 		$this->import_TypeFields_array = array();
 		$this->import_help_array = array();
-		if (is_object($user) && $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'import')) {
+		if (is_object($user) && empty($user->socid) && (!empty($user->admin) || $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'import'))) {
 			$r = 0;
 			$this->import_code[$r] = 'lmdbvehiclemanagement_vehicles';
 			$this->import_label[$r] = 'VehicleImportDataset';
@@ -860,7 +860,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 				$this->import_entities_array[$r]['t.ref'] = 'lmdbvehicle';
 			}
 		}
-		if (is_object($user) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'import')) {
+		if (is_object($user) && empty($user->socid) && (!empty($user->admin) || $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'import'))) {
 			$r = count($this->import_code);
 			$this->import_code[$r] = 'lmdbvehiclemanagement_regulatory_controls';
 			$this->import_label[$r] = 'RegulatoryControlImportDataset';
