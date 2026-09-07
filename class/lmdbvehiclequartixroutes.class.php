@@ -28,7 +28,7 @@ class LmdbVehicleQuartixRoutes extends LmdbVehicleQuartixService
 	/** Owner settings govern both shared views and retrieval. @param array<string,string> $cfg Owner settings @return string */
 	public static function unavailable($cfg)
 	{
-		if (!LmdbVehicleQuartixConfig::supported() || !function_exists('dolButtonToOpenUrlInDialogPopup') || !is_file(DOL_DOCUMENT_ROOT.'/includes/leaflet/leaflet.js')) return 'QxRouteRequiresMap';
+		if (!LmdbVehicleQuartixConfig::supported() || !is_file(DOL_DOCUMENT_ROOT.'/includes/leaflet/leaflet.js')) return 'QxRouteRequiresMap';
 		if (($cfg['ROUTES_ENABLED'] ?? '') !== '1') return 'QxRoutesDisabled';
 		try { LmdbVehicleQuartixConfig::validateTiles($cfg['TILE_URL'], $cfg['TILE_ATTRIBUTION']); }
 		catch (RuntimeException $e) { return 'QxInvalidTileSettings'; }

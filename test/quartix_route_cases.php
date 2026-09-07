@@ -15,15 +15,19 @@ $conf->global->LMDBVEHICLEMANAGEMENT_QX_ENABLED = '1';
 $conf->global->LMDBVEHICLEMANAGEMENT_QX_TIME_MODE = 'qws';
 $db->query('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_job SET retry_at=NULL');
 
-// Native dialog titles need plain translated text; trans() leaves &eacute; visible.
+// Render the actual shared content: the dialog receives plain text, safely JSON encoded.
 $routeTitleLangs = new Translate('', $conf);
 $routeTitleLangs->setDefaultLang('fr_FR');
 $routeTitleLangs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
-$savedRouteAjax = $conf->use_javascript_ajax ?? 0;
-$conf->use_javascript_ajax = 1;
-$routeTitleHtml = dolButtonToOpenUrlInDialogPopup('qx-title-test', $routeTitleLangs->transnoentities('QxRouteView'), 'View', '/route.php');
-qxCheck(strpos($routeTitleHtml, "title: 'Voir le tracé'") !== false && strpos($routeTitleHtml, "title: 'Voir le trac&eacute;'") === false, 'Native route dialog receives an accented title without double HTML encoding');
-$conf->use_javascript_ajax = $savedRouteAjax;
+$routeTitleHtml = (static function ($langs) {
+	$routeInDialog = true; $dayId = 0; $key = '';
+	$routeTitle = $langs->transnoentities('QxRouteView').' — Véhicule <A&B></script>';
+	$cfg = array('TILE_URL' => LmdbVehicleQuartixConfig::TILE_URL, 'TILE_ATTRIBUTION' => LmdbVehicleQuartixConfig::TILE_ATTRIBUTION);
+	ob_start(); include dirname(__DIR__).'/tpl/quartix_route.tpl.php'; return ob_get_clean();
+})($routeTitleLangs);
+preg_match('/<script type="application\/json" id="qx-route-options">([^<]+)<\/script>/', $routeTitleHtml, $routeOptionsMatch);
+$routeRenderedOptions = json_decode($routeOptionsMatch[1] ?? '{}', true);
+qxCheck(($routeRenderedOptions['title'] ?? '') === 'Voir le tracé — Véhicule <A&B></script>', 'Native route dialog title preserves accents and safely encodes special characters');
 $db->query('UPDATE '.MAIN_DB_PREFIX.'cronjob SET status=1');
 $trip['InProgress'] = false;
 $trips->saveDay($tripLink, array($trip), $tripDay, 'qws');

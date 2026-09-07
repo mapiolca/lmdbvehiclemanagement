@@ -22,7 +22,8 @@ $conf = (object) array(
 	'cron' => (object) array('enabled' => 1),
 	'lmdbvehiclemanagement' => (object) array('enabled' => 1),
 	'multicompany' => (object) array('enabled' => 1),
-	'file' => (object) array('instance_unique_id' => 'quartix-tests-only-instance-key', 'dol_document_root' => array('main' => $coreRoot, 'alt0' => dirname(__DIR__, 2))),
+	'file' => (object) array('instance_unique_id' => 'quartix-tests-only-instance-key', 'dol_document_root' => array('main' => $coreRoot, 'alt0' => dirname(__DIR__, 2)),
+		'dol_url_root' => array('main' => '', 'alt0' => '/custom')),
 );
 require_once $coreRoot.'/core/lib/functions.lib.php';
 if (is_file($coreRoot.'/core/lib/html.lib.php')) require_once $coreRoot.'/core/lib/html.lib.php';

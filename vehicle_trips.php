@@ -15,7 +15,10 @@ require_once __DIR__.'/lib/lmdbvehiclemanagement.lib.php';
 /** @var Translate $langs */
 /** @var User $user */
 $langs->loadLangs(array('other', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!LmdbVehicleQuartixConfig::supported() || !LmdbVehicleQuartixConfig::can($user, 'location')) accessforbidden();
+// Tile requests originate from the journal now; disclose only its origin as referrer.
+header('Referrer-Policy: strict-origin');
+if (!LmdbVehicleQuartixConfig::supported() || !isModEnabled('lmdbvehiclemanagement') || !empty($user->socid)
+	|| !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'quartix', 'location')) accessforbidden();
 $id = GETPOSTINT('id');
 $service = new LmdbVehicleQuartixTrips($db);
 try {
@@ -69,7 +72,10 @@ try {
 	}
 } catch (Exception $e) { $valid = false; setEventMessages($langs->trans(LmdbVehicleQuartixCron::safeError($e)), null, 'errors'); }
 $form = new Form($db);
-llxHeader('', $object->ref.' — '.$langs->trans('QxJournal'));
+$routeAvailable = LmdbVehicleQuartixRoutes::unavailable($cfg) === '';
+llxHeader('', $object->ref.' — '.$langs->trans('QxJournal'), '', '', 0, 0,
+	$routeAvailable ? array('/includes/leaflet/leaflet.js', '/lmdbvehiclemanagement/js/quartix_route.js') : array(),
+	$routeAvailable ? array('/includes/leaflet/leaflet.css', '/lmdbvehiclemanagement/css/quartix_route.css') : array());
 print dol_get_fiche_head(lmdbVehiclePrepareHead($object), 'trips', $langs->trans('Vehicle'), -1, $object->picto);
 lmdbVehiclePrintBanner($object);
 print '<p>'.$langs->trans('QxJournalHelp').'</p><p class="opacitymedium">'.$langs->trans('QxJournalRetention', $retention).'</p>';
@@ -113,11 +119,9 @@ if (!$actionsLeft) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_S
 print '</tr></thead><tbody>';
 foreach ($result['rows'] as $row) {
 	$routeAction = '';
-	if (!(int) $row->is_private && $row->departure !== null && LmdbVehicleQuartixRoutes::unavailable($cfg) === '') {
+	if (!(int) $row->is_private && $row->departure !== null && $routeAvailable) {
 		$routeUrl = dol_buildpath('/lmdbvehiclemanagement/vehicle_route.php', 1).'?day='.(int) $row->fk_tripday.'&trip='.LmdbVehicleQuartixRoutes::tripKey($db->jdate($row->departure));
-		// Native helper prepends DOL_URL_ROOT itself, including subdirectory installations.
-		if (DOL_URL_ROOT !== '' && strpos($routeUrl, DOL_URL_ROOT) === 0) $routeUrl = substr($routeUrl, strlen(DOL_URL_ROOT));
-		$routeAction = dolButtonToOpenUrlInDialogPopup('qxroute'.(int) $row->rowid, $langs->transnoentities('QxRouteView'), img_picto($langs->trans('QxRouteView'), 'eye'), $routeUrl, '', '');
+		$routeAction = '<a class="qx-route-open" href="'.dol_escape_htmltag($routeUrl).'">'.img_picto($langs->trans('QxRouteView'), 'eye').'</a>';
 	}
 	print '<tr class="oddeven">';
 	if ($actionsLeft) print '<td class="center actioncolumn">'.$routeAction.'</td>';
@@ -140,4 +144,11 @@ foreach ($result['rows'] as $row) {
 }
 if (!$result['rows']) print '<tr class="oddeven"><td colspan="'.(1 + count($visible)).'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
 print '</tbody></table></div></form>';
-print dol_get_fiche_end(); llxFooter(); $db->close();
+print dol_get_fiche_end();
+if ($routeAvailable) {
+	$routeInDialog = true;
+	$routeTitle = $langs->transnoentities('QxRouteView').' — '.$object->ref;
+	$dayId = 0; $key = '';
+	include __DIR__.'/tpl/quartix_route.tpl.php';
+}
+llxFooter(); $db->close();
