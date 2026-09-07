@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Imports et exports : libellés PTAC (kg) et PTRA (kg) traduits en français et en anglais, sans affichage des clés techniques.
+
 - Import natif : le bilan de simulation et d’import affiche désormais les insertions réalisées par le hook métier, au lieu de rester à zéro. Les lignes vides et refusées ne sont pas comptabilisées.
 
 - Import : message traduit indiquant la valeur du type de matériel rejetée ; suppression des erreurs répétées et accumulées entre les lignes.
