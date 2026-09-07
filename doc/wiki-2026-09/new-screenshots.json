@@ -1,0 +1,78 @@
+[
+  {
+    "source": "test/.dossier-test/wiki-2026-09/quartix-route.png",
+    "file": "LMDBVehicleManagement-2026-09-quartix-route-anonymise.png",
+    "crop": [
+      169,
+      9,
+      991,
+      660
+    ],
+    "regions": [
+      {
+        "box": [
+          299,
+          22,
+          386,
+          46
+        ],
+        "radius": 12
+      },
+      {
+        "box": [
+          189,
+          262,
+          957,
+          639
+        ],
+        "radius": 7
+      }
+    ],
+    "restore": [
+      [
+        199,
+        272,
+        232,
+        335
+      ],
+      [
+        725,
+        619,
+        957,
+        639
+      ]
+    ]
+  },
+  {
+    "source": "test/.dossier-test/wiki-2026-09/quartix-trips.png",
+    "file": "LMDBVehicleManagement-2026-09-quartix-trajets-anonymise.png",
+    "crop": [
+      298,
+      74,
+      1131,
+      575
+    ],
+    "regions": [
+      {
+        "box": [
+          651,
+          357,
+          877,
+          675
+        ],
+        "radius": 12
+      }
+    ]
+  },
+  {
+    "source": "test/.dossier-test/wiki-2026-09/quartix-usage.png",
+    "file": "LMDBVehicleManagement-2026-09-quartix-utilisation.png",
+    "crop": [
+      300,
+      65,
+      1136,
+      660
+    ],
+    "regions": []
+  }
+]

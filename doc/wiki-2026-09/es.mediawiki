@@ -1,0 +1,456 @@
+[[fr:Module Gestion des véhicules]]
+[[en:Module Vehicle Management]]
+[[it:Modulo Gestione dei veicoli]]
+[[de:Modul Fahrzeugverwaltung]]
+
+'''Gestión de vehículos y maquinaria''' es un módulo externo de Dolibarr para administrar vehículos de carretera, furgonetas y máquinas. Reúne características técnicas, asignaciones de conductores, lecturas del cuentakilómetros, consumos, intervenciones, seguros e inspecciones reglamentarias.
+
+Permite vincular facturas de proveedores a intervenciones e inspecciones, generar un expediente del vehículo en PDF y ZIP e integrar '''QUARTIX QWS v2''' para estimaciones de kilometraje, resúmenes de utilización, posiciones, trayectos y mapas de recorridos.
+
+Este artículo incluye una guía ilustrada de instalación y uso. Las capturas proceden de un entorno de demostración francés con Dolibarr 24 y Multicompany. Las direcciones y matrículas están difuminadas. Los valores de ejemplo no son recomendaciones de configuración ni referencias de consumo. La presentación y los textos de la interfaz pueden variar según la versión y el tema de Dolibarr.
+
+Documentación actualizada el 7 de septiembre de 2026. El desarrollo de QUARTIX amplía la versión 1.0.0; un archivo anterior con ese número de versión puede no incluirlo. El módulo ofrece traducciones de software en francés e inglés. Las versiones italiana, alemana y española de este artículo no añaden esos idiomas al programa.
+
+__TOC__
+
+== Información ==
+
+{| class="wikitable"
+! Elemento !! Valor
+|-
+| Módulo || Gestión de vehículos y maquinaria
+|-
+| Identificador técnico || <code>lmdbvehiclemanagement</code>
+|-
+| Autor / familia || Pierre Ardoin / Les Métiers du Bâtiment
+|-
+| Versión || 1.0.0, primera versión estable del 4 de septiembre de 2026; ampliación QUARTIX documentada más abajo
+|-
+| Requisitos || Dolibarr 20+, PHP 8.0+, MySQL o MariaDB
+|-
+| Idiomas del programa || Francés e inglés
+|-
+| Multicompany || Compatible; opcional
+|-
+| Licencia || GNU GPL versión 3 o posterior
+|}
+
+== Funcionalidades ==
+
+=== Gestión de la flota ===
+
+* Fichas de vehículos, furgonetas y maquinaria, con matrícula opcional.
+* Características técnicas, energía, capacidades de consumibles y autonomía WLTP.
+* Ciclo de vida desde borrador hasta cesión o venta.
+* Asignaciones simultáneas de conductores, con una sola asignación principal por período.
+* Lecturas del cuentakilómetros, correcciones y sustituciones del contador.
+* Intervenciones, averías e incidentes; historial consolidado con inspecciones y consumos.
+* Modelos de numeración, incluido un modelo basado en la matrícula.
+
+Las listas incluyen filtros, ordenación, paginación y columnas configurables. Las fichas utilizan las funciones nativas de Dolibarr para notas, contactos, archivos adjuntos y objetos vinculados cuando corresponda.
+
+=== Repostajes, recargas y consumos ===
+
+El módulo gestiona combustibles, recarga eléctrica, hidrógeno y aditivos. Cada consumible tiene su unidad y sus energías compatibles. Las capacidades del vehículo permiten advertir de cantidades superiores a las configuradas.
+
+* Los consumos se sincronizan con sus lecturas del cuentakilómetros.
+* Los resúmenes distinguen vehículos, consumibles y unidades.
+* Los gráficos nativos muestran costes, distancias y estadísticas de consumo.
+* Se ofrecen importación CSV y exportación nativa.
+* El precio de un aditivo puede ser desconocido: un importe vacío se excluye de las estadísticas de precios; cero representa un precio conocido de cero.
+
+Una opción por entorno crea un '''pago diverso''' nativo para un repostaje o una recarga. Requiere cuenta bancaria, datos de pago y justificante PDF, JPEG o PNG. Se eliminan los metadatos de las imágenes. La contabilidad es opcional; la partida doble requiere una cuenta general del plan contable activo. Los datos financieros y el justificante quedan bloqueados tras la conciliación bancaria o la transferencia contable.
+
+'''La importación CSV de consumos no está disponible mientras esté activada la creación de pagos diversos.''' La activación no crea pagos para consumos históricos.
+
+=== Seguros ===
+
+* Contratos individuales o de flota, con varios vehículos y coberturas principales y adicionales.
+* Contactos de aseguradora y mediador.
+* Certificados para toda la flota o para un vehículo, con justificantes, revisión, validación, rechazo y archivo.
+* Usuarios o grupos responsables y personas asignadas que cumplan los criterios.
+* Recordatorios antes y después del vencimiento mediante plantillas de correo y tareas programadas nativas, evitando duplicados.
+
+=== Inspecciones reglamentarias ===
+
+Un cuestionario guiado determina los requisitos aplicables a partir de las características y el uso declarados. La versión 1.0.0 incluye un catálogo versionado '''francés''' de inspecciones técnicas, emisiones, categoría L, usos especiales, verificaciones generales periódicas (VGP), puesta en servicio/reanudación, tacógrafos, ADR y ATP. Admite excepciones por entorno y reglas propias. Traducir este artículo no convierte ese catálogo en normativa española ni de otro país.
+
+* Inspecciones numeradas con organismo, resultado, fechas y justificante obligatorio.
+* Validación inmutable, anulación motivada, sustitución, inspección de seguimiento y archivo controlado.
+* Calendario de vencimientos, registro de seguridad, exportación e importación como borradores.
+* Bloqueo configurable de nuevas asignaciones y puestas en servicio.
+* Recálculo diario y recordatorios mediante tareas programadas, con un evento de agenda por requisito.
+
+Cuando falta información esencial, no se calcula una fecha arbitraria. El módulo ayuda al seguimiento documental: no realiza inspecciones ni emite informes oficiales.
+
+=== Facturas de proveedores vinculadas ===
+
+En una intervención o inspección, '''Crear factura de proveedor''' abre el formulario nativo. Si el proveedor es conocido y accesible, se propone, pero puede cambiarse. Al guardar se crea un borrador de factura vinculado al origen.
+
+También puede seleccionarse una factura existente o utilizar '''Vincular a''' desde una factura de proveedor. Ambos objetos muestran la relación en '''Objetos vinculados'''. Una intervención admite varias facturas. Desvincular elimina solo la relación, no la factura ni los datos reglamentarios validados. Ambos objetos deben pertenecer al entorno actual y requieren sus respectivos permisos.
+
+=== Expediente del vehículo: PDF y ZIP ===
+
+El modelo '''Expediente del vehículo''' genera:
+
+* un PDF con características, historial disponible, eventos, inspecciones, facturas vinculadas, resumen de repostajes/recargas e inventario documental;
+* un ZIP con ese PDF y los archivos originales adjuntos al vehículo, sus eventos, inspecciones y facturas vinculadas.
+
+Se incluyen borradores, anulaciones y registros archivados. Una factura vinculada varias veces se incorpora una sola vez. Los archivos indexados que falten se señalan en el PDF. Se excluyen justificantes de consumo y pagos diversos, archivos temporales, vistas previas y expedientes anteriores. El resumen de consumos incluye fechas, lecturas, referencias, consumibles, tipos, unidades y referencias de aceite; excluye cantidades e importes.
+
+La generación utiliza datos y archivos existentes. No genera documentos de facturas de proveedor ni reconstruye un historial no registrado. Requiere lectura/escritura del vehículo y lectura de facturas de proveedores. La consulta exige los correspondientes permisos de lectura combinados. Los usuarios externos y enlaces públicos no acceden al expediente.
+
+=== Varios entornos ===
+
+Las comparticiones se configuran en los ajustes nativos de Multicompany. Las listas correspondientes muestran una columna y un filtro '''Entorno'''. Los archivos permanecen en el directorio documental del entorno propietario, incluso al consultarlos desde otro entorno autorizado. Ajustes, modelos y comparticiones se conservan al desactivar y reactivar el módulo.
+
+== Requisitos e instalación ==
+
+Además de Dolibarr 20+, PHP 8.0+ y MySQL/MariaDB, compruebe las dependencias de las funciones utilizadas:
+
+{| class="wikitable"
+! Dependencia !! Uso
+|-
+| Agenda y Tareas programadas || Vencimientos, eventos, recálculo y recordatorios automáticos
+|-
+| Bancos y Cajas || Pagos diversos asociados a consumos
+|-
+| Contabilidad || Opcional; las cuentas exigidas dependen del modo contable
+|-
+| Facturas de proveedores || Vinculación de facturas y expediente del vehículo
+|-
+| Extensión PHP ZIP (<code>ZipArchive</code>) || Generación del expediente PDF/ZIP
+|-
+| Multicompany / Recursos || Compartición opcional / vínculo a un recurso de Dolibarr
+|-
+| Acceso QUARTIX QWS, cURL, OpenSSL y cifrado nativo || Integración QUARTIX opcional; Leaflet nativo para mapas
+|}
+
+# Obtenga la distribución del módulo necesaria, incluida la integración QUARTIX si se utiliza.
+# Coloque <code>lmdbvehiclemanagement</code> en el directorio de módulos externos de Dolibarr, sin un segundo directorio anidado con el mismo nombre. Un archivo compatible también puede instalarse mediante la pantalla nativa de despliegue de módulos.
+# Acceda como administrador a '''Inicio → Configuración → Módulos/Aplicaciones'''.
+# Active el módulo en la familia '''Les Métiers du Bâtiment'''.
+# Abra la configuración con la rueda dentada, revise '''Compatibilidad''' y asigne los permisos necesarios a usuarios/grupos.
+
+== Configuración inicial ==
+
+# Revise los diccionarios de energías, consumibles, tipos de maquinaria, perfiles, tipos de inspección y resultados.
+# Seleccione modelos de numeración y documentos.
+# Configure responsables de seguros, plantillas de recordatorio y plazos.
+# Revise reglas reglamentarias y opciones de bloqueo.
+# Active y compruebe las tareas programadas necesarias.
+# Configure bancos y pagos por entorno si utiliza pagos diversos.
+# Configure comparticiones y acceso a entornos de Multicompany cuando proceda.
+# Configure QUARTIX según la sección específica si lo utiliza.
+
+'''Compatibilidad''' y '''Acerca de''' son pestañas internas de configuración. Compatibilidad identifica dependencias ausentes en el entorno actual.
+
+=== Numeración y modelo de expediente ===
+
+En '''Configuración → Modelos de documentos''', active '''Expediente del vehículo'''; elegirlo como predeterminado es una operación distinta. En '''Modelos de numeración''', seleccione un modelo por objeto. Los vehículos pueden usar <code>standard</code> para referencias secuenciales o <code>registration</code> para matrículas normalizadas. Con el segundo, la maquinaria sin matrícula recibe una referencia MAT. Compruebe los ejemplos y utilice el procedimiento de migración del módulo si necesita cambiar referencias existentes.
+
+[[File:LMDBVehicleManagement-2026-09-15-modeles-anonymise.png|thumb|center|1100px|Modelos de documentos y numeración. La activación y la selección predeterminada son independientes.]]
+
+=== Gastos de consumo ===
+
+En los ajustes de justificantes/pagos diversos, seleccione cuenta bancaria y medio de pago habitual del entorno, y después las cuentas contables apropiadas. La partida doble exige una cuenta general; la cuenta auxiliar es opcional. Active y guarde la opción. Compruebe que un nuevo consumo solicita los datos de pago y un justificante. Los registros históricos no se convierten y la importación CSV de consumos deja de estar disponible.
+
+=== Recordatorios de seguros ===
+
+En '''Seguros''', elija usuarios/grupos responsables, inclusión de personas asignadas y tipos de asignación admitidos. Defina plazos anteriores al vencimiento e intervalos de repetición tras el vencimiento o ante justificantes ausentes; seleccione las plantillas de depósito/revisión. Active los recordatorios, guarde y compruebe en Tareas programadas su activación y último resultado. '''Enviar correo de prueba''' envía un correo real: revise antes los destinatarios. Los intervalos de las capturas son de demostración.
+
+[[File:LMDBVehicleManagement-1.0.0-16-relances-assurance.jpg|thumb|center|1100px|Destinatarios, plazos, plantillas y acceso a tareas programadas de seguros.]]
+
+=== Recordatorios de inspecciones ===
+
+En '''Inspecciones reglamentarias''', defina anticipación de recordatorios y período de próximos vencimientos. Seleccione usuarios/grupos, inclusión del conductor asignado, plantilla y, opcionalmente, recordatorios diarios de retrasos. Guarde y compruebe la tarea de recálculo/recordatorios. Las excepciones por entorno y reglas propias deben corresponder al equipo y conservar su justificación.
+
+== Primeros pasos ==
+
+=== Buscar o crear un vehículo ===
+
+Abra el menú de vehículos, identificado por un automóvil. El menú lateral da acceso a flota, eventos, inspecciones, consumos y seguros.
+
+# Abra la lista de vehículos/maquinaria y filtre por referencia, matrícula, etiqueta, modelo o estado.
+# Busque con la lupa; la cruz restablece los filtros. Los encabezados ordenan la lista y el selector de columnas cambia las columnas visibles.
+# Elija el tamaño de página y abra una ficha por su referencia. Con compartición activa, el filtro Entorno identifica la pertenencia.
+
+[[File:LMDBVehicleManagement-2026-09-01-liste-anonymise.png|thumb|center|1100px|Navegación y filtros de la flota.]]
+
+Para crear una ficha, seleccione '''Nuevo vehículo o maquinaria''', introduzca una etiqueta clara y matrícula si corresponde. Elija el tipo principal y complete categoría, pesos, plazas, territorio, número de serie, marca y modelo conocidos. Indique energía, autonomía conocida, fechas de fabricación/matriculación/puesta en servicio, régimen de propiedad y propietario. El vínculo a un recurso es opcional. Añada descripción y guarde; después ajuste capacidades de consumibles si procede. La ficha empieza como borrador y recibe la referencia del modelo configurado.
+
+[[File:LMDBVehicleManagement-1.0.0-03-creation.jpg|thumb|center|1100px|Creación: identificación, características y fechas.]]
+
+=== Leer la ficha y su estado ===
+
+La ficha muestra identificación, estado, características, capacidades y cobertura de seguro. Según permisos, las pestañas permiten consultar notas, archivos, agenda, asignaciones, kilometraje, consumos, inspecciones, historial y QUARTIX.
+
+[[File:LMDBVehicleManagement-2026-09-02-fiche-anonymise.png|thumb|center|1100px|Vehículo en servicio con características, capacidades y resumen de seguro.]]
+
+{| class="wikitable"
+! Estado !! Significado
+|-
+| Borrador || Preparar y comprobar la ficha
+|-
+| Validado || Identificado y aprobado, antes de la puesta en servicio
+|-
+| En servicio || En uso en la flota
+|-
+| Fuera de servicio || Retirado de la operación
+|-
+| Cedido / vendido || Salida de la flota tras su cesión o venta
+|}
+
+Utilice las acciones disponibles de validación, puesta en servicio, retirada o cesión según estado y permisos. Las reglas reglamentarias pueden impedir la puesta en servicio. Registre una cesión mediante su acción de ciclo de vida para conservar el historial; eliminar una ficha tiene otra finalidad.
+
+== Uso diario ==
+
+=== Asignar un conductor ===
+
+Abra '''Asignaciones → Añadir asignación'''. Elija conductor, fecha/hora inicial y final si se conoce; indique tipo, carácter principal, estado y motivo, y guarde. Varias asignaciones pueden coincidir, pero solo una puede ser principal. Para terminarla, edítela con el lápiz y establezca final y estado.
+
+[[File:LMDBVehicleManagement-2026-09-04-affectations-anonymise.png|thumb|center|1100px|Asignaciones de conductores: fechas, tipo, carácter principal y estado.]]
+
+=== Lecturas del cuentakilómetros ===
+
+En '''Kilometraje''', añada una lectura con fecha, valor observado y tipo. Justifique correcciones o sustituciones del contador. Guarde y revise cronología y diferencias. '''Una lectura generada por un consumo debe corregirse desde el repostaje/recarga de origen.''' No añada una lectura manual duplicada para corregirla. Las estimaciones QUARTIX se distinguen de las lecturas reales.
+
+[[File:LMDBVehicleManagement-2026-09-05-kilometrage-anonymise.png|thumb|center|1100px|Lecturas, diferencias y fuentes. Las lecturas de consumos se gestionan desde su origen.]]
+
+=== Registrar repostaje, recarga o aditivo ===
+
+# Elija '''Nuevo repostaje / recarga''', introduzca fecha/hora y seleccione vehículo.
+# Seleccione tipo y consumible; indique referencia de aceite cuando sea obligatoria.
+# Compruebe conductor e introduzca cantidad en la unidad indicada y lectura del cuentakilómetros.
+# Indique total con impuestos. Deje vacío un precio desconocido de aditivo; cero significa precio conocido nulo.
+# Seleccione proyecto si procede. Con pagos diversos activados, revise datos de pago y adjunte justificante PDF/JPEG/PNG.
+# Use lectura estándar para registros ordinarios; justifique corrección o sustitución del contador. Guarde y compruebe la ficha.
+
+Ante una advertencia de exceso de capacidad, compruebe cantidad, unidad, vehículo y capacidad. Los datos financieros y justificantes conciliados o transferidos a contabilidad quedan bloqueados.
+
+[[File:LMDBVehicleManagement-1.0.0-06-plein.jpg|thumb|center|1100px|Formulario de consumo con justificante y pago cuando la opción está activa.]]
+
+=== Estadísticas de consumo ===
+
+Abra el resumen general '''Consumos''' o la pestaña del vehículo. Defina fechas y filtros de vehículo/conductor/consumible/tipo. Busque, lea cantidades, costes, medias y máximos, revise gráficos y abra la lista de repostajes para rastrear un valor. Litros, kWh y kilogramos se mantienen separados y no se suman. Los intervalos excluidos identifican lecturas omitidas del cálculo. Los máximos de demostración no son consumos normales de referencia.
+
+[[File:LMDBVehicleManagement-2026-09-07-synthese-anonymise.png|thumb|center|1100px|Filtros, resumen y gráficos nativos de consumos con datos de demostración.]]
+
+=== Intervenciones, averías y facturas ===
+
+Desde la ficha, seleccione '''Nuevo evento del vehículo'''. Introduzca etiqueta, tipo, fecha, conductor y proveedor; complete gravedad, kilometraje y posibles fechas de inmovilización. Describa los trabajos, guarde y adjunte justificantes al evento. La lista de eventos cubre la flota; el historial del vehículo reúne sus operaciones.
+
+En el evento o inspección, cree una factura de proveedor o seleccione una existente y vincúlela. Compruebe la relación en Objetos vinculados; la referencia abre la factura. Desvincular conserva ambas fichas.
+
+[[File:LMDBVehicleManagement-2026-09-13-intervention-facture-anonymise.png|thumb|center|1100px|Intervención con acciones de factura de proveedor y objetos vinculados.]]
+
+== Seguros y certificados ==
+
+=== Crear un contrato ===
+
+Elija '''Nuevo contrato''' en Contratos de seguro. Seleccione aseguradora y, si procede, contacto/mediador. Introduzca número de póliza, etiqueta, garantías y período, renovación, preaviso conocido y contactos de asistencia. Seleccione vehículos cubiertos, tipo de cobertura y período. Guarde y compruebe vínculos. La cobertura puede ser principal o adicional; un contrato de flota reúne varios vehículos bajo una póliza.
+
+[[File:LMDBVehicleManagement-1.0.0-18-creation-assurance.jpg|thumb|center|1100px|Creación del contrato y cobertura de vehículos.]]
+[[File:LMDBVehicleManagement-2026-09-11-assurance-anonymise.png|thumb|center|1100px|Contrato guardado con vehículo cubierto.]]
+
+=== Presentar y revisar un certificado ===
+
+# Abra el contrato y su pestaña de certificados de seguro.
+# Elija alcance: flota cubierta o vehículo admisible. Introduzca validez y adjunte justificante.
+# Seleccione '''Guardar borrador''' para continuar preparando o '''Enviar a revisión''' cuando esté listo.
+# Un revisor autorizado comprueba documento y fechas y lo valida o rechaza con un motivo.
+# Al renovar, cree un certificado nuevo y archive el anterior mediante el proceso previsto.
+
+La tabla muestra alcance, fechas, justificante descargable y estado. Un borrador no sustituye a un certificado revisado y validado.
+
+[[File:LMDBVehicleManagement-1.0.0-12-attestations.jpg|thumb|center|1100px|Certificado validado y formulario de presentación; borrador y revisión son acciones distintas.]]
+
+== Guía de inspecciones reglamentarias ==
+
+=== Calificar el vehículo o equipo ===
+
+Abra la pestaña de inspecciones del vehículo. Responda al cuestionario según características y uso reales, complete fechas aplicables y guarde. Revise requisitos calculados, inspección anterior, fecha calculada, fecha retenida y estado. Para equipos de elevación, determine el intervalo VGP según su calificación técnica; no suponga un período. Complete información faltante con la documentación del equipo.
+
+[[File:LMDBVehicleManagement-2026-09-09-qualification-anonymise.png|thumb|center|1100px|Cuestionario de calificación reglamentaria.]]
+
+=== Consultar vencimientos ===
+
+Abra el calendario de inspecciones, filtre por período, vehículo, equipo, perfil, inspección o estado y ordene por fecha retenida. Abra el vehículo para examinar un requisito. Los estados distinguen requisitos al día y vencidos. Interprete la fecha retenida junto con la calificación y los justificantes.
+
+[[File:LMDBVehicleManagement-2026-09-08-echeancier-anonymise.png|thumb|center|1100px|Calendario de inspecciones con fechas y estados de requisitos.]]
+
+=== Registrar y validar una inspección ===
+
+Use '''Registrar una inspección''' desde un requisito o Nueva inspección. Compruebe vehículo, requisito y tipo. Introduzca fecha, organismo, referencia del informe, resultado y validez oficial. Justifique una fecha efectiva distinta. Guarde observaciones, adjunte el justificante obligatorio al borrador y revise antes de validar. Compruebe después el requisito y vencimiento actualizados.
+
+[[File:LMDBVehicleManagement-2026-09-10-controle-anonymise.png|thumb|center|1100px|Formulario de inspección: organismo, resultado, referencia y fechas.]]
+
+Una inspección validada es inmutable. Corrija errores mediante anulación motivada y sustitución. Conserve el vínculo a la original para inspecciones de seguimiento. Las facturas pueden vincularse o desvincularse sin reescribir datos reglamentarios validados.
+
+== Documentos, historial e importación/exportación ==
+
+Use '''Notas''' para notas públicas/privadas autorizadas. Adjunte cada archivo al objeto correspondiente: informes de intervención al evento y justificantes de inspección a la inspección. La consulta, descarga, carga y eliminación nativas respetan los permisos del objeto. El permiso de lectura no permite modificar archivos.
+
+=== Generar el expediente del vehículo ===
+
+# Abra la ficha y el bloque '''Archivos adjuntos'''.
+# Seleccione '''Expediente del vehículo''' en Modelo de documento y pulse '''Generar'''.
+# Compruebe PDF y ZIP. La lupa abre la vista previa del PDF, el nombre permite descargarlo y el ZIP se descarga como archivo.
+# Vuelva a generar para actualizar; no sustituya manualmente los archivos reservados del expediente.
+
+[[File:LMDBVehicleManagement-1.0.0-14-dossier.jpg|thumb|center|754px|Selección nativa de modelo, generación, vista previa y descarga.]]
+[[File:LMDBVehicleManagement-2026-09-19-apercu-pdf-anonymise.png|thumb|center|793px|Primera página de un expediente existente.]]
+
+Los justificantes de consumo/pago no se incluyen en el ZIP. La consulta requiere lectura del vehículo y de facturas de proveedores.
+
+=== Encontrar una operación anterior ===
+
+Abra '''Historial''', filtre fechas, origen, tipo, etiqueta o estado, ordene por fecha y abra una operación mediante su etiqueta. Compruebe el indicador documental. '''Eventos/Agenda''' muestra eventos de agenda vinculados; Historial reúne la cronología de operaciones disponible.
+
+[[File:LMDBVehicleManagement-2026-09-17-historique-anonymise.png|thumb|center|1100px|Historial consolidado de eventos, lecturas, consumos, seguros y asignaciones.]]
+
+Utilice importación/exportación nativa con los conjuntos de datos del módulo y permisos correspondientes. Prepare columnas CSV según la importación elegida, compruebe referencias y entorno y revise resultados. Las inspecciones importadas quedan en borrador. Se rechaza la importación de consumos con pagos diversos activados. Mantenga vacío un precio desconocido de aditivo y cero para un precio conocido nulo.
+
+== Integración de la API QUARTIX ==
+
+=== Acceso, permisos y conexión ===
+
+QUARTIX QWS v2 se utiliza en modo de solo lectura. Solicite a QUARTIX acceso QWS, código de cliente, usuario, contraseña y '''APPLICATION NAME''', y confirme el acceso a datos de recorridos. Compruebe distribución del módulo y Compatibilidad: se requieren, según función, cURL, OpenSSL, cifrado nativo con la clave de instancia de Dolibarr y Leaflet nativo. Tras el despliegue, desactive/reactive el módulo para registrar tablas, derechos y tareas conservando los ajustes existentes.
+
+La lectura de vehículos, consulta GPS y sincronización QUARTIX son permisos separados. Conceda al usuario interno de tareas programadas lectura de vehículos, sincronización QUARTIX y gestión del cuentakilómetros. Sincronizar no concede acceso GPS. Los usuarios externos no acceden a QUARTIX. Los ajustes y asociaciones pertenecen al entorno propietario, que también sincroniza sus vehículos compartidos.
+
+# Abra los ajustes del módulo y '''QUARTIX'''.
+# Introduzca código de cliente, usuario, contraseña y el APPLICATION NAME exacto facilitado por QUARTIX. Un campo de contraseña vacío conserva la almacenada.
+# Confirme la interpretación de fechas y horas. La '''convención QWS''' respeta un desfase horario explícito y, en su ausencia, utiliza la zona horaria local del vehículo. Use un modo forzado solo tras confirmar la convención de la cuenta.
+# Confirme con QUARTIX la unidad de las duraciones. Hasta configurarla, las duraciones son desconocidas, no cero.
+# Configure '''Conservación de trayectos (días)'''; el valor inicial es 30 cuando no existe un ajuste anterior.
+# Guarde, pruebe después la conexión y cargue el catálogo de vehículos.
+# Active la sincronización una vez configurada y las cuatro tareas nativas indicadas abajo.
+
+Cada entorno tiene credenciales, tokens, asociaciones y estado de sincronización propios. Las contraseñas almacenadas no se muestran. Cambiar credenciales renueva la autenticación de ese entorno.
+
+=== Asociaciones de vehículos y reasignación del dispositivo ===
+
+Seleccione vehículo Dolibarr y su equivalente QUARTIX, confirme zona horaria IANA y fecha/hora real de instalación del dispositivo y guarde. El inicio de jornada procede de QUARTIX. Compruebe los primeros valores en '''Utilización QUARTIX''' del vehículo. La instalación limita nuevos datos: se rechazan posiciones y estimaciones anteriores; los resúmenes empiezan en la primera jornada QUARTIX completa posterior. Las asociaciones migradas sin fecha de instalación permanecen sin una fecha inventada. Revise la asociación si cambia la zona horaria o el inicio de jornada en QUARTIX.
+
+El interruptor nativo suspende/reactiva una asociación. '''Desasociar''' distingue:
+
+* '''Reasignación del dispositivo''': conservar importaciones en el vehículo antiguo. Los recorridos ya cargados siguen disponibles hasta su caducidad; cesan las nuevas solicitudes de la asociación anterior.
+* '''Asociación incorrecta''': eliminar definitivamente trayectos, resúmenes y estimaciones QUARTIX del vehículo según la confirmación.
+
+Ambas opciones borran la última posición y liberan el dispositivo. Se conservan lecturas manuales y de consumos. Una asociación nueva no puede solaparse con el historial conservado del mismo vehículo.
+
+=== Tareas programadas ===
+
+Las tareas se instalan '''desactivadas''', inicialmente con una ejecución cada quince minutos. Compruebe usuario de ejecución, actívelas en las Tareas programadas nativas y revise sus últimos resultados.
+
+{| class="wikitable"
+! Tarea QUARTIX !! Función
+|-
+| Últimas posiciones || Actualizar posiciones por lotes de vehículos
+|-
+| Kilometraje diario || Importar estimaciones del cuentakilómetros mediante procesamiento diario de vehículos
+|-
+| Utilización y recuperación histórica || Importar jornadas completas y recuperar progresivamente el historial de utilización
+|-
+| Registro de trayectos || Actualizar jornadas actuales/abiertas, recuperar historial, atender solicitudes de recorridos y purgar trayectos caducados
+|}
+
+El intervalo no garantiza una actualización completa de la flota en quince minutos. Tamaño de flota, lotes, tiempos de respuesta y cuotas influyen en la finalización. Los errores de cuota o servicio imponen una espera compartida por el entorno; repetir pruebas de conexión no la evita.
+
+=== Utilización y cuadro de mando ===
+
+La pestaña Utilización QUARTIX muestra asociación e información importada autorizada. El cuadro de mando de flota utiliza filtros, indicadores y gráficos nativos.
+
+* Las estimaciones de kilometraje se identifican y no sustituyen lecturas reales ni de consumos. Las contradicciones se señalan sin bloquear lecturas reales.
+* La última posición requiere permiso GPS. Compruebe su fecha: una posición antigua no demuestra avería ni inmovilización.
+* La utilización incluye distancia, número de trayectos, días activos y cobertura de datos. Los resúmenes diarios se conservan doce meses; el día actual se excluye de resúmenes de jornadas completas.
+* Un día desconocido no equivale a un día conocido sin actividad. Los totales solo utilizan días informados.
+* El cuadro muestra inicialmente los treinta últimos días completos. Totales y evolución diaria abarcan la selección; la comparación de vehículos muestra las veinte distancias más altas. Sin permiso GPS se omiten lugares y enlaces GPS.
+
+Leer datos importados no llama a QWS. Los cálculos de consumo continúan utilizando lecturas reales.
+
+[[File:LMDBVehicleManagement-2026-09-quartix-utilisation.png|thumb|center|1000px|Utilización diaria de QUARTIX: cobertura de días, distancias y número de trayectos. Las duraciones no están disponibles hasta confirmar su unidad.]]
+
+=== Registro de trayectos ===
+
+Abra '''Trayectos''' con permiso GPS, seleccione un período (inicialmente los últimos siete días), aplique filtros y examine salida, llegada, distancia y estado. Use selección de columnas, ordenación y paginación. Compruebe cobertura de días y hora de sincronización antes de concluir que no hubo trayectos.
+
+Las horas visibles siguen la zona horaria de la sesión Dolibarr; la jornada sigue el límite diario QUARTIX del vehículo. Las llegadas provisionales no se presentan como definitivas. '''Los trayectos privados conservan solo día y distancia''': no direcciones, coordenadas, horas exactas, duraciones ni recorridos. La ausencia de indicadores de privacidad recibe la misma protección.
+
+[[File:LMDBVehicleManagement-2026-09-quartix-trajets-anonymise.png|thumb|center|1000px|Registro QUARTIX con filtros de período y estados de los trayectos. Las direcciones están difuminadas.]]
+
+=== Mapa del recorrido ===
+
+Active los recorridos en los ajustes QUARTIX del propietario tras confirmar acceso QWS a esos datos. Pulse '''Ver recorrido''' en un trayecto no privado. El diálogo nativo muestra el recorrido en caché o lo solicita si falta. '''Cargar / actualizar recorrido''' se habilita cuando se permite otro intento. En vehículos compartidos, si falta en caché, la solicitud espera a la tarea Registro de trayectos del propietario.
+
+La ventana modal nativa no contiene historial de navegación incrustado ni barra de depuración. Información y advertencias permanecen visibles como bloques de alerta. El mapa une posiciones QUARTIX; '''no calcula un itinerario por carretera'''. Los trayectos terminados muestran marcadores de salida y llegada. Solo los abiertos muestran la nota de trayecto en curso y carecen de llegada definitiva. Menos de dos puntos, datos ausentes o incompatibles producen un estado de no disponibilidad.
+
+Un recorrido terminado en caché no vuelve a consultar QUARTIX. Las solicitudes para el mismo día se espacian al menos quince minutos, sujetas a cuotas. Las comprobaciones periódicas del diálogo releen caché y permisos; no son seguimiento GPS en directo.
+
+Se utilizan por defecto teselas OpenStreetMap, sin clave API y con atribución visible. Puede configurarse otra URL HTTPS de teselas y su atribución. El proveedor del mapa recibe solicitudes de la zona consultada, no secretos QUARTIX. Un fallo de teselas se informa por separado de la falta de recorrido.
+
+[[File:LMDBVehicleManagement-2026-09-quartix-route-anonymise.png|thumb|center|1000px|Trayecto terminado en el diálogo nativo con mensajes persistentes. La matrícula y el fondo del mapa están difuminados para proteger las ubicaciones; se conserva la atribución cartográfica.]]
+
+=== Conservación y confidencialidad ===
+
+Trayectos y recorridos comparten un plazo. Al reducirlo, los días caducados se ocultan inmediatamente; la tarea Registro de trayectos los purga después por lotes. Ampliarlo permite recuperar progresivamente días todavía disponibles en QUARTIX. La purga continúa si solo se suspende la sincronización, siempre que módulo y tarea Registro de trayectos sigan activos; detener cualquiera de ellos detiene la purga. Los resúmenes de utilización mantienen su ventana independiente de doce meses.
+
+Los recorridos almacenados están cifrados. Si un trayecto pasa a ser privado o incompatible con el registro, pierde acceso al recorrido anterior. Posiciones y trazas GPS se excluyen de documentos, exportaciones y API del módulo. No se importan identidades de conductores, puntuaciones de conducción ecológica ni velocidades detalladas.
+
+=== Diagnóstico QUARTIX ===
+
+{| class="wikitable"
+! Síntoma !! Comprobación
+|-
+| Falla la prueba de conexión || Guarde todas las credenciales, especialmente APPLICATION NAME. Anote etapa y estado HTTP mostrados sin compartir secretos ni respuestas API sin tratar.
+|-
+| No llegan datos || Compruebe asociación activa, sincronización, instalación, permisos del usuario y las cuatro tareas. La recuperación histórica necesita varias ejecuciones.
+|-
+| Duraciones no disponibles || Confirme la unidad con QUARTIX y guárdela.
+|-
+| Falta el icono de mapa || Compruebe permiso GPS, activación de recorridos, privacidad y conservación.
+|-
+| Solicitud pendiente || Compruebe tarea Registro de trayectos del propietario, sincronización y plazo de espera.
+|-
+| Mapa vacío || Lea la alerta persistente: puntos ausentes, sesión caducada, acceso retirado y fallo de teselas son causas distintas. Recargue después de actualizar el módulo.
+|-
+| Diferencias con QUARTIX || Compare mismo vehículo, jornada, zona horaria, límite diario, cobertura y sincronización; distinga estimaciones de lecturas reales.
+|}
+
+== Preguntas frecuentes ==
+
+{| class="wikitable"
+! Situación !! Comprobación o acción
+|-
+| Falta una acción || Revise permisos, estado del objeto y dependencias de Compatibilidad.
+|-
+| Falla el expediente || Compruebe activación del modelo, Facturas de proveedores, PHP ZIP y derechos de vehículo/facturas.
+|-
+| No puede editarse una lectura || Corrija las lecturas vinculadas a consumo desde su registro de origen.
+|-
+| Certificado sin validar || Revise estado, alcance, fechas y justificante; un borrador aún requiere revisión.
+|-
+| Falta vencimiento || Complete características y fechas exigidas por la regla.
+|-
+| No se envían recordatorios || Revise activación, destinatarios, plantillas, correo Dolibarr y resultados de tareas programadas.
+|-
+| Gasto no modificable || Compruebe conciliación o transferencia contable y use el proceso financiero nativo de corrección.
+|-
+| Aparecen datos de otro entorno || Compruebe Entorno y comparticiones Multicompany autorizadas.
+|}
+
+== Actualización y límites ==
+
+Haga copia de seguridad de base de datos y documentos antes de actualizar. Sustituya los archivos y desactive/reactive el módulo para aplicar migraciones y declaraciones nativas conservando ajustes. Lea <code>ChangeLog.md</code>, compruebe modelos y tareas, regenere expedientes cuando cambie su presentación y revise los ajustes bancarios antes de activar pagos de consumos. Los eventos futuros usan etiquetas actualizadas; no se reescriben historial existente ni inspecciones validadas. QUARTIX requiere credenciales, asociaciones y cuatro tareas; los paquetes antiguos 1.0.0 pueden no incluirlo.
+
+No se preconfiguran inspecciones detalladas de extintores, equipos a presión, accesorios de elevación ni refrigerantes. Quedan fuera la gestión de documentos de matriculación, siniestros, primas, franquicias y multas. Las facturas de compra se gestionan en Facturas de proveedores nativo. Los recordatorios periódicos requieren tareas programadas y entrega de correo operativas. No se ofrecen exportación de recorridos QUARTIX, conducción ecológica ni cambios automáticos de asignaciones de conductores.
+
+== Fuentes y enlaces útiles ==
+
+* [https://github.com/mapiolca/lmdbvehiclemanagement Código fuente del módulo]
+* [https://github.com/mapiolca/lmdbvehiclemanagement/blob/094fc89/README.md Documentación original de la versión 1.0.0]
+* [https://github.com/mapiolca/lmdbvehiclemanagement/blob/094fc89/ChangeLog.md Historial original de la versión 1.0.0]
+* [https://github.com/mapiolca Perfil del autor]
+
+[[Category:Módulos complementarios]]

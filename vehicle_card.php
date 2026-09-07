@@ -211,8 +211,8 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('AssetType').'</td><td>'.$form->selectarray('fk_asset_type', $assetTypeOptions, (int) $object->fk_asset_type, 1, 0, 0, '', 1, 0, 0, '', 'minwidth300', 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('EuropeanCategory').'</td><td><input class="flat minwidth100" name="eu_category" maxlength="16" value="'.dol_escape_htmltag((string) $object->eu_category).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('NationalGenre').'</td><td><input class="flat minwidth200" name="national_genre" maxlength="32" value="'.dol_escape_htmltag((string) $object->national_genre).'"></td></tr>';
-	print '<tr><td>'.$langs->trans('GrossVehicleWeight').'</td><td><input class="flat width100" name="gvw_kg" value="'.dol_escape_htmltag($object->gvw_kg !== null ? price($object->gvw_kg) : '').'"> '.$langs->trans('UnitKg').'</td></tr>';
-	print '<tr><td>'.$langs->trans('GrossCombinationWeight').'</td><td><input class="flat width100" name="gcw_kg" value="'.dol_escape_htmltag($object->gcw_kg !== null ? price($object->gcw_kg) : '').'"> '.$langs->trans('UnitKg').'</td></tr>';
+	print '<tr><td>'.$langs->trans('GrossVehicleWeight').'</td><td><input class="flat width100" name="gvw_kg" value="'.dol_escape_htmltag($object->gvw_kg !== null ? price($object->gvw_kg) : '').'"> '.$langs->trans('WeightUnitkg').'</td></tr>';
+	print '<tr><td>'.$langs->trans('GrossCombinationWeight').'</td><td><input class="flat width100" name="gcw_kg" value="'.dol_escape_htmltag($object->gcw_kg !== null ? price($object->gcw_kg) : '').'"> '.$langs->trans('WeightUnitkg').'</td></tr>';
 	print '<tr><td>'.$langs->trans('NumberOfSeats').'</td><td><input class="flat width75" name="seats" inputmode="numeric" value="'.dol_escape_htmltag($object->seats !== null ? (string) $object->seats : '').'"></td></tr>';
 	print '<tr><td>'.$langs->trans('RegulatoryTerritory').'</td><td>'.$form->selectarray('regulatory_territory', $object->fields['regulatory_territory']['arrayofkeyval'], $object->regulatory_territory, 0, 0, 0, '', 1, 0, 0, '', 'minwidth300', 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('VIN').'</td><td><input class="flat minwidth300" name="vin" maxlength="64" value="'.dol_escape_htmltag((string) $object->vin).'"></td></tr>';
@@ -257,8 +257,8 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('AssetType').'</td><td>'.(!empty($object->fk_asset_type) && isset($assetTypeOptions[(int) $object->fk_asset_type]) ? dol_escape_htmltag($assetTypeOptions[(int) $object->fk_asset_type]) : '').'</td></tr>';
 	print '<tr><td>'.$langs->trans('EuropeanCategory').'</td><td>'.dol_escape_htmltag((string) $object->eu_category).'</td></tr>';
 	print '<tr><td>'.$langs->trans('NationalGenre').'</td><td>'.dol_escape_htmltag((string) $object->national_genre).'</td></tr>';
-	print '<tr><td>'.$langs->trans('GrossVehicleWeight').'</td><td>'.($object->gvw_kg !== null ? price($object->gvw_kg).' '.$langs->trans('UnitKg') : '').'</td></tr>';
-	print '<tr><td>'.$langs->trans('GrossCombinationWeight').'</td><td>'.($object->gcw_kg !== null ? price($object->gcw_kg).' '.$langs->trans('UnitKg') : '').'</td></tr>';
+	print '<tr><td>'.$langs->trans('GrossVehicleWeight').'</td><td>'.($object->gvw_kg !== null ? price($object->gvw_kg).' '.$langs->trans('WeightUnitkg') : '').'</td></tr>';
+	print '<tr><td>'.$langs->trans('GrossCombinationWeight').'</td><td>'.($object->gcw_kg !== null ? price($object->gcw_kg).' '.$langs->trans('WeightUnitkg') : '').'</td></tr>';
 	print '<tr><td>'.$langs->trans('NumberOfSeats').'</td><td>'.($object->seats !== null ? ((int) $object->seats) : '').'</td></tr>';
 	$territoryOptions = $object->fields['regulatory_territory']['arrayofkeyval'];
 	print '<tr><td>'.$langs->trans('RegulatoryTerritory').'</td><td>'.$langs->trans(isset($territoryOptions[$object->regulatory_territory]) ? $territoryOptions[$object->regulatory_territory] : 'Unknown').'</td></tr>';

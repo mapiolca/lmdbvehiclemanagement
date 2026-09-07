@@ -1,0 +1,457 @@
+[[fr:Module Gestion des véhicules]]
+[[it:Modulo Gestione dei veicoli]]
+[[de:Modul Fahrzeugverwaltung]]
+[[es:Módulo Gestión de vehículos]]
+
+'''Vehicle and Equipment Management''' is an external Dolibarr module for managing road vehicles, vans and machinery. It brings together vehicle specifications, driver assignments, odometer readings, consumption, maintenance events, insurance and regulatory inspections.
+
+It also links supplier invoices to maintenance events and inspections, generates a vehicle dossier as PDF and ZIP files, and integrates '''QUARTIX QWS v2''' for mileage estimates, usage summaries, positions, journeys and route maps.
+
+This article provides an illustrated installation and user guide. Screenshots show a French Dolibarr 24 demonstration environment with Multicompany. Addresses and registration numbers are blurred. Example values are not recommended settings or consumption benchmarks. Layout and translated interface labels may vary with the Dolibarr version and theme.
+
+The documentation was updated on 7 September 2026. The QUARTIX development extends version 1.0.0; an older archive bearing that version number may not contain it. The module itself provides French and English translations; Italian, German and Spanish versions of this article do not add those languages to the software.
+
+__TOC__
+
+== Information ==
+
+{| class="wikitable"
+! Item !! Value
+|-
+| Module || Vehicle and Equipment Management
+|-
+| Technical identifier || <code>lmdbvehiclemanagement</code>
+|-
+| Author / family || Pierre Ardoin / Les Métiers du Bâtiment
+|-
+| Version || 1.0.0, first stable release on 4 September 2026; QUARTIX development documented separately below
+|-
+| Requirements || Dolibarr 20+, PHP 8.0+, MySQL or MariaDB
+|-
+| Software languages || French and English
+|-
+| Multicompany || Supported; optional
+|-
+| Licence || GNU GPL version 3 or later
+|}
+
+== Features ==
+
+=== Fleet management ===
+
+* Vehicle, van and machinery records, with optional registration numbers.
+* Technical specifications, energy, consumable capacities and WLTP range.
+* Lifecycle management from draft to disposal.
+* Concurrent driver assignments, with only one primary assignment for a given period.
+* Odometer readings, corrections and meter replacements.
+* Maintenance, breakdown and incident events; a consolidated timeline including inspections and consumption.
+* Numbering models, including a model based on the registration number.
+
+Lists support filters, sorting, pagination and configurable columns. Records use native Dolibarr notes, contacts, attachments and linked objects where applicable.
+
+=== Refuelling, charging and consumption ===
+
+The module manages fuels, electric charging, hydrogen and additives. Consumables have their own units and compatible energy types. Vehicle capacities allow warnings when an entered quantity exceeds the configured capacity.
+
+* Consumption records are synchronised with their odometer readings.
+* Summaries distinguish vehicles, consumables and units.
+* Native charts display costs, distances and consumption statistics.
+* CSV import and native export are available.
+* An additive may have an unknown price: an empty amount is excluded from price statistics, while zero remains a known price of zero.
+
+An optional setting per entity creates a native '''miscellaneous payment''' for a refuelling or charging record. It requires a bank account, payment details and a PDF, JPEG or PNG receipt. Image metadata is removed. Accounting is optional; double-entry accounting requires a general ledger account from the active chart. Financial data and the receipt become locked after bank reconciliation or accounting transfer.
+
+'''Consumption CSV import is unavailable while miscellaneous payment creation is enabled.''' Enabling the option does not create payments for historical consumption records.
+
+=== Insurance ===
+
+* Individual or fleet contracts covering several vehicles, with primary and additional coverage.
+* Insurer and broker contacts.
+* Fleet-wide or vehicle-specific certificates, with supporting files, review, validation, rejection and archiving.
+* Responsible users or groups and eligible assigned personnel.
+* Reminders before and after expiry, using native email templates and scheduled jobs, with duplicate prevention.
+
+=== Regulatory inspections ===
+
+A guided qualification questionnaire determines applicable requirements from the recorded characteristics and use. Version 1.0.0 includes a versioned '''French''' catalogue covering roadworthiness, emissions, category L, specialised uses, periodic general inspections (VGP), commissioning/recommissioning, tachographs, ADR and ATP. Entity-specific overrides and custom rules extend it. Translating this article does not turn this catalogue into another country's regulatory rules.
+
+* Numbered inspection records with inspection body, result, dates and mandatory supporting document.
+* Immutable validation, cancellation with reasons, replacement, follow-up inspection and controlled archiving.
+* Due-date schedule, safety register, export and import as drafts.
+* Configurable blocking of new assignments and commissioning.
+* Daily recalculation and reminders through scheduled jobs, with one calendar event per requirement.
+
+When essential information is missing, no arbitrary due date is calculated. The module helps with documentary tracking: it neither performs inspections nor issues official inspection reports.
+
+=== Linked supplier invoices ===
+
+On a maintenance event or inspection, '''Create supplier invoice''' opens the native form. The intervention supplier is proposed if known and accessible, but remains editable. Saving creates a draft invoice linked to the source record.
+
+You can also select an existing invoice, or use '''Link to''' from a supplier invoice. Both records display the relationship in '''Linked objects'''. Several invoices may be linked to one intervention. Unlinking removes only the relationship, not the invoice or validated regulatory data. Both objects must belong to the current entity, and permissions on each object remain required.
+
+=== Vehicle dossier: PDF and ZIP ===
+
+The '''Vehicle dossier''' document model generates:
+
+* a PDF with vehicle specifications, available timeline, events, inspections, linked invoices, a refuelling/charging summary and document inventory;
+* a ZIP with that PDF and the original files attached to the vehicle, events, inspections and linked invoices.
+
+Drafts, cancellations and archived records are included. An invoice linked several times is packaged once. Indexed files that are missing are reported in the PDF. Consumption and miscellaneous payment receipts, temporary files, previews and previous dossiers are excluded. The consumption summary contains dates, readings, references, consumables, types, units and oil references; it excludes quantities and amounts.
+
+Generation uses existing data and files. It does not generate supplier invoice documents or reconstruct an unrecorded history. Generating requires vehicle read/write and supplier invoice read permissions. Viewing requires the corresponding combined read permissions. External users and public links cannot access the dossier.
+
+=== Multiple entities ===
+
+Multicompany sharing is configured in its native settings. Relevant lists display an '''Environment''' column and filter. Files remain in the owning entity's document directory, including when viewed through sharing. Entity settings, models and sharing choices survive module deactivation and reactivation.
+
+== Requirements and installation ==
+
+In addition to Dolibarr 20+, PHP 8.0+ and MySQL/MariaDB, check the dependencies of the features you use:
+
+{| class="wikitable"
+! Dependency !! Purpose
+|-
+| Calendar and Scheduled jobs || Automatic due dates, events, recalculation and reminders
+|-
+| Banks and Cash || Miscellaneous payments for consumption records
+|-
+| Accounting || Optional; account requirements depend on the accounting mode
+|-
+| Supplier invoices || Invoice links and vehicle dossiers
+|-
+| PHP ZIP extension (<code>ZipArchive</code>) || PDF/ZIP dossier generation
+|-
+| Multicompany / Resources || Optional sharing / link to a Dolibarr resource
+|-
+| QUARTIX QWS access, cURL, OpenSSL, native encryption || Optional QUARTIX integration; native Leaflet for route maps
+|}
+
+# Obtain the required module distribution, including QUARTIX if needed.
+# Place <code>lmdbvehiclemanagement</code> in Dolibarr's external modules directory, without a second nested directory of the same name. A compatible deployment archive may also be installed through the native module deployment screen.
+# Sign in as an administrator and open '''Home → Setup → Modules/Applications'''.
+# Enable the module in the '''Les Métiers du Bâtiment''' family.
+# Open its cogwheel settings, check '''Compatibility''' and grant users/groups their required permissions.
+
+== Initial configuration ==
+
+# Review energy, consumable, equipment type, regulatory profile, inspection type and result dictionaries.
+# Choose numbering models and document models.
+# Configure insurance contacts, reminder templates and thresholds.
+# Review regulatory rules and any blocking options.
+# Enable and check the required native scheduled jobs.
+# Configure bank/payment options separately in each entity if miscellaneous payments are used.
+# Configure Multicompany sharing and entity access where applicable.
+# Configure QUARTIX as described below if it is used.
+
+'''Compatibility''' and '''About''' are internal settings tabs. Compatibility identifies missing dependencies in the current environment.
+
+=== Numbering and dossier model ===
+
+In '''Settings''', enable '''Vehicle dossier''' in '''Document models'''; selecting it as the default is a separate choice. In '''Numbering models''', choose a model for each object. Vehicles can use <code>standard</code> for sequential references or <code>registration</code> for normalised registration numbers. With the latter, unregistered equipment receives a MAT-style reference. Check the examples; use the module's migration procedure if existing references must be changed.
+
+[[File:LMDBVehicleManagement-2026-09-15-modeles-anonymise.png|thumb|center|1100px|Document models and numbering settings. Activation and default selection are separate.]]
+
+=== Consumption expenses ===
+
+In the receipt/miscellaneous payment settings, choose the entity's bank account and usual payment method, then the accounting accounts appropriate to the active accounting mode. A general ledger account is required for double-entry accounting; the auxiliary account is optional. Enable the option and save. Check that a new consumption form requests payment details and a receipt. Historical records are not converted and consumption CSV import becomes unavailable.
+
+=== Insurance reminders ===
+
+In '''Insurance''' settings, choose responsible users/groups, whether assigned personnel are included, and the eligible assignment types. Set pre-expiry thresholds and repetition intervals after expiry or missing evidence; select the deposit/review email templates. Enable reminders, save, then open Scheduled jobs to inspect activation and the latest result. '''Send test email''' sends a real email: check recipients first. Screenshot intervals are demonstration settings.
+
+[[File:LMDBVehicleManagement-1.0.0-16-relances-assurance.jpg|thumb|center|1100px|Insurance reminder recipients, thresholds, templates and scheduled job access.]]
+
+=== Inspection reminders ===
+
+In '''Regulatory inspections''', choose reminder horizons and the upcoming-due period. Select users/groups and whether the assigned driver is included, choose the reminder template and optionally daily overdue reminders. Save and check the recalculation/reminder job. Entity overrides and custom rules must reflect the equipment and retain their justification.
+
+== Getting started ==
+
+=== Find or create a vehicle ===
+
+Open the vehicle menu, identified by a car icon. Its side menu provides access to the fleet, events, inspections, consumption and insurance.
+
+# Open the vehicle/equipment list and filter by reference, registration, label, model or status.
+# Search with the magnifying glass; the cross resets filters. Column headings sort the list and the column selector changes visible columns.
+# Set the page size and open a record through its reference. With sharing enabled, use the Environment filter to identify ownership.
+
+[[File:LMDBVehicleManagement-2026-09-01-liste-anonymise.png|thumb|center|1100px|Fleet navigation and filters.]]
+
+To create a record, choose '''New vehicle or equipment''', enter a clear label and a registration number if applicable. Select the main equipment type and complete known category, weights, seats, territory, serial number, make and model. Set energy and known range, construction/registration/commissioning dates, ownership mode and owner. The resource link is optional. Add a description and save, then edit consumable capacities if needed. The record starts as a draft and receives its reference from the configured model.
+
+[[File:LMDBVehicleManagement-1.0.0-03-creation.jpg|thumb|center|1100px|Vehicle creation: identification, technical information and dates.]]
+
+=== Read the record and status ===
+
+The card shows identification, status, specifications, capacities and insurance coverage. Tabs expose notes, files, calendar, assignments, mileage, consumption, inspections, history and QUARTIX according to permissions.
+
+[[File:LMDBVehicleManagement-2026-09-02-fiche-anonymise.png|thumb|center|1100px|Vehicle in service: specifications, capacities and insurance summary.]]
+
+{| class="wikitable"
+! Status !! Meaning
+|-
+| Draft || Prepare and check the record
+|-
+| Validated || Identified and approved, before commissioning
+|-
+| In service || In use in the fleet
+|-
+| Out of service || Withdrawn from operation
+|-
+| Transferred / sold || Removed from the fleet following disposal
+|}
+
+Use the available validate, commission, withdraw or dispose actions according to the current state and permissions. Regulatory rules may prevent commissioning. Record disposal through its lifecycle action to retain history; deleting a record serves a different purpose.
+
+== Daily use ==
+
+=== Assign a driver ===
+
+Open '''Assignments → Add assignment'''. Choose the driver, start date/time and a known end date; specify type, primary assignment, status and reason, then save. Several assignments may overlap, but only one can be primary. End an assignment by editing it with the pencil and setting its end and status.
+
+[[File:LMDBVehicleManagement-2026-09-04-affectations-anonymise.png|thumb|center|1100px|Driver assignments, dates, type, primary flag and status.]]
+
+=== Odometer readings ===
+
+In '''Mileage''', add a reading with its date, observed value and type. Explain corrections or meter replacements. Save and verify chronology and differences. '''A reading created by consumption must be corrected on the originating refuelling/charging record.''' Do not add a duplicate manual reading to correct it. QUARTIX estimates remain distinguishable from actual readings.
+
+[[File:LMDBVehicleManagement-2026-09-05-kilometrage-anonymise.png|thumb|center|1100px|Readings, differences and sources. Consumption-linked readings are managed from their source.]]
+
+=== Record refuelling, charging or an additive ===
+
+# Choose '''New refuelling / charging''', enter date/time and select the vehicle.
+# Select the type and consumable; enter an oil reference when required.
+# Check the driver, enter quantity in the stated unit and the odometer value.
+# Enter the total including tax. Leave an unknown additive price empty; zero means a known zero price.
+# Select a project if relevant; with miscellaneous payments enabled, check payment details and attach the PDF/JPEG/PNG receipt.
+# Use a standard reading for ordinary entries; justify a correction or meter replacement. Save and check the resulting card.
+
+Check quantity, unit, vehicle and capacity when an over-capacity warning appears. Reconciled or accounting-transferred financial data and receipts are locked.
+
+[[File:LMDBVehicleManagement-1.0.0-06-plein.jpg|thumb|center|1100px|Consumption form with receipt and payment information when enabled.]]
+
+=== Consumption statistics ===
+
+Open the global '''Consumption''' summary or a vehicle's consumption tab. Set dates and relevant vehicle/driver/consumable/type filters. Search, read quantities, costs, averages and peaks, inspect the charts and open the refuelling list to trace a value. Litres, kWh and kilograms remain separate; they are not added together. Excluded intervals identify readings omitted from calculations. Demonstration peaks are not normal vehicle consumption benchmarks.
+
+[[File:LMDBVehicleManagement-2026-09-07-synthese-anonymise.png|thumb|center|1100px|Consumption filters, summary and native charts using demonstration data.]]
+
+=== Maintenance, breakdowns and invoices ===
+
+From the vehicle card, choose '''New vehicle event'''. Enter label, type, date, driver and service provider, then severity, mileage and any downtime dates. Describe the work, save and attach supporting files to the event. The event list covers the fleet; vehicle history consolidates related operations.
+
+On the event or inspection, create a supplier invoice or select an existing one and link it. Check the relation in Linked objects; its reference opens the invoice. Unlinking leaves both records intact.
+
+[[File:LMDBVehicleManagement-2026-09-13-intervention-facture-anonymise.png|thumb|center|1100px|Maintenance event, supplier invoice actions and linked objects.]]
+
+== Insurance and certificates ==
+
+=== Create a contract ===
+
+Choose '''New contract''' under Insurance contracts. Select insurer and, if applicable, contact/broker. Enter policy number, label, coverage and contract period, renewal and known notice date, plus assistance contacts. Select covered vehicles, coverage type and period. Save and verify the linked vehicles. Coverage can be primary or additional; a fleet contract groups several vehicles under one policy.
+
+[[File:LMDBVehicleManagement-1.0.0-18-creation-assurance.jpg|thumb|center|1100px|Contract creation and vehicle coverage.]]
+[[File:LMDBVehicleManagement-2026-09-11-assurance-anonymise.png|thumb|center|1100px|Saved contract and covered vehicle.]]
+
+=== Submit and review a certificate ===
+
+# Open the contract and its insurance certificate tab.
+# Choose the scope: covered fleet or eligible vehicle. Enter validity dates and attach evidence.
+# Choose '''Save draft''' to continue preparing, or '''Submit for review''' when ready.
+# An authorised reviewer checks the document and dates, then validates it or rejects it with a reason.
+# On renewal, create the new certificate and archive the former one through the provided workflow.
+
+The table shows scope, dates, downloadable evidence and status. A draft does not replace a reviewed, validated certificate.
+
+[[File:LMDBVehicleManagement-1.0.0-12-attestations.jpg|thumb|center|1100px|Validated certificate and submission form; draft saving and review submission are distinct.]]
+
+== Regulatory inspection guide ==
+
+=== Qualify the equipment ===
+
+Open the vehicle's Regulatory inspections tab. Answer the qualification questions according to actual characteristics and use, complete applicable dates and save. Review the calculated requirements, previous inspection, calculated date, retained date and status. For lifting equipment, determine the VGP interval from its technical qualification; do not guess a period. Complete missing information from equipment documents.
+
+[[File:LMDBVehicleManagement-2026-09-09-qualification-anonymise.png|thumb|center|1100px|Regulatory qualification questionnaire.]]
+
+=== Read the schedule ===
+
+Open the inspection schedule, filter by period, vehicle, equipment type, profile, inspection or status, then sort by retained date. Open a vehicle to inspect a requirement. Status badges distinguish up-to-date and overdue requirements. Interpret the retained date alongside qualification and supporting documents.
+
+[[File:LMDBVehicleManagement-2026-09-08-echeancier-anonymise.png|thumb|center|1100px|Inspection schedule with dates and requirement statuses.]]
+
+=== Record and validate an inspection ===
+
+Start from '''Record an inspection''' on a requirement, or use New inspection. Check vehicle, requirement and inspection type. Enter date, inspection body, report reference, result and official validity date. Explain any different effective date. Save observations, attach the mandatory document to the draft and verify before validation. Then review the updated requirement and due date.
+
+[[File:LMDBVehicleManagement-2026-09-10-controle-anonymise.png|thumb|center|1100px|Inspection form: body, result, report reference and dates.]]
+
+A validated inspection is immutable. Correct errors through reasoned cancellation and replacement. Retain the connection to the original inspection for follow-up checks. Invoice links may change without rewriting validated regulatory data.
+
+== Documents, history and import/export ==
+
+Use '''Notes''' for permitted public/private notes. Attach each file to its proper object: intervention reports to events and inspection evidence to inspections. Native viewing, downloading, upload and deletion follow object permissions. Read permission alone does not allow file modification.
+
+=== Generate the vehicle dossier ===
+
+# Open the vehicle card and its '''Attached files''' block.
+# Select '''Vehicle dossier''' in Document model and click '''Generate'''.
+# Check both PDF and ZIP files. Use the magnifying glass to preview the PDF, its name to download it, or download the ZIP archive.
+# Generate again to update it; do not manually replace reserved dossier files.
+
+[[File:LMDBVehicleManagement-1.0.0-14-dossier.jpg|thumb|center|754px|Native document model selection, generation, preview and download.]]
+[[File:LMDBVehicleManagement-2026-09-19-apercu-pdf-anonymise.png|thumb|center|793px|First page of an existing vehicle dossier.]]
+
+Consumption/payment receipts are excluded from the ZIP. Viewing the dossier still requires vehicle and supplier invoice read permissions.
+
+=== Find a past operation ===
+
+Open '''History''', filter dates, source, type, label or status, sort by date and open an operation through its label. Check its document indicator. '''Events/Calendar''' shows linked calendar events; History consolidates the available business timeline.
+
+[[File:LMDBVehicleManagement-2026-09-17-historique-anonymise.png|thumb|center|1100px|Consolidated history of events, readings, consumption, insurance and assignments.]]
+
+Use native import/export with the module's datasets and the relevant permissions. Prepare CSV columns according to the selected import, check references and entity, then verify the results. Imported regulatory inspections remain drafts. Consumption import is refused when miscellaneous payments are enabled. Keep an unknown additive price empty and a known zero as zero.
+
+== QUARTIX API integration ==
+
+=== Access, permissions and connection ===
+
+QUARTIX QWS v2 is used in read-only mode. Obtain QWS access, customer code, username, password and '''APPLICATION NAME''' from QUARTIX, and confirm access to route data. Check the module distribution and Compatibility tab: cURL, OpenSSL, native encryption with the Dolibarr instance key and native Leaflet are required as applicable. After deployment, deactivate/reactivate the module to register its tables, rights and jobs while retaining existing settings.
+
+Vehicle reading, GPS viewing and QUARTIX synchronisation are separate permissions. Grant the internal scheduled-job user vehicle reading, QUARTIX synchronisation and odometer management. Synchronisation permission does not grant GPS access. External users cannot access QUARTIX features. Settings and links belong to the owning entity, which also synchronises shared vehicles.
+
+# Open the module settings and '''QUARTIX'''.
+# Enter customer code, login, password and the exact APPLICATION NAME supplied by QUARTIX. An empty password field retains the stored password.
+# Confirm timestamp interpretation. '''QWS convention''' honours an explicit offset and otherwise uses the vehicle's local timezone. Use a forced mode only after confirming the account's convention.
+# Confirm the duration unit with QUARTIX. Until configured, durations remain unavailable, not zero.
+# Set '''Journey retention (days)'''; the initial value is 30 when no setting exists.
+# Save, then test the connection and load the vehicle catalogue.
+# Enable synchronisation once configured, and activate the four native jobs below.
+
+Each entity has its own credentials, tokens, links and synchronisation state. Stored passwords are not displayed. Changed credentials renew authentication for that entity.
+
+=== Vehicle links and device reassignment ===
+
+Select the Dolibarr vehicle and its QUARTIX counterpart, confirm the IANA timezone and actual device installation date/time, then save. The day start comes from QUARTIX. Check initial values in '''QUARTIX usage''' on the vehicle card. New imports are bounded by installation: earlier positions and estimates are rejected and summaries start at the first complete QUARTIX day after installation. Migrated links without an installation date keep it unset; no historical date is invented. Review a link if its timezone or day-start setting changes in QUARTIX.
+
+The native switch suspends/resumes a link. '''Unlink''' distinguishes:
+
+* '''Device reassignment''': keep imports on the old vehicle. Previously loaded routes remain readable until expiry, but new requests for the old link stop.
+* '''Incorrect association''': permanently remove the vehicle's QUARTIX journeys, summaries and estimates as described in the confirmation.
+
+Both clear the last position and release the device for linking. Manual and consumption-linked readings remain intact. A new association must not overlap retained history on the same vehicle.
+
+=== Scheduled jobs ===
+
+Jobs are installed '''disabled''', initially waking every fifteen minutes. Verify the execution user, enable them in native Scheduled jobs and check their latest results.
+
+{| class="wikitable"
+! QUARTIX job !! Purpose
+|-
+| Latest positions || Refresh positions in vehicle batches
+|-
+| Daily mileage || Import estimated odometer readings through daily vehicle processing
+|-
+| Usage and historical backfill || Import completed days and progressively recover usage history
+|-
+| Journey log || Refresh current/open days, recover history, process route requests and purge expired journeys
+|}
+
+Wake-up frequency does not guarantee a full-fleet update within fifteen minutes. Fleet size, batches, response time and quotas affect completion. Quota and service errors impose a shared retry delay for the entity; repeated connection tests do not bypass it.
+
+=== Read usage and the dashboard ===
+
+The vehicle's QUARTIX usage tab shows its association and permitted imported information. The fleet dashboard uses native filters, indicators and charts.
+
+* Mileage estimates are labelled and do not replace real or consumption-linked readings. Contradictions are reported without blocking real readings.
+* The last position requires GPS permission. Check its date: an old position does not prove breakdown or downtime.
+* Usage includes distance, journey count, active days and data coverage. Daily summaries are retained for twelve months; the current day is excluded from completed-day summaries.
+* An unknown day differs from a known day without activity. Totals use only reported days.
+* The dashboard initially covers the preceding thirty completed days. Totals and daily trends cover the selection; the vehicle comparison shows the twenty highest distances. Places and GPS links are omitted without GPS permission.
+
+Reading imported data does not call QWS. Consumption calculations continue to use actual readings.
+
+[[File:LMDBVehicleManagement-2026-09-quartix-utilisation.png|thumb|center|1000px|Daily QUARTIX usage: day coverage, distances and journey counts. Durations remain unavailable until their unit is confirmed.]]
+
+=== Journey log ===
+
+Open '''Journeys''' with GPS permission, select a period (initially the last seven days), apply filters and inspect departure, arrival, distance and status. Use column selection, sorting and pagination. Check day coverage and synchronisation time before concluding that no journey occurred.
+
+Displayed times follow the Dolibarr session timezone; the journey day follows the vehicle's QUARTIX day boundary. Provisional arrivals are not presented as final. '''Private journeys retain only day and distance''': no addresses, coordinates, exact times, durations or routes. Missing privacy indicators receive the same protection.
+
+[[File:LMDBVehicleManagement-2026-09-quartix-trajets-anonymise.png|thumb|center|1000px|QUARTIX journey log with date filters and journey statuses. Addresses are blurred.]]
+
+=== Route map ===
+
+Enable route viewing in the owning entity's QUARTIX settings after confirming QWS route access. Click '''View route''' on a non-private journey. The native dialog displays the cached route or requests it if needed. '''Load / refresh route''' becomes available when another attempt is allowed. Shared-vehicle requests wait for the owner's Journey log job when the route is not cached.
+
+The native modal contains no embedded navigation history or debug bar. Information and warnings remain in persistent alert blocks. The map connects QUARTIX positions; '''it does not calculate a road itinerary'''. Completed journeys show departure and arrival markers. Only open journeys show the in-progress note and lack a definitive arrival. Fewer than two points, missing data or incompatible data yield an unavailable state.
+
+A completed cached route does not call QUARTIX again. Requests for the same day are spaced at least fifteen minutes apart, subject to quotas. The dialog's periodic checks reread cache and permissions; they are not live GPS tracking.
+
+OpenStreetMap tiles are the default, without an API key and with visible attribution. An alternative HTTPS tile URL and attribution can be configured. The tile provider receives requests for the viewed map area, not QUARTIX secrets. Tile failure is reported separately from route unavailability.
+
+[[File:LMDBVehicleManagement-2026-09-quartix-route-anonymise.png|thumb|center|1000px|Completed journey in the native route dialog with persistent messages. The registration number and map background are blurred to protect locations; map attribution is retained.]]
+
+=== Retention and confidentiality ===
+
+Journeys and routes share one retention setting. A reduction immediately hides expired days; the Journey log job then purges them in batches. An increase allows gradual backfill of days still available from QUARTIX. Purging continues when only synchronisation is suspended, provided the module and Journey log job remain enabled; stopping either stops purging. Usage summaries retain their separate twelve-month window.
+
+Cached routes are encrypted. A journey becoming private or incompatible with the log loses access to its former route. GPS positions and tracks are excluded from module documents, exports and APIs. Driver identities, eco-driving scores and detailed speeds are not imported.
+
+=== QUARTIX troubleshooting ===
+
+{| class="wikitable"
+! Symptom !! Check
+|-
+| Connection test fails || Save all credentials, especially APPLICATION NAME. Record the displayed stage and HTTP status, without sharing credentials or raw API responses.
+|-
+| Data does not arrive || Check active link, synchronisation, installation date, execution-user rights and all four jobs. Backfill requires multiple runs.
+|-
+| Durations unavailable || Confirm the unit with QUARTIX and save it.
+|-
+| Missing route icon || Check GPS permission, route setting, privacy and retention.
+|-
+| Request pending || Check the owner's Journey log job, synchronisation and retry delay.
+|-
+| Blank map || Read the persistent message: missing points, expired session, withdrawn access and tile failure are different cases. Reload after module updates.
+|-
+| Values differ from QUARTIX || Compare the same vehicle, day, timezone, day boundary, coverage and synchronisation time; distinguish estimates from actual readings.
+|}
+
+== Frequently asked questions ==
+
+{| class="wikitable"
+! Situation !! Check or action
+|-
+| An action is missing || Check permissions, object status and Compatibility dependencies.
+|-
+| Dossier generation fails || Check model activation, Supplier invoices, PHP ZIP and vehicle/invoice rights.
+|-
+| A reading cannot be edited || Correct consumption-linked readings from their originating consumption record.
+|-
+| Certificate is not validated || Check state, scope, dates and evidence; a draft still requires review.
+|-
+| Due date missing || Complete qualification characteristics and dates required by the rule.
+|-
+| Reminders are not sent || Check activation, recipients, templates, Dolibarr email delivery and scheduled job results.
+|-
+| Expense cannot be changed || Check bank reconciliation or accounting transfer and use the native financial correction process.
+|-
+| Another entity's data appears || Check Environment and authorised Multicompany sharing.
+|}
+
+== Updates and limits ==
+
+Back up the database and documents before updating. Replace module files, then deactivate/reactivate to apply migrations and register native declarations while preserving settings. Read <code>ChangeLog.md</code>, check models and jobs, regenerate dossiers for layout changes and review bank settings before enabling consumption payments. Future calendar events use updated labels; existing history and validated inspections are not rewritten. QUARTIX setup requires its credentials, links and four jobs; old version 1.0.0 packages may lack the integration.
+
+Detailed extinguisher, pressure equipment, lifting accessory and refrigerant inspections are not preconfigured. Registration-document management, claims, premiums, deductibles and traffic fines are outside scope. Commercial purchase invoice management stays in native Supplier invoices. Periodic reminders require working scheduled jobs and email delivery. QUARTIX track export, eco-driving and automatic driver-assignment changes are not provided.
+
+== Sources and useful links ==
+
+* [https://github.com/mapiolca/lmdbvehiclemanagement Module source code]
+* [https://github.com/mapiolca/lmdbvehiclemanagement/blob/094fc89/README.md Original version 1.0.0 documentation]
+* [https://github.com/mapiolca/lmdbvehiclemanagement/blob/094fc89/ChangeLog.md Original version 1.0.0 changelog]
+* [https://github.com/mapiolca Author profile]
+
+[[Category:Complementary modules]]
+[[Category:DocUserEN]]

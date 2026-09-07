@@ -2,6 +2,10 @@
 
 ## À publier
 
+- Unités PTAC/PTRA corrigées dans les formulaires et la fiche véhicule : réutilisation de la traduction native Dolibarr du kilogramme, sans affichage de la clé technique `UnitKg`.
+
+- Documentation utilisateur du wiki complétée pour QUARTIX QWS v2 : configuration, associations, droits GPS, quatre travaux planifiés, utilisation, trajets, cartes et conservation. Notices complètes en français, anglais, italien, allemand et espagnol ; illustrations anonymisées pour la publication.
+
 - Boutons « Activer » et « Résilier » des contrats d’assurance harmonisés avec les actions natives Dolibarr : même composant que « Modifier », sans style spécifique au module. Actions protégées par token CSRF et droits d’écriture conservés.
 
 - Traductions Multicompany complétées en français et en anglais pour le partage des contrôles réglementaires, de leur numérotation et des dictionnaires du module : libellés, titres, descriptions et infobulles manquants.

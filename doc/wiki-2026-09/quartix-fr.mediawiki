@@ -1,0 +1,126 @@
+== Intégration de l’API QUARTIX ==
+
+L’intégration utilise '''QUARTIX QWS v2''' en lecture seule pour compléter le suivi du parc. Elle récupère les estimations kilométriques, la dernière position, les synthèses d’utilisation et le journal des trajets. Les tracés sont chargés à la demande. Elle ne modifie ni le compte QUARTIX, ni les affectations de conducteurs dans Dolibarr.
+
+=== Prérequis et droits ===
+
+* Disposer d’un accès QWS fourni par QUARTIX, avec le code client, le login, le mot de passe et le '''nom d’application (APPLICATION NAME)'''. Faire confirmer l’accès aux données souhaitées, notamment aux tracés.
+* Utiliser une distribution du module contenant cette intégration. Le développement décrit au 7 septembre 2026 complète la version 1.0.0 ; le numéro 1.0.0 seul ne garantit pas sa présence dans une ancienne archive.
+* Vérifier dans '''Compatibilité''' la disponibilité de cURL, OpenSSL et du chiffrement natif avec la clé d’instance Dolibarr. La carte utilise le composant Leaflet fourni par Dolibarr.
+* Activer les '''Travaux planifiés''' et leur exécution effective sur le serveur pour automatiser les imports.
+* Attribuer explicitement les droits nécessaires : lecture des véhicules, consultation des positions GPS et synchronisation QUARTIX sont distinctes. L’utilisateur interne qui exécute les travaux doit aussi pouvoir gérer les relevés kilométriques. Le droit de synchronisation ne donne pas accès au GPS.
+
+Les réglages et associations sont administrés dans l’environnement propriétaire. Les utilisateurs externes n’accèdent pas aux fonctions QUARTIX. Un véhicule partagé reste synchronisé par son propriétaire ; la consultation depuis une autre entité respecte les partages et les droits.
+
+=== Configurer la connexion ===
+
+# Après déploiement, désactiver puis réactiver le module pour enregistrer les tables, droits et travaux nécessaires. Les réglages existants sont conservés.
+# Ouvrir la roue dentée du module, puis l’onglet '''QUARTIX'''.
+# Saisir le code client, le login, le mot de passe et recopier exactement l’'''APPLICATION NAME''' fourni par QUARTIX. Un mot de passe laissé vide conserve celui enregistré.
+# Confirmer l’'''interprétation des horodatages'''. Le mode '''Convention QWS''' respecte le décalage horaire explicite lorsqu’il est fourni et utilise sinon l’heure locale du véhicule. Les autres modes ne doivent être utilisés qu’après confirmation de la convention du compte.
+# Confirmer auprès de QUARTIX l’unité des durées. Tant qu’elle n’est pas confirmée dans les réglages, les durées restent indisponibles ; elles ne sont pas transformées en zéros.
+# Définir la '''Conservation des trajets (jours)''' selon le besoin. La valeur initiale est de 30 jours lorsqu’aucun réglage n’existe.
+# Cliquer sur '''Enregistrer''', puis sur '''Tester la connexion et charger les véhicules'''. Le catalogue reçu permet d’associer les véhicules.
+# Activer '''Synchronisation QUARTIX''' après configuration et vérifier les quatre travaux planifiés décrits ci-dessous.
+
+Les identifiants et jetons sont propres à chaque environnement. Le mot de passe enregistré n’est pas réaffiché. Une modification des identifiants renouvelle l’authentification de l’environnement concerné.
+
+=== Associer un véhicule et gérer un boîtier ===
+
+# Depuis les réglages QUARTIX, sélectionner le véhicule Dolibarr puis son véhicule dans le catalogue QUARTIX.
+# Confirmer son '''fuseau IANA''' et la '''date et heure réelles d’installation du boîtier''' sur ce véhicule. Le début de journée est issu du paramétrage QUARTIX.
+# Enregistrer l’association, puis contrôler les premières valeurs dans l’onglet '''Utilisation QUARTIX''' de la fiche véhicule.
+
+La date d’installation borne les nouveaux imports : aucune position ni estimation antérieure n’est importée ; les synthèses commencent à la première journée QUARTIX complète après installation. Les anciennes associations migrées sans date restent sans date inventée. Après modification du fuseau ou du début de journée dans QUARTIX, revoir l’association avant de reprendre les imports.
+
+L’interrupteur de la ligne permet de '''suspendre''' puis de réactiver une association. L’action '''Dissocier''' propose deux cas à distinguer :
+
+* '''Réaffectation du boîtier''' : conserver les imports de l’ancien véhicule avant d’associer le boîtier à un autre véhicule. Les tracés déjà chargés restent consultables jusqu’à expiration ; les nouvelles demandes de l’ancienne association sont arrêtées.
+* '''Association erronée''' : supprimer définitivement les trajets, synthèses et estimations QUARTIX du véhicule. Lire la confirmation avant de valider.
+
+Dans les deux cas, la dernière position est effacée et le boîtier redevient disponible. Les relevés manuels et ceux des pleins/recharges sont conservés. Une nouvelle association ne doit pas chevaucher des journées dont l’historique a été conservé sur le même véhicule.
+
+=== Activer les quatre travaux planifiés ===
+
+Les tâches sont installées '''désactivées''', avec une fréquence initiale de quinze minutes. Ouvrir les '''Travaux planifiés QUARTIX''' depuis les réglages, vérifier l’utilisateur d’exécution, activer les tâches puis contrôler leur dernier résultat.
+
+{| class="wikitable"
+! Travail !! Rôle
+|-
+| QUARTIX — dernières positions || Actualiser la dernière position, par lots de véhicules.
+|-
+| QUARTIX — kilométrage quotidien || Importer les estimations kilométriques, avec traitement quotidien des véhicules.
+|-
+| QUARTIX — utilisation et reprise historique || Importer les journées terminées et reprendre progressivement l’historique d’utilisation.
+|-
+| QUARTIX — journal des trajets || Relire la journée courante et les journées ouvertes, compléter l’historique, traiter les demandes de tracés et purger les trajets expirés.
+|}
+
+La fréquence de réveil n’est pas une garantie de mise à jour de toute la flotte en quinze minutes. Les lots, la taille du parc, le temps de réponse et les quotas QUARTIX influencent le délai réel. Une limitation de quota ou une indisponibilité applique un délai de reprise commun à l’environnement. Éviter de multiplier les tests de connexion pendant ce délai.
+
+=== Lire les données du véhicule et le tableau de bord ===
+
+L’onglet '''Utilisation QUARTIX''' du véhicule regroupe l’état de l’association et les informations importées accessibles. Le menu '''Tableau de bord''' donne une synthèse du parc avec filtres, indicateurs et graphiques natifs Dolibarr.
+
+* '''Kilométrage''' : les valeurs importées sont des estimations QUARTIX, identifiées comme telles. Elles ne remplacent pas les relevés réels ni ceux des consommations. Une contradiction avec les relevés réels est signalée ; elle ne bloque pas leur saisie ou correction.
+* '''Dernière position''' : elle nécessite le droit GPS. Vérifier sa date ; une position ancienne ne prouve ni une panne ni une immobilisation.
+* '''Utilisation''' : distances, nombre de trajets, journées actives et couverture des journées renseignées. Les synthèses quotidiennes sont conservées douze mois. La journée en cours n’entre pas dans les synthèses terminées.
+* '''Données manquantes''' : une journée inconnue est distinguée d’une journée renseignée sans activité. Les totaux ne portent que sur les journées renseignées.
+* '''Tableau de bord''' : la période initiale couvre les trente journées terminées précédentes. Les totaux et l’évolution portent sur toute la sélection ; la comparaison par véhicule présente les vingt distances les plus élevées. Les lieux et liens GPS sont absents sans le droit correspondant.
+
+L’affichage des données déjà importées ne déclenche pas de nouvel appel QWS. Les consommations restent calculées à partir de leurs relevés réels.
+
+=== Consulter le journal des trajets ===
+
+# Ouvrir l’onglet '''Trajets''' du véhicule avec le droit GPS.
+# Choisir la période, initialement les sept derniers jours, puis appliquer les filtres utiles et lancer la recherche.
+# Lire les départs, arrivées, distances et états. Utiliser les tris, la pagination et le sélecteur de colonnes pour adapter l’affichage.
+# Vérifier la couverture des journées et la dernière synchronisation avant de conclure à l’absence de trajet.
+
+Les horaires affichés suivent le fuseau de la session Dolibarr ; la journée de rattachement conserve le découpage QUARTIX du véhicule. Une arrivée provisoire n’est pas présentée comme une arrivée définitive.
+
+'''Les trajets privés sont protégés.''' Seuls le jour et les distances sont conservés dans leur résumé : pas d’adresse, de coordonnées, d’horaire précis, de durée ou de tracé. La même protection s’applique lorsque les indications nécessaires de confidentialité manquent.
+
+=== Afficher le tracé sur la carte ===
+
+# Dans les réglages QUARTIX de l’environnement propriétaire, activer '''Consultation des tracés QUARTIX''' après vérification de l’accès QWS correspondant.
+# Dans le journal, cliquer sur le pictogramme '''Voir le tracé''' d’un trajet non privé.
+# Le dialogue affiche le tracé en cache ou déclenche son chargement si nécessaire. Le bouton '''Charger / actualiser le tracé''' permet une nouvelle demande lorsque le délai autorisé est écoulé.
+# Pour un véhicule partagé, une demande non disponible attend le passage du travail '''Journal des trajets''' de l’environnement propriétaire.
+
+La modale utilise le dialogue natif Dolibarr, sans historique de navigation ni barre de débogage intégrés. Les informations et avertissements restent affichés dans des blocs d’alerte ; ce ne sont pas des notifications éphémères.
+
+La carte relie les points transmis par QUARTIX ; '''elle ne recalcule pas un itinéraire routier'''. Un trajet terminé dispose de marqueurs de départ et d’arrivée. La note '''Trajet en cours''' et l’absence d’arrivée définitive concernent uniquement les trajets encore ouverts. Un tracé absent ou comportant moins de deux points est signalé comme indisponible.
+
+Un tracé terminé déjà en cache ne provoque pas de nouvel appel QUARTIX. Les nouvelles tentatives d’une même journée sont espacées d’au moins quinze minutes, sous réserve des quotas. La vérification périodique du dialogue relit le cache et les autorisations ; elle n’est pas un suivi GPS en direct.
+
+Le fond de carte utilise OpenStreetMap par défaut, sans clé API, avec attribution visible. Un autre fournisseur peut être configuré par URL HTTPS et attribution. Le navigateur demande les tuiles de la zone affichée au fournisseur, sans lui envoyer les secrets QUARTIX. Une panne du fond de carte est signalée séparément d’une indisponibilité du tracé.
+
+=== Conservation et confidentialité ===
+
+Les trajets et leurs tracés suivent la même durée de conservation. Réduire cette durée masque immédiatement les journées expirées ; le travail du journal supprime ensuite leurs données par lots. Augmenter la durée permet une reprise progressive des journées encore disponibles chez QUARTIX.
+
+La purge du journal reste active lorsque seule la synchronisation est suspendue, à condition que le module et le travail '''Journal des trajets''' restent actifs. Désactiver le module ou ce travail arrête la purge. Les synthèses d’utilisation gardent leur conservation distincte de douze mois.
+
+Les tracés en cache sont chiffrés. Un trajet reclassé privé ou devenu incompatible avec le journal ne doit plus afficher son ancien tracé. Les positions et parcours GPS ne sont pas exposés dans les documents, exports ou API du module. Aucun conducteur, score d’écoconduite ou détail de vitesse n’est importé par cette intégration.
+
+=== Diagnostic QUARTIX ===
+
+{| class="wikitable"
+! Situation !! Vérification ou action
+|-
+| Le test de connexion échoue || Enregistrer tous les champs, notamment APPLICATION NAME. Relever l’étape et le statut HTTP affichés, sans diffuser les identifiants ni les réponses API brutes.
+|-
+| Les données n’arrivent pas || Vérifier l’association active, la synchronisation, la date d’installation, les droits du compte d’exécution et les quatre travaux planifiés. Une reprise historique demande plusieurs passages.
+|-
+| Les durées sont indisponibles || Faire confirmer leur unité auprès de QUARTIX puis la renseigner dans les réglages.
+|-
+| Le pictogramme de tracé manque || Vérifier le droit GPS, l’activation des tracés, la confidentialité du trajet et la durée de conservation.
+|-
+| La demande reste en attente || Vérifier le travail du journal et la synchronisation dans l’environnement propriétaire, ainsi que les délais de reprise.
+|-
+| La carte reste vide || Lire le message persistant : tracé absent/incomplet, session expirée, accès retiré ou fond de carte indisponible sont des situations différentes. Après mise à jour du module, recharger la page.
+|-
+| Les valeurs diffèrent de QUARTIX || Comparer le même véhicule, la même journée, le fuseau, le début de journée, la couverture et la date de synchronisation. Distinguer estimation kilométrique et relevé réel.
+|}
+
