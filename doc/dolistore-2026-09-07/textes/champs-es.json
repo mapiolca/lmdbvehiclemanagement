@@ -1,0 +1,28 @@
+{
+  "name": "Gestión de vehículos y maquinaria",
+  "title": "Gestión de vehículos y maquinaria — Tome el control de su flota",
+  "short": "Su flota sigue en marcha. Usted mantiene el control. Gestione asignaciones, kilometraje, consumos, mantenimiento, seguros e inspecciones en Dolibarr. Reúna el historial disponible y los documentos de cada vehículo en un expediente PDF/ZIP.",
+  "short_quartix": "Su flota sigue en marcha. Usted mantiene el control. Gestione asignaciones, consumos, mantenimiento, seguros, inspecciones y expedientes PDF/ZIP en Dolibarr. La integración QUARTIX añade estimaciones de kilometraje, datos de uso y trayectos disponibles.",
+  "seo_title": "Gestión de vehículos y maquinaria para Dolibarr",
+  "seo_description": "Gestione su flota en Dolibarr: asignaciones, consumos, mantenimiento, seguros, inspecciones, expedientes PDF/ZIP e integración QUARTIX opcional.",
+  "keywords": [
+    "gestión de flotas",
+    "vehículos",
+    "maquinaria",
+    "Dolibarr",
+    "consumo de combustible",
+    "recarga eléctrica",
+    "mantenimiento",
+    "seguros",
+    "inspecciones",
+    "Multicompany",
+    "QUARTIX"
+  ],
+  "lengths": {
+    "title": 63,
+    "short": 239,
+    "short_quartix": 253,
+    "seo_title": 47,
+    "seo_description": 144
+  }
+}

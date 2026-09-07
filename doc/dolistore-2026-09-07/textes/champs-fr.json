@@ -1,0 +1,29 @@
+{
+  "name": "Gestion des véhicules et engins",
+  "title": "Gestion des véhicules et engins — Prenez le contrôle de votre parc",
+  "short": "Votre parc roule. Vous gardez le contrôle. Affectations, kilométrages, consommations, entretiens, assurances et contrôles : pilotez vos véhicules et engins dans Dolibarr. Rassemblez leur historique disponible et leurs documents dans un dossier PDF/ZIP.",
+  "short_quartix": "Votre parc roule. Vous gardez le contrôle. Affectations, consommations, entretiens, assurances, contrôles et dossier PDF/ZIP : pilotez votre parc dans Dolibarr. L’intégration QUARTIX ajoute les kilométrages estimés, l’utilisation et les trajets disponibles.",
+  "seo_title": "Gestion des véhicules et engins pour Dolibarr",
+  "seo_description": "Pilotez votre parc dans Dolibarr : affectations, consommations, entretiens, assurances, contrôles, dossier PDF/ZIP et intégration QUARTIX en option.",
+  "keywords": [
+    "gestion de parc",
+    "véhicules",
+    "engins",
+    "Dolibarr",
+    "consommation carburant",
+    "recharge électrique",
+    "entretien",
+    "assurance",
+    "contrôle technique",
+    "VGP",
+    "Multicompany",
+    "QUARTIX"
+  ],
+  "lengths": {
+    "title": 66,
+    "short": 252,
+    "short_quartix": 257,
+    "seo_title": 45,
+    "seo_description": 148
+  }
+}

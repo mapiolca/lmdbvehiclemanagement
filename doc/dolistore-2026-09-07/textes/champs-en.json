@@ -1,0 +1,28 @@
+{
+  "name": "Vehicle and machinery management",
+  "title": "Vehicle and machinery management — Take control of your fleet",
+  "short": "Keep your fleet moving. Stay in control. Manage assignments, mileage, consumption, maintenance, insurance and inspections in Dolibarr. Bring each vehicle’s available history and documents together in a PDF/ZIP dossier.",
+  "short_quartix": "Keep your fleet moving. Stay in control. Manage vehicles and machinery in Dolibarr: assignments, consumption, maintenance, insurance, inspections and PDF/ZIP dossiers. QUARTIX integration adds available mileage estimates, usage data and trip records.",
+  "seo_title": "Vehicle and machinery management for Dolibarr",
+  "seo_description": "Manage assignments, consumption, maintenance, insurance and inspections in Dolibarr, with PDF/ZIP vehicle dossiers and optional QUARTIX integration.",
+  "keywords": [
+    "fleet management",
+    "vehicles",
+    "machinery",
+    "Dolibarr",
+    "fuel consumption",
+    "electric charging",
+    "maintenance",
+    "insurance",
+    "inspections",
+    "Multicompany",
+    "QUARTIX"
+  ],
+  "lengths": {
+    "title": 61,
+    "short": 218,
+    "short_quartix": 250,
+    "seo_title": 45,
+    "seo_description": 148
+  }
+}

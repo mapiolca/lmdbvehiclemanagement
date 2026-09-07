@@ -1,0 +1,67 @@
+{
+  "title": "Gestion des véhicules et engins",
+  "voice": "Microsoft Julie",
+  "voice_rate": 0,
+  "scenes": [
+    {
+      "id": "intro", "layout": "hero", "title": "Votre parc roule.\nVous gardez\nle contrôle.",
+      "detail": "Gestion des véhicules et engins\npour Dolibarr",
+      "images": ["illustrations/01-couverture-vehicules-engins.png"],
+      "speech": ["Votre parc roule. Vous gardez le contrôle.", "Découvrez Gestion des véhicules et engins, pour Dolibarr."]
+    },
+    {
+      "id": "fiche", "layout": "screen", "title": "Chaque véhicule a sa fiche.",
+      "detail": "CARACTÉRISTIQUES · DOCUMENTS · ASSURANCE",
+      "images": ["captures/01-fiche-vehicule.png"],
+      "speech": ["Retrouvez les caractéristiques et les documents utiles de chaque véhicule."]
+    },
+    {
+      "id": "affectations", "layout": "screen", "title": "Vous savez à qui il est affecté.",
+      "detail": "UTILISATEURS · PÉRIODES · AFFECTATION PRINCIPALE",
+      "images": ["captures/06-affectations.png"],
+      "speech": ["Identifiez les utilisateurs affectés et leurs périodes d’utilisation."]
+    },
+    {
+      "id": "consommations", "layout": "screen", "title": "Vos consommations deviennent lisibles.",
+      "detail": "CARBURANT · RECHARGE ÉLECTRIQUE · ADDITIFS",
+      "images": ["captures/03-synthese-consommations.png"],
+      "speech": ["Carburant, recharge électrique, additifs :", "visualisez vos consommations et les coûts enregistrés."]
+    },
+    {
+      "id": "controles", "layout": "screen", "title": "Les échéances, sous les yeux.",
+      "detail": "CONTRÔLES · DATES · STATUTS",
+      "images": ["captures/02-echeancier-controles.png"],
+      "speech": ["Repérez les contrôles à préparer et les échéances à suivre."]
+    },
+    {
+      "id": "assurances", "layout": "screen", "title": "Vos assurances à portée de main.",
+      "detail": "CONTRATS · COUVERTURES · ATTESTATIONS",
+      "images": ["captures/05-contrat-assurance.png"],
+      "speech": ["Gardez les contrats d’assurance et les attestations à portée de main."]
+    },
+    {
+      "id": "interventions", "layout": "screen", "title": "De l’intervention à sa facture.",
+      "detail": "ÉVÉNEMENT · IMMOBILISATION · FACTURE FOURNISSEUR",
+      "images": ["captures/04-intervention-facture.png"],
+      "speech": ["Reliez les interventions aux factures fournisseurs, directement dans Dolibarr."]
+    },
+    {
+      "id": "dossier", "layout": "document", "title": "Un dossier.\nL’essentiel réuni.",
+      "detail": "PDF + ZIP\nHistorique disponible\nPièces éligibles",
+      "images": ["captures/09-dossier-pdf.png"],
+      "speech": ["Réunissez l’historique disponible et les pièces éligibles", "dans un dossier PDF et ZIP."]
+    },
+    {
+      "id": "quartix", "layout": "pair", "title": "Déjà équipé QUARTIX ?",
+      "detail": "INTÉGRATION OPTIONNELLE · UTILISATION ET TRAJETS SYNCHRONISÉS",
+      "images": ["captures/10-quartix-utilisation.png", "captures/11-quartix-trajets.png"],
+      "speech": ["Vous êtes équipé Quartix ? Retrouvez aussi l’utilisation et les trajets synchronisés.", "Un accès et des équipements Quartix sont nécessaires."]
+    },
+    {
+      "id": "fin", "layout": "hero", "title": "Un parc mieux\ndocumenté.\nUne équipe mieux\ninformée.",
+      "detail": "Gestion des véhicules et engins\npour Dolibarr",
+      "images": ["illustrations/01-couverture-vehicules-engins.png"],
+      "speech": ["Un parc mieux documenté. Une équipe mieux informée."]
+    }
+  ]
+}

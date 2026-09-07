@@ -1,0 +1,28 @@
+{
+  "name": "Fahrzeug- und Maschinenverwaltung",
+  "title": "Fahrzeug- und Maschinenverwaltung — Ihr Fuhrpark im Griff",
+  "short": "Ihr Fuhrpark bleibt in Bewegung. Sie behalten den Überblick. Verwalten Sie Zuweisungen, Kilometerstände, Verbrauch, Wartung, Versicherungen und Prüfungen in Dolibarr. Bündeln Sie die vorhandene Historie und Dokumente in einer Fahrzeugakte als PDF/ZIP.",
+  "short_quartix": "Ihr Fuhrpark bleibt in Bewegung. Sie behalten den Überblick. Verwalten Sie Zuweisungen, Verbrauch, Wartung, Versicherungen, Prüfungen und PDF/ZIP-Fahrzeugakten in Dolibarr. Die QUARTIX-Integration ergänzt verfügbare Kilometerstandsschätzungen, Nutzungsdaten und Fahrten.",
+  "seo_title": "Fahrzeug- und Maschinenverwaltung für Dolibarr",
+  "seo_description": "Verwalten Sie Ihren Fuhrpark in Dolibarr: Zuweisungen, Verbrauch, Wartung, Versicherungen, Prüftermine, PDF/ZIP-Fahrzeugakten und optionale QUARTIX-Anbindung.",
+  "keywords": [
+    "Fuhrparkverwaltung",
+    "Fahrzeuge",
+    "Baumaschinen",
+    "Dolibarr",
+    "Kraftstoffverbrauch",
+    "Ladevorgänge",
+    "Wartung",
+    "Versicherung",
+    "Prüftermine",
+    "Multicompany",
+    "QUARTIX"
+  ],
+  "lengths": {
+    "title": 57,
+    "short": 251,
+    "short_quartix": 270,
+    "seo_title": 46,
+    "seo_description": 158
+  }
+}

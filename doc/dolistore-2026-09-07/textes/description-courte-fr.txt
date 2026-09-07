@@ -1,0 +1,1 @@
+Votre parc roule. Vous gardez le contrôle. Affectations, kilométrages, consommations, entretiens, assurances et contrôles : pilotez vos véhicules et engins dans Dolibarr. Rassemblez leur historique disponible et leurs documents dans un dossier PDF/ZIP.

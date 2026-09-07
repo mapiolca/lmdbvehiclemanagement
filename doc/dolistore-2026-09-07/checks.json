@@ -1,0 +1,54 @@
+{
+  "prepared": "2026-09-07",
+  "screenshots": 12,
+  "illustrations": 3,
+  "source_copies_identical": true,
+  "screenshots_without_text_or_exif_metadata": true,
+  "php_modified": false,
+  "source_commit": "9dd954cee19bd91ae3ddbcfac17d883b5e3b3997",
+  "en": {
+    "name_chars": 32,
+    "short_chars": 218,
+    "short_quartix_chars": 250,
+    "long_words": 199,
+    "long_quartix_words": 253,
+    "seo_title_chars": 45,
+    "seo_description_chars": 148
+  },
+  "fr": {
+    "name_chars": 31,
+    "short_chars": 252,
+    "short_quartix_chars": 257,
+    "long_words": 225,
+    "long_quartix_words": 286,
+    "seo_title_chars": 45,
+    "seo_description_chars": 148
+  },
+  "de": {
+    "name_chars": 33,
+    "short_chars": 251,
+    "short_quartix_chars": 270,
+    "long_words": 193,
+    "long_quartix_words": 249,
+    "seo_title_chars": 46,
+    "seo_description_chars": 158
+  },
+  "es": {
+    "name_chars": 33,
+    "short_chars": 239,
+    "short_quartix_chars": 253,
+    "long_words": 222,
+    "long_quartix_words": 282,
+    "seo_title_chars": 47,
+    "seo_description_chars": 144
+  },
+  "it": {
+    "name_chars": 32,
+    "short_chars": 244,
+    "short_quartix_chars": 257,
+    "long_words": 225,
+    "long_quartix_words": 280,
+    "seo_title_chars": 45,
+    "seo_description_chars": 151
+  }
+}

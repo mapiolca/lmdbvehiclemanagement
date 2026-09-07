@@ -1,0 +1,1 @@
+Ihr Fuhrpark bleibt in Bewegung. Sie behalten den Überblick. Verwalten Sie Zuweisungen, Kilometerstände, Verbrauch, Wartung, Versicherungen und Prüfungen in Dolibarr. Bündeln Sie die vorhandene Historie und Dokumente in einer Fahrzeugakte als PDF/ZIP.

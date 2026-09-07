@@ -1,0 +1,88 @@
+{
+  "prepared": "2026-09-07",
+  "source_pdf_pages_reviewed": [
+    1,
+    2,
+    3
+  ],
+  "languages": [
+    "en",
+    "fr",
+    "de",
+    "es",
+    "it"
+  ],
+  "local_links_checked": 113,
+  "missing_targets": [],
+  "html_structure": "balanced; submission fragments use h2/h3/p/ul/li/strong only",
+  "three_submission_fields_checked": 10,
+  "long_descriptions_under_300_words": true,
+  "counts": {
+    "en": {
+      "name_characters": 32,
+      "short_characters": 218,
+      "long_words": 199
+    },
+    "en-avec-quartix": {
+      "name_characters": 32,
+      "short_characters": 250,
+      "long_words": 253
+    },
+    "fr": {
+      "name_characters": 31,
+      "short_characters": 252,
+      "long_words": 225
+    },
+    "fr-avec-quartix": {
+      "name_characters": 31,
+      "short_characters": 257,
+      "long_words": 286
+    },
+    "de": {
+      "name_characters": 33,
+      "short_characters": 251,
+      "long_words": 193
+    },
+    "de-avec-quartix": {
+      "name_characters": 33,
+      "short_characters": 270,
+      "long_words": 249
+    },
+    "es": {
+      "name_characters": 33,
+      "short_characters": 239,
+      "long_words": 222
+    },
+    "es-avec-quartix": {
+      "name_characters": 33,
+      "short_characters": 253,
+      "long_words": 282
+    },
+    "it": {
+      "name_characters": 32,
+      "short_characters": 244,
+      "long_words": 225
+    },
+    "it-avec-quartix": {
+      "name_characters": 32,
+      "short_characters": 257,
+      "long_words": 280
+    }
+  },
+  "browser": {
+    "current_preview_width": 574,
+    "document_width": 559,
+    "horizontal_overflow": false,
+    "short_description_fully_visible": true,
+    "language_switch": "EN/FR/DE/ES/IT passed",
+    "quartix_toggle": "Italian with/without verified; exported variants checked for all languages",
+    "copy_name": "success message verified",
+    "copy_html": "success message and prepared fallback content verified; browser clipboard read API returned empty, so actual clipboard bytes not confirmed",
+    "console_errors": [],
+    "prior_pack_review": "Unchanged illustrations and screenshots were visually inspected in the initial pack; prior desktop 1280 and mobile 390 checks are not a new test of this revised page"
+  },
+  "dolistore_publication": false,
+  "live_dolibarr_retested": false,
+  "phpstan": "Not applicable: documentary and marketing files only",
+  "video_review": "video/revue-finale.json"
+}

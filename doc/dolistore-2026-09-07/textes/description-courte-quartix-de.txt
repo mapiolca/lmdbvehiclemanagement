@@ -1,0 +1,1 @@
+Ihr Fuhrpark bleibt in Bewegung. Sie behalten den Überblick. Verwalten Sie Zuweisungen, Verbrauch, Wartung, Versicherungen, Prüfungen und PDF/ZIP-Fahrzeugakten in Dolibarr. Die QUARTIX-Integration ergänzt verfügbare Kilometerstandsschätzungen, Nutzungsdaten und Fahrten.

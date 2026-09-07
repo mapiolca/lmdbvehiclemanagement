@@ -1,0 +1,27 @@
+{
+  "visual_review": "All 10 scene layouts reviewed; final balanced subtitles and supplier invoice hold rechecked.",
+  "browser": {
+    "url": "http://127.0.0.1:8766/index.html#video",
+    "duration": 68.8,
+    "videoWidth": 1920,
+    "videoHeight": 1080,
+    "playback_verified_seconds": 26.078781,
+    "media_error": null,
+    "paused_after_review": true
+  },
+  "integrated_loudness_lufs": -16.0,
+  "true_peak_dbfs": -1.5,
+  "faststart_moov_before_mdat": true,
+  "mp4_atoms": [
+    "ftyp",
+    "moov",
+    "free",
+    "mdat"
+  ],
+  "index_local_file_links_checked": 70,
+  "missing_targets": [],
+  "source_images_unchanged": true,
+  "python_syntax": "passed",
+  "phpstan": "Not applicable: no PHP change",
+  "deployment": "Local marketing preview only; no Dolibarr deployment or publication."
+}

@@ -1,0 +1,12 @@
+{
+  "language": "en",
+  "includes_quartix": false,
+  "module_name": "Vehicle and machinery management",
+  "short_description": "Keep your fleet moving. Stay in control. Manage assignments, mileage, consumption, maintenance, insurance and inspections in Dolibarr. Bring each vehicle’s available history and documents together in a PDF/ZIP dossier.",
+  "long_description_html": "<h2>Keep your fleet moving. Stay in control.</h2><p>Scattered records slow your team down. <strong>Vehicle and machinery management</strong> brings your fleet into Dolibarr, connecting day-to-day operations, upcoming deadlines and supporting documents.</p><h3>Everything you need to keep track</h3><ul><li><strong>Know who uses each vehicle:</strong> assignments, usage periods and mileage history.</li><li><strong>Understand consumption:</strong> fuel, electric charging, additives, recorded costs and charts.</li><li><strong>Plan ahead:</strong> inspection schedules, insurance contracts, certificates and configurable reminders.</li><li><strong>Connect maintenance to costs:</strong> events, breakdowns and incidents linked to Dolibarr supplier invoices.</li><li><strong>Build a vehicle dossier:</strong> a PDF summary and ZIP containing eligible supporting documents.</li><li><strong>Work in your ERP:</strong> granular permissions, native attachments and Multicompany compatibility.</li></ul><p>For construction companies, installers, maintenance teams and fleet managers who need information they can find and use.</p><p><strong>Give your fleet a central place in Dolibarr — from the first mileage reading to the vehicle dossier.</strong></p><h3>Before you start</h3><ul><li>Dolibarr 20+, PHP 8.0+, MySQL/MariaDB. Module interface: French and English.</li><li>Supplier Invoices and PHP ZipArchive are required for the vehicle dossier. Automated reminders require configured, enabled scheduled jobs.</li><li>Inspection tracking uses a French regulatory catalogue; it does not perform inspections or produce official reports.</li><li>PDF/ZIP dossiers exclude consumption receipts, their linked bank transaction receipts and GPS data.</li></ul>",
+  "counts": {
+    "name_characters": 32,
+    "short_characters": 218,
+    "long_words": 199
+  }
+}

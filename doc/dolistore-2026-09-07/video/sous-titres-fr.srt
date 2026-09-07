@@ -1,0 +1,58 @@
+1
+00:00:00,400 --> 00:00:04,272
+Votre parc roule. Vous gardez le contrôle.
+
+2
+00:00:04,432 --> 00:00:08,427
+Découvrez Gestion des véhicules et engins, pour Dolibarr.
+
+3
+00:00:09,400 --> 00:00:14,023
+Retrouvez les caractéristiques et les
+documents utiles de chaque véhicule.
+
+4
+00:00:15,000 --> 00:00:19,593
+Identifiez les utilisateurs affectés et leurs périodes d’utilisation.
+
+5
+00:00:20,560 --> 00:00:24,147
+Carburant, recharge électrique, additifs :
+
+6
+00:00:24,307 --> 00:00:27,933
+visualisez vos consommations et les coûts enregistrés.
+
+7
+00:00:28,880 --> 00:00:32,938
+Repérez les contrôles à préparer et les échéances à suivre.
+
+8
+00:00:33,880 --> 00:00:38,059
+Gardez les contrats d’assurance et les attestations à portée de main.
+
+9
+00:00:39,000 --> 00:00:44,217
+Reliez les interventions aux factures
+fournisseurs, directement dans Dolibarr.
+
+10
+00:00:45,160 --> 00:00:49,030
+Réunissez l’historique disponible et les pièces éligibles
+
+11
+00:00:49,190 --> 00:00:51,753
+dans un dossier PDF et ZIP.
+
+12
+00:00:52,720 --> 00:00:58,963
+Vous êtes équipé Quartix ? Retrouvez aussi
+l’utilisation et les trajets synchronisés.
+
+13
+00:00:59,123 --> 00:01:02,939
+Un accès et des équipements Quartix sont nécessaires.
+
+14
+00:01:03,880 --> 00:01:08,237
+Un parc mieux documenté. Une équipe mieux informée.

@@ -1,0 +1,112 @@
+{
+  "duration_seconds": 68.8,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "fps": 25,
+  "voice": "Microsoft Julie",
+  "voice_type": "Windows local speech synthesis",
+  "audio": "AAC mono 48 kHz; integrated loudness target -16 LUFS",
+  "burned_in_subtitles": true,
+  "embedded_optional_subtitles": "fra / mov_text / not default",
+  "subtitle_cues": 14,
+  "source_type": "Animated genuine screenshots; no live screen recording",
+  "full_decode_errors": "",
+  "bytes": 4147105,
+  "sha256": "7227a3011f03486e6e6eb5ca05453ead84bbd7be2e2bb14c1f100e33e1aab30b",
+  "sources": [
+    {
+      "path": "captures/01-fiche-vehicule.png",
+      "sha256": "97d6d5ec6b09b8afdc2445948d2d70c5ba91f57a09dc629eb90397db8378598a"
+    },
+    {
+      "path": "captures/02-echeancier-controles.png",
+      "sha256": "65cfab2ea3fd9d0b3d0059b272d846d6ea447a1bdc6b892949c0668f0d741e76"
+    },
+    {
+      "path": "captures/03-synthese-consommations.png",
+      "sha256": "8aacb1ed118c16f88f4d203145adc0774c2379ec117701e6fbb9c62dc3c979e0"
+    },
+    {
+      "path": "captures/04-intervention-facture.png",
+      "sha256": "4d3a7e467949ce6c510704758ef4fbbb7bddb1e865302b19bfe894a9296b91f9"
+    },
+    {
+      "path": "captures/05-contrat-assurance.png",
+      "sha256": "f0d12731a76aa67b21b8dd5aef80d78c5421e86b8e0ee32ab308df79bc6780f8"
+    },
+    {
+      "path": "captures/06-affectations.png",
+      "sha256": "ab33e7511fadfa1ac393cdfd6c3d283a6a749ec4928c4e279a6fc46264cd2168"
+    },
+    {
+      "path": "captures/09-dossier-pdf.png",
+      "sha256": "199054ffc74f3bd82fc852f06da0c549bfecc1500531e25a774574203d0bc49b"
+    },
+    {
+      "path": "captures/10-quartix-utilisation.png",
+      "sha256": "8ed0f14bcca85dea86d44981bc2605f3811ad9172abfb80f5dfa9d61fd472e1a"
+    },
+    {
+      "path": "captures/11-quartix-trajets.png",
+      "sha256": "a405d26d018c58675f789fa84e57adbac38b5904c1c822eaf24fe5eca96fa1c5"
+    },
+    {
+      "path": "illustrations/01-couverture-vehicules-engins.png",
+      "sha256": "bf3340df61c79681000eb336f962504060cb5ec2a5de8b4c21348aef326814df"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "intro",
+      "start": 0,
+      "duration": 9.0
+    },
+    {
+      "id": "fiche",
+      "start": 9.0,
+      "duration": 5.6
+    },
+    {
+      "id": "affectations",
+      "start": 14.6,
+      "duration": 5.56
+    },
+    {
+      "id": "consommations",
+      "start": 20.16,
+      "duration": 8.32
+    },
+    {
+      "id": "controles",
+      "start": 28.48,
+      "duration": 5.0
+    },
+    {
+      "id": "assurances",
+      "start": 33.48,
+      "duration": 5.12
+    },
+    {
+      "id": "interventions",
+      "start": 38.6,
+      "duration": 6.16
+    },
+    {
+      "id": "dossier",
+      "start": 44.76,
+      "duration": 7.56
+    },
+    {
+      "id": "quartix",
+      "start": 52.32,
+      "duration": 11.16
+    },
+    {
+      "id": "fin",
+      "start": 63.48,
+      "duration": 5.32
+    }
+  ]
+}

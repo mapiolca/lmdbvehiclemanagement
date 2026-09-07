@@ -1,0 +1,28 @@
+{
+  "name": "Gestione di veicoli e macchinari",
+  "title": "Gestione di veicoli e macchinari — Il tuo parco mezzi sotto controllo",
+  "short": "Il tuo parco mezzi è in movimento. Tutto sotto controllo. Gestisci assegnazioni, chilometraggi, consumi, manutenzioni, assicurazioni e controlli in Dolibarr. Raccogli lo storico disponibile e i documenti di ogni veicolo in un fascicolo PDF/ZIP.",
+  "short_quartix": "Il tuo parco mezzi è in movimento. Tutto sotto controllo. Gestisci assegnazioni, consumi, manutenzioni, assicurazioni, controlli e fascicoli PDF/ZIP in Dolibarr. L’integrazione QUARTIX aggiunge chilometraggi stimati, dati di utilizzo e tragitti disponibili.",
+  "seo_title": "Gestione di veicoli e macchinari per Dolibarr",
+  "seo_description": "Gestisci il parco mezzi in Dolibarr: assegnazioni, consumi, manutenzioni, assicurazioni, controlli, fascicoli PDF/ZIP e integrazione QUARTIX opzionale.",
+  "keywords": [
+    "gestione flotta",
+    "veicoli",
+    "macchinari",
+    "Dolibarr",
+    "consumo carburante",
+    "ricarica elettrica",
+    "manutenzione",
+    "assicurazioni",
+    "controlli",
+    "Multicompany",
+    "QUARTIX"
+  ],
+  "lengths": {
+    "title": 69,
+    "short": 244,
+    "short_quartix": 257,
+    "seo_title": 45,
+    "seo_description": 151
+  }
+}
