@@ -64,6 +64,6 @@ print '<div id="qx-route-map" class="hidden" role="region" aria-label="'.dol_esc
 print '<p><button id="qx-route-load" class="button" type="submit">'.$langs->trans('QxRouteLoad').'</button></p>';
 print '<noscript><p>'.$langs->trans('QxRouteRequiresJavascript').'</p></noscript></form>';
 $options = array('tiles' => $cfg['TILE_URL'], 'attribution' => $cfg['TILE_ATTRIBUTION'], 'start' => $langs->transnoentities('QxDeparture'), 'end' => $langs->transnoentities('QxArrival'),
-	'loading' => $langs->transnoentities('QxRouteLoading'), 'failure' => $langs->transnoentities('QxNetworkError'), 'tilesFailure' => $langs->transnoentities('QxRouteTilesError'));
+	'loading' => $langs->transnoentities('QxRouteLoading'), 'failure' => $langs->transnoentities('QxRouteDisplayError'), 'tilesFailure' => $langs->transnoentities('QxRouteTilesError'));
 print '<script type="application/json" id="qx-route-options">'.json_encode($options, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT).'</script>';
 llxFooter(); $db->close();

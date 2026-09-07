@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', function () {
 	var container = document.getElementById('qx-route-map');
 	var map = null, layers = null, timer = null, busy = false, first = true, signature = '', stopped = false;
 	var controller = null;
-	var url = new URL(form.action, window.location.href);
+	// The native hidden input named "action" shadows HTMLFormElement.action.
+	var url = new URL(form.getAttribute('action'), window.location.href);
 	url.search = new URLSearchParams({day: form.elements.day.value, trip: form.elements.trip.value, format: 'json'}).toString();
 	function clearMap() {
 		if (map) { map.remove(); map = null; layers = null; }

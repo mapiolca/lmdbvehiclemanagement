@@ -1154,4 +1154,5 @@ QxRouteQueueStopped=Demande en attente : la synchronisation, l’association ou 
 QxRouteStopped=La récupération est arrêtée ou l’association d’origine n’existe plus. Seuls les tracés déjà chargés restent consultables jusqu’à expiration.
 QxRouteExpired=Ce trajet dépasse la durée de conservation du journal.
 QxRouteTilesError=Le fond de carte ne répond pas. Le tracé QUARTIX reste affiché ; réessayez plus tard pour le fond de carte.
+QxRouteDisplayError=Le navigateur ne peut pas charger ou afficher le tracé. Rechargez la fenêtre ; si le problème persiste, vérifiez la session Dolibarr et les erreurs du navigateur.
 QxRouteReady=Tracé QUARTIX chargé.

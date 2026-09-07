@@ -14,6 +14,16 @@ $conf->global->LMDBVEHICLEMANAGEMENT_QX_TRIP_RETENTION_DAYS = '30';
 $conf->global->LMDBVEHICLEMANAGEMENT_QX_ENABLED = '1';
 $conf->global->LMDBVEHICLEMANAGEMENT_QX_TIME_MODE = 'qws';
 $db->query('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_job SET retry_at=NULL');
+
+// Native dialog titles need plain translated text; trans() leaves &eacute; visible.
+$routeTitleLangs = new Translate('', $conf);
+$routeTitleLangs->setDefaultLang('fr_FR');
+$routeTitleLangs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
+$savedRouteAjax = $conf->use_javascript_ajax ?? 0;
+$conf->use_javascript_ajax = 1;
+$routeTitleHtml = dolButtonToOpenUrlInDialogPopup('qx-title-test', $routeTitleLangs->transnoentities('QxRouteView'), 'View', '/route.php');
+qxCheck(strpos($routeTitleHtml, "title: 'Voir le tracé'") !== false && strpos($routeTitleHtml, "title: 'Voir le trac&eacute;'") === false, 'Native route dialog receives an accented title without double HTML encoding');
+$conf->use_javascript_ajax = $savedRouteAjax;
 $db->query('UPDATE '.MAIN_DB_PREFIX.'cronjob SET status=1');
 $trip['InProgress'] = false;
 $trips->saveDay($tripLink, array($trip), $tripDay, 'qws');

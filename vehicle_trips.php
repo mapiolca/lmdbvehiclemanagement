@@ -117,7 +117,7 @@ foreach ($result['rows'] as $row) {
 		$routeUrl = dol_buildpath('/lmdbvehiclemanagement/vehicle_route.php', 1).'?day='.(int) $row->fk_tripday.'&trip='.LmdbVehicleQuartixRoutes::tripKey($db->jdate($row->departure));
 		// Native helper prepends DOL_URL_ROOT itself, including subdirectory installations.
 		if (DOL_URL_ROOT !== '' && strpos($routeUrl, DOL_URL_ROOT) === 0) $routeUrl = substr($routeUrl, strlen(DOL_URL_ROOT));
-		$routeAction = dolButtonToOpenUrlInDialogPopup('qxroute'.(int) $row->rowid, $langs->trans('QxRouteView'), img_picto($langs->trans('QxRouteView'), 'eye'), $routeUrl, '', '');
+		$routeAction = dolButtonToOpenUrlInDialogPopup('qxroute'.(int) $row->rowid, $langs->transnoentities('QxRouteView'), img_picto($langs->trans('QxRouteView'), 'eye'), $routeUrl, '', '');
 	}
 	print '<tr class="oddeven">';
 	if ($actionsLeft) print '<td class="center actioncolumn">'.$routeAction.'</td>';

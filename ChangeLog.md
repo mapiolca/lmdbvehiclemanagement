@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Correction du chargement de la carte QUARTIX : le champ caché d’action ne détourne plus les requêtes du tracé vers une URL invalide. Titre de modale correctement accentué et erreur navigateur distincte d’une indisponibilité QUARTIX. Déployer les fichiers et recharger le journal ; aucune migration supplémentaire.
+
 - Tracés QUARTIX depuis le pictogramme de consultation du journal : modale native avec Leaflet fourni par Dolibarr, fond OpenStreetMap configurable, cache chiffré à la demande et demandes partagées reprises par le travail Journal des trajets existant. Droit GPS et entité contrôlés à chaque lecture ; trajets privés exclus, cache invalidé par les modifications du journal et purgé avec sa conservation. Deux tables additives et trois réglages créés uniquement en leur absence ; réactiver le module puis activer la consultation des tracés dans QUARTIX.
 
 - Tableaux QUARTIX alignés sur la référence native Dolibarr : en-têtes et cellules cohérents, filtres et sélection des colonnes dans leurs emplacements natifs, comptages entiers et conservation de la navigation. Correction du basculement des tris ascendants/descendants et de l’affichage des liens vers les pages suivantes.

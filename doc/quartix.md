@@ -258,3 +258,23 @@ Le commit fonctionnel `64e08f296bc86b2292d27cd1a4dbcb712f87c830` a été poussé
 - Une journée courante a également été chargée : quatre tracés en cache, état disponible, cinq points sur le trajet sélectionné. Le statut provisoire du journal est conservé. Le rejeu réutilise le cache, sans nouvelle tentative.
 
 La session Dolibarr a expiré avant l’ouverture de la modale ; la reconnexion a été demandée. La validation fonctionnelle serveur ci-dessus est effective, mais ne constitue pas une validation visuelle : restent à contrôler l’icône, la modale, le fond de carte, les marqueurs, sa fermeture et le rendu bureau/mobile sur le code déployé. Les profils standards, externes et les partages entre entités restent couverts par les contrôles locaux, sans recette authentifiée de ces profils sur le serveur.
+
+### Correction du chargement navigateur — 7 septembre 2026
+
+Le défaut d’affichage a été reproduit sur l’instance de développement après reconnexion. Le JavaScript lisait `form.action`, alors que le formulaire contient le champ caché natif `name="action"`. Ce champ masque la propriété du formulaire, comme décrit dans la [documentation DOM](https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement#instance_properties). Une reproduction locale avec le JavaScript du commit `4ffe8e4` confirme une requête vers `/erp/modules/vehicles/[object%20HTMLInputElement]` au lieu de la page du tracé. Son échec était présenté comme une panne QUARTIX, avant tout chargement de la géométrie.
+
+Le client utilise maintenant `getAttribute('action')`, tout en conservant le champ d’action et le token CSRF. Les erreurs de lecture ou d’affichage du navigateur ont leur propre message ; les erreurs QUARTIX renvoyées par le serveur et les erreurs de tuiles restent distinctes. Le titre fourni à la modale native est traduit en texte simple pour afficher correctement « Voir le tracé ».
+
+La fixture reproductible utilise le JavaScript du module, le Leaflet du core et des données fictives, sans connexion Dolibarr ni appel QUARTIX ou fournisseur de tuiles :
+
+```text
+python test/run_quartix_browser.py /chemin/vers/dolibarr/htdocs
+# Ouvrir http://127.0.0.1:8765/ ; arrêter le serveur après les contrôles.
+# --revision 4ffe8e4 --port 8764 permet de reproduire l’ancien défaut.
+```
+
+Six scénarios ont été contrôlés dans le navigateur : tracé en cache avec départ/arrivée, récupération automatique par un seul POST avec token et tracé provisoire sans arrivée, refus d’accès sans géométrie, réponse HTML de session expirée, panne de tuiles avec tracé conservé et absence de Leaflet. Le journal HTTP de la fixture confirme la bonne URL et des consultations périodiques en GET uniquement. La carte affiche trois points et ses marqueurs avec les tuiles locales ; à 390 pixels de largeur, son conteneur occupe 374 pixels et reste dans l’écran. Ce test de composant ne remplace pas la recette mobile de la modale Dolibarr complète.
+
+Validation locale avec PHP 8.4.22 et le core 25.0.0-alpha : **400 contrôles QUARTIX**, **158 contrats d’interface**, syntaxe PHP/Python et diff vérifiés. PHPStan 2.2.2 exécuté au niveau 10 avec la configuration existante du core, mémoire portée à 1 Go et cache limité au module : **37 diagnostics identiques avant/après**, notamment liés aux inclusions et symboles Dolibarr non résolus dans ce contexte autonome ; aucune nouvelle erreur, aucun ignore ajouté ni baseline de suppression modifié. Les environnements Dolibarr 20/PHP 8.0 et Dolibarr 24 ne sont pas réexécutés localement pour ce correctif d’affichage.
+
+La correction est locale à ce stade : **l’instance distante sert encore l’ancien code**. Déployer les fichiers modifiés, puis recharger le journal pour renouveler le titre et le script avant de rouvrir le tracé. Aucune migration, modification des réglages ou réactivation supplémentaire du module n’est nécessaire. Après déploiement, vérifier la carte réelle dans la modale, les tuiles configurées, les marqueurs et la fermeture/réouverture ; ne pas confondre la reproduction distante du défaut avec une validation distante du correctif.
