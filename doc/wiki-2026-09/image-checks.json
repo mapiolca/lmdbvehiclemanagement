@@ -1,0 +1,476 @@
+[
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-01-liste.jpg",
+    "file": "LMDBVehicleManagement-2026-09-01-liste-anonymise.png",
+    "size": [
+      1844,
+      513
+    ],
+    "regions": [
+      {
+        "box": [
+          396,
+          175,
+          481,
+          198
+        ],
+        "radius": 12
+      },
+      {
+        "box": [
+          645,
+          175,
+          732,
+          198
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "cde9e1f488de7ef5503503d74524222ece0fef0192dd4d09a89e9f542b9b15fc",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-02-fiche.jpg",
+    "file": "LMDBVehicleManagement-2026-09-02-fiche-anonymise.png",
+    "size": [
+      1540,
+      870
+    ],
+    "regions": [
+      {
+        "box": [
+          120,
+          25,
+          220,
+          50
+        ],
+        "radius": 12
+      },
+      {
+        "box": [
+          197,
+          129,
+          281,
+          151
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "97d6d5ec6b09b8afdc2445948d2d70c5ba91f57a09dc629eb90397db8378598a",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-04-affectations.jpg",
+    "file": "LMDBVehicleManagement-2026-09-04-affectations-anonymise.png",
+    "size": [
+      1540,
+      350
+    ],
+    "regions": [
+      {
+        "box": [
+          120,
+          25,
+          220,
+          50
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "ab33e7511fadfa1ac393cdfd6c3d283a6a749ec4928c4e279a6fc46264cd2168",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-05-kilometrage.jpg",
+    "file": "LMDBVehicleManagement-2026-09-05-kilometrage-anonymise.png",
+    "size": [
+      1540,
+      650
+    ],
+    "regions": [
+      {
+        "box": [
+          120,
+          25,
+          220,
+          50
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "ac484396c1a90236cda11cdd3f1fbe590d5acf0579f3cbe12878d1576deaa34c",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-07-synthese.jpg",
+    "file": "LMDBVehicleManagement-2026-09-07-synthese-anonymise.png",
+    "size": [
+      1540,
+      767
+    ],
+    "regions": [
+      {
+        "box": [
+          37,
+          369,
+          119,
+          396
+        ],
+        "radius": 12
+      },
+      {
+        "box": [
+          37,
+          424,
+          119,
+          447
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "8aacb1ed118c16f88f4d203145adc0774c2379ec117701e6fbb9c62dc3c979e0",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-08-echeancier.jpg",
+    "file": "LMDBVehicleManagement-2026-09-08-echeancier-anonymise.png",
+    "size": [
+      1540,
+      340
+    ],
+    "regions": [
+      {
+        "box": [
+          334,
+          201,
+          420,
+          225
+        ],
+        "radius": 12
+      },
+      {
+        "box": [
+          334,
+          264,
+          420,
+          286
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "65cfab2ea3fd9d0b3d0059b272d846d6ea447a1bdc6b892949c0668f0d741e76",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-09-qualification.jpg",
+    "file": "LMDBVehicleManagement-2026-09-09-qualification-anonymise.png",
+    "size": [
+      1540,
+      904
+    ],
+    "regions": [
+      {
+        "box": [
+          120,
+          25,
+          220,
+          50
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "61ef1a6e5047b4721c3eeb71acceca9637b1639c2950981904564b90c2e66c23",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-10-controle.jpg",
+    "file": "LMDBVehicleManagement-2026-09-10-controle-anonymise.png",
+    "size": [
+      1540,
+      720
+    ],
+    "regions": [
+      {
+        "box": [
+          323,
+          70,
+          405,
+          94
+        ],
+        "radius": 12
+      },
+      {
+        "box": [
+          323,
+          107,
+          405,
+          130
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "a8a908961cb6a829a0d1993e5589b7b9f72eb813c29aae13677ea73940bb498a",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-11-assurance.jpg",
+    "file": "LMDBVehicleManagement-2026-09-11-assurance-anonymise.png",
+    "size": [
+      1540,
+      750
+    ],
+    "regions": [
+      {
+        "box": [
+          818,
+          287,
+          901,
+          313
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "f0d12731a76aa67b21b8dd5aef80d78c5421e86b8e0ee32ab308df79bc6780f8",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-13-intervention-facture.jpg",
+    "file": "LMDBVehicleManagement-2026-09-13-intervention-facture-anonymise.png",
+    "size": [
+      1540,
+      750
+    ],
+    "regions": [
+      {
+        "box": [
+          218,
+          185,
+          302,
+          209
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "4d3a7e467949ce6c510704758ef4fbbb7bddb1e865302b19bfe894a9296b91f9",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-15-modeles.jpg",
+    "file": "LMDBVehicleManagement-2026-09-15-modeles-anonymise.png",
+    "size": [
+      1540,
+      790
+    ],
+    "regions": [
+      {
+        "box": [
+          992,
+          378,
+          1075,
+          400
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "30b53fce70a19535719cabc3469c77e8d01c4b8e02a72c5b667d972e0d080d36",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-17-historique.jpg",
+    "file": "LMDBVehicleManagement-2026-09-17-historique-anonymise.png",
+    "size": [
+      1540,
+      850
+    ],
+    "regions": [
+      {
+        "box": [
+          120,
+          25,
+          220,
+          50
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "4ff2eb5788dae5ed369662d7cb35000e768270e81892aaf783c19e31607fab83",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "doc/wiki-1.0.0/LMDBVehicleManagement-1.0.0-19-apercu-pdf.jpg",
+    "file": "LMDBVehicleManagement-2026-09-19-apercu-pdf-anonymise.png",
+    "size": [
+      793,
+      893
+    ],
+    "regions": [
+      {
+        "box": [
+          680,
+          55,
+          758,
+          77
+        ],
+        "radius": 12
+      },
+      {
+        "box": [
+          285,
+          193,
+          354,
+          215
+        ],
+        "radius": 12
+      },
+      {
+        "box": [
+          285,
+          216,
+          354,
+          237
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": null,
+    "restore": [],
+    "sha256": "199054ffc74f3bd82fc852f06da0c549bfecc1500531e25a774574203d0bc49b",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "test/.dossier-test/wiki-2026-09/quartix-route.png",
+    "file": "LMDBVehicleManagement-2026-09-quartix-route-anonymise.png",
+    "size": [
+      822,
+      651
+    ],
+    "regions": [
+      {
+        "box": [
+          299,
+          22,
+          386,
+          46
+        ],
+        "radius": 12
+      },
+      {
+        "box": [
+          189,
+          262,
+          957,
+          639
+        ],
+        "radius": 7
+      }
+    ],
+    "crop": [
+      169,
+      9,
+      991,
+      660
+    ],
+    "restore": [
+      [
+        199,
+        272,
+        232,
+        335
+      ],
+      [
+        725,
+        619,
+        957,
+        639
+      ]
+    ],
+    "sha256": "9774fd7212b2c491c3efae399bd9eaa0a3eaa0eb6f1a42966fe472e884dba4ae",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "test/.dossier-test/wiki-2026-09/quartix-trips.png",
+    "file": "LMDBVehicleManagement-2026-09-quartix-trajets-anonymise.png",
+    "size": [
+      833,
+      501
+    ],
+    "regions": [
+      {
+        "box": [
+          651,
+          357,
+          877,
+          675
+        ],
+        "radius": 12
+      }
+    ],
+    "crop": [
+      298,
+      74,
+      1131,
+      575
+    ],
+    "restore": [],
+    "sha256": "a405d26d018c58675f789fa84e57adbac38b5904c1c822eaf24fe5eca96fa1c5",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  },
+  {
+    "source": "test/.dossier-test/wiki-2026-09/quartix-usage.png",
+    "file": "LMDBVehicleManagement-2026-09-quartix-utilisation.png",
+    "size": [
+      836,
+      595
+    ],
+    "regions": [],
+    "crop": [
+      300,
+      65,
+      1136,
+      660
+    ],
+    "restore": [],
+    "sha256": "8ed0f14bcca85dea86d44981bc2605f3811ad9172abfb80f5dfa9d61fd472e1a",
+    "outside_regions_unchanged": true,
+    "metadata_removed": true
+  }
+]

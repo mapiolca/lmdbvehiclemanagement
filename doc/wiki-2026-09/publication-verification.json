@@ -1,0 +1,332 @@
+{
+  "checked_at": "2026-09-07T09:20:01.093986+00:00",
+  "source_revision": 67173,
+  "all_22_images_exist": true,
+  "articles": {
+    "de": {
+      "title": "Modul Fahrzeugverwaltung",
+      "url": "https://wiki.dolibarr.org/index.php/Modul_Fahrzeugverwaltung",
+      "revid": 67226,
+      "timestamp": "2026-09-07T09:18:18Z",
+      "exact_text_match": true,
+      "local_sha256": "0a5ed5168e5a185185103ae556c2fe89b2079ae075f42f580de3b91d8c108f1e",
+      "images": [
+        "LMDBVehicleManagement-2026-09-15-modeles-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-16-relances-assurance.jpg",
+        "LMDBVehicleManagement-2026-09-01-liste-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-03-creation.jpg",
+        "LMDBVehicleManagement-2026-09-02-fiche-anonymise.png",
+        "LMDBVehicleManagement-2026-09-04-affectations-anonymise.png",
+        "LMDBVehicleManagement-2026-09-05-kilometrage-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-06-plein.jpg",
+        "LMDBVehicleManagement-2026-09-07-synthese-anonymise.png",
+        "LMDBVehicleManagement-2026-09-13-intervention-facture-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-18-creation-assurance.jpg",
+        "LMDBVehicleManagement-2026-09-11-assurance-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-12-attestations.jpg",
+        "LMDBVehicleManagement-2026-09-09-qualification-anonymise.png",
+        "LMDBVehicleManagement-2026-09-08-echeancier-anonymise.png",
+        "LMDBVehicleManagement-2026-09-10-controle-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-14-dossier.jpg",
+        "LMDBVehicleManagement-2026-09-19-apercu-pdf-anonymise.png",
+        "LMDBVehicleManagement-2026-09-17-historique-anonymise.png",
+        "LMDBVehicleManagement-2026-09-quartix-utilisation.png",
+        "LMDBVehicleManagement-2026-09-quartix-trajets-anonymise.png",
+        "LMDBVehicleManagement-2026-09-quartix-route-anonymise.png"
+      ],
+      "image_count": 22,
+      "langlinks": [
+        {
+          "lang": "fr",
+          "url": "https://wiki.dolibarr.org/index.php/Module_Gestion_des_v%C3%A9hicules",
+          "langname": "French",
+          "autonym": "français",
+          "*": "Module Gestion des véhicules"
+        },
+        {
+          "lang": "en",
+          "url": "https://wiki.dolibarr.org/index.php/Module_Vehicle_Management",
+          "langname": "English",
+          "autonym": "English",
+          "*": "Module Vehicle Management"
+        },
+        {
+          "lang": "it",
+          "url": "https://wiki.dolibarr.org/index.php/Modulo_Gestione_dei_veicoli",
+          "langname": "Italian",
+          "autonym": "italiano",
+          "*": "Modulo Gestione dei veicoli"
+        },
+        {
+          "lang": "es",
+          "url": "https://wiki.dolibarr.org/index.php/M%C3%B3dulo_Gesti%C3%B3n_de_veh%C3%ADculos",
+          "langname": "Spanish",
+          "autonym": "español",
+          "*": "Módulo Gestión de vehículos"
+        }
+      ],
+      "section_count": 46,
+      "render_error": false
+    },
+    "fr": {
+      "title": "Module Gestion des véhicules",
+      "url": "https://wiki.dolibarr.org/index.php/Module_Gestion_des_v%C3%A9hicules",
+      "revid": 67223,
+      "timestamp": "2026-09-07T09:14:32Z",
+      "exact_text_match": true,
+      "local_sha256": "2f6142d9ab1582209b2d2f3194bea79503e198c9caa444adb73e198f26d863ac",
+      "images": [
+        "LMDBVehicleManagement-2026-09-15-modeles-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-16-relances-assurance.jpg",
+        "LMDBVehicleManagement-2026-09-01-liste-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-03-creation.jpg",
+        "LMDBVehicleManagement-2026-09-02-fiche-anonymise.png",
+        "LMDBVehicleManagement-2026-09-04-affectations-anonymise.png",
+        "LMDBVehicleManagement-2026-09-05-kilometrage-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-06-plein.jpg",
+        "LMDBVehicleManagement-2026-09-07-synthese-anonymise.png",
+        "LMDBVehicleManagement-2026-09-13-intervention-facture-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-18-creation-assurance.jpg",
+        "LMDBVehicleManagement-2026-09-11-assurance-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-12-attestations.jpg",
+        "LMDBVehicleManagement-2026-09-09-qualification-anonymise.png",
+        "LMDBVehicleManagement-2026-09-08-echeancier-anonymise.png",
+        "LMDBVehicleManagement-2026-09-10-controle-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-14-dossier.jpg",
+        "LMDBVehicleManagement-2026-09-19-apercu-pdf-anonymise.png",
+        "LMDBVehicleManagement-2026-09-17-historique-anonymise.png",
+        "LMDBVehicleManagement-2026-09-quartix-utilisation.png",
+        "LMDBVehicleManagement-2026-09-quartix-trajets-anonymise.png",
+        "LMDBVehicleManagement-2026-09-quartix-route-anonymise.png"
+      ],
+      "image_count": 22,
+      "langlinks": [
+        {
+          "lang": "en",
+          "url": "https://wiki.dolibarr.org/index.php/Module_Vehicle_Management",
+          "langname": "English",
+          "autonym": "English",
+          "*": "Module Vehicle Management"
+        },
+        {
+          "lang": "it",
+          "url": "https://wiki.dolibarr.org/index.php/Modulo_Gestione_dei_veicoli",
+          "langname": "Italian",
+          "autonym": "italiano",
+          "*": "Modulo Gestione dei veicoli"
+        },
+        {
+          "lang": "de",
+          "url": "https://wiki.dolibarr.org/index.php/Modul_Fahrzeugverwaltung",
+          "langname": "German",
+          "autonym": "Deutsch",
+          "*": "Modul Fahrzeugverwaltung"
+        },
+        {
+          "lang": "es",
+          "url": "https://wiki.dolibarr.org/index.php/M%C3%B3dulo_Gesti%C3%B3n_de_veh%C3%ADculos",
+          "langname": "Spanish",
+          "autonym": "español",
+          "*": "Módulo Gestión de vehículos"
+        }
+      ],
+      "section_count": 53,
+      "render_error": false
+    },
+    "en": {
+      "title": "Module Vehicle Management",
+      "url": "https://wiki.dolibarr.org/index.php/Module_Vehicle_Management",
+      "revid": 67224,
+      "timestamp": "2026-09-07T09:16:15Z",
+      "exact_text_match": true,
+      "local_sha256": "ac598c115b06b768af874224bb25b91976eebcafd9cb078263f8040e28e8cbd2",
+      "images": [
+        "LMDBVehicleManagement-2026-09-15-modeles-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-16-relances-assurance.jpg",
+        "LMDBVehicleManagement-2026-09-01-liste-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-03-creation.jpg",
+        "LMDBVehicleManagement-2026-09-02-fiche-anonymise.png",
+        "LMDBVehicleManagement-2026-09-04-affectations-anonymise.png",
+        "LMDBVehicleManagement-2026-09-05-kilometrage-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-06-plein.jpg",
+        "LMDBVehicleManagement-2026-09-07-synthese-anonymise.png",
+        "LMDBVehicleManagement-2026-09-13-intervention-facture-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-18-creation-assurance.jpg",
+        "LMDBVehicleManagement-2026-09-11-assurance-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-12-attestations.jpg",
+        "LMDBVehicleManagement-2026-09-09-qualification-anonymise.png",
+        "LMDBVehicleManagement-2026-09-08-echeancier-anonymise.png",
+        "LMDBVehicleManagement-2026-09-10-controle-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-14-dossier.jpg",
+        "LMDBVehicleManagement-2026-09-19-apercu-pdf-anonymise.png",
+        "LMDBVehicleManagement-2026-09-17-historique-anonymise.png",
+        "LMDBVehicleManagement-2026-09-quartix-utilisation.png",
+        "LMDBVehicleManagement-2026-09-quartix-trajets-anonymise.png",
+        "LMDBVehicleManagement-2026-09-quartix-route-anonymise.png"
+      ],
+      "image_count": 22,
+      "langlinks": [
+        {
+          "lang": "fr",
+          "url": "https://wiki.dolibarr.org/index.php/Module_Gestion_des_v%C3%A9hicules",
+          "langname": "French",
+          "autonym": "français",
+          "*": "Module Gestion des véhicules"
+        },
+        {
+          "lang": "it",
+          "url": "https://wiki.dolibarr.org/index.php/Modulo_Gestione_dei_veicoli",
+          "langname": "Italian",
+          "autonym": "italiano",
+          "*": "Modulo Gestione dei veicoli"
+        },
+        {
+          "lang": "de",
+          "url": "https://wiki.dolibarr.org/index.php/Modul_Fahrzeugverwaltung",
+          "langname": "German",
+          "autonym": "Deutsch",
+          "*": "Modul Fahrzeugverwaltung"
+        },
+        {
+          "lang": "es",
+          "url": "https://wiki.dolibarr.org/index.php/M%C3%B3dulo_Gesti%C3%B3n_de_veh%C3%ADculos",
+          "langname": "Spanish",
+          "autonym": "español",
+          "*": "Módulo Gestión de vehículos"
+        }
+      ],
+      "section_count": 46,
+      "render_error": false
+    },
+    "it": {
+      "title": "Modulo Gestione dei veicoli",
+      "url": "https://wiki.dolibarr.org/index.php/Modulo_Gestione_dei_veicoli",
+      "revid": 67225,
+      "timestamp": "2026-09-07T09:17:21Z",
+      "exact_text_match": true,
+      "local_sha256": "5499ce7a50252d3a75e5d499659b1986f676b1e466b5cec58548adee30f1ded9",
+      "images": [
+        "LMDBVehicleManagement-2026-09-15-modeles-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-16-relances-assurance.jpg",
+        "LMDBVehicleManagement-2026-09-01-liste-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-03-creation.jpg",
+        "LMDBVehicleManagement-2026-09-02-fiche-anonymise.png",
+        "LMDBVehicleManagement-2026-09-04-affectations-anonymise.png",
+        "LMDBVehicleManagement-2026-09-05-kilometrage-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-06-plein.jpg",
+        "LMDBVehicleManagement-2026-09-07-synthese-anonymise.png",
+        "LMDBVehicleManagement-2026-09-13-intervention-facture-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-18-creation-assurance.jpg",
+        "LMDBVehicleManagement-2026-09-11-assurance-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-12-attestations.jpg",
+        "LMDBVehicleManagement-2026-09-09-qualification-anonymise.png",
+        "LMDBVehicleManagement-2026-09-08-echeancier-anonymise.png",
+        "LMDBVehicleManagement-2026-09-10-controle-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-14-dossier.jpg",
+        "LMDBVehicleManagement-2026-09-19-apercu-pdf-anonymise.png",
+        "LMDBVehicleManagement-2026-09-17-historique-anonymise.png",
+        "LMDBVehicleManagement-2026-09-quartix-utilisation.png",
+        "LMDBVehicleManagement-2026-09-quartix-trajets-anonymise.png",
+        "LMDBVehicleManagement-2026-09-quartix-route-anonymise.png"
+      ],
+      "image_count": 22,
+      "langlinks": [
+        {
+          "lang": "fr",
+          "url": "https://wiki.dolibarr.org/index.php/Module_Gestion_des_v%C3%A9hicules",
+          "langname": "French",
+          "autonym": "français",
+          "*": "Module Gestion des véhicules"
+        },
+        {
+          "lang": "en",
+          "url": "https://wiki.dolibarr.org/index.php/Module_Vehicle_Management",
+          "langname": "English",
+          "autonym": "English",
+          "*": "Module Vehicle Management"
+        },
+        {
+          "lang": "de",
+          "url": "https://wiki.dolibarr.org/index.php/Modul_Fahrzeugverwaltung",
+          "langname": "German",
+          "autonym": "Deutsch",
+          "*": "Modul Fahrzeugverwaltung"
+        },
+        {
+          "lang": "es",
+          "url": "https://wiki.dolibarr.org/index.php/M%C3%B3dulo_Gesti%C3%B3n_de_veh%C3%ADculos",
+          "langname": "Spanish",
+          "autonym": "español",
+          "*": "Módulo Gestión de vehículos"
+        }
+      ],
+      "section_count": 46,
+      "render_error": false
+    },
+    "es": {
+      "title": "Módulo Gestión de vehículos",
+      "url": "https://wiki.dolibarr.org/index.php/M%C3%B3dulo_Gesti%C3%B3n_de_veh%C3%ADculos",
+      "revid": 67227,
+      "timestamp": "2026-09-07T09:19:21Z",
+      "exact_text_match": true,
+      "local_sha256": "0521b2061dc297688b022b3a45fc5d261130d6632fe3938b166c90f15de95951",
+      "images": [
+        "LMDBVehicleManagement-2026-09-15-modeles-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-16-relances-assurance.jpg",
+        "LMDBVehicleManagement-2026-09-01-liste-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-03-creation.jpg",
+        "LMDBVehicleManagement-2026-09-02-fiche-anonymise.png",
+        "LMDBVehicleManagement-2026-09-04-affectations-anonymise.png",
+        "LMDBVehicleManagement-2026-09-05-kilometrage-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-06-plein.jpg",
+        "LMDBVehicleManagement-2026-09-07-synthese-anonymise.png",
+        "LMDBVehicleManagement-2026-09-13-intervention-facture-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-18-creation-assurance.jpg",
+        "LMDBVehicleManagement-2026-09-11-assurance-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-12-attestations.jpg",
+        "LMDBVehicleManagement-2026-09-09-qualification-anonymise.png",
+        "LMDBVehicleManagement-2026-09-08-echeancier-anonymise.png",
+        "LMDBVehicleManagement-2026-09-10-controle-anonymise.png",
+        "LMDBVehicleManagement-1.0.0-14-dossier.jpg",
+        "LMDBVehicleManagement-2026-09-19-apercu-pdf-anonymise.png",
+        "LMDBVehicleManagement-2026-09-17-historique-anonymise.png",
+        "LMDBVehicleManagement-2026-09-quartix-utilisation.png",
+        "LMDBVehicleManagement-2026-09-quartix-trajets-anonymise.png",
+        "LMDBVehicleManagement-2026-09-quartix-route-anonymise.png"
+      ],
+      "image_count": 22,
+      "langlinks": [
+        {
+          "lang": "fr",
+          "url": "https://wiki.dolibarr.org/index.php/Module_Gestion_des_v%C3%A9hicules",
+          "langname": "French",
+          "autonym": "français",
+          "*": "Module Gestion des véhicules"
+        },
+        {
+          "lang": "en",
+          "url": "https://wiki.dolibarr.org/index.php/Module_Vehicle_Management",
+          "langname": "English",
+          "autonym": "English",
+          "*": "Module Vehicle Management"
+        },
+        {
+          "lang": "it",
+          "url": "https://wiki.dolibarr.org/index.php/Modulo_Gestione_dei_veicoli",
+          "langname": "Italian",
+          "autonym": "italiano",
+          "*": "Modulo Gestione dei veicoli"
+        },
+        {
+          "lang": "de",
+          "url": "https://wiki.dolibarr.org/index.php/Modul_Fahrzeugverwaltung",
+          "langname": "German",
+          "autonym": "Deutsch",
+          "*": "Modul Fahrzeugverwaltung"
+        }
+      ],
+      "section_count": 46,
+      "render_error": false
+    }
+  }
+}

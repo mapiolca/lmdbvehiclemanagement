@@ -1,0 +1,455 @@
+[[fr:Module Gestion des véhicules]]
+[[en:Module Vehicle Management]]
+[[it:Modulo Gestione dei veicoli]]
+[[es:Módulo Gestión de vehículos]]
+
+'''Fahrzeug- und Maschinenverwaltung''' ist ein externes Dolibarr-Modul für Straßenfahrzeuge, Transporter und Maschinen. Es bündelt technische Fahrzeugdaten, Fahrerzuordnungen, Kilometerstände, Verbrauch, Wartungsereignisse, Versicherungen und vorgeschriebene Prüfungen.
+
+Lieferantenrechnungen lassen sich mit Wartungen und Prüfungen verknüpfen. Eine Fahrzeugakte wird als PDF und ZIP erstellt. Die Anbindung an '''QUARTIX QWS v2''' ergänzt geschätzte Kilometerstände, Nutzungsübersichten, Positionen, Fahrten und Karten mit Fahrtverläufen.
+
+Dieser Artikel enthält eine bebilderte Installations- und Bedienungsanleitung. Die Abbildungen stammen aus einer französischen Dolibarr-24-Demonstrationsumgebung mit Multicompany. Adressen und Kennzeichen sind unkenntlich gemacht. Beispielwerte sind weder Einstellungsempfehlungen noch Verbrauchsrichtwerte. Darstellung und übersetzte Bedienoberfläche können je nach Dolibarr-Version und Design abweichen.
+
+Stand der Dokumentation: 7. September 2026. Die QUARTIX-Entwicklung erweitert Version 1.0.0; ältere Archive mit dieser Versionsnummer enthalten die Anbindung möglicherweise noch nicht. Das Modul selbst enthält französische und englische Übersetzungen. Die deutsche, italienische und spanische Dokumentation ergänzt keine entsprechenden Softwareübersetzungen.
+
+__TOC__
+
+== Informationen ==
+
+{| class="wikitable"
+! Merkmal !! Wert
+|-
+| Modul || Fahrzeug- und Maschinenverwaltung
+|-
+| Technischer Name || <code>lmdbvehiclemanagement</code>
+|-
+| Autor / Modulfamilie || Pierre Ardoin / Les Métiers du Bâtiment
+|-
+| Version || 1.0.0, erste stabile Veröffentlichung am 4. September 2026; QUARTIX-Erweiterung siehe unten
+|-
+| Voraussetzungen || Dolibarr 20+, PHP 8.0+, MySQL oder MariaDB
+|-
+| Softwaresprachen || Französisch und Englisch
+|-
+| Multicompany || Unterstützt, optional
+|-
+| Lizenz || GNU GPL Version 3 oder neuer
+|}
+
+== Funktionen ==
+
+=== Fuhrpark ===
+
+* Datensätze für Fahrzeuge, Transporter und Maschinen; Kennzeichen sind optional.
+* Technische Daten, Energieart, Betriebsmittelkapazitäten und WLTP-Reichweite.
+* Lebenszyklus vom Entwurf bis zur Veräußerung.
+* Gleichzeitige Fahrerzuordnungen; nur eine Hauptzuordnung je Zeitraum.
+* Kilometerstände, Korrekturen und Zählerwechsel.
+* Wartungen, Pannen und Vorfälle sowie eine gemeinsame Historie einschließlich Prüfungen und Verbrauch.
+* Nummerierungsmodelle, darunter ein Modell anhand des Kennzeichens.
+
+Listen unterstützen Filter, Sortierung, Seitennavigation und auswählbare Spalten. Datensätze verwenden die nativen Dolibarr-Funktionen für Notizen, Kontakte, Anhänge und verknüpfte Objekte, soweit anwendbar.
+
+=== Tanken, Laden und Verbrauch ===
+
+Das Modul verwaltet Kraftstoffe, elektrische Ladungen, Wasserstoff und Zusätze. Betriebsmittel besitzen eigene Einheiten und kompatible Energiearten. Bei Mengen über der hinterlegten Fahrzeugkapazität erscheint eine Warnung.
+
+* Verbrauchseinträge werden mit ihren Kilometerständen synchronisiert.
+* Übersichten unterscheiden Fahrzeuge, Betriebsmittel und Einheiten.
+* Native Diagramme zeigen Kosten, Strecken und Verbrauchsstatistiken.
+* CSV-Import und nativer Export sind verfügbar.
+* Bei Zusätzen kann der Preis unbekannt bleiben: ein leerer Betrag wird aus Preisstatistiken ausgeschlossen; null ist ein bekannter Preis von null.
+
+Eine Einstellung je Umgebung ermöglicht eine native '''sonstige Zahlung''' zu einem Tank- oder Ladevorgang. Dafür werden Bankkonto, Zahlungsangaben und ein Beleg als PDF, JPEG oder PNG benötigt. Bildmetadaten werden entfernt. Die Buchhaltung ist optional; bei doppelter Buchführung ist ein Sachkonto aus dem aktiven Kontenplan erforderlich. Nach Bankabgleich oder Übertragung in die Buchhaltung werden Finanzdaten und Beleg gesperrt.
+
+'''Der CSV-Verbrauchsimport ist bei aktivierter Erzeugung sonstiger Zahlungen nicht verfügbar.''' Die Aktivierung erstellt keine Zahlungen für alte Verbrauchseinträge.
+
+=== Versicherungen ===
+
+* Einzel- und Flottenverträge mit mehreren Fahrzeugen sowie Haupt- und Zusatzdeckung.
+* Kontakte für Versicherer und Vermittler.
+* Versicherungsnachweise für die Flotte oder einzelne Fahrzeuge, mit Datei, Prüfung, Freigabe, Ablehnung und Archivierung.
+* Zuständige Benutzer oder Gruppen sowie berechtigte zugeordnete Personen.
+* Erinnerungen vor und nach Ablauf über native E-Mail-Vorlagen und geplante Aufgaben, mit Schutz gegen doppelte Sendungen.
+
+=== Vorgeschriebene Prüfungen ===
+
+Ein geführter Fragebogen bestimmt aus den Fahrzeugmerkmalen und der Nutzung die anwendbaren Anforderungen. Version 1.0.0 enthält einen versionierten '''französischen''' Katalog: technische Fahrzeugprüfung, Emissionen, Kategorie L, besondere Nutzungen, wiederkehrende allgemeine Prüfungen (VGP), Inbetriebnahme/Wiederinbetriebnahme, Fahrtenschreiber, ADR und ATP. Umgebungsspezifische Abweichungen und eigene Regeln ergänzen ihn. Die Übersetzung dieser Anleitung ersetzt diesen Katalog nicht durch deutsches oder anderes nationales Recht.
+
+* Nummerierte Prüfdatensätze mit Prüfstelle, Ergebnis, Daten und vorgeschriebenem Nachweis.
+* Unveränderliche Freigabe, begründete Aufhebung, Ersatz, Nachprüfung und kontrollierte Archivierung.
+* Fälligkeitsübersicht, Sicherheitsregister, Export und Import als Entwürfe.
+* Konfigurierbare Sperren für neue Zuordnungen und Inbetriebnahmen.
+* Tägliche Neuberechnung und Erinnerungen über geplante Aufgaben, mit einem Kalenderereignis je Anforderung.
+
+Fehlen wesentliche Angaben, wird kein beliebiges Fälligkeitsdatum berechnet. Das Modul unterstützt die Dokumentation; es führt selbst keine Prüfungen durch und erstellt keine amtlichen Prüfberichte.
+
+=== Verknüpfte Lieferantenrechnungen ===
+
+Bei einer Wartung oder Prüfung öffnet '''Lieferantenrechnung erstellen''' das native Formular. Ein bekannter und zugänglicher Dienstleister wird vorgeschlagen, kann aber geändert werden. Beim Speichern entsteht ein Rechnungsentwurf mit Verknüpfung zum Ausgangsobjekt.
+
+Eine vorhandene Rechnung kann ebenfalls ausgewählt werden. Umgekehrt ist die Zuordnung über '''Verknüpfen mit''' in der Lieferantenrechnung möglich. Beide Seiten zeigen die Verbindung in '''Verknüpfte Objekte'''. Eine Wartung darf mehrere Rechnungen haben. Das Lösen der Verbindung löscht weder Rechnung noch freigegebene Prüfdaten. Beide Objekte müssen zur aktuellen Umgebung gehören; die jeweiligen Berechtigungen bleiben erforderlich.
+
+=== Fahrzeugakte als PDF und ZIP ===
+
+Das Dokumentmodell '''Fahrzeugakte''' erzeugt:
+
+* eine PDF-Datei mit technischen Daten, vorhandener Historie, Ereignissen, Prüfungen, verknüpften Rechnungen, einer Tank-/Ladeübersicht und einem Dokumentverzeichnis;
+* ein ZIP-Archiv mit dieser PDF-Datei und den Originalanhängen des Fahrzeugs, seiner Ereignisse, Prüfungen und verknüpften Rechnungen.
+
+Entwürfe, aufgehobene und archivierte Datensätze werden berücksichtigt. Eine mehrfach verknüpfte Rechnung wird nur einmal aufgenommen. Fehlende indizierte Dateien werden in der PDF vermerkt. Verbrauchs- und Zahlungsbelege, temporäre Dateien, Vorschauen und frühere Fahrzeugakten sind ausgeschlossen. Die Verbrauchsübersicht enthält Daten, Kilometerstände, Referenzen, Betriebsmittel, Arten, Einheiten und Ölreferenzen, jedoch keine Mengen oder Beträge.
+
+Verwendet werden vorhandene Daten und Dateien. Das Verfahren erstellt keine Lieferantenrechnungsdokumente und rekonstruiert keine nicht erfasste Historie. Zum Erzeugen sind Fahrzeug-Lese-/Schreibrechte und Leserechte auf Lieferantenrechnungen erforderlich; zum Lesen die entsprechenden kombinierten Leserechte. Externe Benutzer und öffentliche Links haben keinen Zugriff auf die Fahrzeugakte.
+
+=== Mehrere Umgebungen ===
+
+Freigaben werden in den nativen Multicompany-Einstellungen verwaltet. Betroffene Listen besitzen eine Spalte und einen Filter '''Umgebung'''. Dateien verbleiben im Dokumentverzeichnis der besitzenden Umgebung, auch beim Zugriff über Freigaben. Einstellungen, Modelle und Freigaben bleiben bei Deaktivierung und erneuter Aktivierung erhalten.
+
+== Voraussetzungen und Installation ==
+
+Neben Dolibarr 20+, PHP 8.0+ und MySQL/MariaDB sind die Abhängigkeiten der verwendeten Funktionen zu prüfen:
+
+{| class="wikitable"
+! Abhängigkeit !! Verwendung
+|-
+| Kalender und geplante Aufgaben || Automatische Termine, Ereignisse, Neuberechnung und Erinnerungen
+|-
+| Banken und Kassen || Sonstige Zahlungen zu Verbrauchseinträgen
+|-
+| Buchhaltung || Optional; Kontenanforderungen abhängig vom Buchhaltungsmodus
+|-
+| Lieferantenrechnungen || Rechnungsverknüpfungen und Fahrzeugakte
+|-
+| PHP-ZIP-Erweiterung (<code>ZipArchive</code>) || Erzeugung der PDF-/ZIP-Fahrzeugakte
+|-
+| Multicompany / Ressourcen || Optionale Freigaben / Verbindung zu einer Dolibarr-Ressource
+|-
+| QUARTIX-QWS-Zugang, cURL, OpenSSL, native Verschlüsselung || Optionale QUARTIX-Anbindung; natives Leaflet für Karten
+|}
+
+# Die benötigte Modulausgabe beziehen, gegebenenfalls einschließlich QUARTIX.
+# <code>lmdbvehiclemanagement</code> im Verzeichnis für externe Dolibarr-Module ablegen, ohne ein zweites gleichnamiges Unterverzeichnis. Ein passendes Installationsarchiv kann auch über die native Modulbereitstellung installiert werden.
+# Als Administrator '''Startseite → Einrichtung → Module/Anwendungen''' öffnen.
+# Das Modul in der Familie '''Les Métiers du Bâtiment''' aktivieren.
+# Über das Zahnrad die Einstellungen öffnen, '''Kompatibilität''' prüfen und Benutzern/Gruppen die benötigten Rechte zuweisen.
+
+== Ersteinrichtung ==
+
+# Wörterbücher für Energiearten, Betriebsmittel, Maschinenarten, Prüfprofile, Prüfarten und Ergebnisse prüfen.
+# Nummerierungs- und Dokumentmodelle auswählen.
+# Versicherungsverantwortliche, Erinnerungsvorlagen und Fristen konfigurieren.
+# Prüfregeln und mögliche Sperren kontrollieren.
+# Benötigte native geplante Aufgaben aktivieren und prüfen.
+# Bei sonstigen Zahlungen Bank- und Zahlungseinstellungen je Umgebung vornehmen.
+# Gegebenenfalls Multicompany-Freigaben und Umgebungszugriffe einstellen.
+# QUARTIX bei Bedarf wie unten beschrieben konfigurieren.
+
+'''Kompatibilität''' und '''Über''' sind interne Einstellungsregister. Die Kompatibilitätsseite nennt fehlende Abhängigkeiten der aktuellen Umgebung.
+
+=== Nummerierung und Fahrzeugaktenmodell ===
+
+Unter '''Einstellungen → Dokumentmodelle''' das Modell '''Fahrzeugakte''' aktivieren; die Wahl als Standard ist davon getrennt. Unter '''Nummerierungsmodelle''' ein Modell je Objekt wählen. Fahrzeuge können <code>standard</code> für fortlaufende Referenzen oder <code>registration</code> für normalisierte Kennzeichen verwenden. Beim zweiten Modell erhalten Maschinen ohne Kennzeichen eine MAT-Referenz. Beispiele kontrollieren und für Änderungen bestehender Referenzen das Migrationsverfahren des Moduls verwenden.
+
+[[File:LMDBVehicleManagement-2026-09-15-modeles-anonymise.png|thumb|center|1100px|Dokument- und Nummerierungsmodelle. Aktivierung und Standardauswahl sind getrennte Einstellungen.]]
+
+=== Verbrauchsausgaben ===
+
+In den Beleg-/Zahlungseinstellungen Bankkonto und übliches Zahlungsmittel der Umgebung wählen, danach die passenden Buchhaltungskonten. Bei doppelter Buchführung ist ein Sachkonto erforderlich; das Personenkonto ist optional. Option aktivieren und speichern. Kontrollieren, dass ein neuer Verbrauchseintrag Zahlungsangaben und einen Beleg verlangt. Alte Einträge werden nicht umgewandelt; der CSV-Verbrauchsimport ist anschließend nicht verfügbar.
+
+=== Versicherungserinnerungen ===
+
+In den '''Versicherungseinstellungen''' zuständige Benutzer/Gruppen, Einbeziehung zugeordneter Personen und zulässige Zuordnungsarten auswählen. Fristen vor Ablauf und Wiederholungsabstände bei abgelaufenen oder fehlenden Nachweisen festlegen; Vorlagen für Einreichung und Prüfung wählen. Erinnerungen aktivieren, speichern und unter Geplante Aufgaben Aktivierung und letztes Ergebnis prüfen. '''Test-E-Mail senden''' verschickt eine echte E-Mail: Empfänger vorher kontrollieren. Die abgebildeten Zeitabstände sind Demonstrationseinstellungen.
+
+[[File:LMDBVehicleManagement-1.0.0-16-relances-assurance.jpg|thumb|center|1100px|Empfänger, Fristen, Vorlagen und geplante Aufgaben für Versicherungserinnerungen.]]
+
+=== Prüfungserinnerungen ===
+
+Unter '''Vorgeschriebene Prüfungen''' Erinnerungshorizonte und den Zeitraum bevorstehender Fälligkeiten festlegen. Benutzer/Gruppen, gegebenenfalls den zugeordneten Fahrer, Erinnerungsvorlage und optional tägliche Überfälligkeitserinnerungen auswählen. Speichern und die Neuberechnungs-/Erinnerungsaufgabe prüfen. Umgebungsspezifische Abweichungen und eigene Regeln müssen zum Gerät passen und begründet bleiben.
+
+== Erste Schritte ==
+
+=== Fahrzeug suchen oder anlegen ===
+
+Das Fahrzeugmenü mit dem Autosymbol öffnen. Das Seitenmenü führt zu Fuhrpark, Ereignissen, Prüfungen, Verbrauch und Versicherungen.
+
+# Fahrzeug-/Maschinenliste öffnen und nach Referenz, Kennzeichen, Bezeichnung, Modell oder Status filtern.
+# Mit der Lupe suchen; das Kreuz setzt Filter zurück. Spaltenüberschriften sortieren, die Spaltenauswahl steuert sichtbare Spalten.
+# Seitengröße wählen und einen Datensatz über seine Referenz öffnen. Bei Freigaben zeigt der Umgebungsfilter die Zugehörigkeit.
+
+[[File:LMDBVehicleManagement-2026-09-01-liste-anonymise.png|thumb|center|1100px|Fuhrparkliste mit Navigation und Filtern.]]
+
+Zum Anlegen '''Neues Fahrzeug oder neue Maschine''' wählen, eine verständliche Bezeichnung und gegebenenfalls das Kennzeichen eingeben. Hauptart auswählen und bekannte Kategorie, Gewichte, Sitzplätze, Gebiet, Seriennummer, Marke und Modell ergänzen. Energieart, bekannte Reichweite, Herstellungs-/Zulassungs-/Inbetriebnahmedaten, Besitzart und Eigentümer eintragen. Eine Ressourcenverknüpfung ist optional. Beschreibung ergänzen und speichern; anschließend bei Bedarf Betriebsmittelkapazitäten bearbeiten. Der Datensatz beginnt als Entwurf und erhält seine Referenz über das konfigurierte Nummerierungsmodell.
+
+[[File:LMDBVehicleManagement-1.0.0-03-creation.jpg|thumb|center|1100px|Neuanlage mit Identifikation, technischen Angaben und Daten.]]
+
+=== Fahrzeugkarte und Status ===
+
+Die Karte zeigt Identifikation, Status, technische Daten, Kapazitäten und Versicherungsschutz. Register bieten je nach Berechtigung Notizen, Dateien, Kalender, Zuordnungen, Kilometerstände, Verbrauch, Prüfungen, Historie und QUARTIX.
+
+[[File:LMDBVehicleManagement-2026-09-02-fiche-anonymise.png|thumb|center|1100px|Fahrzeug in Betrieb mit technischen Daten, Kapazitäten und Versicherungsübersicht.]]
+
+{| class="wikitable"
+! Status !! Bedeutung
+|-
+| Entwurf || Datensatz vorbereiten und prüfen
+|-
+| Freigegeben || Identifiziert und geprüft, noch nicht in Betrieb
+|-
+| In Betrieb || Im Fuhrpark eingesetzt
+|-
+| Außer Betrieb || Aus dem Betrieb genommen
+|-
+| Abgegeben / verkauft || Nach Veräußerung aus dem Fuhrpark ausgeschieden
+|}
+
+Die verfügbaren Aktionen zur Freigabe, Inbetriebnahme, Stilllegung oder Veräußerung hängen von Status und Berechtigungen ab. Prüfregeln können die Inbetriebnahme sperren. Eine Veräußerung über die vorgesehene Statusaktion erfassen, damit die Historie erhalten bleibt; das Löschen eines Datensatzes hat einen anderen Zweck.
+
+== Tägliche Arbeit ==
+
+=== Fahrer zuordnen ===
+
+'''Zuordnungen → Zuordnung hinzufügen''' öffnen. Fahrer, Beginn mit Uhrzeit und ein bekanntes Ende wählen; Art, Hauptzuordnung, Status und Grund ergänzen und speichern. Mehrere Zuordnungen dürfen sich überschneiden, jedoch nur eine als Hauptzuordnung. Zum Beenden über den Stift bearbeiten und Ende sowie Status setzen.
+
+[[File:LMDBVehicleManagement-2026-09-04-affectations-anonymise.png|thumb|center|1100px|Fahrerzuordnungen mit Zeitraum, Art, Hauptzuordnung und Status.]]
+
+=== Kilometerstände ===
+
+Unter '''Kilometerstände''' Ablesedatum, beobachteten Wert und Art erfassen. Korrekturen und Zählerwechsel begründen. Nach dem Speichern Reihenfolge und Differenzen prüfen. '''Ein aus einem Verbrauchseintrag erzeugter Kilometerstand wird im ursprünglichen Tank-/Ladeeintrag korrigiert.''' Dafür keinen zusätzlichen manuellen Stand anlegen. QUARTIX-Schätzungen bleiben von tatsächlichen Ablesungen unterscheidbar.
+
+[[File:LMDBVehicleManagement-2026-09-05-kilometrage-anonymise.png|thumb|center|1100px|Kilometerstände, Differenzen und Quellen. Verbrauchsbezogene Werte werden am Ursprung bearbeitet.]]
+
+=== Tanken, Laden oder Zusätze erfassen ===
+
+# '''Neuer Tank-/Ladevorgang''' wählen, Datum/Uhrzeit eingeben und Fahrzeug auswählen.
+# Art und Betriebsmittel wählen; eine Ölreferenz ergänzen, wenn erforderlich.
+# Fahrer prüfen, Menge in der angegebenen Einheit und Kilometerstand erfassen.
+# Bruttogesamtbetrag eingeben. Einen unbekannten Preis für Zusätze leer lassen; null bedeutet einen bekannten Nullpreis.
+# Bei Bedarf ein Projekt zuordnen. Bei aktivierten sonstigen Zahlungen Zahlungsdaten prüfen und PDF-/JPEG-/PNG-Beleg anhängen.
+# Im Normalfall eine Standardablesung verwenden; Korrektur oder Zählerwechsel begründen. Speichern und Ergebnis prüfen.
+
+Bei einer Kapazitätswarnung Menge, Einheit, Fahrzeug und hinterlegte Kapazität kontrollieren. Finanzdaten und Belege sind nach Bankabgleich oder Buchhaltungsübertragung gesperrt.
+
+[[File:LMDBVehicleManagement-1.0.0-06-plein.jpg|thumb|center|1100px|Verbrauchsformular mit Beleg- und Zahlungsangaben bei aktivierter Option.]]
+
+=== Verbrauchsstatistik ===
+
+Die allgemeine '''Verbrauchsübersicht''' oder das Verbrauchsregister eines Fahrzeugs öffnen. Zeitraum und passende Fahrzeug-/Fahrer-/Betriebsmittel-/Artfilter setzen. Suchen, Mengen, Kosten, Mittelwerte und Spitzen prüfen und auffällige Werte über die Liste der Tank-/Ladevorgänge zurückverfolgen. Liter, kWh und Kilogramm bleiben getrennt und werden nicht addiert. Ausgeschlossene Intervalle kennzeichnen nicht berücksichtigte Kilometerstände. Spitzenwerte der Demonstration sind keine üblichen Verbrauchsrichtwerte.
+
+[[File:LMDBVehicleManagement-2026-09-07-synthese-anonymise.png|thumb|center|1100px|Verbrauchsfilter, Kennzahlen und native Diagramme mit Demonstrationsdaten.]]
+
+=== Wartung, Panne und Rechnungen ===
+
+Auf der Fahrzeugkarte '''Neues Fahrzeugereignis''' wählen. Bezeichnung, Art, Datum, Fahrer und Dienstleister erfassen, danach Schweregrad, Kilometerstand und mögliche Ausfallzeiten. Arbeiten beschreiben, speichern und Nachweise am Ereignis anhängen. Die Ereignisliste umfasst den Fuhrpark; die Fahrzeughistorie bündelt zugehörige Vorgänge.
+
+Am Ereignis oder an der Prüfung eine Lieferantenrechnung erstellen oder eine vorhandene Rechnung auswählen und verknüpfen. Verbindung unter Verknüpfte Objekte prüfen; die Referenz öffnet die Rechnung. Beim Lösen der Verbindung bleiben beide Datensätze erhalten.
+
+[[File:LMDBVehicleManagement-2026-09-13-intervention-facture-anonymise.png|thumb|center|1100px|Wartungsereignis mit Lieferantenrechnungsaktionen und verknüpften Objekten.]]
+
+== Versicherungen und Nachweise ==
+
+=== Vertrag anlegen ===
+
+Unter Versicherungsverträge '''Neuer Vertrag''' wählen. Versicherer und gegebenenfalls Kontakt/Vermittler auswählen. Versicherungsnummer, Bezeichnung, Deckung, Vertragszeitraum, Verlängerung und bekannte Kündigungsfrist sowie Assistance-Kontakte erfassen. Versicherte Fahrzeuge mit Deckungsart und Zeitraum auswählen. Speichern und Fahrzeugverknüpfungen prüfen. Haupt- und Zusatzdeckung sind möglich; ein Flottenvertrag fasst mehrere Fahrzeuge in einer Police zusammen.
+
+[[File:LMDBVehicleManagement-1.0.0-18-creation-assurance.jpg|thumb|center|1100px|Vertragsanlage und Fahrzeugdeckung.]]
+[[File:LMDBVehicleManagement-2026-09-11-assurance-anonymise.png|thumb|center|1100px|Gespeicherter Vertrag mit versichertem Fahrzeug.]]
+
+=== Versicherungsnachweis einreichen und prüfen ===
+
+# Vertrag und Register für Versicherungsnachweise öffnen.
+# Geltungsbereich wählen: versicherte Flotte oder zulässiges Fahrzeug. Gültigkeitsdaten erfassen und Nachweis anhängen.
+# Zum Weiterbearbeiten '''Entwurf speichern''' wählen, andernfalls '''Zur Prüfung einreichen'''.
+# Ein berechtigter Prüfer kontrolliert Datei und Daten und gibt den Nachweis frei oder lehnt ihn mit Begründung ab.
+# Bei Erneuerung einen neuen Nachweis anlegen und den alten über den vorgesehenen Ablauf archivieren.
+
+Die Tabelle zeigt Geltungsbereich, Daten, herunterladbare Nachweise und Status. Ein Entwurf ersetzt keinen geprüften und freigegebenen Nachweis.
+
+[[File:LMDBVehicleManagement-1.0.0-12-attestations.jpg|thumb|center|1100px|Freigegebener Nachweis und Einreichungsformular. Entwurf und Einreichung sind getrennte Schritte.]]
+
+== Anleitung für vorgeschriebene Prüfungen ==
+
+=== Fahrzeug oder Maschine qualifizieren ===
+
+Das Prüfungsregister der Fahrzeugkarte öffnen. Den Fragebogen anhand tatsächlicher Merkmale und Nutzung beantworten, erforderliche Daten ergänzen und speichern. Berechnete Anforderungen, letzte Prüfung, berechnetes Datum, maßgebliches Datum und Status kontrollieren. Bei Hebezeugen ergibt sich das VGP-Intervall aus der technischen Qualifikation; keine beliebige Frist annehmen. Fehlende Angaben anhand der Fahrzeug-/Maschinenunterlagen ergänzen.
+
+[[File:LMDBVehicleManagement-2026-09-09-qualification-anonymise.png|thumb|center|1100px|Fragebogen zur Ermittlung der anwendbaren Prüfanforderungen.]]
+
+=== Fälligkeitsübersicht lesen ===
+
+Die Prüfungsübersicht öffnen, nach Zeitraum, Fahrzeug, Maschinenart, Profil, Prüfung oder Status filtern und nach maßgeblichem Datum sortieren. Zur Detailprüfung das Fahrzeug öffnen. Statuskennzeichen unterscheiden aktuelle und überfällige Anforderungen. Das maßgebliche Datum zusammen mit Qualifikation und Nachweisen beurteilen.
+
+[[File:LMDBVehicleManagement-2026-09-08-echeancier-anonymise.png|thumb|center|1100px|Prüfungsübersicht mit Daten und Anforderungsstatus.]]
+
+=== Prüfung erfassen und freigeben ===
+
+'''Prüfung erfassen''' an einer Anforderung oder '''Neue Prüfung''' wählen. Fahrzeug, Anforderung und Prüfart prüfen. Datum, Prüfstelle, Berichtsreferenz, Ergebnis und offizielle Gültigkeit erfassen. Ein abweichendes wirksames Datum begründen. Beobachtungen speichern, vorgeschriebenen Nachweis am Entwurf anhängen und vor Freigabe kontrollieren. Anschließend aktualisierte Anforderung und Fälligkeit prüfen.
+
+[[File:LMDBVehicleManagement-2026-09-10-controle-anonymise.png|thumb|center|1100px|Prüfformular mit Prüfstelle, Ergebnis, Berichtsreferenz und Daten.]]
+
+Eine freigegebene Prüfung ist unveränderlich. Fehler durch begründete Aufhebung und Ersatz korrigieren. Nachprüfungen behalten ihre Verbindung zur ursprünglichen Prüfung. Rechnungsverknüpfungen dürfen geändert werden, ohne freigegebene Prüfdaten umzuschreiben.
+
+== Dokumente, Historie und Import/Export ==
+
+'''Notizen''' für zulässige öffentliche/private Notizen verwenden. Dateien am richtigen Objekt ablegen: Wartungsberichte am Ereignis, Prüfnachweise an der Prüfung. Native Vorschau, Download, Upload und Löschung beachten die Objektberechtigungen. Leserechte allein erlauben keine Dateiänderung.
+
+=== Fahrzeugakte erzeugen ===
+
+# Fahrzeugkarte und Block '''Anhänge''' öffnen.
+# Bei Dokumentmodell '''Fahrzeugakte''' auswählen und '''Erzeugen''' anklicken.
+# PDF und ZIP prüfen. Die Lupe zeigt die PDF-Vorschau; Dateinamen laden die PDF bzw. das ZIP herunter.
+# Für eine Aktualisierung erneut erzeugen; reservierte Fahrzeugaktendateien nicht manuell ersetzen.
+
+[[File:LMDBVehicleManagement-1.0.0-14-dossier.jpg|thumb|center|754px|Native Modellauswahl, Erzeugung, Vorschau und Download.]]
+[[File:LMDBVehicleManagement-2026-09-19-apercu-pdf-anonymise.png|thumb|center|793px|Erste Seite einer vorhandenen Fahrzeugakte.]]
+
+Verbrauchs-/Zahlungsbelege gehören nicht zum ZIP. Zum Lesen der Akte bleiben Leserechte für Fahrzeug und Lieferantenrechnungen erforderlich.
+
+=== Frühere Vorgänge finden ===
+
+'''Historie''' öffnen, nach Datum, Quelle, Art, Bezeichnung oder Status filtern, nach Datum sortieren und einen Vorgang über seine Bezeichnung öffnen. Dokumentindikator prüfen. '''Ereignisse/Kalender''' zeigt verknüpfte Kalenderereignisse; die Historie bündelt die vorhandenen fachlichen Vorgänge.
+
+[[File:LMDBVehicleManagement-2026-09-17-historique-anonymise.png|thumb|center|1100px|Gemeinsame Historie mit Ereignissen, Kilometerständen, Verbrauch, Versicherungen und Zuordnungen.]]
+
+Native Import-/Exportfunktionen mit den Moduldaten und passenden Berechtigungen verwenden. CSV-Spalten entsprechend dem gewählten Import vorbereiten, Referenzen und Umgebung prüfen und Ergebnisse kontrollieren. Importierte Prüfungen bleiben Entwürfe. Bei aktivierten sonstigen Zahlungen wird der Verbrauchsimport abgewiesen. Unbekannte Zusatzpreise leer lassen, bekannte Nullpreise als null erfassen.
+
+== Anbindung der QUARTIX-API ==
+
+=== Zugang, Berechtigungen und Verbindung ===
+
+QUARTIX QWS v2 wird ausschließlich lesend verwendet. Von QUARTIX QWS-Zugang, Kundencode, Benutzername, Passwort und '''APPLICATION NAME''' beziehen und die Berechtigung für Fahrtverläufe bestätigen lassen. Modulausgabe und Kompatibilitätsregister prüfen: je nach Funktion werden cURL, OpenSSL, native Verschlüsselung mit dem Dolibarr-Instanzschlüssel und natives Leaflet benötigt. Nach Bereitstellung das Modul deaktivieren/reaktivieren, um Tabellen, Rechte und Aufgaben unter Beibehaltung vorhandener Einstellungen zu registrieren.
+
+Fahrzeuglesen, GPS-Anzeige und QUARTIX-Synchronisierung sind getrennte Rechte. Der interne Benutzer für geplante Aufgaben benötigt Fahrzeuglesen, QUARTIX-Synchronisierung und Kilometerstandsverwaltung. Synchronisierungsrechte gewähren keinen GPS-Zugriff. Externe Benutzer können QUARTIX-Funktionen nicht verwenden. Einstellungen und Zuordnungen gehören der besitzenden Umgebung; sie synchronisiert auch freigegebene Fahrzeuge.
+
+# Moduleinstellungen und Register '''QUARTIX''' öffnen.
+# Kundencode, Benutzername, Passwort und den exakten von QUARTIX gelieferten APPLICATION NAME erfassen. Ein leeres Passwortfeld behält das gespeicherte Passwort bei.
+# Zeitstempelinterpretation bestätigen. Die '''QWS-Konvention''' berücksichtigt einen ausdrücklichen UTC-Versatz und verwendet sonst die lokale Fahrzeugzeitzone. Einen erzwungenen Modus nur nach Bestätigung der Kontokonvention wählen.
+# Die Einheit für Zeitdauern mit QUARTIX klären. Solange sie nicht konfiguriert ist, bleiben Dauern unbekannt und werden nicht als null behandelt.
+# '''Aufbewahrung der Fahrten in Tagen''' einstellen. Ohne vorhandene Einstellung beträgt der Anfangswert 30.
+# Speichern, anschließend Verbindung testen und Fahrzeugkatalog laden.
+# Nach Einrichtung Synchronisierung und die vier nativen Aufgaben aktivieren.
+
+Jede Umgebung hat eigene Zugangsdaten, Token, Zuordnungen und Synchronisierungszustände. Gespeicherte Passwörter werden nicht angezeigt. Geänderte Zugangsdaten erneuern die Authentifizierung dieser Umgebung.
+
+=== Fahrzeuge verbinden und Geräte neu zuordnen ===
+
+Dolibarr-Fahrzeug und entsprechendes QUARTIX-Fahrzeug auswählen, IANA-Zeitzone sowie tatsächlichen Einbauzeitpunkt des Geräts bestätigen und speichern. Der Tagesbeginn stammt aus QUARTIX. Erste Werte im Fahrzeugregister '''QUARTIX-Nutzung''' prüfen. Neue Importe beginnen frühestens beim Einbau: ältere Positionen und Schätzungen werden abgewiesen; Übersichten beginnen mit dem ersten vollständigen QUARTIX-Tag danach. Bei migrierten Verbindungen ohne Einbaudatum wird kein Datum erfunden. Nach Änderungen von Zeitzone oder Tagesbeginn in QUARTIX die Verbindung prüfen.
+
+Der native Schalter pausiert/reaktiviert die Verbindung. '''Verbindung lösen''' unterscheidet:
+
+* '''Gerät neu zuordnen''': Importe beim alten Fahrzeug behalten. Bereits geladene Fahrtverläufe bleiben bis zum Ablauf lesbar; neue Anfragen für die alte Verbindung enden.
+* '''Fehlerhafte Zuordnung''': QUARTIX-Fahrten, Übersichten und Schätzungen des Fahrzeugs entsprechend der Bestätigung dauerhaft löschen.
+
+Beide Aktionen entfernen die letzte Position und geben das Gerät für eine neue Zuordnung frei. Manuelle und verbrauchsbezogene Kilometerstände bleiben erhalten. Eine neue Zuordnung darf auf demselben Fahrzeug keine Zeiträume mit aufbewahrter Historie überlappen.
+
+=== Geplante Aufgaben ===
+
+Die Aufgaben werden '''deaktiviert''' installiert und anfänglich alle fünfzehn Minuten aufgerufen. Ausführungsbenutzer prüfen, Aufgaben in der nativen Verwaltung aktivieren und letzte Ergebnisse kontrollieren.
+
+{| class="wikitable"
+! QUARTIX-Aufgabe !! Zweck
+|-
+| Letzte Positionen || Positionen fahrzeugweise in Gruppen aktualisieren
+|-
+| Täglicher Kilometerstand || Geschätzte Kilometerstände im täglichen Fahrzeugdurchlauf importieren
+|-
+| Nutzung und historische Nachladung || Abgeschlossene Tage importieren und Nutzungshistorie schrittweise ergänzen
+|-
+| Fahrtenprotokoll || Aktuelle/offene Tage aktualisieren, Historie nachladen, Kartenanfragen bearbeiten und abgelaufene Fahrten bereinigen
+|}
+
+Das Aufrufintervall garantiert keine vollständige Aktualisierung der Flotte innerhalb von fünfzehn Minuten. Fahrzeugzahl, Verarbeitungspakete, Antwortzeit und Kontingente beeinflussen die Fertigstellung. Kontingent- und Dienstfehler erzeugen eine gemeinsame Wartefrist der Umgebung; wiederholte Verbindungstests umgehen sie nicht.
+
+=== Nutzung und Übersicht auswerten ===
+
+Das Register QUARTIX-Nutzung zeigt die Verbindung und die freigegebenen importierten Angaben. Die Flottenübersicht verwendet native Filter, Kennzahlen und Diagramme.
+
+* Geschätzte Kilometerstände sind gekennzeichnet und ersetzen keine tatsächlichen oder verbrauchsbezogenen Ablesungen. Widersprüche werden gemeldet, ohne tatsächliche Ablesungen zu blockieren.
+* Die letzte Position benötigt GPS-Rechte. Datum prüfen: eine alte Position beweist weder Panne noch Stillstand.
+* Nutzung umfasst Strecke, Fahrtenzahl, aktive Tage und Datenabdeckung. Tagesübersichten bleiben zwölf Monate erhalten; der laufende Tag gehört nicht zu abgeschlossenen Tagesübersichten.
+* Ein unbekannter Tag unterscheidet sich von einem bekannten Tag ohne Aktivität. Summen berücksichtigen nur gemeldete Tage.
+* Die Übersicht zeigt anfänglich die letzten dreißig abgeschlossenen Tage. Summen und Tagesverlauf umfassen die Auswahl; der Fahrzeugvergleich zeigt die zwanzig höchsten Strecken. Ohne GPS-Rechte entfallen Orte und GPS-Links.
+
+Das Lesen importierter Daten löst keine QWS-Anfrage aus. Verbrauchsberechnungen verwenden weiterhin tatsächliche Ablesungen.
+
+[[File:LMDBVehicleManagement-2026-09-quartix-utilisation.png|thumb|center|1000px|Tägliche QUARTIX-Nutzung: Tagesabdeckung, Entfernungen und Anzahl der Fahrten. Zeitangaben bleiben unverfügbar, bis ihre Einheit bestätigt ist.]]
+
+=== Fahrtenprotokoll ===
+
+Mit GPS-Rechten '''Fahrten''' öffnen, Zeitraum wählen (anfänglich die letzten sieben Tage), Filter anwenden und Abfahrt, Ankunft, Strecke und Status prüfen. Spaltenauswahl, Sortierung und Seitennavigation verwenden. Tagesabdeckung und Synchronisierungszeit prüfen, bevor aus einer leeren Liste auf fehlende Fahrten geschlossen wird.
+
+Angezeigte Uhrzeiten verwenden die Dolibarr-Sitzungszeitzone; der Fahrttag folgt der QUARTIX-Tagesgrenze des Fahrzeugs. Vorläufige Ankünfte werden nicht als endgültig angezeigt. '''Private Fahrten speichern nur Tag und Strecke''': keine Adressen, Koordinaten, genauen Zeiten, Dauern oder Fahrtverläufe. Fehlende Datenschutzkennzeichen erhalten denselben Schutz.
+
+[[File:LMDBVehicleManagement-2026-09-quartix-trajets-anonymise.png|thumb|center|1000px|QUARTIX-Fahrtenprotokoll mit Zeitraumfiltern und Fahrtstatus. Adressen sind unkenntlich gemacht.]]
+
+=== Karte des Fahrtverlaufs ===
+
+Nach Bestätigung des QWS-Zugriffs die Kartenanzeige in den QUARTIX-Einstellungen der besitzenden Umgebung aktivieren. Bei einer nicht privaten Fahrt '''Fahrtverlauf anzeigen''' wählen. Der native Dialog zeigt den zwischengespeicherten Verlauf oder fordert ihn bei Bedarf an. '''Verlauf laden/aktualisieren''' wird verfügbar, sobald ein neuer Versuch erlaubt ist. Bei freigegebenen Fahrzeugen wartet ein nicht vorhandener Verlauf auf die Fahrtenprotokoll-Aufgabe des Besitzers.
+
+Die native Modale enthält weder eingebettete Navigationshistorie noch Debugleiste. Hinweise und Warnungen bleiben als dauerhafte Meldungsblöcke sichtbar. Die Karte verbindet QUARTIX-Positionen; '''sie berechnet keine Straßenroute'''. Abgeschlossene Fahrten zeigen Start- und Zielmarkierungen. Nur laufende Fahrten erhalten den Hinweis auf einen vorläufigen Verlauf ohne endgültige Ankunft. Weniger als zwei Punkte, fehlende oder unvereinbare Daten führen zu einer Nichtverfügbarkeitsmeldung.
+
+Ein abgeschlossener, gespeicherter Verlauf ruft QUARTIX nicht erneut auf. Anfragen für denselben Tag liegen mindestens fünfzehn Minuten auseinander, abhängig von Kontingenten. Regelmäßige Prüfungen im Dialog lesen nur Cache und Rechte; sie sind keine GPS-Liveverfolgung.
+
+Standardmäßig werden OpenStreetMap-Kacheln ohne API-Schlüssel und mit sichtbarer Quellenangabe verwendet. Eine alternative HTTPS-Kachel-URL und Quellenangabe sind konfigurierbar. Der Kartenanbieter erhält Anfragen für den betrachteten Bereich, keine QUARTIX-Zugangsdaten. Fehler beim Kartenhintergrund werden getrennt von fehlenden Fahrtverläufen gemeldet.
+
+[[File:LMDBVehicleManagement-2026-09-quartix-route-anonymise.png|thumb|center|1000px|Abgeschlossene Fahrt im nativen Dialog mit dauerhaft sichtbaren Meldungen. Kennzeichen und Kartenhintergrund sind zum Schutz der Orte unkenntlich gemacht; der Kartennachweis bleibt sichtbar.]]
+
+=== Aufbewahrung und Vertraulichkeit ===
+
+Fahrten und Fahrtverläufe teilen sich eine Aufbewahrungsfrist. Eine Verkürzung blendet abgelaufene Tage sofort aus; die Fahrtenprotokoll-Aufgabe löscht sie anschließend gruppenweise. Eine Verlängerung ermöglicht das schrittweise Nachladen noch bei QUARTIX verfügbarer Tage. Die Bereinigung läuft bei bloß pausierter Synchronisierung weiter, solange Modul und Fahrtenprotokoll-Aufgabe aktiv bleiben; das Abschalten eines dieser beiden stoppt sie. Nutzungsübersichten behalten ihr separates Zwölfmonatsfenster.
+
+Gespeicherte Fahrtverläufe sind verschlüsselt. Wird eine Fahrt privat oder mit dem Protokoll unvereinbar, entfällt der Zugriff auf ihren bisherigen Verlauf. GPS-Positionen und Verläufe sind aus Moduldokumenten, Exporten und APIs ausgeschlossen. Fahreridentitäten, Eco-Driving-Bewertungen und detaillierte Geschwindigkeiten werden nicht importiert.
+
+=== QUARTIX-Fehlersuche ===
+
+{| class="wikitable"
+! Symptom !! Prüfung
+|-
+| Verbindungstest scheitert || Alle Zugangsdaten speichern, insbesondere APPLICATION NAME. Angezeigten Schritt und HTTP-Status festhalten, ohne Zugangsdaten oder rohe API-Antworten zu teilen.
+|-
+| Keine neuen Daten || Aktive Verbindung, Synchronisierung, Einbaudatum, Benutzerrechte und alle vier Aufgaben prüfen. Historische Nachladung benötigt mehrere Durchläufe.
+|-
+| Dauern fehlen || Einheit mit QUARTIX bestätigen und speichern.
+|-
+| Kartensymbol fehlt || GPS-Rechte, Kartenaktivierung, Privatstatus und Aufbewahrungsfrist prüfen.
+|-
+| Anfrage wartet || Fahrtenprotokoll-Aufgabe der besitzenden Umgebung, Synchronisierung und Wartefrist prüfen.
+|-
+| Karte bleibt leer || Dauerhafte Meldung lesen: fehlende Punkte, abgelaufene Sitzung, entzogener Zugriff und Kartenkachelfehler sind verschiedene Ursachen. Nach Modulaktualisierung die Seite neu laden.
+|-
+| Abweichung von QUARTIX || Dasselbe Fahrzeug, Datum, Zeitzone, Tagesgrenze, Datenabdeckung und Synchronisierungszeit vergleichen; Schätzungen und echte Ablesungen unterscheiden.
+|}
+
+== Häufige Fragen ==
+
+{| class="wikitable"
+! Situation !! Prüfung oder Maßnahme
+|-
+| Aktion fehlt || Rechte, Objektstatus und Abhängigkeiten unter Kompatibilität prüfen.
+|-
+| Fahrzeugakte wird nicht erzeugt || Modellaktivierung, Lieferantenrechnungen, PHP ZIP und Fahrzeug-/Rechnungsrechte prüfen.
+|-
+| Kilometerstand nicht bearbeitbar || Verbrauchsbezogenen Stand am ursprünglichen Verbrauchseintrag korrigieren.
+|-
+| Nachweis nicht freigegeben || Status, Geltungsbereich, Daten und Datei prüfen; ein Entwurf benötigt noch eine Prüfung.
+|-
+| Fälligkeit fehlt || Von der Regel benötigte Merkmale und Daten ergänzen.
+|-
+| Erinnerungen fehlen || Aktivierung, Empfänger, Vorlagen, Dolibarr-E-Mail-Versand und Aufgabenergebnisse prüfen.
+|-
+| Ausgabe nicht änderbar || Bankabgleich oder Buchhaltungsübertragung prüfen und das native finanzielle Korrekturverfahren verwenden.
+|-
+| Daten einer anderen Umgebung sichtbar || Umgebung und erlaubte Multicompany-Freigaben prüfen.
+|}
+
+== Aktualisierung und Grenzen ==
+
+Vor Aktualisierungen Datenbank und Dokumente sichern. Moduldateien ersetzen und das Modul deaktivieren/reaktivieren, um Migrationen und native Deklarationen unter Erhaltung der Einstellungen anzuwenden. <code>ChangeLog.md</code> lesen, Modelle und Aufgaben prüfen, Fahrzeugakten nach Layoutänderungen neu erzeugen und Bankeinstellungen vor Aktivierung von Verbrauchszahlungen kontrollieren. Neue Kalenderereignisse verwenden aktualisierte Bezeichnungen; bestehende Historie und freigegebene Prüfungen werden nicht umgeschrieben. QUARTIX benötigt eigene Zugangsdaten, Verbindungen und vier Aufgaben; ältere 1.0.0-Pakete können die Anbindung noch nicht enthalten.
+
+Detailprüfungen für Feuerlöscher, Druckgeräte, Lastaufnahmemittel und Kältemittel sind nicht vorkonfiguriert. Zulassungsdokumentverwaltung, Schadensfälle, Prämien, Selbstbeteiligungen und Bußgelder liegen außerhalb des Umfangs. Einkaufsrechnungen bleiben im nativen Lieferantenrechnungsmodul. Regelmäßige Erinnerungen benötigen funktionierende geplante Aufgaben und E-Mail-Zustellung. QUARTIX-Verlaufsexport, Eco-Driving und automatische Änderungen der Fahrerzuordnungen werden nicht angeboten.
+
+== Quellen und Links ==
+
+* [https://github.com/mapiolca/lmdbvehiclemanagement Modulquellcode]
+* [https://github.com/mapiolca/lmdbvehiclemanagement/blob/094fc89/README.md Ursprüngliche Dokumentation der Version 1.0.0]
+* [https://github.com/mapiolca/lmdbvehiclemanagement/blob/094fc89/ChangeLog.md Ursprüngliches Änderungsprotokoll der Version 1.0.0]
+* [https://github.com/mapiolca Profil des Autors]
+
