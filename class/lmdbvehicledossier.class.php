@@ -173,7 +173,7 @@ class LmdbVehicleDossier
 		$statusObjects = array('lmdbvehicleevent' => new LmdbVehicleEvent($this->db), 'lmdbvehicleassignment' => new LmdbVehicleAssignment($this->db),
 			'lmdbvehicleodometerreading' => new LmdbVehicleOdometerReading($this->db), 'lmdbvehicleconsumption' => new LmdbVehicleConsumption($this->db),
 			'lmdbinsurancecontract' => new LmdbVehicleInsuranceContract($this->db), 'lmdbinsurancecertificate' => new LmdbVehicleInsuranceCertificate($this->db));
-		$typeLabels = array('contract_linked' => 'InsuranceHistoryContractLinked', 'certificate_submitted' => 'InsuranceHistoryCertificateSubmitted', 'certificate_validated' => 'InsuranceHistoryCertificateValidated', 'certificate_rejected' => 'InsuranceHistoryCertificateRejected');
+		$typeLabels = array('quartix_estimate' => 'QxEstimate', 'contract_linked' => 'InsuranceHistoryContractLinked', 'certificate_submitted' => 'InsuranceHistoryCertificateSubmitted', 'certificate_validated' => 'InsuranceHistoryCertificateValidated', 'certificate_rejected' => 'InsuranceHistoryCertificateRejected');
 		foreach (array('lmdbvehicleevent' => 'event_type', 'lmdbvehicleassignment' => 'assignment_type', 'lmdbvehicleodometerreading' => 'reading_kind', 'lmdbvehicleconsumption' => 'category_snapshot') as $element => $field) {
 			$typeLabels = array_merge($typeLabels, $statusObjects[$element]->fields[$field]['arrayofkeyval'] ?? array());
 		}

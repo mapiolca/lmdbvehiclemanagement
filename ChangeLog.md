@@ -1,5 +1,26 @@
 # Historique des versions
 
+## À publier
+
+- Boutons « Activer » et « Résilier » des contrats d’assurance harmonisés avec les actions natives Dolibarr : même composant que « Modifier », sans style spécifique au module. Actions protégées par token CSRF et droits d’écriture conservés.
+
+- Traductions Multicompany complétées en français et en anglais pour le partage des contrôles réglementaires, de leur numérotation et des dictionnaires du module : libellés, titres, descriptions et infobulles manquants.
+
+- Correction de la consultation des tracés QUARTIX : chargement rétabli, dialogue natif sans page intégrée, historique de navigation ni barre de débogage. Messages persistants au style Dolibarr, note provisoire réservée aux trajets en cours, fermeture interrompant les requêtes et affichage adapté aux petits écrans. Déployer les fichiers, y compris le nouveau template, puis recharger le journal ; aucune migration supplémentaire.
+
+- Tracés QUARTIX depuis le pictogramme de consultation du journal : modale native avec Leaflet fourni par Dolibarr, fond OpenStreetMap configurable, cache chiffré à la demande et demandes partagées reprises par le travail Journal des trajets existant. Droit GPS et entité contrôlés à chaque lecture ; trajets privés exclus, cache invalidé par les modifications du journal et purgé avec sa conservation. Deux tables additives et trois réglages créés uniquement en leur absence ; réactiver le module puis activer la consultation des tracés dans QUARTIX.
+
+- Tableaux QUARTIX alignés sur la référence native Dolibarr : en-têtes et cellules cohérents, filtres et sélection des colonnes dans leurs emplacements natifs, comptages entiers et conservation de la navigation. Correction du basculement des tris ascendants/descendants et de l’affichage des liens vers les pages suivantes.
+- Graphiques d’utilisation et du parc rendus avec le moteur natif configuré par Dolibarr, en cohérence avec les scripts chargés par la page.
+- Accès au tableau de bord et à ses menus parents rétabli pour les administrateurs sans droits granulaires : condition compatible avec l’évaluation sécurisée native de Dolibarr, accès conservé pour les lecteurs internes et refusé aux utilisateurs externes. Réactiver le module pour actualiser les menus déjà installés.
+
+- Intégration QUARTIX en lecture seule : connexion chiffrée par environnement avec nom d'application QWS configurable, associations explicites suspendables par interrupteur natif ON/OFF et dissociables avec conservation ou suppression des imports erronés, kilométrage estimé quotidien, dernière position sous droit GPS et synthèses d'utilisation quotidiennes/mensuelles sur douze mois.
+- Quatre travaux planifiés natifs avec lots reprenables, renouvellement des jetons, quotas et verrouillage. Les réglages des tâches sont conservés à la désactivation/réactivation. Authentification et renouvellement envoyés en JSON ; les refus 422 sont distingués des erreurs de service. Lecture compatible avec le champ réel `VehicleId` et la variante documentée `VehicleID`, sans accepter des identifiants contradictoires. Correction des synthèses par jour/véhicule et du champ de date des positions ; mode QWS pour les dates avec décalage explicite ou en heure locale du véhicule. Les erreurs de connexion indiquent l'étape et le statut HTTP ou le code réseau, sans exposer les secrets.
+- Migration additive des relevés estimés et de la date d’installation du boîtier : les réaffectations excluent les données antérieures, les anciennes associations conservent leur reprise historique. Purge transactionnelle limitée aux imports QUARTIX, avec conservation des relevés manuels et des consommations. Relevés estimés : priorité aux relevés réels et aux pleins/recharges, anomalies visibles et imports sans doublon. Aucun GPS dans les documents ou pour les utilisateurs externes.
+- Journal des trajets avec journées courantes, états provisoires, conservation par environnement (30 jours initialement) et protection des trajets privés ; remplacement transactionnel par journée, reprise progressive et purge même lorsque la synchronisation est suspendue. Tableau de bord du parc : couverture des données, distances, trajets, jours actifs, graphiques natifs et état des travaux par environnement. Deux tables de cache ajoutées sans modifier les trois tâches existantes ; le droit GPS existant couvre également le journal. Les historiques conservés après réaffectation sont protégés contre l’écrasement.
+
+- Réactiver le module après cette mise à jour pour ajouter la date d’installation, configurer QUARTIX, confirmer les unités/fuseaux, associer les véhicules puis activer les tâches souhaitées. Le nouveau journal est installé désactivé ; son activation permet aussi la purge des trajets expirés. Si l'intégration est déjà initialisée, compléter et enregistrer le nouveau champ **APPLICATION NAME** fourni par QUARTIX, sans nouvelle saisie du mot de passe. Voir [le guide QUARTIX](doc/quartix.md). Version du module inchangée.
+
 ## `1.0.0` — 2026-09-04
 
 Première version stable. Cette entrée synthétise les versions de développement `0.1.0` à `0.15.0` et les évolutions précédemment « À publier ».

@@ -1,0 +1,154 @@
+<?php
+/* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
+
+$res = 0;
+if (!$res && !empty($_SERVER['CONTEXT_DOCUMENT_ROOT'])) $res = @include str_replace('..', '', $_SERVER['CONTEXT_DOCUMENT_ROOT']).'/main.inc.php';
+if (!$res && file_exists('../../main.inc.php')) $res = @include '../../main.inc.php';
+if (!$res && file_exists('../main.inc.php')) $res = @include '../main.inc.php';
+if (!$res) die('Include of main fails');
+
+require_once __DIR__.'/class/lmdbvehiclequartixcron.class.php';
+require_once __DIR__.'/lib/lmdbvehiclemanagement.lib.php';
+
+/** @var Conf $conf */
+/** @var DoliDB $db */
+/** @var Translate $langs */
+/** @var User $user */
+$langs->loadLangs(array('other', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+// Tile requests originate from the journal now; disclose only its origin as referrer.
+header('Referrer-Policy: strict-origin');
+if (!LmdbVehicleQuartixConfig::supported() || !isModEnabled('lmdbvehiclemanagement') || !empty($user->socid)
+	|| !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'quartix', 'location')) accessforbidden();
+$id = GETPOSTINT('id');
+$service = new LmdbVehicleQuartixTrips($db);
+try {
+	$object = $service->vehicle($id, 'location');
+	$link = $service->link($id);
+	$cfg = (new LmdbVehicleQuartixConfig($db))->load((int) $object->entity);
+	$retention = LmdbVehicleQuartixTrips::retention($cfg['TRIP_RETENTION_DAYS']);
+} catch (Exception $e) { accessforbidden($langs->trans('QxDataUnavailable')); exit; }
+$hookmanager->initHooks(array('lmdbvehicletripslist'));
+$action = GETPOST('action', 'aZ09');
+$limit = max(1, min(1000, GETPOSTINT('limit') ?: (int) $conf->liste_limit));
+$page = max(0, GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page'));
+$sortfield = GETPOST('sortfield', 'aZ09') ?: 'departure';
+$sortorder = strtoupper(GETPOST('sortorder', 'alpha')) === 'ASC' ? 'ASC' : 'DESC';
+$status = GETPOST('search_status', 'alpha');
+$reset = GETPOSTISSET('button_removefilter_x') || GETPOSTISSET('button_removefilter');
+if ($reset || GETPOSTISSET('button_search_x') || GETPOSTISSET('button_search')) $page = 0;
+if ($reset) $status = '';
+$today = $link ? LmdbVehicleQuartixTrips::reportingDay(dol_now(), $link->timezone, $link->shift_start) : gmdate('Y-m-d', dol_now());
+$dates = array();
+foreach (array('start', 'end') as $key) {
+	$day = GETPOSTINT($key.'day'); $month = GETPOSTINT($key.'month'); $year = GETPOSTINT($key.'year');
+	$default = $key === 'start' ? LmdbVehicleQuartixRules::day($today)->modify('-6 days')->format('Y-m-d') : $today;
+	$dates[$key] = !$reset && ($day || $month || $year) ? sprintf('%04d-%02d-%02d', $year, $month, $day) : $default;
+}
+$arrayfields = array(
+	'day' => array('label' => 'Date', 'checked' => 1, 'align' => 'center'),
+	'departure' => array('label' => 'QxDeparture', 'checked' => 1, 'align' => 'center'),
+	'arrival' => array('label' => 'QxArrival', 'checked' => 1, 'align' => 'center'),
+	'from' => array('label' => 'QxStartLocation', 'checked' => 1, 'align' => 'left'),
+	'to' => array('label' => 'QxEndLocation', 'checked' => 1, 'align' => 'left'),
+	'distance' => array('label' => 'QxDistance', 'checked' => 1, 'align' => 'right'),
+	'private_distance' => array('label' => 'QxPrivateDistance', 'checked' => 0, 'align' => 'right'),
+	'status' => array('label' => 'Status', 'checked' => 1, 'align' => 'center'),
+);
+if ($cfg['DURATION_UNIT'] !== '') {
+	$arrayfields['travel'] = array('label' => 'QxDriving', 'checked' => 0, 'align' => 'right');
+	$arrayfields['idling'] = array('label' => 'QxIdling', 'checked' => 0, 'align' => 'right');
+}
+$contextpage = 'lmdbvehicletrips';
+$parameters = array('arrayfields' => &$arrayfields);
+$reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action);
+if ($reshook < 0) setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
+include DOL_DOCUMENT_ROOT.'/core/actions_changeselectedfields.inc.php';
+if (!isset($arrayfields[$sortfield])) $sortfield = 'departure';
+$result = array('rows' => array(), 'total' => 0, 'days' => array()); $valid = true;
+try {
+	$result = $service->journal($id, $dates['start'], $dates['end'], $status, $limit, $page * $limit, $sortfield, $sortorder);
+	if ($page && $page * $limit >= $result['total']) {
+		$page = 0; $result = $service->journal($id, $dates['start'], $dates['end'], $status, $limit, 0, $sortfield, $sortorder);
+	}
+} catch (Exception $e) { $valid = false; setEventMessages($langs->trans(LmdbVehicleQuartixCron::safeError($e)), null, 'errors'); }
+$form = new Form($db);
+$routeAvailable = LmdbVehicleQuartixRoutes::unavailable($cfg) === '';
+llxHeader('', $object->ref.' — '.$langs->trans('QxJournal'), '', '', 0, 0,
+	$routeAvailable ? array('/includes/leaflet/leaflet.js', '/lmdbvehiclemanagement/js/quartix_route.js') : array(),
+	$routeAvailable ? array('/includes/leaflet/leaflet.css', '/lmdbvehiclemanagement/css/quartix_route.css') : array());
+print dol_get_fiche_head(lmdbVehiclePrepareHead($object), 'trips', $langs->trans('Vehicle'), -1, $object->picto);
+lmdbVehiclePrintBanner($object);
+print '<p>'.$langs->trans('QxJournalHelp').'</p><p class="opacitymedium">'.$langs->trans('QxJournalRetention', $retention).'</p>';
+if ($link === null) print '<div class="warning">'.$langs->trans('QxNotAssociated').'</div>';
+elseif (!(int) $link->active || $cfg['ENABLED'] !== '1') print '<div class="warning">'.$langs->trans('QxPaused').'</div>';
+if ($link) print '<p>'.$langs->trans('QxReportingZone', dol_escape_htmltag($link->timezone), dol_escape_htmltag($link->shift_start)).'</p>';
+if ($cfg['DURATION_UNIT'] === '') print '<p class="opacitymedium">'.$langs->trans('QxDurationUnconfirmed').'</p>';
+if ($valid) {
+	$expected = $result['start'] > $result['end'] ? 0 : 1 + (int) LmdbVehicleQuartixRules::day($result['start'])->diff(LmdbVehicleQuartixRules::day($result['end']))->days;
+	print '<p>'.$langs->trans('QxJournalCoverage', count($result['days']), $expected).'</p>';
+}
+$param = '&id='.$id.'&limit='.$limit.'&search_status='.urlencode($status);
+foreach ($dates as $key => $value) if ($valid) {
+	$d = LmdbVehicleQuartixRules::day($value); $param .= '&'.$key.'day='.$d->format('d').'&'.$key.'month='.$d->format('m').'&'.$key.'year='.$d->format('Y');
+}
+$selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $contextpage, !empty($conf->main_checkbox_left_column));
+$actionsLeft = !empty($conf->main_checkbox_left_column);
+print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'" name="qxtrips"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
+print '<input type="hidden" name="formfilteraction" id="formfilteraction" value="list"><input type="hidden" name="action" value="list"><input type="hidden" name="page" value="'.$page.'">';
+print '<input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.$sortorder.'">';
+// The native navigation needs a count above limit when another page exists.
+$num = min($limit + 1, max(0, $result['total'] - $page * $limit));
+print_barre_liste($langs->trans('QxJournal'), $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $result['total'], 'car', 0, '', '', $limit);
+print '<div class="liste_titre liste_titre_bydiv centpercent">';
+foreach ($dates as $key => $value) print '<div class="divsearchfield">'.$langs->trans($key === 'start' ? 'From' : 'To').' '.$form->selectDate($valid ? LmdbVehicleQuartixRules::day($value)->getTimestamp() : -1, $key, 0, 0, 0, '', 1, 0, 0, '', '', '', '', 1, '', '', 'gmt').'</div>';
+print '</div>';
+$visible = array_filter($arrayfields, static function ($field) { return !empty($field['checked']); });
+if (!isset($visible['status'])) print '<input type="hidden" name="search_status" value="'.dol_escape_htmltag($status).'">';
+print '<div class="div-table-responsive-no-min"><table class="tagtable liste listwithfilterbefore" id="quartix-trips-list"><thead><tr class="liste_titre_filter">';
+if ($actionsLeft) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons('left').'</td>';
+foreach ($visible as $key => $field) {
+	print '<td class="'.($field['align'] ?? 'left').'">';
+	if ($key === 'status') print $form->selectarray('search_status', array('' => $langs->trans('All'), 'open' => $langs->trans('QxTripOpen'), 'done' => $langs->trans('QxTripDone'), 'private' => $langs->trans('QxTripPrivate')), $status, 0, 0, 0, '', 0, 0, 0, '', 'maxwidth150', 1);
+	print '</td>';
+}
+if (!$actionsLeft) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons().'</td>';
+print '</tr><tr class="liste_titre">';
+if ($actionsLeft) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch actioncolumn ');
+foreach ($visible as $key => $field) print getTitleFieldOfList($field['label'], 0, $_SERVER['PHP_SELF'], $key, '', $param, 'data-col="'.$key.'"', $sortfield, $sortorder, ($field['align'] ?? 'left').' ');
+if (!$actionsLeft) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch actioncolumn ');
+print '</tr></thead><tbody>';
+foreach ($result['rows'] as $row) {
+	$routeAction = '';
+	if (!(int) $row->is_private && $row->departure !== null && $routeAvailable) {
+		$routeUrl = dol_buildpath('/lmdbvehiclemanagement/vehicle_route.php', 1).'?day='.(int) $row->fk_tripday.'&trip='.LmdbVehicleQuartixRoutes::tripKey($db->jdate($row->departure));
+		$routeAction = '<a class="qx-route-open" href="'.dol_escape_htmltag($routeUrl).'">'.img_picto($langs->trans('QxRouteView'), 'eye').'</a>';
+	}
+	print '<tr class="oddeven">';
+	if ($actionsLeft) print '<td class="center actioncolumn">'.$routeAction.'</td>';
+	foreach ($visible as $key => $field) {
+		print '<td class="'.($field['align'] ?? 'left').'" data-col="'.$key.'">';
+		if ($key === 'day') print dol_print_date(LmdbVehicleQuartixRules::day($row->trip_day)->getTimestamp(), 'day', 'gmt');
+		elseif ($key === 'status') print dolGetStatus($langs->trans($row->is_private ? 'QxTripPrivate' : ($row->in_progress ? 'QxTripOpen' : 'QxTripDone')), '', '', $row->is_private ? 'status5' : ($row->in_progress ? 'status1' : 'status4'), 5);
+		elseif ($key === 'departure' || $key === 'arrival') print $row->{$key} !== null ? dol_print_date($db->jdate($row->{$key}), 'dayhour') : '<span class="opacitymedium">—</span>';
+		elseif ($key === 'from' || $key === 'to') print dol_escape_htmltag((string) ($key === 'from' ? $row->start_location : $row->end_location));
+		elseif (in_array($key, array('distance', 'private_distance', 'travel', 'idling'), true)) {
+			$column = $key === 'travel' ? 'travel_time' : ($key === 'idling' ? 'idling_time' : $key);
+			$value = $row->{$column} === null ? null : (float) $row->{$column};
+			if ($key === 'travel' || $key === 'idling') $value = LmdbVehicleQuartixRules::hours($value, $cfg['DURATION_UNIT']);
+			print $value === null ? '<span class="opacitymedium">—</span>' : price($value, 0, $langs, 1, -1, -1);
+		}
+		print '</td>';
+	}
+	if (!$actionsLeft) print '<td class="center actioncolumn">'.$routeAction.'</td>';
+	print '</tr>';
+}
+if (!$result['rows']) print '<tr class="oddeven"><td colspan="'.(1 + count($visible)).'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
+print '</tbody></table></div></form>';
+print dol_get_fiche_end();
+if ($routeAvailable) {
+	$routeInDialog = true;
+	$routeTitle = $langs->transnoentities('QxRouteView').' — '.$object->ref;
+	$dayId = 0; $key = '';
+	include __DIR__.'/tpl/quartix_route.tpl.php';
+}
+llxFooter(); $db->close();

@@ -73,13 +73,14 @@ $checks = array();
 
 $orderedTabs = array(
 	'vehicle_card.php',
+	'vehicle_note.php',
+	'vehicle_document.php',
+	'vehicle_agenda.php',
 	'vehicle_assignment.php',
 	'vehicle_odometer.php',
 	'vehicle_consumption.php',
 	'vehicle_history.php',
-	'vehicle_note.php',
-	'vehicle_document.php',
-	'vehicle_agenda.php',
+	'vehicle_quartix.php',
 );
 $previousPosition = -1;
 foreach ($orderedTabs as $tabFile) {
@@ -242,7 +243,8 @@ $checks['insurance_certificate_actions_are_translated'] = strpos($insuranceCerti
 	&& preg_match('/^RejectInsuranceCertificate=.+$/m', $enLang) === 1
 	&& preg_match('/^ArchiveInsuranceCertificate=.+$/m', $enLang) === 1;
 $checks['odometer_list_calculates_difference_at_render_time'] = strpos($vehicleOdometer, "trans('OdometerDifference')") !== false
-	&& strpos($vehicleOdometer, '$records[$recordIndex + 1]->odometer_km') !== false
+	&& strpos($vehicleOdometer, '$record->previous_actual_km') !== false
+	&& strpos($vehicleOdometer, '!$record->is_estimate') !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-success';") !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-danger';") !== false
 	&& strpos($vehicleOdometer, "colspan=\"7\"") !== false;
@@ -388,9 +390,9 @@ $checks['insurance_contact_roles_are_native_and_idempotent'] = strpos($moduleDat
 	&& substr_count($moduleDataSql, "WHERE element = 'lmdbinsurancecontract'") === 2
 	&& substr_count($moduleDataSql, 'WHERE NOT EXISTS (') >= 2
 	&& strpos($baseObjectClass, "ctc.element = '") !== false;
-$checks['insurance_post_actions_use_native_button_size'] = strpos($insuranceCard, '<button type="submit" class="butAction">') !== false
-	&& strpos($insuranceCard, "lmdbInsuranceContractPostButton(\$id, 'activate', \$langs->trans('Activate'))") !== false
-	&& strpos($insuranceCard, "lmdbInsuranceContractPostButton(\$id, 'terminate', \$langs->trans('Terminate'))") !== false;
+$checks['insurance_lifecycle_actions_use_native_buttons_with_tokens'] = strpos($insuranceCard, 'lmdbInsuranceContractPostButton') === false
+	&& strpos($insuranceCard, "dolGetButtonAction('', \$langs->trans('Activate'), 'default', \$_SERVER['PHP_SELF'].'?id='.\$id.'&action=activate&token='.newToken())") !== false
+	&& strpos($insuranceCard, "dolGetButtonAction('', \$langs->trans('Terminate'), 'default', \$_SERVER['PHP_SELF'].'?id='.\$id.'&action=terminate&token='.newToken())") !== false;
 $checks['insurance_card_uses_native_transverse_blocks'] = strpos($insuranceCard, "getMultidirOutput(\$object, 'lmdbvehiclemanagement', 1)") !== false
 	&& strpos($insuranceCard, '$formfile->showdocuments(') !== false
 	&& strpos($insuranceCard, '$form->showLinkedObjectBlock($object)') !== false

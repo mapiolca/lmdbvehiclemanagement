@@ -101,6 +101,14 @@ Pour une mise à jour depuis une version de développement, consulter [ChangeLog
 
 ## Vérification locale
 
+L'intégration QUARTIX est documentée dans [le guide de configuration et de validation](doc/quartix.md) : connexion par environnement, kilométrage estimé quotidien, dernière position protégée par un droit GPS, utilisation par véhicule, journal des trajets, tracés en modale et tableau de bord QUARTIX du parc. Les associations peuvent être suspendues ou dissociées, avec suppression des imports en cas d'erreur ou conservation lors d'une réaffectation du boîtier. La date d'installation borne les nouveaux imports. Elle nécessite une réactivation du module après déploiement et l'activation des quatre travaux planifiés natifs (le nouveau journal est installé désactivé). La version reste 1.0.0 pendant ce développement.
+
+Pour toute création ou modification de tableau, utiliser comme référence la [documentation native Dolibarr des tableaux avec filtres](https://develop.lesmetiersdubatiment.fr/admin/tools/ui/content/tables.php#tablesection-withfilters) : filtres dans le formulaire de liste, commandes natives, tris et alignements cohérents entre filtres, en-têtes et cellules. Vérifier aussi la conservation des filtres, la sélection des colonnes et la pagination sur le code déployé.
+
+Ses tests hors ligne utilisent les objets Dolibarr et une base en mémoire, sans accès à QUARTIX :
+
+    php test/run_quartix.php /chemin/vers/dolibarr/htdocs
+
 Les règles indépendantes de la base peuvent être vérifiées avec la commande suivante :
 
     php test/run_business_rules.php
@@ -127,7 +135,7 @@ Une suite PHPUnit équivalente est fournie dans le répertoire test/phpunit. Les
 
 ## Hors périmètre de cette version
 
-Le module constitue une aide documentaire de conformité : il ne réalise aucun contrôle et ne produit aucun rapport officiel. Les contrôles détaillés des extincteurs, appareils sous pression, accessoires de levage et fluides frigorigènes ne sont pas préconfigurés dans cette version. Quartix, les cartes grises, les sinistres, les primes et franchises, la gestion commerciale des factures d’achat et les contraventions restent hors périmètre. Les factures liées utilisent la gestion native Dolibarr.
+Le module constitue une aide documentaire de conformité : il ne réalise aucun contrôle et ne produit aucun rapport officiel. Les contrôles détaillés des extincteurs, appareils sous pression, accessoires de levage et fluides frigorigènes ne sont pas préconfigurés dans cette version. L’export des parcours GPS QUARTIX, l’écoconduite, modifications des affectations par QUARTIX, cartes grises, sinistres, primes et franchises, gestion commerciale des factures d’achat et contraventions restent hors périmètre. Les factures liées utilisent la gestion native Dolibarr.
 
 ## Licence
 

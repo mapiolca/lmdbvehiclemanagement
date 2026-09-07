@@ -148,6 +148,18 @@ class modLmdbVehicleManagement extends DolibarrModules
 			),
 		);
 
+		// Bounded workers: daily imports/backfill resume between runs without changing native scheduling.
+		foreach (array('positions' => 'QxPositionJob', 'odometer' => 'QxOdometerJob', 'usage' => 'QxUsageJob', 'trips' => 'QxTripsJob') as $method => $label) {
+			$this->cronjobs[] = array(
+				'label' => $label, 'jobtype' => 'method',
+				'class' => '/lmdbvehiclemanagement/class/lmdbvehiclequartixcron.class.php',
+				'objectname' => 'LmdbVehicleQuartixCron', 'method' => $method,
+				'parameters' => '', 'comment' => $label.'Help',
+				'frequency' => 15, 'unitfrequency' => 60, 'status' => 0,
+				'test' => 'isModEnabled("lmdbvehiclemanagement")', 'priority' => 55,
+			);
+		}
+
 		if (!isModEnabled('lmdbvehiclemanagement')) {
 			$conf->lmdbvehiclemanagement = new stdClass();
 			$conf->lmdbvehiclemanagement->enabled = 0;
@@ -296,7 +308,22 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->rights[$r][4] = 'regulatorycontrol';
 		$this->rights[$r][5] = 'import';
 
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'QxPermissionLocation';
+		$this->rights[$r][4] = 'quartix';
+		$this->rights[$r][5] = 'location';
+
+		$r++;
+		$this->rights[$r][0] = $this->numero * 100 + $r;
+		$this->rights[$r][1] = 'QxPermissionSync';
+		$this->rights[$r][4] = 'quartix';
+		$this->rights[$r][5] = 'sync';
+
 		$this->menu = array();
+		// Keep the dashboard and its parents consistent with the server read policy.
+		// dol_eval() does not allow empty() in menu expressions on recent cores.
+		$vehicleReadMenuPermission = '!$user->socid && ($user->admin || $user->hasRight("lmdbvehiclemanagement", "read"))';
 		$r = 0;
 		$this->menu[$r++] = array(
 			'fk_menu' => '',
@@ -309,7 +336,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 30,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -324,7 +351,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 100,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -369,6 +396,15 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
 			'target' => '',
 			'user' => 0,
+		);
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement,fk_leftmenu=lmdbvehiclemanagement_vehicles',
+			'type' => 'left', 'titre' => 'QxDashboard', 'mainmenu' => 'lmdbvehiclemanagement',
+			'leftmenu' => 'lmdbvehiclemanagement_dashboard', 'url' => '/lmdbvehiclemanagement/quartix_dashboard.php',
+			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement', 'position' => 104,
+			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
+			'perms' => $vehicleReadMenuPermission,
+			'target' => '', 'user' => 0,
 		);
 		$this->menu[$r++] = array(
 			'fk_menu' => 'fk_mainmenu=lmdbvehiclemanagement',
@@ -886,6 +922,9 @@ class modLmdbVehicleManagement extends DolibarrModules
 		if ($this->prepareRegulatorySchema() < 0) {
 			return -1;
 		}
+		if ($this->prepareQuartixSchema() < 0) {
+			return -1;
+		}
 
 		$result = $this->_load_tables('/lmdbvehiclemanagement/sql/');
 		if ($result < 0) {
@@ -935,6 +974,11 @@ class modLmdbVehicleManagement extends DolibarrModules
 		}
 
 		$defaults = array(
+			'LMDBVEHICLEMANAGEMENT_QX_ENABLED' => '0',
+			'LMDBVEHICLEMANAGEMENT_QX_TRIP_RETENTION_DAYS' => '30',
+			'LMDBVEHICLEMANAGEMENT_QX_ROUTES_ENABLED' => '0',
+			'LMDBVEHICLEMANAGEMENT_QX_TILE_URL' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+			'LMDBVEHICLEMANAGEMENT_QX_TILE_ATTRIBUTION' => '© OpenStreetMap contributors',
 			'MAIN_MODULE_LMDBVEHICLEMANAGEMENT_ICON' => 'fa-car',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON' => 'mod_lmdbvehicle_standard',
 			'LMDBVEHICLEMANAGEMENT_LMDBVEHICLEEVENT_ADDON' => 'mod_lmdbvehicleevent_standard',
@@ -1029,6 +1073,30 @@ class modLmdbVehicleManagement extends DolibarrModules
 			return -1;
 		}
 
+		return 1;
+	}
+
+	/** Add estimate metadata before the native loader creates its unique index. @return int */
+	private function prepareQuartixSchema()
+	{
+		$tables = array(
+			'odometer_reading' => array('is_estimate' => 'integer DEFAULT 0 NOT NULL', 'provider_key' => 'varchar(64) DEFAULT NULL'),
+			'qx_link' => array('sync_from' => 'datetime DEFAULT NULL'),
+		);
+		foreach ($tables as $suffix => $fields) {
+			$table = MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$suffix;
+			$exists = $this->tableExists($table);
+			if ($exists < 0) return -1;
+			if ($exists === 0) continue;
+			foreach ($fields as $field => $definition) {
+				$present = $this->tableFieldExists($table, $field);
+				if ($present < 0) return -1;
+				if ($present === 0 && !$this->db->query('ALTER TABLE '.$table.' ADD COLUMN '.$field.' '.$definition)) {
+					$this->error = $this->db->lasterror();
+					return -1;
+				}
+			}
+		}
 		return 1;
 	}
 
@@ -1674,6 +1742,17 @@ class modLmdbVehicleManagement extends DolibarrModules
 		}
 
 		return 1;
+	}
+
+	/**
+	 * Native _remove calls this extension point. Keep job identities and administrator
+	 * settings; their native test and method guard stop execution while disabled.
+	 * Native insert_cronjobs already skips existing label/entity identities.
+	 * @return int Number of errors
+	 */
+	public function delete_cronjobs()
+	{
+		return 0;
 	}
 
 	/**

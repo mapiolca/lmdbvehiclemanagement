@@ -293,6 +293,8 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>'.(dol_textishtml($description) ? $description : dol_htmlentitiesbr($description)).'</td></tr>';
 	print '</table></div><div class="fichehalfright">';
 	lmdbVehiclePrintInsuranceBlock($object);
+	require_once __DIR__.'/lib/lmdbvehiclequartix.lib.php';
+	lmdbVehicleQuartixPrintPosition($object);
 	print '</div></div>';
 	print '<div class="clearboth"></div>';
 	print dol_get_fiche_end();

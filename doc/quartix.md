@@ -1,0 +1,296 @@
+# Intégration QUARTIX QWS v2
+
+Cette évolution de développement complète la version 1.0.0, sans publier de nouvelle version. Elle utilise le contrat du document **QWS V2.pdf** fourni pour cette intégration, avec l'adaptation du format d'authentification décrite ci-dessous.
+
+## Mise en service
+
+1. Déployer la branche, puis désactiver/réactiver le module pour installer les tables, les droits et les tâches. Les réglages sont conservés, y compris ceux des tâches déjà présentes.
+2. Dans **Réglages → QUARTIX**, saisir le code client, le login, le mot de passe et le **Nom d’application (APPLICATION NAME)** fournis par QUARTIX pour l'environnement courant. Enregistrer avant de tester. Un mot de passe laissé vide conserve celui enregistré.
+3. Confirmer avec QUARTIX le sens des horodatages et l'unité des durées. Le mode **Convention QWS** respecte un décalage explicite lorsqu’il est présent et lit les dates sans suffixe dans le fuseau du véhicule, conformément à la page 1 du document QWS. Les modes forcés historiques restent disponibles ; l'unité de TravelTime et IdlingTime n'est pas précisée. Aucune interprétation n'est choisie par défaut.
+4. Tester la connexion pour charger le catalogue, puis associer explicitement les véhicules et confirmer leur fuseau IANA et la date/heure réelle d’installation du boîtier sur ce véhicule. Le début de journée provient de ShiftStartTime. Vérifier ces informations lors de l'association.
+5. Activer la synchronisation dans les réglages, puis les quatre tâches dans les **Travaux planifiés** natifs. Utiliser un compte interne avec lecture du parc, synchronisation QUARTIX et gestion des relevés kilométriques. Les administrateurs disposent implicitement de ces droits.
+6. Comparer les premières valeurs avec QUARTIX sur l'instance servant réellement ce code.
+
+Chaque environnement possède sa connexion, ses jetons, ses associations et son état de synchronisation.
+Le nom d'application est conservé dans une constante native par entité. Sa saisie est obligatoire : aucune valeur n'est inventée à partir du nom du module. Une installation existante doit compléter ce réglage ; tant qu'il manque, les tests de connexion et les travaux planifiés sont refusés localement avec un message explicite. La sauvegarde des identifiants ou du nom d'application invalide les jetons de cette seule entité pour renouveler l'authentification.
+Un véhicule partagé reste synchronisé depuis son environnement propriétaire. Sa consultation utilise les données de ce propriétaire.
+Les associations peuvent être suspendues et réactivées depuis l'interrupteur natif ON/OFF de leur ligne, avec contrôle CSRF, droits et entité propriétaire. Le bouton **Dissocier** ouvre une confirmation native avec deux choix : **Réaffectation du boîtier** conserve les imports sur l’ancien véhicule ; **Association erronée** supprime définitivement tous les trajets, synthèses et estimations QUARTIX de ce véhicule. Dans les deux cas, la dernière position est effacée et le boîtier devient disponible pour une nouvelle association. Les relevés manuels et ceux des pleins/recharges sont toujours conservés.
+Une modification ultérieure du fuseau ou du début de journée dans QUARTIX nécessite également de revoir l'association avant de reprendre les imports.
+
+La dissociation fonctionne aussi pour une association suspendue. Elle partage le verrou des tâches QUARTIX, utilise une transaction et contrôle l’identifiant de l’association confirmée pour refuser une ancienne confirmation après réassociation. La suppression d’estimations passe par l’objet de relevé et ses triggers CRUD ; le véhicule émet un UPDATE avec `trigger_reason=quartix_unlink` et `quartix_cleanup` indiquant une purge. Aucun événement ni email parallèle n’est créé.
+
+Une nouvelle association impose une date d’installation via le datepicker natif. Les positions et kilométrages antérieurs sont refusés ; les synthèses commencent à la première journée QUARTIX complète après installation. Une date chevauchant des imports conservés sur ce véhicule est refusée. La rétention de douze mois des synthèses conserve son calendrier propre, même après dissociation.
+
+**Mise à jour d’une installation existante :** désactiver/réactiver le module via l’administration native pour ajouter la colonne nullable `qx_link.sync_from`. Les réglages sont conservés. La migration est additive et rejouable. Les anciennes associations conservent une date vide et leur reprise historique existante : aucune date d’installation n’est inventée. Les nouvelles associations renseignent obligatoirement cette borne.
+
+## Données et source faisant autorité
+
+| Donnée | Source QWS | Règle de conservation / conflit |
+|---|---|---|
+| Kilométrage estimé | /vehicles/odometer, OdoEstimateKm, EstimateDateTime | Une observation par véhicule, source et jour local. Rejeu sans doublon ; une observation plus ancienne ne remplace pas une plus récente du même jour. Historique des relevés conservé. |
+| Dernière position | /vehicles/live | Une seule ligne par véhicule : coordonnées, lieu, date d'événement, date de réception et état du suivi. Une réponse plus ancienne ne remplace pas la position connue. |
+| Utilisation | /vehicles/tripsummary, GroupBy=vehicle, un véhicule et un jour par requête | Distance en km, nombre de trajets, conduite et ralenti. Conservation glissante de douze mois et agrégation mensuelle à la lecture. |
+
+Les relevés réels, y compris ceux des pleins et recharges, restent les seuls points de référence des contrôles de progression.
+Les estimations QUARTIX ne bloquent jamais leur création ou correction. Une estimation contredisant les relevés réels voisins reste consultable avec le badge **Estimation QUARTIX contradictoire**.
+Les écarts affichés entre relevés réels ignorent les estimations. Les statistiques de consommation conservent leur liaison au relevé réel de chaque consommation.
+La liste des relevés est paginée par SQL. Les calculs d'écart et d'anomalie prennent aussi en compte les relevés réels immédiatement extérieurs à la page affichée.
+
+Les imports utilisent les méthodes objet et les triggers CRUD existants de kilométrage, avec trigger_reason = quartix_estimate.
+L'Agenda et les Notifications restent pilotés par leur configuration native ; aucun événement ni email parallèle n'est créé.
+La chronologie et le dossier identifient les estimations comme telles. Les positions ne sont incluses ni dans la chronologie, ni dans les documents, ni dans un export ou une API du module.
+
+Un jour absent de la réponse QWS est enregistré comme **sans donnée**, jamais comme un zéro.
+Les totaux et graphiques portent uniquement sur les jours renseignés ; la couverture indique les jours renseignés sur la période demandée.
+Les durées brutes sont conservées et converties en heures seulement après confirmation de l'unité.
+Les heures locales inexistantes ou répétées lors du changement d'heure sont refusées. Les dates futures incohérentes et les nombres invalides sont rejetés.
+Les conducteurs, parcours GPS détaillés et données d’écoconduite ne sont pas importés. Le journal applique la protection des trajets privés décrite ci-dessous.
+
+## Travaux planifiés
+
+Les quatre tâches sont créées **désactivées**, avec un réveil toutes les quinze minutes. L'administrateur conserve la maîtrise de leur fréquence et de leur activation.
+
+| Tâche | Traitement à chaque passage |
+|---|---|
+| Dernières positions | Un appel groupé pour au plus 100 véhicules, puis reprise au véhicule suivant. |
+| Kilométrage quotidien | Jusqu'à 100 véhicules qui n'ont pas encore été synchronisés aujourd'hui (jour UTC). L'unicité de l'observation utilise le jour local de la donnée. |
+| Utilisation et reprise historique | Jusqu'à 20 véhicules et environ 45 secondes de traitement, par fenêtres de sept jours. Relecture des sept dernières journées terminées après chaque clôture de journée QUARTIX, puis reprise progressive vers le passé. |
+
+Une grande flotte peut nécessiter plusieurs passages ; l'intervalle réel dépend de sa taille, du temps de réponse et des quotas du compte.
+Les bornes métier sont les débuts de journée QUARTIX dans le fuseau du véhicule. La journée en cours n'est pas agrégée.
+Après une interruption de plus de sept journées, la reprise historique revisite la fenêtre conservée pour combler les trous.
+La purge est bornée ; elle inclut les associations suspendues tant que la synchronisation globale et la tâche d'utilisation sont actives. Si les tâches sont arrêtées, aucune purge ne s'exécute.
+
+Un verrou MySQL nommé, isolé par préfixe de base et environnement, sérialise les quatre tâches et les actions de configuration.
+Les positions/kilométrages utilisent des requêtes QWS groupées ; les synthèses sont demandées par véhicule pour vérifier strictement chaque réponse.
+Chaque journée d’utilisation est enregistrée dans une transaction ; le curseur de période avance après tous les jours attendus. Une erreur sur un véhicule n'annule pas les autres.
+Les erreurs visibles et les logs emploient des codes contrôlés, sans réponse API brute, secret ou coordonnées GPS.
+Un test de connexion en échec précise maintenant l'endpoint concerné (/auth, /auth/refresh ou /vehicles) et le statut HTTP reçu ; une erreur de transport fournit son numéro cURL lorsqu'il est disponible. Ces seules métadonnées sont également journalisées. Aucun corps de réponse, paramètre, en-tête d'authentification ou message réseau brut n'est enregistré.
+Le message « erreur de service » seul ne permet pas de conclure que le mot de passe est incorrect : il peut correspondre à une redirection, une requête refusée ou une indisponibilité distante. Le statut 422 est distingué comme un refus du contenu de la requête. Il interrompt le lot sans avancer le curseur et applique le délai de reprise ; aucun nouvel encodage n'est essayé automatiquement.
+Les quotas 429 et Retry-After suspendent les appels de l'environnement, y compris les tests manuels de connexion.
+Les erreurs d'authentification/réseau des tâches utilisent un délai de reprise ; un 401 provoque un renouvellement de jeton, puis une nouvelle authentification si le jeton de renouvellement est refusé.
+
+## Format des requêtes d'authentification
+
+Les POST `/auth` et `/auth/refresh` transmettent désormais un objet JSON avec `Content-Type: application/json`. Les noms des champs restent `CustomerID`, `UserName`, `Password`, `Application` et, pour le renouvellement, `RefreshToken`. Les GET conservent leurs paramètres d'URL et l'en-tête `AccessToken` ; les secrets ne passent jamais dans l'URL.
+
+Le PDF historique décrit les paramètres en `formData`. Après le refus HTTP 422 observé sur `/auth` avec cet encodage, le choix JSON s'appuie sur un [exemple QWS publié le 7 juillet 2026 par son auteur comme fonctionnel](https://community.fabric.microsoft.com/t5/Power-Query/Convert-Dynamic-Data-source/td-p/5276109). Cet exemple d'intégration n'est pas une spécification officielle QUARTIX. Le 5 septembre 2026, l'authentification JSON a été validée sur l'instance Dolibarr de développement après saisie du nom d'application fourni par QUARTIX : le catalogue a répondu HTTP 200.
+
+Le client utilisait initialement la clé du module comme champ `Application`. Il transmet maintenant exactement la valeur **APPLICATION NAME** fournie par QUARTIX et enregistrée dans l'entité. Pour une installation déjà initialisée, déployer les fichiers puis compléter ce nouveau champ et enregistrer avant de relancer **Tester la connexion et charger les véhicules**. Aucune migration ni réactivation n'est nécessaire ; le mot de passe peut rester vide pour conserver celui enregistré. Si le refus persiste, conserver l'étape et le statut affichés pour le diagnostic, sans transmettre les identifiants ou les réponses API brutes.
+
+Le catalogue réel renvoie le champ `VehicleId`, alors que le PDF décrit `VehicleID`. Le client normalise cette seule variante vers `VehicleID` dès la lecture des réponses, pour tous les consommateurs du module. Les identifiants doivent rester des entiers positifs ; deux variantes présentes avec des valeurs différentes sont refusées. Les noms des paramètres envoyés à QWS restent ceux du contrat, notamment `VehicleIDList`. Le champ réel des positions `LastEventDateTime` est également normalisé vers `LastEventDatetime`, avec refus de deux valeurs contradictoires. Pour les synthèses, le regroupement `day` renvoie `VehicleID=null` et des nombres de trajets nuls malgré une activité réelle. Le module demande donc `GroupBy=vehicle` avec un seul véhicule et `StartDay=EndDay`. QWS renvoie alors les totaux du jour avec l’identifiant du véhicule ; sa date de total `0001-01-01` est remplacée uniquement par cette unique journée explicitement demandée. Une requête multi-jours, un filtre multiple, un champ absent ou un identifiant contradictoire reste refusé à l’import. Ces comportements ont été vérifiés sur QWS le 5 septembre 2026. Chaque journée est enregistrée séparément ; la date de synchronisation permet de reprendre une semaine interrompue sans recommencer les jours déjà relus pendant la journée locale courante. Le curseur hebdomadaire avance seulement après la fin du lot.
+
+Les réponses observées contiennent un décalage explicite pour les positions et aucun suffixe pour les estimations kilométriques. Le mode **Convention QWS** permet de traiter ces deux formes sans ignorer un décalage présent. Il doit être sélectionné et enregistré dans l’environnement concerné ; aucune migration ne remplace un choix existant. Les heures locales ambiguës au changement d’heure restent refusées.
+
+## Sécurité et compatibilité
+
+- Socle : Dolibarr 20+, PHP 8.0+, MySQL/MariaDB, cURL, OpenSSL et clé d'instance Dolibarr.
+- Mot de passe et jetons chiffrés par dolEncrypt() ; le repli natif en clair est refusé. Aucun mot de passe stocké n'est renvoyé dans le formulaire.
+- Transport HTTPS vers https://qws.quartix.net/v2/api, vérification TLS, sans redirection ni cookies, réponse bornée et délais limités. L'authentification QWS utilise l'en-tête AccessToken, sans secret dans l'URL.
+- Exception documentée au helper HTTP : getURLContent() de Dolibarr 20 journalise les paramètres POST et l'en-tête QWS AccessToken. Le transport cURL dédié évite cette divulgation et reprend les réglages proxy natifs.
+- Permission GPS indépendante de la lecture du parc ; tous les accès QUARTIX sont refusés aux utilisateurs externes. La synchronisation n'accorde pas le droit de consulter le GPS.
+- Réglages et associations réservés aux administrateurs de l'environnement propriétaire. Formulaires protégés par le CSRF natif et redirection après traitement.
+- Disponibilité centralisée dans LmdbVehicleQuartixConfig, exposée dans l'onglet **Compatibilité**. Les données d'utilisation restent lisibles dans le cache lorsque la synchronisation est suspendue.
+- Tables complémentaires liées par fk_vehicle, index courts, aucune recopie des données métier Dolibarr. Migration additive is_estimate / provider_key / sync_from, rejouable sans reclassement des relevés historiques.
+- Identifiant du module conservé : **450026**. Nouveaux droits aux offsets **24** (GPS) et **25** (synchronisation), sans renumérotation des droits existants.
+
+## Validation
+
+    php test/run_quartix.php /chemin/vers/dolibarr/htdocs
+
+La suite utilise les vrais objets Dolibarr et une base SQLite en mémoire avec adaptation de la syntaxe MySQL à la frontière de test.
+Elle couvre le chiffrement natif, les erreurs API, les renouvellements, les quotas, les dates et unités ambiguës, les conflits kilométriques, les relevés de consommation, les rejouements, le rollback, deux entités, les véhicules partagés, les droits GPS, la reprise des tâches, la rétention et la migration additive.
+Les appels réseau sont simulés. Cette suite ne constitue pas un test du moteur MySQL, de l'authentification réelle QWS ou du navigateur.
+
+Pour vérifier aussi le contenu réellement envoyé par cURL (Python 3 et OpenSSL en ligne de commande requis) :
+
+    python3 test/run_quartix_transport.py /chemin/vers/dolibarr/htdocs
+
+Les options `--php` et `--openssl` permettent de choisir les exécutables. Le script relance la suite QUARTIX puis démarre une fixture HTTPS sur l'interface locale avec un certificat temporaire supprimé en fin de test. Le nom d'hôte et la vérification TLS du client restent actifs ; seuls le routage vers localhost et la confiance dans le certificat de test sont adaptés dans une sous-classe de test.
+Il vérifie les POST JSON d'authentification et de renouvellement après un 401, les espaces, accents et caractères spéciaux, les GET et les en-têtes, ainsi que le refus d'un JSON impossible à encoder avant toute connexion. Aucun compte réel ni accès réseau à QUARTIX n'est utilisé. Le test valide la sérialisation du client, pas l'acceptation par le service QUARTIX.
+
+### Résultats locaux du 5 septembre 2026
+
+Contrôles exécutés avec PHP 8.5.7, le core Dolibarr 20.0.4 et le checkout de développement 25.0.0-alpha lorsque la suite charge le core :
+
+| Suite | Résultat |
+|---|---|
+| QUARTIX | 86 contrôles initiaux réussis sur chacun des deux cores ; 215 contrôles réussis sur le core 25.0.0-alpha avec nom d'application par entité, conservation du mot de passe, invalidation des jetons et variantes VehicleId/VehicleID, dates QWS et dissociation (conservation, purge, restauration sur erreur, ancienne confirmation et réaffectation bornée) ; totaux par véhicule et journée, nombre de trajets, reprise d’une semaine interrompue et budget d’exécution ; diagnostic HTTP, refus 422, chiffrement, transport simulé, stockage, droits, rendu GPS et graphiques natifs inclus |
+| Transport QUARTIX HTTPS local | 4 contrôles supplémentaires et 4 requêtes HTTPS vérifiés avec le vrai cURL : authentification JSON, lecture expirée, renouvellement JSON et lecture réussie ; données fictives uniquement |
+| Règles métier | 50 contrôles réussis |
+| Contrats Agenda | 400 contrôles réussis |
+| Contrats d'interface | 158 contrôles réussis |
+| Contrats réglementaires | 80 contrôles réussis |
+| Contrats de consommation / OD | 17 contrôles réussis |
+| Prix des consommations | 95 contrôles réussis sur chacun des deux cores |
+| Réglages des OD | 168 contrôles réussis sur chacun des deux cores |
+| Syntaxe PHP et diff | 21 fichiers PHP contrôlés sans erreur de syntaxe ; contrôle des espaces Git réussi |
+
+Le core historique et certains tests existants émettent des avertissements de dépréciation sous PHP 8.5, sans échec des assertions.
+PHPStan n'est pas installé dans l'environnement disponible : aucune analyse PHPStan n'a été exécutée.
+Le runtime PHP 8.0 n’est pas disponible. Les suites locales utilisent SQLite et des réponses simulées ; les validations authentifiées sur le serveur de développement sont décrites séparément ci-dessous.
+Les essais de concurrence utilisent un refus de verrou simulé ; une exécution concurrente réelle reste à vérifier sur MySQL/MariaDB.
+Les documents, catégories et modèles de numérotation ne changent pas de fonctionnement ; aucune nouvelle génération documentaire ou modification de leurs modèles n'est introduite.
+
+### Validation déployée du 5 septembre 2026
+
+Le commit `af6ee3a0cb99ec6eb50f5b7a577676ccd44059c9` de `codex/quartix-integration` a été poussé puis chargé depuis **Update from Remote** dans cPanel. Le dépôt est directement le répertoire servi par l’instance de développement. Le HEAD cPanel et les comportements observés confirment que le code corrigé est exécuté sous Dolibarr 24.0.0 / PHP 8.3.33.
+
+- Authentification JSON réussie et catalogue de quatre véhicules chargé ; aucune valeur secrète exposée.
+- Désactivation/réactivation native réussie sur la base du serveur : colonne `sync_from` ajoutée, constantes, associations, fréquences et états des tâches conservés, vérifiés avant/après.
+- Trois travaux planifiés avec un dernier code de retour `0`. L’exécution manuelle de l’utilisation a traité un véhicule sans erreur ; les tâches de kilométrage et positions ont également terminé avec succès.
+- Sept journées importées : somme des distances et nombre de trajets identiques aux totaux QWS du même véhicule et de la même période. Kilométrage, date d’estimation, coordonnées et date de dernière position également comparés avec les réponses authentifiées et concordants.
+- Consultation de l’utilisation et des relevés : tableaux et graphiques natifs visibles ; l’estimation contradictoire est signalée, les relevés de pleins/recharges restent prioritaires.
+- Interrupteur natif vérifié et confirmation de dissociation affichée avec les deux modes, puis annulée sans modifier l’association. La purge destructive est validée par les tests locaux uniquement.
+
+L’unité de `TravelTime` et `IdlingTime` n’est pas confirmée par l’utilisateur. Le réglage de l’instance a été remis sur **À confirmer auprès de QUARTIX** : les durées restent indisponibles, même si les valeurs brutes sont conservées. Aucune unité n’est déduite des distances ou de l’ordre de grandeur des réponses.
+
+Après une exécution manuelle réussie, le cron natif Dolibarr 24.0.0 produit encore une erreur de fermeture `mysqli object is already closed` dans son gestionnaire de fin de requête (`cronjob.class.php:1364`). Le traitement QUARTIX et ses écritures sont terminés avec succès. Le même défaut est décrit dans le [ticket officiel Dolibarr #39801](https://github.com/Dolibarr/dolibarr/issues/39801). Aucun fichier core n’a été modifié ; la correction de ce défaut relève de la maintenance Dolibarr.
+
+### Vérifications restant à effectuer
+
+- exécution sur le socle PHP 8.0 / Dolibarr 20 avec l’ensemble des derniers contrôles ;
+- parcours authentifiés avec utilisateur standard de synchronisation, lecture seule, GPS, administrateur d’entité et utilisateur externe ;
+- association correcte de deux véhicules dans deux entités ; absence de fuite et écriture uniquement dans l'entité propriétaire pour un véhicule partagé ;
+- concordance des durées avec QUARTIX après confirmation de leur unité ;
+- consultation bureau/mobile, datepickers, pagination, colonnes, graphiques natifs, données absentes, position ancienne et suivi interrompu ;
+- refus des POST sans token, succès avec token, erreurs partielles et reprise après interruption/quota ;
+- relevé manuel et plein/recharge en contradiction avec une estimation, badge d'anomalie et statistiques inchangées ;
+- absence de GPS dans le dossier et la chronologie ; libellé d'estimation explicite.
+
+Les vérifications locales ne nécessitent aucun compte QUARTIX. PHPStan doit être lancé avec l'outillage du projet lorsqu'il est disponible ; aucun baseline ni niveau affaibli n'est ajouté par cette évolution.
+
+
+## Journal des trajets et tableau de bord du parc
+
+L’onglet **Trajets** suit les onglets métier du véhicule et utilise le droit GPS existant. Il propose les sept derniers jours avec dates natives, état, tri, colonnes personnalisables et pagination SQL. Une arrivée provisoire retournée par QWS n’est jamais affichée comme définitive. Les horaires suivent le fuseau de la session Dolibarr ; le jour de départ conserve le découpage QUARTIX du véhicule. Les jours synchronisés sans trajet comptent dans la couverture ; les jours jamais importés restent inconnus.
+
+Le client lit `GET /vehicles/trips` pour **un véhicule et une journée QUARTIX**. Le schéma a été vérifié par une requête authentifiée le 5 septembre 2026 : réponse HTTP 200, 13 lignes, dates `StartDateTime`/`EndDateTime` avec décalage explicite, `InProgress` et `IsPrivate` booléens. `StartDateTimeLocal`/`EndDateTimeLocal` sont ignorés. Le contrat retourne aussi des trajets terminant dans la journée : seuls ceux dont le départ appartient à la journée demandée sont conservés. Les doublons identiques sont retirés ; des départs contradictoires au même instant font refuser la réponse complète.
+
+Deux tables sont ajoutées : `qx_tripday` identifie la journée, son propriétaire, le véhicule, le fuseau, le début de journée, la provenance historique de l’association et la dernière synchronisation ; `qx_trip` contient ses trajets. L’identifiant de provenance reste historique après suppression de l’association. Aucun identifiant stable de trajet n’est présumé : validation complète en mémoire, puis remplacement transactionnel d’une journée. Réponse invalide, transport interrompu ou erreur SQL : le cache précédent est conservé. Les lignes n’ont pas de référence métier ni d’édition manuelle, de document ou d’API publique.
+
+Dès que `IsPrivate` est vrai **ou** que `PrivacyDistance` est positive, seuls le jour et les distances sont conservés dans le résumé. Les lieux, coordonnées, horaires précis, durées et statut précis du trajet sont absents. Si les deux indications de confidentialité manquent, la même protection s’applique. L’état technique de la journée indique seulement si elle doit encore être relue. Le journal ne stocke aucun conducteur ni parcours GPS détaillé. La consultation des tracés utilise le cache distinct décrit ci-dessous, sans export GPS, document ou événement de chronologie n’est alimenté. Les durées publiques restent brutes en cache et indisponibles à l’affichage tant que leur unité n’est pas confirmée ; l’unité du compte de test reste non confirmée.
+
+Le réglage **Conservation des trajets (jours)** est un entier strictement positif, propre à l’environnement. La constante native `LMDBVEHICLEMANAGEMENT_QX_TRIP_RETENTION_DAYS` reçoit 30 **uniquement si absente**. Le calendrier UTC borne la conservation (journée courante comprise), comme les autres purges de l’intégration. Une réduction filtre immédiatement les vues et purge les journées expirées par lots de 100 au prochain passage ; une augmentation reprend les jours antérieurs disponibles. Une longue conservation consomme davantage de stockage, d’appels API et de temps de reprise. La page indique le nombre de trajets stockés, y compris ceux en attente de purge.
+
+Le quatrième travail natif **QUARTIX — journal des trajets**, désactivé à l’installation, se réveille toutes les quinze minutes. Il traite en priorité le jour courant et les journées encore ouvertes, puis relit quotidiennement les sept journées terminées et reprend les journées historiques manquantes. Budget de lot d’environ 45 secondes, au plus 10 appels par véhicule et curseur entre véhicules ; chaque journée réussie constitue son propre point de reprise. Le verrou d’entité, les jetons, quotas et délais de reprise sont communs aux quatre travaux. La purge précède les appels QWS et reste active lorsque la synchronisation est suspendue, si le module et ce travail restent actifs. Une désactivation du module ou du travail arrête la purge ; l’interface le signale.
+
+Une réaffectation conserve le journal de l’ancien véhicule ; une association erronée le supprime dans la transaction de dissociation. Une nouvelle association ne peut couvrir une journée possédant déjà une autre provenance. Choisir une journée d’installation ultérieure évite d’écraser cet historique. La suppression autorisée d’un véhicule nettoie son cache de trajets, après les contrôles existants sur les autres données métier.
+
+Le menu **Tableau de bord** du parc est accessible avec le droit de lecture des véhicules. Il présente par défaut les trente journées terminées précédant le jour UTC courant : véhicules associés, suspendus et non associés, kilomètres, trajets, jours actifs et jours renseignés/demandés. Un jour actif a une distance ou un nombre de trajets positif. Les totaux restent limités aux jours réellement renseignés. La comparaison graphique affiche les vingt distances les plus élevées de la sélection ; l’évolution quotidienne et les totaux couvrent toute la sélection, indépendamment de la pagination.
+
+Les lieux, dates de position et liens vers le journal sont exclus des requêtes et du rendu sans droit GPS. Les travaux et leurs erreurs sont présentés par environnement, séparément de l’ancienneté des positions. Une position ancienne ne permet pas de conclure à une panne ou à une immobilisation. Les véhicules partagés se lisent dans leur environnement propriétaire, avec badges et filtre Multicompany natifs ; l’import, la configuration et la purge appartiennent exclusivement au propriétaire. Les utilisateurs externes sont refusés. L’affichage ne déclenche aucun appel QWS.
+
+Les composants utilisés existent dans Dolibarr v20 : `Form::selectDate`, sélection de colonnes et pagination natives, Select2/multiselect2, `DolGraph` avec le moteur natif configuré par Dolibarr, droits et travaux planifiés. Le choix du moteur suit celui des scripts chargés par `llxHeader()` ; le module ne force pas `jflot`. Le module reste en version 1.0.0, compatible PHP 8.0. Les réglages, associations et trois travaux précédents doivent rester identiques après réactivation.
+
+### Vérification locale de cette extension
+
+- 297 contrôles QUARTIX sur le core de développement 25.0.0-alpha ; 296 contrôles sur Dolibarr 20.0.4 avant l’ajout du contrôle explicite du droit GPS d’un utilisateur standard. Les tests incluent les snapshots ouverts/terminés, doublons, journées chevauchantes, DST, confidentialité, transactions, réaffectation, purge bornée, suppression du véhicule, quota, reprise, droits et agrégats multientités.
+- Suites existantes : 50 règles métier, 400 contrats Agenda, 80 réglementaires, 158 d’interface, 17 contrats OD, 168 réglages OD et 95 prix de consommation ; transport HTTPS local vérifié avec le véritable cURL.
+- Syntaxe des fichiers PHP modifiés vérifiée avec PHP 8.5.7. PHP 8.0 n’est pas installé et PHPStan n’est pas disponible ; aucune nouvelle dépendance ni règle d’exclusion d’analyse n’est ajoutée.
+- Les trajets privés réels et ouverts ne figuraient pas dans l’échantillon QWS du 4 septembre ; leurs cas sont testés avec des données synthétiques reprenant les types observés.
+
+### Validation déployée du journal et du tableau de bord — 5 septembre 2026
+
+Le commit fonctionnel `ba649d597af2034a2ee0e45eaa45087209b8fa2d` a été poussé puis chargé avec **Update from Remote** dans cPanel ; le HEAD du dépôt directement servi est confirmé. L’instance utilise Dolibarr 24.0.0, PHP 8.3.33 et MySQL/MariaDB. Le module conserve la version 1.0.0.
+
+- Deux cycles natifs de désactivation/réactivation ont réussi : nouvelles tables présentes, conservation initialisée à 30 jours et quatrième travail créé une seule fois, désactivé à l’installation. Les constantes préexistantes, associations et trois anciennes tâches (identifiants, libellés, méthodes, états, fréquences et priorités) ont été comparées avant/après et sont identiques.
+- Le travail **QUARTIX — journal des trajets**, identifiant 108 dans TEST 1, a ensuite été activé et exécuté avec le moteur natif : retour `0`, un véhicule traité, aucune erreur. Un nouveau passage poursuit la reprise ; 154 trajets sur 11 journées sont présents au contrôle, sans doublon public ni doublon de journée. La reprise vers les 30 jours continue par lots.
+- Pour le 4 septembre, les 13 lignes QWS donnent 12 départs appartenant à cette journée, soit **124,84 km**. Le cache et la réponse authentifiée ont été comparés en mémoire : horaires de départ/arrivée, lieux et distances identiques. Aucune donnée GPS brute ni aucun secret n’a été inclus dans le compte rendu technique.
+- Sur la période du tableau de bord, **1 592,66 km** et **386 trajets** concordent avec la synthèse QWS. La somme du graphique quotidien correspond au total. La couverture est de **29 journées renseignées sur 30** : la journée sans donnée exploitable reste inconnue, même si les sommes concordent.
+- L’unité des durées reste non confirmée et leur affichage reste indisponible. Les quatre travaux sont visibles dans les requêtes natives du tableau de bord.
+
+La recette visuelle authentifiée du journal et du tableau de bord n’est pas encore validée : la session Dolibarr est revenue à l’identification, puis Chrome a refusé l’automatisation à cause d’une fenêtre d’extension ouverte. La reconnexion et la fermeture de cette fenêtre ont été demandées. Restent à vérifier dans le navigateur : rendu bureau/mobile, dates, filtres, colonnes, pagination et graphiques sur le code déployé. Les scénarios de droits partiels, utilisateurs externes, partage entre deux entités, trajets privés et erreurs transactionnelles sont couverts localement ; ils ne constituent pas une recette avec ces profils sur le serveur.
+
+### Validation déployée des menus et listes — 6 septembre 2026
+
+Les corrections `9e834b6`, `41ce5f5`, `c3af996` et `d8df2ae` ont été poussées sur `codex/quartix-integration`, puis chargées avec **Update from Remote** dans cPanel. Le HEAD `d8df2ae6f675cb0a48493451472c238bd0dd3e9f` et les nouveaux composants présents dans le DOM confirment que l’instance sert le code corrigé. Version 1.0.0 conservée, Dolibarr 24.0.0 / PHP 8.3.33.
+
+- La condition de menu utilisait `empty()`, refusé par l’évaluateur sécurisé natif avant même le contrôle administrateur. Le menu haut du parc, sa rubrique véhicules et le tableau de bord utilisent maintenant la même expression autorisée : utilisateur interne et administrateur ou lecteur des véhicules. Le contrôle serveur reste centralisé. La réactivation native a régénéré les menus ; le tableau de bord est visible et s’ouvre depuis le menu avec le compte administrateur. L’association existante, les quatre tâches actives et leurs derniers résultats sont conservés.
+- Les trois tableaux suivent la [référence native avec filtres](https://develop.lesmetiersdubatiment.fr/admin/tools/ui/content/tables.php#tablesection-withfilters) : boutons de filtre natifs, sélecteur de colonnes dans l’en-tête, alignement identique des titres et cellules. Les nombres de trajets sont entiers. Le sélecteur de limite possède un formulaire parent et aucun champ caché concurrent.
+- Journal : 89 trajets dans les sept jours, changement de limite 20 → 50, puis 50 lignes en première page et 39 en seconde, filtre « Terminé » et période conservés. Tri numérique ascendant puis descendant vérifié, colonne de distance privée affichée puis masquée. Le filtre « En cours » sans résultat affiche la ligne native d’absence de données. Limite restaurée à 20 et filtres réinitialisés.
+- Utilisation : tri des périodes vérifié ; sélection du 4 septembre avec le calendrier natif donnant quatre journées du 1er au 4, puis réinitialisation vers les cinq journées disponibles. En-têtes et valeurs alignés, durées toujours indisponibles.
+- Tableau de bord : recherche de véhicule sans résultat, réinitialisation, accès aux trajets et graphiques natifs visibles. Pour la période glissante du 7 août au 5 septembre : 1 585,03 km, 387 trajets, 29 journées actives et couverture 29/30. Les séries graphiques reprennent les agrégats affichés. La position ancienne reste distincte de l’état des travaux. Les comparaisons authentifiées avec QWS du 5 septembre restent documentées ci-dessus ; elles n’ont pas été répétées pour cette correction d’interface.
+
+Tests locaux : 334 contrôles QUARTIX réussis sur les cores 20.0.4, 24.0.0 et 25.0.0-alpha, dont 37 vérifications des conditions réelles du descripteur via `dol_eval()` et `verifCond()` (administrateurs sans droit granulaire, lecteurs, utilisateurs sans droit et externes). 158 contrats d’interface réussis et syntaxe des fichiers PHP modifiés vérifiée. PHPStan et le runtime PHP 8.0 ne sont pas disponibles ; aucun niveau d’analyse n’a été abaissé.
+
+La recette bureau authentifiée lève le blocage de session du 5 septembre. La largeur téléphone demandée via l’outil navigateur n’a pas été appliquée (largeur réelle restée à 1 866 pixels) : la recette mobile demeure à effectuer, sans prétendre à une validation sur téléphone. La surcharge temporaire de viewport a été réinitialisée. Les parcours serveur avec utilisateurs standards, externes et partages entre entités restent à valider avec ces profils ; leurs contrôles automatisés ne remplacent pas cette recette.
+
+## Tracés consultables en modale
+
+Après déploiement, réactiver le module pour créer les tables `qx_route` et `qx_routequeue`, puis activer **Consultation des tracés QUARTIX** dans les réglages QUARTIX de l’environnement propriétaire. Les valeurs existantes, la conservation du journal et les quatre travaux planifiés restent conservés. La version reste 1.0.0 ; socle Dolibarr 20 / PHP 8.0.
+
+Le pictogramme **Voir le tracé** apparaît dans la colonne d’action du journal pour les trajets publics accessibles avec le droit GPS existant. Il ouvre la modale native Dolibarr, avec Leaflet déjà fourni par le core. La carte relie les points transmis par QUARTIX et indique le début et, pour un trajet terminé, la fin du tracé ; aucun itinéraire routier n’est recalculé. Moins de deux points donnent un état indisponible. Un trajet en cours reste provisoire, sans marqueur d’arrivée définitive, même si l’endpoint de tracé l’annonce déjà terminé. Les durées restent soumises à la confirmation de leur unité.
+
+Le dialogue jQuery UI fourni par Dolibarr affiche directement le contenu du tracé, sans iframe ni seconde page : l’historique de navigation et la barre de débogage de la page principale restent hors du dialogue. L’aide et les messages utilisent les blocs persistants `info`, `warning` et `error` du thème actif, sans notification éphémère. La note « Trajet en cours » apparaît uniquement lorsque le journal déclare le trajet en cours et disparaît à son achèvement. Le lien conserve une consultation directe lorsqu’il est ouvert dans un nouvel onglet ou lorsque le dialogue JavaScript n’est pas disponible.
+
+### Chargement et conservation
+
+L’affichage du journal et les lectures de la modale consultent uniquement le cache. Le clic ouvre la modale puis déclenche, si nécessaire, un POST protégé par le token natif. Dans l’entité propriétaire, la demande peut être traitée immédiatement sous le verrou QUARTIX existant, avec un budget de 35 secondes comprenant l’authentification. Depuis une entité partageant le véhicule, seul l’identifiant de la journée est mis en attente : aucun secret du propriétaire n’est chargé. Le travail **Journal des trajets** du propriétaire traite au plus une journée demandée par passage, dans son budget existant de 45 secondes. Aucun cinquième travail n’est ajouté.
+
+Les demandes répétées sont regroupées par journée ; une tentative sur une même journée est espacée d’au moins quinze minutes et les quotas du compte restent prioritaires. Les demandes en échec passent derrière les autres demandes en attente. Un tracé terminé en cache ne rappelle pas QUARTIX ; un tracé provisoire ou incomplet peut être actualisé après ce délai. La consultation recontrôle les droits et la confidentialité toutes les quinze secondes, sans nouvel appel QWS ; fermer la modale arrête cette lecture périodique.
+
+Chaque cache dépend de la journée, donc du véhicule, de l’entité et de l’association d’origine. Une clé de sélection dérivée du départ survit au remplacement des identifiants SQL du journal ; cette clé n’accorde aucun droit d’accès. Une empreinte des informations du journal invalide le tracé lorsque celles-ci changent. La réponse complète est validée avant remplacement transactionnel ; une erreur conserve le cache précédent. Seules les paires latitude/longitude nécessaires à la carte sont persistées, chiffrées avec le mécanisme natif avant toute requête SQL pour éviter leur présence dans les journaux SQL de diagnostic. Aucun conducteur, vitesse, événement détaillé ou horaire de point n’est conservé.
+
+Les trajets privés ne proposent aucun pictogramme. Un indicateur privé, une distance privée positive ou une confidentialité manquante empêche la conservation des points. Un trajet auparavant public signalé privé par l’API révoque immédiatement les tracés de la journée ; une modification du journal supprime également le cache devenu incompatible. Les réponses JSON sont privées et non mises en cache ; les utilisateurs externes et les accès à un véhicule non partagé sont refusés, y compris par URL directe.
+
+La conservation est exactement celle du journal, sans réglage supplémentaire. Sa réduction interdit immédiatement l’accès aux anciennes journées ; le travail du journal purge ensuite les trajets, tracés et demandes, même lorsque la synchronisation est suspendue. Une dissociation pour réaffectation conserve les tracés déjà chargés mais annule les demandes et interdit tout chargement depuis une nouvelle association. Une association erronée ou la suppression autorisée du véhicule supprime aussi le cache et les demandes. Si le module ou le travail du journal est arrêté, la purge ne tourne plus.
+
+### Fond de carte
+
+Par défaut : `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, attribution visible **© OpenStreetMap contributors**, sans clé API. Le fournisseur reçoit les demandes de tuiles de la zone consultée et le domaine Dolibarr comme référent, jamais les identifiants de véhicule, les paramètres QWS, les jetons ou les points de tracé. La géométrie est dessinée dans le navigateur. Il n’y a aucun téléchargement massif, préchargement de zone ou mode hors ligne. Le cache HTTP natif des tuiles est conservé. Respecter la [politique du service de tuiles OpenStreetMap](https://operations.osmfoundation.org/policies/tiles/), service sans garantie de disponibilité ; un usage important peut nécessiter un fournisseur adapté.
+
+Les réglages par entité acceptent une URL HTTPS avec `{z}`, `{x}`, `{y}` et une attribution en texte simple. La bibliothèque cartographique reste celle de Dolibarr, sans CDN. Une éventuelle clé de fournisseur de tuiles intégrée à cette URL est nécessairement visible par les utilisateurs du navigateur : elle doit être prévue pour cet usage et limitée au domaine. Les secrets QUARTIX restent exclusivement côté serveur. Une panne de tuiles est distinguée d’un tracé QUARTIX indisponible.
+
+### Contrat vérifié et tests — 6 septembre 2026
+
+Le compte a répondu HTTP 200 à `GET /vehicles/route` pour un véhicule et une journée (`VehicleID`, `StartDay`). Le format réel est `Data: {Summary: {...}, Trips: [...]}` ; les trajets comportent `VehicleID`, `InProgress`, `IsPrivate`, `PrivacyDistance` et `Route`, dont les points contiennent `Latitude`, `Longitude`, `EventDateTime`. Les champs supplémentaires du service sont ignorés. Les fixtures de test reprennent ces noms et types avec des coordonnées fictives.
+
+Sur une journée terminée, les onze trajets correspondent exactement au journal : départs, arrivées, lieux et distances. Les premières et dernières dates de points correspondent aux bornes du trajet. Sur la journée courante, quatre trajets et vingt-deux points ont été contrôlés : dates ordonnées et bornées, départs, lieux de départ et distances concordants. Le journal conservait ces trajets provisoires alors que `/route` les renvoyait terminés ; la carte suit donc le statut du journal et garde son absence d’arrivée définitive.
+
+399 contrôles QUARTIX passent sur les cores 20.0.4, 24.0.0 et 25.0.0-alpha avec l’adaptateur SQL en mémoire, ainsi que 158 contrats d’interface. Le véritable transport cURL passe les quatre contrôles HTTPS locaux. Couverture ajoutée : consultation GPS limitée à une journée, entités partagées sans secrets, cache stable, confidentialité prioritaire, interruption et restauration transactionnelle, suspension, dissociation, purge, points invalides/manquants, quotas et délais. PHPStan et le runtime PHP 8.0 ne sont pas disponibles localement ; aucun baseline ni niveau d’analyse modifié. La validation navigateur et la migration sur MySQL sont effectuées après déploiement et consignées séparément.
+
+### Déploiement et migration des tracés — 6 septembre 2026
+
+Le commit fonctionnel `64e08f296bc86b2292d27cd1a4dbcb712f87c830` a été poussé puis récupéré avec **Update from Remote** dans cPanel. Le HEAD du dépôt directement servi est confirmé. L’instance utilise Dolibarr 24.0.0, PHP 8.3.33 et MySQL/MariaDB ; le module conserve la version 1.0.0.
+
+- Les tables `qx_route` et `qx_routequeue` sont présentes. Deux cycles natifs de désactivation/réactivation réussissent : paramètres QUARTIX préexistants et quatre travaux (identifiants, libellés, méthodes, états, fréquences et priorités) comparés avant/après et identiques. Le réglage des tracés est créé à `0` uniquement en son absence et reste identique lors du second cycle. L’appel isolé à `init()` sur le module déjà actif rencontre les menus existants ; la procédure de migration reste donc le cycle natif documenté de réactivation.
+- La consultation des tracés a ensuite été activée dans **TEST 1**, avec le fond OpenStreetMap par défaut. Aucun autre environnement n’a été activé.
+- Les méthodes déployées ont chargé une journée terminée : onze tracés en cache, état disponible, treize points sur le trajet sélectionné. Tous les contenus géométriques SQL sont chiffrés. Une seconde demande ne change ni la dernière tentative ni la synchronisation et ne rappelle pas QUARTIX.
+- Une journée courante a également été chargée : quatre tracés en cache, état disponible, cinq points sur le trajet sélectionné. Le statut provisoire du journal est conservé. Le rejeu réutilise le cache, sans nouvelle tentative.
+
+La session Dolibarr a expiré avant l’ouverture de la modale ; la reconnexion a été demandée. La validation fonctionnelle serveur ci-dessus est effective, mais ne constitue pas une validation visuelle : restent à contrôler l’icône, la modale, le fond de carte, les marqueurs, sa fermeture et le rendu bureau/mobile sur le code déployé. Les profils standards, externes et les partages entre entités restent couverts par les contrôles locaux, sans recette authentifiée de ces profils sur le serveur.
+
+### Correction du chargement navigateur — 7 septembre 2026
+
+Le défaut d’affichage a été reproduit sur l’instance de développement après reconnexion. Le JavaScript lisait `form.action`, alors que le formulaire contient le champ caché natif `name="action"`. Ce champ masque la propriété du formulaire, comme décrit dans la [documentation DOM](https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement#instance_properties). Une reproduction locale avec le JavaScript du commit `4ffe8e4` confirme une requête vers `/erp/modules/vehicles/[object%20HTMLInputElement]` au lieu de la page du tracé. Son échec était présenté comme une panne QUARTIX, avant tout chargement de la géométrie.
+
+Le client utilise maintenant `getAttribute('action')`, tout en conservant le champ d’action et le token CSRF. Les erreurs de lecture ou d’affichage du navigateur ont leur propre message ; les erreurs QUARTIX renvoyées par le serveur et les erreurs de tuiles restent distinctes. Le titre fourni à la modale native est traduit en texte simple pour afficher correctement « Voir le tracé ».
+
+La fixture reproductible utilise le JavaScript du module, le Leaflet du core et des données fictives, sans connexion Dolibarr ni appel QUARTIX ou fournisseur de tuiles :
+
+```text
+python test/run_quartix_browser.py /chemin/vers/dolibarr/htdocs
+# Ouvrir http://127.0.0.1:8765/ ; arrêter le serveur après les contrôles.
+# --revision 4ffe8e4 --port 8764 permet de reproduire l’ancien défaut.
+```
+
+Six scénarios ont été contrôlés dans le navigateur : tracé en cache avec départ/arrivée, récupération automatique par un seul POST avec token et tracé provisoire sans arrivée, refus d’accès sans géométrie, réponse HTML de session expirée, panne de tuiles avec tracé conservé et absence de Leaflet. Le journal HTTP de la fixture confirme la bonne URL et des consultations périodiques en GET uniquement. La carte affiche trois points et ses marqueurs avec les tuiles locales ; à 390 pixels de largeur, son conteneur occupe 374 pixels et reste dans l’écran. Ce test de composant ne remplace pas la recette mobile de la modale Dolibarr complète.
+
+Validation locale avec PHP 8.4.22 et le core 25.0.0-alpha : **400 contrôles QUARTIX**, **158 contrats d’interface**, syntaxe PHP/Python et diff vérifiés. PHPStan 2.2.2 exécuté au niveau 10 avec la configuration existante du core, mémoire portée à 1 Go et cache limité au module : **37 diagnostics identiques avant/après**, notamment liés aux inclusions et symboles Dolibarr non résolus dans ce contexte autonome ; aucune nouvelle erreur, aucun ignore ajouté ni baseline de suppression modifié. Les environnements Dolibarr 20/PHP 8.0 et Dolibarr 24 ne sont pas réexécutés localement pour ce correctif d’affichage.
+
+La correction est locale à ce stade : **l’instance distante sert encore l’ancien code**. Déployer les fichiers modifiés, puis recharger le journal pour renouveler le titre et le script avant de rouvrir le tracé. Aucune migration, modification des réglages ou réactivation supplémentaire du module n’est nécessaire. Après déploiement, vérifier la carte réelle dans la modale, les tuiles configurées, les marqueurs et la fermeture/réouverture ; ne pas confondre la reproduction distante du défaut avec une validation distante du correctif.
+
+### Dialogue sans iframe et alertes persistantes — 7 septembre 2026
+
+Le journal et la consultation directe utilisent désormais `tpl/quartix_route.tpl.php`. La classe `hidden` du thème natif ne masque pas les paragraphes : les messages sont maintenant des blocs `div` natifs, et les actions indisponibles sont également masquées par leur conteneur. Le dialogue réutilisable annule ses requêtes, arrête les consultations périodiques et efface la carte et ses notes à la fermeture. Une réponse antérieure ne peut pas remplacer le trajet ouvert ensuite. Les erreurs de tuiles restent visibles après les lectures périodiques du cache.
+
+Les deux pages contrôlent directement les droits de lecture et GPS avec `hasRight()`, séparément du refus des utilisateurs externes et du périmètre d’entité vérifié par le service. La politique de référent `strict-origin` est également appliquée au journal, puisque les tuiles y sont désormais chargées. Les demandes modificatives gardent le token CSRF natif ; aucune migration, modification du core, dépendance externe ou nouveau travail planifié.
+
+La fixture navigateur rend le véritable template PHP avec les traductions natives et les bibliothèques jQuery UI/Leaflet du core. Elle utilise uniquement des coordonnées et des tuiles fictives, sans session métier ni appel QUARTIX. Les règles de visibilité de la fixture reprennent les sélecteurs natifs, sans classe générique `.hidden` qui masquerait le défaut des paragraphes. Scénarios disponibles : cache terminé, récupération d’un tracé en cours, refus d’accès, session expirée, panne de tuiles, absence de Leaflet, réponse lente, révocation d’accès et achèvement du trajet pendant la consultation.
+
+Recette navigateur effectuée sur le contenu local : aucun iframe ni historique/débogueur dans le dialogue ; trajet terminé sans note provisoire et avec deux marqueurs, trajet en cours avec avertissement et un seul marqueur ; récupération initiale par un seul POST avec token ; refus d’accès et session expirée sans carte résiduelle ; fermeture/réouverture pendant une requête lente ; effacement de la carte lors d’une révocation d’accès ; consultation directe et avertissement de tuiles conservé après une lecture périodique ; absence de Leaflet traitée par une alerte d’erreur. À 390 × 844, la modale reste dans le viewport et son contenu ne déborde pas horizontalement ; rendu également inspecté à 1366 × 900. La fixture utilise un sous-répertoire web et une racine alternative pour vérifier la résolution native de l’URL.
+
+Validation locale : **400 contrôles QUARTIX**, **158 contrats d’interface**, syntaxe PHP/Python et diff. PHPStan 2.2.2, niveau 10, configuration existante du core avec un cache local au module et 1 Go de mémoire : **161 diagnostics avant, 158 après, aucun nouveau diagnostic** sur les deux pages, le service de tracés et le nouveau template. Les diagnostics restants proviennent notamment des symboles/inclusions non résolus et du typage existant ; aucun ignore ni baseline de suppression ajouté. Runtime utilisé : PHP 8.4.22, core 25.0.0-alpha ; Dolibarr 20/PHP 8.0 et Dolibarr 24 non réexécutés pour ce changement.
+
+Cette nouvelle modale n’est pas déployée sur l’instance distante dans le cadre de cette correction. Déployer aussi le nouveau fichier `tpl/quartix_route.tpl.php`, puis recharger le journal et contrôler les trajets réels avec le thème actif. Les traductions Multicompany corrigées précédemment restent incluses dans les fichiers de langue.

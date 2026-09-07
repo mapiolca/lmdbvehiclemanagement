@@ -123,6 +123,7 @@ $typeTranslations = array(
 	'driver' => 'AssignmentTypeDriver',
 	'custodian' => 'AssignmentTypeCustodian',
 	'pool' => 'AssignmentTypePool',
+	'quartix_estimate' => 'QxEstimate',
 	'standard' => 'ReadingKindStandard',
 	'correction' => 'ReadingKindCorrection',
 	'replacement' => 'ReadingKindReplacement',
@@ -164,7 +165,7 @@ foreach ($entries as $entry) {
 		$url .= ($canManageAssignments ? '&assignment_id='.$entry['source_id'].'&action=edit' : '#assignment-'.$entry['source_id']);
 	} elseif ($entry['source'] === 'odometer') {
 		$url = dol_buildpath('/lmdbvehiclemanagement/vehicle_odometer.php', 1).'?id='.$id;
-		$url .= ($canManageOdometer ? '&reading_id='.$entry['source_id'].'&action=edit' : '#odometer-'.$entry['source_id']);
+		$url .= '&reading_id='.$entry['source_id'].($canManageOdometer && $entry['type'] !== 'quartix_estimate' ? '&action=edit' : '#odometer-'.$entry['source_id']);
 	} elseif ($entry['source'] === 'consumption') {
 		$url = dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?id='.$entry['source_id'];
 	} elseif ($entry['source'] === 'insurance') {

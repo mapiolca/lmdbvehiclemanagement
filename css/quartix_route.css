@@ -1,0 +1,3 @@
+/* Only the map viewport needs module layout; controls/modal retain the active Dolibarr theme. */
+#qx-route-map { height: 55vh; min-height: 240px; width: 100%; }
+#qx-route-form { max-width: 100%; }

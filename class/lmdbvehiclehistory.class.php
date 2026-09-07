@@ -76,7 +76,7 @@ class LmdbVehicleHistory
 			$queries[] = "SELECT a.date_start AS event_timestamp, a.assignment_type AS entry_type, 'assignment' AS source_code, 'lmdbvehicleassignment' AS source_object, a.rowid AS source_id, TRIM(CONCAT(COALESCE(u.firstname, ''), ' ', COALESCE(u.lastname, ''))) AS source_label, NULL AS consumption_quantity, '' AS consumption_unit, NULL AS odometer_km, a.fk_user_driver AS driver_id, NULL AS thirdparty_id, a.status, TRIM(CONCAT(COALESCE(u.firstname, ''), ' ', COALESCE(u.lastname, ''))) AS driver_name, 0 AS document_count FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_vehicle_assignment AS a LEFT JOIN ".MAIN_DB_PREFIX."user AS u ON u.rowid = a.fk_user_driver WHERE a.fk_vehicle = ".((int) $vehicleId)." AND a.entity IN (".getEntity('lmdbvehicle').")";
 		}
 		if (in_array('odometer', $sources, true)) {
-			$queries[] = "SELECT o.reading_date AS event_timestamp, o.reading_kind AS entry_type, 'odometer' AS source_code, 'lmdbvehicleodometerreading' AS source_object, o.rowid AS source_id, CAST(o.odometer_km AS CHAR) AS source_label, NULL AS consumption_quantity, '' AS consumption_unit, o.odometer_km, NULL AS driver_id, NULL AS thirdparty_id, 1 AS status, '' AS driver_name, 0 AS document_count FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_odometer_reading AS o WHERE o.fk_vehicle = ".((int) $vehicleId)." AND o.entity IN (".getEntity('lmdbvehicle').")";
+			$queries[] = "SELECT o.reading_date AS event_timestamp, IF(o.is_estimate = 1, 'quartix_estimate', o.reading_kind) AS entry_type, 'odometer' AS source_code, 'lmdbvehicleodometerreading' AS source_object, o.rowid AS source_id, CAST(o.odometer_km AS CHAR) AS source_label, NULL AS consumption_quantity, '' AS consumption_unit, o.odometer_km, NULL AS driver_id, NULL AS thirdparty_id, 1 AS status, '' AS driver_name, 0 AS document_count FROM ".MAIN_DB_PREFIX."lmdbvehiclemanagement_odometer_reading AS o WHERE o.fk_vehicle = ".((int) $vehicleId)." AND o.entity IN (".getEntity('lmdbvehicle').")";
 		}
 		if (in_array('consumption', $sources, true)) {
 			$consumptionSourceTypes = array('lmdbvehiclemanagement_consumption', 'lmdbvehiclemanagement_consumption@lmdbvehiclemanagement', 'lmdbvehicleconsumption', 'lmdbvehicleconsumption@lmdbvehiclemanagement');
@@ -168,6 +168,7 @@ class LmdbVehicleHistory
 				$label = $langs->trans('Driver').': '.((string) $obj->driver_name);
 			} elseif ($source === 'odometer') {
 				$label = price((float) $obj->odometer_km, 0, $langs, 1, -1, -1).' km';
+				if ($obj->entry_type === 'quartix_estimate') $label .= ' — '.$langs->trans('QxEstimate');
 			} elseif ($source === 'consumption') {
 				$label .= ' — '.price((float) $obj->consumption_quantity, 0, $langs, 1, 2, 2).' '.((string) $obj->consumption_unit);
 			}
