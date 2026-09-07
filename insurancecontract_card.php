@@ -1,6 +1,12 @@
 <?php
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
+// Strict pre-bootstrap allowlist: force native token checks for these custom GET/POST actions.
+if (in_array($_GET['action'] ?? '', array('activate', 'terminate'), true)
+	|| in_array($_POST['action'] ?? '', array('activate', 'terminate'), true)) {
+	define('CSRFCHECK_WITH_TOKEN', 1);
+}
+
 $res = 0;
 if (!$res && !empty($_SERVER['CONTEXT_DOCUMENT_ROOT'])) $res = @include str_replace('..', '', $_SERVER['CONTEXT_DOCUMENT_ROOT']).'/main.inc.php';
 if (!$res && file_exists('../../main.inc.php')) $res = @include '../../main.inc.php';
@@ -189,8 +195,8 @@ if ($action === 'create' || $action === 'edit') {
 	print '<div class="tabsAction">';
 	if ($permissionWrite) {
 		print dolGetButtonAction('', $langs->trans('Modify'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=edit');
-		if ((int) $object->status === LmdbVehicleInsuranceContract::STATUS_DRAFT) print lmdbInsuranceContractPostButton($id, 'activate', $langs->trans('Activate'));
-		if ((int) $object->status === LmdbVehicleInsuranceContract::STATUS_ACTIVE) print lmdbInsuranceContractPostButton($id, 'terminate', $langs->trans('Terminate'));
+		if ((int) $object->status === LmdbVehicleInsuranceContract::STATUS_DRAFT) print dolGetButtonAction('', $langs->trans('Activate'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=activate&token='.newToken());
+		if ((int) $object->status === LmdbVehicleInsuranceContract::STATUS_ACTIVE) print dolGetButtonAction('', $langs->trans('Terminate'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=terminate&token='.newToken());
 	}
 	if ($permissionDelete && (int) $object->status === LmdbVehicleInsuranceContract::STATUS_DRAFT) print dolGetButtonAction('', $langs->trans('Delete'), 'delete', $_SERVER['PHP_SELF'].'?id='.$id.'&action=delete&token='.newToken());
 	print '</div>';
@@ -213,22 +219,3 @@ if ($action === 'create' || $action === 'edit') {
 
 llxFooter();
 $db->close();
-
-/**
- * Render a token-protected lifecycle button.
- *
- * @param int $contractId Contract id
- * @param string $action Action
- * @param string $label Label
- * @return string
- */
-function lmdbInsuranceContractPostButton($contractId, $action, $label)
-{
-	$out = '<form class="inline-block" method="POST" action="'.dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'">';
-	$out .= '<input type="hidden" name="token" value="'.newToken().'">';
-	$out .= '<input type="hidden" name="id" value="'.((int) $contractId).'"><input type="hidden" name="action" value="'.dol_escape_htmltag($action).'">';
-	$out .= '<button type="submit" class="butAction">'.dol_escape_htmltag($label).'</button>';
-	$out .= '</form>';
-
-	return $out;
-}

@@ -390,9 +390,9 @@ $checks['insurance_contact_roles_are_native_and_idempotent'] = strpos($moduleDat
 	&& substr_count($moduleDataSql, "WHERE element = 'lmdbinsurancecontract'") === 2
 	&& substr_count($moduleDataSql, 'WHERE NOT EXISTS (') >= 2
 	&& strpos($baseObjectClass, "ctc.element = '") !== false;
-$checks['insurance_post_actions_use_native_button_size'] = strpos($insuranceCard, '<button type="submit" class="butAction">') !== false
-	&& strpos($insuranceCard, "lmdbInsuranceContractPostButton(\$id, 'activate', \$langs->trans('Activate'))") !== false
-	&& strpos($insuranceCard, "lmdbInsuranceContractPostButton(\$id, 'terminate', \$langs->trans('Terminate'))") !== false;
+$checks['insurance_lifecycle_actions_use_native_buttons_with_tokens'] = strpos($insuranceCard, 'lmdbInsuranceContractPostButton') === false
+	&& strpos($insuranceCard, "dolGetButtonAction('', \$langs->trans('Activate'), 'default', \$_SERVER['PHP_SELF'].'?id='.\$id.'&action=activate&token='.newToken())") !== false
+	&& strpos($insuranceCard, "dolGetButtonAction('', \$langs->trans('Terminate'), 'default', \$_SERVER['PHP_SELF'].'?id='.\$id.'&action=terminate&token='.newToken())") !== false;
 $checks['insurance_card_uses_native_transverse_blocks'] = strpos($insuranceCard, "getMultidirOutput(\$object, 'lmdbvehiclemanagement', 1)") !== false
 	&& strpos($insuranceCard, '$formfile->showdocuments(') !== false
 	&& strpos($insuranceCard, '$form->showLinkedObjectBlock($object)') !== false

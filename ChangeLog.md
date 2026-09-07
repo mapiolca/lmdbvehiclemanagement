@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Boutons « Activer » et « Résilier » des contrats d’assurance harmonisés avec les actions natives Dolibarr : même composant que « Modifier », sans style spécifique au module. Actions protégées par token CSRF et droits d’écriture conservés.
+
 - Traductions Multicompany complétées en français et en anglais pour le partage des contrôles réglementaires, de leur numérotation et des dictionnaires du module : libellés, titres, descriptions et infobulles manquants.
 
 - Correction de la consultation des tracés QUARTIX : chargement rétabli, dialogue natif sans page intégrée, historique de navigation ni barre de débogage. Messages persistants au style Dolibarr, note provisoire réservée aux trajets en cours, fermeture interrompant les requêtes et affichage adapté aux petits écrans. Déployer les fichiers, y compris le nouveau template, puis recharger le journal ; aucune migration supplémentaire.
