@@ -1184,3 +1184,7 @@ QxRouteReady=Tracé QUARTIX chargé.
 VehicleImportInvalidUpdateKey=Clé de mise à jour non prise en charge.
 VehicleImportEmptyUpdateKey=Chaque clé de mise à jour doit être renseignée et associée à une colonne.
 VehicleImportAmbiguousUpdateKey=Plusieurs véhicules correspondent aux clés de mise à jour.
+
+VehicleImportUnknownCapacity=Capacité « %s » inconnue ou indisponible. Vérifiez le dictionnaire et l’unité du champ.
+VehicleImportIncompatibleCapacity=Capacité « %s » incompatible avec l’énergie du véhicule, ou code ambigu dans les dictionnaires partagés.
+VehicleImportInvalidCapacity=Capacité « %s » : valeur « %s » invalide. Saisissez un nombre positif ou nul, sans unité.

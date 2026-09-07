@@ -801,6 +801,15 @@ class modLmdbVehicleManagement extends DolibarrModules
 				't.fk_soc_owner' => 'Text',
 				't.description' => 'Text',
 			);
+			// Virtual fields handled by ImportInsert, stored in the normalized capacity table.
+			if (isModEnabled('lmdbvehiclemanagement')) {
+				dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php');
+				$capacityImport = new LmdbVehicleImport($this->db);
+				foreach ($capacityImport->getCapacityImportFields() as $field => $definition) {
+					$this->import_fields_array[$r][$field] = $definition['label'];
+					$this->import_TypeFields_array[$r][$field] = 'Numeric';
+				}
+			}
 			$this->import_entities_array[$r] = array_fill_keys(array_keys($this->import_fields_array[$r]), 'lmdbvehicle');
 			$this->import_fieldshidden_array[$r] = array(
 				't.entity' => 'rule-compute',

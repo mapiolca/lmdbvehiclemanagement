@@ -109,6 +109,93 @@ class LmdbVehicleImport
 	}
 
 	/**
+	 * Virtual import fields use dictionary codes and units, never installation-specific ids.
+	 * Duplicate shared codes are kept together and rejected if ambiguous for the energy.
+	 *
+	 * @return array<string,array{label:string,unit:string,options:array<int,array{code:string,label:string,unit:string,unit_code:string,energy_ids:array<int,int>}>}>
+	 */
+	public function getCapacityImportFields()
+	{
+		global $langs;
+		$langs->loadLangs(array('lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumable.class.php');
+		$dictionary = new LmdbVehicleConsumable($this->db);
+		$options = $dictionary->getCapacityOptions();
+		if ($dictionary->error !== '') {
+			$this->error = $dictionary->error;
+			return array();
+		}
+		$fields = array();
+		foreach ($options as $id => $option) {
+			// Encode unusual custom codes while leaving standard codes readable.
+			$code = preg_match('/^[A-Z][A-Z0-9_]*$/D', $option['code']) ? $option['code'] : 'x'.bin2hex($option['code']);
+			$unit = preg_match('/^[A-Z][A-Z0-9_]*$/D', $option['unit_code']) ? $option['unit_code'] : 'x'.bin2hex($option['unit_code']);
+			$field = 't.capacity_'.$code.'_'.$unit;
+			if (!isset($fields[$field])) {
+				$fields[$field] = array(
+					'label' => $langs->transnoentitiesnoconv('ConsumableCapacity', $option['label']).' ('.$option['unit'].')',
+					'unit' => $option['unit'],
+					'options' => array(),
+				);
+			}
+			$fields[$field]['options'][$id] = $option;
+		}
+		return $fields;
+	}
+
+	/**
+	 * Validate capacities before any write. Empty cells preserve values; zero removes one capacity.
+	 *
+	 * @param array<string,mixed> $values Mapped row values without table aliases
+	 * @param int $energyId Effective vehicle energy after the import merge
+	 * @return array<int,float>|false Consumable ids and values, or false on validation error
+	 */
+	private function getImportedCapacities($values, $energyId)
+	{
+		global $langs;
+		$requested = array();
+		foreach ($values as $field => $value) {
+			if (strpos($field, 'capacity_') === 0 && $this->stringValue($values, $field) !== '') {
+				$requested[$field] = $this->stringValue($values, $field);
+			}
+		}
+		if (empty($requested)) return array();
+		$fields = $this->getCapacityImportFields();
+		if ($this->error !== '') {
+			$this->setImportError($this->error);
+			return false;
+		}
+		$capacities = array();
+		foreach ($requested as $field => $value) {
+			if (!isset($fields['t.'.$field])) {
+				$this->setImportError($langs->trans('VehicleImportUnknownCapacity', $field));
+				return false;
+			}
+			$definition = $fields['t.'.$field];
+			$matches = array();
+			foreach ($definition['options'] as $id => $option) {
+				if ($energyId > 0 && in_array($energyId, $option['energy_ids'], true)) $matches[] = $id;
+			}
+			if (count($matches) !== 1) {
+				$this->setImportError($langs->trans('VehicleImportIncompatibleCapacity', $definition['label']));
+				return false;
+			}
+			// Reject text/units, exponents and malformed numbers before price2num normalization.
+			if (!preg_match('/^\+?(?:[0-9]+|[0-9]{1,3}(?:[ \x{00A0}\x{202F}][0-9]{3})+)(?:[.,][0-9]+)?$/uD', $value)) {
+				$this->setImportError($langs->trans('VehicleImportInvalidCapacity', $definition['label'], $value));
+				return false;
+			}
+			$number = price2num(str_replace(array("\xc2\xa0", "\xe2\x80\xaf", ' '), '', $value));
+			if (!is_numeric($number) || !is_finite((float) $number) || (float) $number < 0) {
+				$this->setImportError($langs->trans('VehicleImportInvalidCapacity', $definition['label'], $value));
+				return false;
+			}
+			$capacities[$matches[0]] = (float) $number;
+		}
+		return $capacities;
+	}
+
+	/**
 	 * Create one vehicle through its business object from a native import row.
 	 *
 	 * @param array<int,mixed> $record Native import row
@@ -125,6 +212,8 @@ class LmdbVehicleImport
 
 		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicle.class.php');
 		$langs->loadLangs(array('main', 'errors', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		$this->error = '';
+		$this->errors = array();
 		$values = array();
 		// CSV records start at zero; native XLSX records start at one.
 		$recordPositionBase = array_key_exists(0, $record) ? 0 : 1;
@@ -266,8 +355,10 @@ class LmdbVehicleImport
 			}
 			$vehicle = $existing;
 		}
+		$capacities = $this->getImportedCapacities($values, !empty($vehicle->fk_energy) ? (int) $vehicle->fk_energy : 0);
+		if ($capacities === false) return -1;
 		$vehicle->context['trigger_reason'] = 'import';
-		$result = $existing !== null ? $vehicle->update($user, $runTriggers ? 0 : 1) : $vehicle->create($user, $runTriggers ? 0 : 1);
+		$result = $vehicle->saveFromImport($user, $capacities, $existing !== null, $runTriggers ? 0 : 1);
 		$this->updated = $existing !== null && $result > 0;
 		if ($result <= 0) {
 			$this->error = $vehicle->error !== '' ? $langs->trans($vehicle->error) : $langs->trans('Error');

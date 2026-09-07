@@ -85,7 +85,7 @@ $checks = array(
 	'descriptor_enables_import_hook' => preg_match("/'imports'/", $descriptor) === 1,
 	'descriptor_defaults_agenda_from_matrix' => strpos($descriptor, "'MAIN_AGENDA_ACTIONAUTO_'.\$triggerCode") !== false,
 	'descriptor_preserves_existing_zero_constants' => strpos($descriptor, 'if ($constantExists === 0)') !== false,
-	'vehicle_import_uses_business_object' => strpos($vehicleImport, '$vehicle->create($user, $runTriggers ? 0 : 1)') !== false,
+	'vehicle_import_uses_business_object' => strpos($vehicleImport, '$vehicle->saveFromImport($user, $capacities, $existing !== null, $runTriggers ? 0 : 1)') !== false,
 	'vehicle_import_sets_import_reason' => strpos($vehicleImport, "context['trigger_reason'] = 'import'") !== false,
 	'vehicle_import_hook_distinguishes_real_step' => strpos($hookClass, '$step === 6') !== false,
 	'consumption_import_uses_business_object' => strpos($consumptionImport, '->create($user') !== false,

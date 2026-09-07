@@ -1184,3 +1184,7 @@ QxRouteDisplayError=The browser cannot load or display the route. Reload the win
 VehicleImportInvalidUpdateKey=Unsupported update key.
 VehicleImportEmptyUpdateKey=Every update key must be mapped and populated.
 VehicleImportAmbiguousUpdateKey=Several vehicles match the update keys.
+
+VehicleImportUnknownCapacity=Capacity “%s” is unknown or unavailable. Check the dictionary and the field unit.
+VehicleImportIncompatibleCapacity=Capacity “%s” is incompatible with the vehicle energy, or the code is ambiguous in shared dictionaries.
+VehicleImportInvalidCapacity=Capacity “%s”: invalid value “%s”. Enter a non-negative number without a unit.

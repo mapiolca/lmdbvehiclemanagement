@@ -84,10 +84,10 @@ class ActionsLmdbVehicleManagement
 	}
 
 	/**
-	 * Route every native vehicle import row through LmdbVehicle::create().
+	 * Route native vehicle import rows through transactional business methods.
 	 *
 	 * Step 5 is the native simulation and therefore runs without triggers.
-	 * Step 6 is the real transactional import and emits one CREATE trigger.
+	 * Step 6 emits one CREATE/UPDATE trigger after capacities, unless fast mode is selected.
 	 *
 	 * @param array<string,mixed> $parameters Native import parameters
 	 * @param CommonObject|null $object Current hook object
@@ -127,10 +127,11 @@ class ActionsLmdbVehicleManagement
 
 		$step = isset($parameters['step']) ? (int) $parameters['step'] : 0;
 		$importId = isset($parameters['importid']) ? (string) $parameters['importid'] : '';
+		$runTriggers = $step === 6 && (!isset($parameters['importtriggermode']) || $parameters['importtriggermode'] !== 'fast_bulk');
 		if ($dataset === 'lmdbvehiclemanagement_vehicles') {
 			dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php');
 			$import = new LmdbVehicleImport($this->db);
-			$result = $import->createVehicleFromNativeRow($parameters['arrayrecord'], $parameters['array_match_file_to_database'], $importId, $user, $step === 6, isset($parameters['updatekeys']) && is_array($parameters['updatekeys']) ? $parameters['updatekeys'] : array());
+			$result = $import->createVehicleFromNativeRow($parameters['arrayrecord'], $parameters['array_match_file_to_database'], $importId, $user, $runTriggers, isset($parameters['updatekeys']) && is_array($parameters['updatekeys']) ? $parameters['updatekeys'] : array());
 		} else {
 			dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycontrolimport.class.php');
 			$import = new LmdbVehicleRegulatoryControlImport($this->db);

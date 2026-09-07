@@ -217,11 +217,11 @@ class LmdbVehicleConsumable
 	 * Return consumable labels and units separately for vehicle capacity inputs.
 	 *
 	 * @param int $energyId Optional energy dictionary id used to restrict compatible consumables
-	 * @return array<int,array{label:string,unit:string,energy_ids:array<int,int>}>
+	 * @return array<int,array{code:string,label:string,unit:string,unit_code:string,energy_ids:array<int,int>}>
 	 */
 	public function getCapacityOptions($energyId = 0)
 	{
-		$sql = 'SELECT c.rowid, c.label, c.unit, GROUP_CONCAT(DISTINCT ce.fk_energy ORDER BY ce.fk_energy SEPARATOR \',\') AS energy_ids';
+		$sql = 'SELECT c.rowid, c.code, c.label, c.unit, GROUP_CONCAT(DISTINCT ce.fk_energy ORDER BY ce.fk_energy SEPARATOR \',\') AS energy_ids';
 		$sql .= ' FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_consumable = c.rowid AND ce.entity = c.entity';
 		$sql .= ' WHERE c.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') AND c.active = 1';
@@ -240,8 +240,10 @@ class LmdbVehicleConsumable
 		$options = array();
 		while (is_object($row = $this->db->fetch_object($resql))) {
 			$options[(int) $row->rowid] = array(
+				'code' => (string) $row->code,
 				'label' => self::displayLabel((string) $row->label),
 				'unit' => self::unitLabel((string) $row->unit),
+				'unit_code' => (string) $row->unit,
 				'energy_ids' => array_values(array_filter(array_map('intval', explode(',', (string) $row->energy_ids)))),
 			);
 		}

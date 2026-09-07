@@ -709,6 +709,37 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	}
 
 	/**
+	 * Save an imported vehicle and its supplied capacities atomically, then emit one CRUD event.
+	 * The outer native import transaction controls simulation rollback and final commit.
+	 *
+	 * @param User $user Author, authorized by the native import hook
+	 * @param array<int,float> $capacities Validated supplied capacities (zero removes a value)
+	 * @param bool $update Update an already fetched vehicle
+	 * @param int<0,1> $notrigger Disable automatic actions during simulation/fast import
+	 * @return int<-1,max> Created id or positive update result, -1 on error
+	 */
+	public function saveFromImport(User $user, array $capacities, $update, $notrigger = 0)
+	{
+		$this->db->begin();
+		$result = $update ? $this->update($user, 1) : $this->create($user, 1);
+		if ($result > 0 && !empty($capacities)) {
+			if ($this->saveCapacities($user, $capacities) < 0) $result = -1;
+			else {
+				$this->context['imported_capacity_ids'] = array_keys($capacities);
+				$changedFields = isset($this->context['changed_fields']) && is_array($this->context['changed_fields']) ? $this->context['changed_fields'] : array();
+				$this->context['changed_fields'] = array_values(array_unique(array_merge($changedFields, array('capacities'))));
+			}
+		}
+		if ($result > 0 && !$notrigger && $this->call_trigger($this->TRIGGER_PREFIX.($update ? '_UPDATE' : '_CREATE'), $user) < 0) $result = -1;
+		if ($result <= 0) {
+			$this->db->rollback();
+			return -1;
+		}
+		$this->db->commit();
+		return $result;
+	}
+
+	/**
 	 * Persist configured capacities for this vehicle.
 	 *
 	 * @param User $user Author
