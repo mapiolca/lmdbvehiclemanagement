@@ -12,6 +12,9 @@ class LmdbVehicle extends stdClass
 {
 	public static $last;
 	public $context = array();
+	public static function normalizeRegistrationNumber($value) { return strtoupper(trim($value)); }
+	public function fetch($id) { $this->id = $id; $this->entity = 2; $this->status = 1; $this->label = 'Existing'; $this->brand = 'Original'; $this->fk_asset_type = 4; return 1; }
+	public function update($user, $notrigger) { $this->notrigger = $notrigger; self::$last = $this; return 1; }
 	public function __construct($db) {}
 	public function create($user, $notrigger)
 	{
@@ -113,3 +116,29 @@ $resolver->fetchAssetType(12);
 check(strpos($db->sql, 'AND rowid = 12') !== false, 'Numeric asset id still supported');
 $row = array(1 => array('val' => 'AA-123-BB'), 2 => array('val' => 'Transit'), 3 => array('val' => 'light_commercial'));
 check($resolver->createVehicleFromNativeRow($row, $assetMapping, '', $user, false) === 42 && LmdbVehicle::$last->fk_asset_type === 12, 'XLSX code resolves through real importer and resolver');
+
+$updateDb = new class {
+	public $queries = array();
+	public $cursor = 0;
+	public $matches = 1;
+	public function escape($value) { return str_replace("'", "''", $value); }
+	public function query($sql) { $this->queries[] = $sql; $this->cursor = 0; return true; }
+	public function fetch_object($result) { return $this->cursor++ < $this->matches ? (object) array('rowid' => 12) : false; }
+	public function free($result) {}
+};
+$service = new LmdbVehicleImport($updateDb);
+$updateRow = array(1 => array('val' => 'AA-123-BB'), 2 => array('val' => 'Updated'), 3 => array('val' => ''));
+$updateMapping = array(1 => 't.registration_number', 2 => 't.label', 3 => 't.brand');
+check($service->createVehicleFromNativeRow($updateRow, $updateMapping, '', $user, false, array('t.registration_number')) === 1 && $service->updated, 'Existing vehicle updated in simulation');
+check(LmdbVehicle::$last->label === 'Updated' && LmdbVehicle::$last->brand === 'Original' && LmdbVehicle::$last->status === 1 && LmdbVehicle::$last->fk_asset_type === 4 && LmdbVehicle::$last->notrigger === 1, 'Update preserves blanks, unmapped fields and status');
+check(strpos($updateDb->queries[0], 'entity = 2') !== false, 'Update lookup restricted to current entity');
+$updateHooks = new ActionsLmdbVehicleManagement($updateDb);
+$driver = (object) array('nbinsert' => 0, 'nbupdate' => 0); $nbok = 0;
+$params = array('datatoimport' => 'lmdbvehiclemanagement_vehicles', 'obj' => $driver, 'arrayrecord' => $updateRow, 'array_match_file_to_database' => $updateMapping, 'step' => 6, 'updatekeys' => array('t.registration_number'), 'nbok' => &$nbok);
+check($updateHooks->ImportInsert($params, $object, $action, null) === 1 && $driver->nbupdate === 1 && $driver->nbinsert === 0 && LmdbVehicle::$last->notrigger === 0, 'Real update hook increments only update counter');
+$updateDb->matches = 0;
+check($service->createVehicleFromNativeRow($updateRow, $updateMapping, '', $user, false, array('t.registration_number')) === 42 && !$service->updated, 'Unmatched key inserts new vehicle');
+$updateDb->matches = 2;
+check($service->createVehicleFromNativeRow($updateRow, $updateMapping, '', $user, false, array('t.registration_number')) === -1, 'Ambiguous match rejected');
+check($service->createVehicleFromNativeRow($updateRow, $updateMapping, '', $user, false, array('t.vin')) === -1, 'Unmapped update key rejected');
+check($service->createVehicleFromNativeRow($updateRow, $updateMapping, '', $user, false, array('t.entity')) === -1, 'Unauthorized update key rejected');

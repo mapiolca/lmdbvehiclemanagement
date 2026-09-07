@@ -2,6 +2,10 @@
 
 ## À publier
 
+- Import véhicules : mise à jour native par immatriculation et/ou VIN dans l’entité courante, avec création sans correspondance. Champs vides ou non associés conservés, statuts préservés, correspondances ambiguës refusées et compteurs distincts.
+
+- Import véhicules : traduction des erreurs métier, notamment le refus d’une immatriculation déjà présente.
+
 - Import véhicules : correction de la recherche du type principal lorsque son code est fourni en premier argument ; le code n’est plus remplacé par une chaîne vide. Les filtres d’activité et d’entité restent appliqués.
 
 - Imports et exports : libellés PTAC (kg) et PTRA (kg) traduits en français et en anglais, sans affichage des clés techniques.

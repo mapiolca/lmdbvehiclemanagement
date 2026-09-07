@@ -1180,3 +1180,7 @@ QxRouteExpired=This trip exceeds the journal retention period.
 QxRouteTilesError=Map tiles are unavailable. The QUARTIX route remains visible; retry later for the map background.
 QxRouteReady=QUARTIX route loaded.
 QxRouteDisplayError=The browser cannot load or display the route. Reload the window; if the problem persists, check the Dolibarr session and browser errors.
+
+VehicleImportInvalidUpdateKey=Unsupported update key.
+VehicleImportEmptyUpdateKey=Every update key must be mapped and populated.
+VehicleImportAmbiguousUpdateKey=Several vehicles match the update keys.

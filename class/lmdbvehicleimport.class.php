@@ -12,6 +12,9 @@ class LmdbVehicleImport
 	/** @var string */
 	public $error = '';
 
+	/** @var bool Whether the last successful row updated an existing vehicle. */
+	public $updated = false;
+
 	/** @var array<int,string> */
 	public $errors = array();
 
@@ -113,9 +116,10 @@ class LmdbVehicleImport
 	 * @param string $importId Native import identifier
 	 * @param User $user Import author
 	 * @param bool $runTriggers True only for the real import step
+	 * @param list<string> $updateKeys Native target fields used together to match an existing vehicle
 	 * @return int<-1,max> Created vehicle id, -1 on error
 	 */
-	public function createVehicleFromNativeRow($record, $fieldMapping, $importId, User $user, $runTriggers)
+	public function createVehicleFromNativeRow($record, $fieldMapping, $importId, User $user, $runTriggers, $updateKeys = array())
 	{
 		global $conf, $langs;
 
@@ -136,6 +140,34 @@ class LmdbVehicleImport
 			$values[$fieldName] = $this->getImportCellValue($record[$sourceIndex]);
 		}
 
+		$this->updated = false;
+		$existing = null;
+		if (!empty($updateKeys)) {
+			$where = array();
+			foreach ($updateKeys as $key) {
+				if (!in_array($key, array('t.registration_number', 't.vin'), true)) {
+					return $this->setImportError($langs->trans('VehicleImportInvalidUpdateKey'));
+				}
+				$field = substr($key, 2);
+				$value = $this->stringValue($values, $field);
+				if ($value === '') return $this->setImportError($langs->trans('VehicleImportEmptyUpdateKey'));
+				if ($field === 'registration_number') $value = LmdbVehicle::normalizeRegistrationNumber($value);
+				$where[] = $field." = '".$this->db->escape($value)."'";
+			}
+			$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle WHERE entity = '.((int) $conf->entity).' AND '.implode(' AND ', $where).' LIMIT 2';
+			$resql = $this->db->query($sql);
+			if (!$resql) return $this->setImportError($this->db->lasterror());
+			$match = $this->db->fetch_object($resql);
+			$duplicate = $this->db->fetch_object($resql);
+			$this->db->free($resql);
+			if (is_object($duplicate)) return $this->setImportError($langs->trans('VehicleImportAmbiguousUpdateKey'));
+			if (is_object($match)) {
+				$existing = new LmdbVehicle($this->db);
+				if ($existing->fetch((int) $match->rowid) <= 0 || (int) $existing->entity !== (int) $conf->entity) {
+					return $this->setImportError($langs->trans('ErrorRecordNotFound'));
+				}
+			}
+		}
 		$vehicle = new LmdbVehicle($this->db);
 		$vehicle->entity = (int) $conf->entity;
 		$vehicle->ref = $this->stringValue($values, 'ref');
@@ -224,11 +256,28 @@ class LmdbVehicleImport
 			$vehicle->seats = (int) $seats;
 		}
 
+		if ($existing !== null) {
+			$existing->oldcopy = clone $existing;
+			// Empty and unmapped cells preserve existing data during enrichment.
+			foreach ($values as $field => $value) {
+				if ($this->stringValue($values, $field) !== '' && property_exists($vehicle, $field) && !in_array($field, array('id', 'rowid', 'entity', 'status', 'ref'), true)) {
+					$existing->{$field} = $vehicle->{$field};
+				}
+			}
+			$vehicle = $existing;
+		}
 		$vehicle->context['trigger_reason'] = 'import';
-		$result = $vehicle->create($user, $runTriggers ? 0 : 1);
+		$result = $existing !== null ? $vehicle->update($user, $runTriggers ? 0 : 1) : $vehicle->create($user, $runTriggers ? 0 : 1);
+		$this->updated = $existing !== null && $result > 0;
 		if ($result <= 0) {
-			$this->error = $vehicle->error !== '' ? $vehicle->error : $langs->trans('Error');
-			$this->errors = !empty($vehicle->errors) ? $vehicle->errors : array($this->error);
+			$this->error = $vehicle->error !== '' ? $langs->trans($vehicle->error) : $langs->trans('Error');
+			$this->errors = array();
+			foreach ($vehicle->errors as $message) {
+				$this->errors[] = $langs->trans($message);
+			}
+			if (empty($this->errors)) {
+				$this->errors = array($this->error);
+			}
 			return -1;
 		}
 

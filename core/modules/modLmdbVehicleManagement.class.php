@@ -844,7 +844,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 				't.fk_soc_owner' => 'FOURNISSEUR-001',
 				't.description' => 'Véhicule affecté aux interventions',
 			);
-			$this->import_updatekeys_array[$r] = array();
+			$this->import_updatekeys_array[$r] = array('t.registration_number' => 'RegistrationNumber', 't.vin' => 'VIN');
 			$this->import_run_sql_after_array[$r] = array();
 			if (getDolGlobalString('LMDBVEHICLEMANAGEMENT_LMDBVEHICLE_ADDON', 'mod_lmdbvehicle_standard') === 'mod_lmdbvehicle_registration') {
 				unset($this->import_fields_array[$r]['t.ref'], $this->import_TypeFields_array[$r]['t.ref'], $this->import_examplevalues_array[$r]['t.ref']);

@@ -1180,3 +1180,7 @@ QxRouteExpired=Ce trajet dépasse la durée de conservation du journal.
 QxRouteTilesError=Le fond de carte ne répond pas. Le tracé QUARTIX reste affiché ; réessayez plus tard pour le fond de carte.
 QxRouteDisplayError=Le navigateur ne peut pas charger ou afficher le tracé. Rechargez la fenêtre ; si le problème persiste, vérifiez la session Dolibarr et les erreurs du navigateur.
 QxRouteReady=Tracé QUARTIX chargé.
+
+VehicleImportInvalidUpdateKey=Clé de mise à jour non prise en charge.
+VehicleImportEmptyUpdateKey=Chaque clé de mise à jour doit être renseignée et associée à une colonne.
+VehicleImportAmbiguousUpdateKey=Plusieurs véhicules correspondent aux clés de mise à jour.

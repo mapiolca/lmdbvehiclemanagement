@@ -130,7 +130,7 @@ class ActionsLmdbVehicleManagement
 		if ($dataset === 'lmdbvehiclemanagement_vehicles') {
 			dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php');
 			$import = new LmdbVehicleImport($this->db);
-			$result = $import->createVehicleFromNativeRow($parameters['arrayrecord'], $parameters['array_match_file_to_database'], $importId, $user, $step === 6);
+			$result = $import->createVehicleFromNativeRow($parameters['arrayrecord'], $parameters['array_match_file_to_database'], $importId, $user, $step === 6, isset($parameters['updatekeys']) && is_array($parameters['updatekeys']) ? $parameters['updatekeys'] : array());
 		} else {
 			dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycontrolimport.class.php');
 			$import = new LmdbVehicleRegulatoryControlImport($this->db);
@@ -145,8 +145,9 @@ class ActionsLmdbVehicleManagement
 		}
 
 		// Native summaries read the driver's counter, separately from successful rows.
-		if (isset($parameters['obj']) && is_object($parameters['obj']) && property_exists($parameters['obj'], 'nbinsert')) {
-			$parameters['obj']->nbinsert = (int) $parameters['obj']->nbinsert + 1;
+		$counter = $dataset === 'lmdbvehiclemanagement_vehicles' && $import->updated ? 'nbupdate' : 'nbinsert';
+		if (isset($parameters['obj']) && is_object($parameters['obj']) && property_exists($parameters['obj'], $counter)) {
+			$parameters['obj']->{$counter} = (int) $parameters['obj']->{$counter} + 1;
 		}
 
 		if (isset($parameters['nbok'])) {

@@ -140,3 +140,7 @@ Le module constitue une aide documentaire de conformité : il ne réalise aucun 
 ## Licence
 
 Copyright © 2026 Pierre Ardoin. Ce module est distribué sous licence GNU General Public License version 3 ou ultérieure.
+
+### Mise à jour des véhicules par import
+
+Dans l’assistant natif, sélectionner l’immatriculation ou le VIN comme clé de mise à jour. Si plusieurs clés sont choisies, elles doivent toutes correspondre au même véhicule de l’entité courante. Chaque clé doit être associée et renseignée. Sans correspondance, une création est tentée ; une correspondance ambiguë est refusée. Les cellules vides et champs non associés conservent les données existantes : cet import ne permet pas d’effacer un champ. Le statut existant est conservé. La simulation est annulée par la transaction native ; les bilans distinguent insertions et mises à jour.
