@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Intégration continue : remplacement du workflow Composer inadapté au module par une vérification de syntaxe et les sept suites autonomes, dont les imports et leurs transactions, sur PHP 8.0 et 8.5.
+
 - Import véhicules : toutes les capacités du dictionnaire actif sont importables en création et mise à jour, dont les batteries en kWh et les fluides. Unités et compatibilité énergétique contrôlées, cellules vides conservées et zéro explicite pour effacer une capacité. Enregistrement transactionnel avec le véhicule, simulation annulée et événement CRUD unique après les capacités en mode normal. Relancer l’assistant après déploiement pour actualiser les colonnes ; aucune migration SQL supplémentaire.
 
 - Import véhicules : mise à jour native par immatriculation et/ou VIN dans l’entité courante, avec création sans correspondance. Champs vides ou non associés conservés, statuts préservés, correspondances ambiguës refusées et compteurs distincts.

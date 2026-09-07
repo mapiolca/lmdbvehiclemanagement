@@ -116,6 +116,10 @@ Les règles indépendantes de la base peuvent être vérifiées avec la commande
     php test/run_regulatory_contracts.php
     php test/run_ui_contracts.php
     php test/run_consumption_od_contracts.php
+    php test/run_native_import.php
+    php test/run_capacity_import_transactions.php
+
+Le workflow GitHub Actions `PHP checks` exécute ces sept suites autonomes et vérifie la syntaxe de tous les fichiers PHP versionnés sur PHP 8.0 et 8.5. Le module n’a pas de dépendances Composer propres : le workflow ne lance donc ni validation ni installation Composer. Ces contrôles n’installent pas une instance Dolibarr et ne remplacent pas les tests d’intégration ci-dessous. PHPStan n’est pas exécuté par ce workflow, en l’absence de configuration d’analyse du module.
 
 Les tests comportementaux des réglages OD utilisent les classes natives depuis une installation ou un checkout Dolibarr, sans connexion à la base ni écriture métier :
 
