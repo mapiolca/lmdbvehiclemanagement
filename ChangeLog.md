@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Import : message traduit indiquant la valeur du type de matériel rejetée ; suppression des erreurs répétées et accumulées entre les lignes.
+
 - Menus du parc : exclusion des utilisateurs externes confiée au filtre natif, sans expression `$user->socid` rejetée par l’évaluation sécurisée. Réactiver le module après déploiement pour actualiser les menus installés.
 - Import natif : correspondance des colonnes XLSX corrigée, lignes CSV vides ignorées, référence calculée depuis les cellules natives et accès administrateur au traitement restauré. Les contrôles réglementaires partagent la correction XLSX ; simulation et création par les objets métier conservées.
 

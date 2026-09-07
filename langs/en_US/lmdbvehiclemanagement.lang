@@ -596,6 +596,7 @@ AgendaValidityDetail=Validity: from %s to %s.
 AgendaStartDateDetail=Start date: %s.
 AgendaChangedFields=Changed fields: %s.
 InsuranceVehicleLinks=Linked vehicles
+VehicleImportInvalidAssetType=Asset type “%s” was not found or is not accessible. Check the column mapping and active dictionary entries.
 VehicleImportInvalidRow=The vehicle import row is invalid.
 VehicleImportInvalidDate=Date “%s” is invalid.
 VehicleImportInvalidNumber=Numeric value “%s” is invalid.

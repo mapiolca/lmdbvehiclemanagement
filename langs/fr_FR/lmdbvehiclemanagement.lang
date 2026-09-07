@@ -596,6 +596,7 @@ AgendaValidityDetail=Validité : du %s au %s.
 AgendaStartDateDetail=Date de début : %s.
 AgendaChangedFields=Champs modifiés : %s.
 InsuranceVehicleLinks=Véhicules liés
+VehicleImportInvalidAssetType=Le type principal de matériel « %s » est introuvable ou inaccessible. Vérifiez la correspondance de la colonne et les types actifs du dictionnaire.
 VehicleImportInvalidRow=La ligne d’import du véhicule est invalide.
 VehicleImportInvalidDate=La date « %s » n’est pas valide.
 VehicleImportInvalidNumber=La valeur numérique « %s » n’est pas valide.

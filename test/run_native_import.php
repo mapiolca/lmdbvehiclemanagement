@@ -59,3 +59,16 @@ check($hooks->ImportInsert($params, $object, $action, null) === -1, 'Disabled mo
 $moduleEnabled = true;
 $params['arrayrecord'] = array(array('val' => null));
 check($hooks->ImportInsert($params, $object, $action, null) === 1 && $nbok === 1, 'Blank CSV record ignored without incrementing imported count');
+
+class InvalidAssetImport extends LmdbVehicleImport
+{
+	public function fetchAssetType($id = 0, $code = '', $label = '') { return 0; }
+}
+$assetImport = new InvalidAssetImport(null);
+$assetMapping = array(1 => 't.registration_number', 2 => 't.label', 3 => 't.fk_asset_type');
+foreach (array(0, 1) as $base) {
+	$row = array_combine(range($base, $base + 2), array(array('val' => 'AA-123-BB'), array('val' => 'Transit'), array('val' => '')));
+	check($assetImport->createVehicleFromNativeRow($row, $assetMapping, '', $user, false) === 42, 'Empty asset type accepted with source base '.$base);
+	$row[$base + 2]['val'] = 'UNKNOWN';
+	check($assetImport->createVehicleFromNativeRow($row, $assetMapping, '', $user, false) === -1, 'Unknown asset type rejected with source base '.$base);
+}

@@ -107,7 +107,7 @@ class ActionsLmdbVehicleManagement
 		$langs->loadLangs(array('main', 'errors', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 		if (!isModEnabled('lmdbvehiclemanagement') || !empty($user->socid) || (empty($user->admin) && !$user->hasRight('lmdbvehiclemanagement', $rightObject, 'import'))) {
 			$this->error = $langs->trans('NotEnoughPermissions');
-			$this->errors = array($this->error);
+			$this->errors = array();
 			return -1;
 		}
 		// Native import ignores empty CSV records, including template spacer rows.
@@ -121,7 +121,7 @@ class ActionsLmdbVehicleManagement
 		}
 		if (empty($parameters['arrayrecord']) || !is_array($parameters['arrayrecord']) || empty($parameters['array_match_file_to_database']) || !is_array($parameters['array_match_file_to_database'])) {
 			$this->error = $langs->trans('VehicleImportInvalidRow');
-			$this->errors = array($this->error);
+			$this->errors = array();
 			return -1;
 		}
 
@@ -137,8 +137,10 @@ class ActionsLmdbVehicleManagement
 			$result = $import->createDraftFromNativeRow($parameters['arrayrecord'], $parameters['array_match_file_to_database'], $importId, $user, $step === 6);
 		}
 		if ($result <= 0) {
-			$this->error = $import->error;
-			$this->errors = $import->errors;
+			// HookManager retains errors between rows: publish this row once via error.
+			$messages = array_filter(array_unique(array_merge(array($import->error), $import->errors)));
+			$this->error = implode(' ; ', $messages);
+			$this->errors = array();
 			return -1;
 		}
 
