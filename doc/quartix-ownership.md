@@ -4,7 +4,7 @@
 
 Une entité peut connecter son compte QUARTIX à un véhicule qu’elle possède ou auquel elle accède par partage. Le collecteur possède l’association et toutes ses observations. Exemple : A partage son véhicule avec B ; B utilise son compte QUARTIX. A ne voit aucune observation de B tant que B ne les lui partage pas explicitement.
 
-Dans Multicompany, activer le partage et le partage par élément, autoriser les entités sources pour **Données QUARTIX**, puis activer cette famille dans les réglages du parc. Dans l’onglet QUARTIX du véhicule, le propriétaire utilise le formulaire natif **Partagé avec**. Cette famille utilise exclusivement la sélection : les lignes natives désignent des bénéficiaires, jamais des exclusions. Chaque bénéficiaire doit aussi accéder au véhicule. Le partage ordinaire du véhicule ou des relevés kilométriques ne partage pas QUARTIX.
+Dans Multicompany, activer le partage et le partage par élément, autoriser les entités sources pour **Données QUARTIX**, puis activer cette famille dans les réglages du parc. Dans l’onglet **Utilisation QUARTIX**, le propriétaire clique sur **Gérer le partage des données QUARTIX** : une modale contient le sélecteur natif et les boutons **Enregistrer** et **Annuler**. Fermer ou annuler abandonne les changements ; un refus d’enregistrement conserve la sélection pour correction. Le bouton concerne la source sélectionnée, également depuis son historique après retrait du véhicule, et n’est pas proposé aux bénéficiaires. Cette famille utilise exclusivement la sélection : les lignes natives désignent des bénéficiaires, jamais des exclusions. Chaque bénéficiaire doit aussi accéder au véhicule. Le partage ordinaire du véhicule ou des relevés kilométriques ne partage pas QUARTIX.
 
 Le sélecteur **Propriétaire des données QUARTIX** présente une source à la fois. Sans choix explicite, la source locale est sélectionnée, sinon l’unique source autorisée ; plusieurs sources distantes nécessitent un choix. Les liens, filtres et demandes de tracé conservent `quartix_id`. Le tableau de bord sélectionne une entité collectrice à la fois. La liste générale des relevés conserve les relevés ordinaires autorisés et les seules estimations de la source sélectionnée.
 
@@ -39,10 +39,11 @@ Les suites `run_quartix.php` et `run_sharing.php` couvrent la collecte B sur A, 
 Contrôles exécutés le 2026-09-08 sous PHP 8.5.7, avec le core local Dolibarr `25.0.0-alpha` (commit `f0eeff2`) en lecture seule :
 
 - QUARTIX : 446 assertions, dont la migration additive et son rejeu, sur adaptateur SQL en mémoire.
-- Partage : 405 assertions pour chacun des formulaires natifs chargés depuis les archives Multicompany 21 et 22 ; DAO et base simulés.
-- Agenda : 416 assertions ; interface : 165 ; règles métier : 50 ; factures/dossiers : 196, avec génération PDF native.
+- Partage : 437 assertions pour chacun des formulaires natifs chargés depuis les archives Multicompany 21 et 22 ; DAO et base simulés.
+- Agenda : 416 assertions ; interface : 168 ; règles métier : 50 ; factures/dossiers : 196, avec génération PDF native.
 - Transport : quatre requêtes HTTPS locales vérifiées avec le transport cURL réel et des identifiants fictifs.
-- Navigateur : tracé en cache, récupération automatique d’un tracé manquant avec `quartix_id`, puis refus d’accès sans carte résiduelle, sur la fixture locale servant le JavaScript et le template modifiés. Cette fixture n’est pas une session Dolibarr complète.
+- Navigateur partage : ouverture de la modale, ajout de bénéficiaires fictifs, annulation et réouverture avec restauration, POST contenant la sélection entière et la source ; formulaire véhicule avec envoi commun des champs et des partages. Fixture `test/run_sharing_browser.py` utilisant le code modifié et les composants natifs Multicompany 21/jQuery UI, sans données ni session ERP réelles. Validation sur l’instance distante non réalisée faute de déploiement de ce correctif.
+- Navigateur tracés : tracé en cache, récupération automatique d’un tracé manquant avec `quartix_id`, puis refus d’accès sans carte résiduelle, sur la fixture locale servant le JavaScript et le template modifiés. Cette fixture n’est pas une session Dolibarr complète.
 
 PHPStan est absent de l’environnement. Les bibliothèques tierces du core/Multicompany émettent des avertissements de dépréciation sous PHP 8.5 ; leurs fichiers n’ont pas été modifiés. Les moteurs MySQL/MariaDB, Dolibarr 20/PHP 8.0 et l’instance du parc n’ont pas été exécutés pour cette évolution.
 
@@ -51,6 +52,8 @@ Avant déploiement métier, effectuer la recette A/B/C sur une instance servant 
 ## English guide
 
 Each collecting entity owns its QUARTIX connection and observations, even when another entity owns the vehicle. Data is private by default, including migrated history. Explicit native Multicompany sharing uses the `lmdbvehiclequartix` family in selection mode only. Recipients also need vehicle access and can only read cached data; they cannot manage the source, synchronize it or share it onward.
+
+In the usage tab, **Manage QUARTIX data sharing** opens a dedicated modal for the selected source. Only its owning administrator can manage it. Cancel or close discards changes; failed saves preserve the selection.
 
 Choose a data owner before viewing usage, mileage, trips or routes. The local source is the default; otherwise the sole authorized source is selected, or a choice is required. The dashboard reports one collecting entity at a time. Read, GPS and synchronization permissions are checked separately, without an implicit administrator bypass.
 

@@ -24,15 +24,15 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'companies', 'other', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09') ?: 'view';
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionToWrite = LmdbVehicleSharing::can($user, 'lmdbvehicle', 'write');
-$permissionToDelete = LmdbVehicleSharing::can($user, 'lmdbvehicle', 'delete');
-$permissionToManageService = LmdbVehicleSharing::can($user, 'lmdbvehicle', 'service');
+$permissionToWrite = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write');
+$permissionToDelete = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'delete');
+$permissionToManageService = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'service');
 
 $object = new LmdbVehicle($db);
 $hookmanager->initHooks(array('lmdbvehiclecard', 'globalcard'));
@@ -111,6 +111,7 @@ if (empty($reshook)) {
 			$capacityDictionary = new LmdbVehicleConsumable($db);
 			$compatibleCapacityOptions = !empty($object->fk_energy) ? $capacityDictionary->getCapacityOptions((int) $object->fk_energy) : array();
 			$capacityResult = $object->saveCapacities($user, lmdbVehicleCapacityValuesFromPost($compatibleCapacityOptions));
+			if ($capacityResult > 0) $capacityResult = lmdbSharingSavePosted($object, true);
 			if ($capacityResult > 0) {
 				$db->commit();
 				setEventMessages($langs->trans('VehicleCreated'), null, 'mesgs');
@@ -121,6 +122,7 @@ if (empty($reshook)) {
 		}
 		$db->rollback();
 		lmdbVehicleManagementSetObjectErrors($object);
+		$object->id = 0; // The whole creation was rolled back, including capacities and shares.
 		$action = 'create';
 	} elseif ($action === 'update') {
 		if (!$permissionToWrite || $id <= 0) accessforbidden();
@@ -131,6 +133,7 @@ if (empty($reshook)) {
 			$capacityDictionary = new LmdbVehicleConsumable($db);
 			$compatibleCapacityOptions = !empty($object->fk_energy) ? $capacityDictionary->getCapacityOptions((int) $object->fk_energy) : array();
 			$capacityResult = $object->saveCapacities($user, lmdbVehicleCapacityValuesFromPost($compatibleCapacityOptions));
+			if ($capacityResult > 0) $capacityResult = lmdbSharingSavePosted($object, true);
 			if ($capacityResult > 0) {
 				$db->commit();
 				setEventMessages($langs->trans('VehicleUpdated'), null, 'mesgs');
@@ -248,13 +251,13 @@ if ($action === 'create' || $action === 'edit') {
 	print $doleditor->Create(1);
 	print '</td></tr>';
 	print '</table></div>';
+	lmdbSharingRender($object, true);
 	print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'" formnovalidate></div>';
 	print '</form>';
 } elseif ($id > 0) {
 	$head = lmdbVehiclePrepareHead($object);
 	print dol_get_fiche_head($head, 'card', $langs->trans('Vehicle'), -1, 'car');
 	lmdbVehiclePrintBanner($object);
-if ($id > 0 && !in_array($action, array('create', 'edit'), true)) lmdbSharingRender($object);
 
 	print '<div class="fichecenter"><div class="fichehalfleft"><div class="underbanner clearboth"></div><table class="border centpercent tableforfield">';
 	print '<tr><td class="titlefield">'.$langs->trans('RegistrationNumber').'</td><td>'.dol_escape_htmltag($object->registration_number).'</td></tr>';

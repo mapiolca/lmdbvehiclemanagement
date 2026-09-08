@@ -1246,3 +1246,6 @@ LMDBVEHICLEQUARTIXSharing=Partage : données QUARTIX
 LMDBVEHICLEQUARTIXSharingDescription=Partager les données QUARTIX de cette entité uniquement avec les bénéficiaires choisis ayant accès au véhicule.
 Notify_LMDBVEHICLEMANAGEMENT_QUARTIX_CREATE=Création d’une source QUARTIX
 Notify_LMDBVEHICLEMANAGEMENT_QUARTIX_UPDATE=Modification des données ou partages QUARTIX
+
+QxManageSharing=Gérer le partage des données QUARTIX
+QxSharingHelp=Les entités sélectionnées peuvent consulter les données de cette source QUARTIX si elles ont également accès au véhicule. Elles ne peuvent ni les modifier ni les repartager.

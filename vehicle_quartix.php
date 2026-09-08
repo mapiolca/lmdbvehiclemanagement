@@ -28,7 +28,7 @@ $link = $service->link($id, $quartixId);
 $cfg = (new LmdbVehicleQuartixConfig($db))->load((int) $dataset->entity);
 $retention = LmdbVehicleQuartixTrips::retention($cfg['TRIP_RETENTION_DAYS']);
 require_once __DIR__.'/lib/lmdbvehiclesharing.lib.php';
-lmdbSharingAction($dataset);
+lmdbSharingAction($dataset, false);
 $cleanupAction = GETPOST('action', 'aZ09');
 if ($cleanupAction === 'confirm_qx_cleanup') {
 	$token = GETPOST('token', 'alphanohtml');
@@ -86,6 +86,7 @@ try {
 $form = new Form($db);
 llxHeader('', $dataset->snapshot_vehicle_label.' — '.$langs->trans('QxUsage'), '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card');
 lmdbQuartixBanner($service, $dataset, $object, 'quartix');
+include __DIR__.'/tpl/quartix_sharing.tpl.php';
 if ($link === null && !empty($user->admin) && (int) $dataset->entity === (int) $conf->entity) {
 	if ($cleanupAction === 'qx_cleanup') print $form->formconfirm(lmdbSharingObjectUrl($dataset), $langs->trans('QxCleanup'), $langs->trans('QxCleanupConfirm'), 'confirm_qx_cleanup', '', 0, 1);
 	print '<div class="tabsAction">'.dolGetButtonAction('', $langs->trans('QxCleanup'), 'default', lmdbSharingObjectUrl($dataset).'&action=qx_cleanup&token='.newToken()).'</div>';
@@ -181,7 +182,6 @@ foreach ($chartSeries as $key => $series) {
 	print $graph->show();
 }
 lmdbVehicleQuartixPrintPosition($dataset, $quartixId);
-lmdbSharingRender($dataset);
 print dol_get_fiche_end();
 llxFooter();
 $db->close();

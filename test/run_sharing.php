@@ -20,13 +20,18 @@ function getEntity($element, $shared = 1, $object = null) {
 	if (getDolGlobalInt('MULTICOMPANY_SHARINGS_ENABLED') && getDolGlobalInt('MULTICOMPANY_'.strtoupper($element).'_SHARING_ENABLED')) $ids = array_merge($ids, DaoMulticompany::$fixtures[$conf->entity]['sharings'][$element] ?? array());
 	return implode(',', array_unique($ids));
 }
-function dol_buildpath($path, $mode = 0) { return __FILE__; }
+function dol_buildpath($path, $mode = 0) { global $sharingFixture; return !empty($sharingFixture) ? $path : __FILE__; }
 function dol_include_once($path) { if (strpos($path, '/lmdbvehiclemanagement/') === 0) require_once dirname(__DIR__).substr($path, strlen('/lmdbvehiclemanagement')); }
 function dol_syslog($message, $level = 0) {}
-function GETPOST($name, $type = 'alpha', $method = 0) { $value = $_POST[$name] ?? $_GET[$name] ?? null; return $value ?? ($type === 'array' ? array() : ''); }
+function GETPOST($name, $type = 'alpha', $method = 0) { $value = $method === 2 ? ($_POST[$name] ?? null) : ($_POST[$name] ?? $_GET[$name] ?? null); return $value ?? ($type === 'array' ? array() : ''); }
 function GETPOSTISSET($name) { return isset($_POST[$name]) || isset($_GET[$name]); }
 function accessforbidden() { throw new RuntimeException('CSRF denied'); }
 function currentToken() { return 'fixture'; }
+function newToken() { return 'fixture'; }
+function getNonce() { return 'fixture'; }
+function dol_escape_htmltag($value) { return htmlspecialchars((string) $value, ENT_QUOTES); }
+function isSharingAllByDefault($element) { return getDolGlobalInt('MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT'); }
+function dolGetButtonAction($label, $text, $type, $url, $id) { return '<a class="butAction" id="'.$id.'" href="'.dol_escape_htmltag($url).'">'.dol_escape_htmltag($text).'</a>'; }
 
 function dolibarr_set_const($db, $name, $value, $type, $visible, $note, $entity) { return $db->query("INSERT INTO ".MAIN_DB_PREFIX."const (name,value,entity) VALUES ('".$db->escape($name)."','".$db->escape($value)."',".(int) $entity.")") ? 1 : -1; }
 class User {
@@ -236,7 +241,7 @@ checkSharing($hooks->hookGetEntity(array('element' => 'product'), $object, $acti
 $conf->entity = 1; $user->admin = 1;
 if (!empty($argv[2])) {
 	require_once dirname(__DIR__).'/class/lmdbvehiclesharingform.class.php';
-	$langs = new class { public function trans($key) { return $key; } };
+	$langs = new class { public function trans($key) { return $key; } public function loadLangs($files) {} };
 	foreach ($definitions as $element => $definition) {
 		foreach (array(0, 1) as $exclusion) {
 			$conf->global->{'MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT'} = $exclusion;
@@ -250,6 +255,7 @@ if (!empty($argv[2])) {
 			checkSharing(strpos($html, 'checkIfElementIsUsed') === false, 'External object avoids unsupported core class loader');
 		}
 	}
+	require __DIR__.'/sharing_form_cases.php';
 }
 require __DIR__.'/quartix_sharing_cases.php';
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'element_contact (rowid integer, element_id integer, fk_c_type_contact integer)');

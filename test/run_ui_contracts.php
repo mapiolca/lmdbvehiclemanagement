@@ -70,6 +70,19 @@ $consumptionSql = readModuleSource('sql/llx_lmdbvehiclemanagement_consumption.sq
 $frLang = readModuleSource('langs/fr_FR/lmdbvehiclemanagement.lang');
 $enLang = readModuleSource('langs/en_US/lmdbvehiclemanagement.lang');
 $checks = array();
+$vehicleEditStart = strpos($vehicleCard, "if (\$action === 'create' || \$action === 'edit') {");
+$vehicleReadStart = strpos($vehicleCard, '} elseif ($id > 0) {', $vehicleEditStart);
+$vehicleSharingPosition = strpos($vehicleCard, 'lmdbSharingRender($object, true);');
+$checks['vehicle_sharing_only_at_form_end'] = $vehicleSharingPosition > $vehicleEditStart
+	&& $vehicleSharingPosition < $vehicleReadStart
+	&& strpos($vehicleCard, "new DolEditor('description'", $vehicleEditStart) < $vehicleSharingPosition
+	&& strpos($vehicleCard, 'button-save', $vehicleEditStart) > $vehicleSharingPosition
+	&& substr_count($vehicleCard, 'lmdbSharingRender(') === 1;
+$checks['vehicle_sharing_saved_with_create_and_update'] = substr_count($vehicleCard, 'lmdbSharingSavePosted($object, true)') === 2;
+$quartixPage = readModuleSource('vehicle_quartix.php');
+$checks['quartix_sharing_dedicated_modal'] = strpos($quartixPage, "'/tpl/quartix_sharing.tpl.php'") !== false
+	&& strpos($quartixPage, 'lmdbSharingRender($dataset)') === false;
+
 $sharingClass = readModuleSource('class/lmdbvehiclesharing.class.php');
 $checks['sharing_keeps_native_rights_and_admin_elevation'] = strpos($sharingClass, 'self::isAdmin($user)') !== false && strpos($sharingClass, "\$user->hasRight('lmdbvehiclemanagement'") !== false;
 foreach (array('vehicle_assignment.php', 'vehicle_odometer.php', 'insurancecontract_certificate.php') as $card) {

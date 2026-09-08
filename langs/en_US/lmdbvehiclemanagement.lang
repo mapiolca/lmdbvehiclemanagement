@@ -1246,3 +1246,6 @@ LMDBVEHICLEQUARTIXSharing=Sharing: QUARTIX data
 LMDBVEHICLEQUARTIXSharingDescription=Share this entity’s QUARTIX data only with selected recipients who can access the vehicle.
 Notify_LMDBVEHICLEMANAGEMENT_QUARTIX_CREATE=QUARTIX source created
 Notify_LMDBVEHICLEMANAGEMENT_QUARTIX_UPDATE=QUARTIX data or sharing updated
+
+QxManageSharing=Manage QUARTIX data sharing
+QxSharingHelp=Selected entities can view this QUARTIX source if they also have access to the vehicle. They cannot modify or reshare its data.
