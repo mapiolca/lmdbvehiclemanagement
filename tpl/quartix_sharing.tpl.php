@@ -1,13 +1,19 @@
 <?php
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 /** @var LmdbVehicleQuartix $dataset */
-// The selected source owns this form, including when only its historical vehicle is available.
-if ($user->hasRight('lmdbvehiclemanagement', 'read') && LmdbVehicleSharing::isAdmin($user)
+/** @var bool $mileageView */
+if (!$user->hasRight('lmdbvehiclemanagement', 'read')) return;
+$sharingUrl = lmdbSharingObjectUrl($dataset);
+$canManageSharing = LmdbVehicleSharing::isAdmin($user)
 	&& (int) $dataset->entity === (int) $conf->entity && LmdbVehicleSharing::available()
-	&& LmdbVehicleSharing::individual('lmdbvehiclequartix')) {
-	$sharingUrl = lmdbSharingObjectUrl($dataset);
+	&& LmdbVehicleSharing::individual('lmdbvehiclequartix');
+print '<div class="tabsAction">';
+print dolGetButtonAction('', $langs->trans($mileageView ? 'QxUsage' : 'QxOdometerHistory'), 'default', $sharingUrl.($mileageView ? '' : '&view=odometer'), 'qx-view-switch');
+if ($canManageSharing) print dolGetButtonAction('', $langs->trans('QxManageSharing'), 'default', $sharingUrl.'&action=qx_sharing&token='.newToken(), 'qx-sharing-open');
+print '</div>';
+// The selected source owns this form, including when only its historical vehicle is available.
+if ($canManageSharing) {
 	$sharingOpen = in_array(GETPOST('action', 'aZ09'), array('qx_sharing', 'lmdb_save_sharing'), true);
-	print '<div class="tabsAction">'.dolGetButtonAction('', $langs->trans('QxManageSharing'), 'default', $sharingUrl.'&action=qx_sharing&token='.newToken(), 'qx-sharing-open').'</div>';
 	// The direct link remains usable without jQuery UI; editing needs the native MC widget.
 	print '<div id="qx-sharing-dialog"'.($sharingOpen ? '' : ' hidden').' title="'.dol_escape_htmltag($langs->trans('QxManageSharing')).'" data-auto-open="'.($sharingOpen ? '1' : '0').'">';
 	print '<form method="POST" action="'.dol_escape_htmltag($sharingUrl).'">';

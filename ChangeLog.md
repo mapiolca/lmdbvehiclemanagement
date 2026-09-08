@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Navigation QUARTIX : **Relevés kilométriques QUARTIX** et le retour **Utilisation QUARTIX** utilisent des boutons d’action natifs, regroupés à côté de **Gérer le partage des données QUARTIX**. La source sélectionnée et les restrictions d’accès sont conservées ; aucune migration ni réactivation nécessaire.
+
 - Partage véhicule déplacé à la fin des formulaires **Créer** et **Modifier**, avant les boutons, avec enregistrement commun et transactionnel ; le sélecteur n’apparaît plus sur la fiche en consultation. Dans **Utilisation QUARTIX**, l’action **Gérer le partage des données QUARTIX** ouvre une modale dédiée à la source sélectionnée, réservée à son administrateur propriétaire. Les choix sont conservés après erreur et annulés à la fermeture de la modale. Déployer les fichiers PHP/JS puis recharger la page ; aucune migration ni réactivation supplémentaire.
 
 - QUARTIX : chaque entité peut collecter avec son compte sur un véhicule possédé ou partagé. Sources, kilométrages, positions, utilisation, trajets et tracés appartiennent à l’entité collectrice et sont privés par défaut. Partage natif Multicompany distinct en mode sélection, sous réserve d’accès au véhicule pour le bénéficiaire ; sources consultées séparément.

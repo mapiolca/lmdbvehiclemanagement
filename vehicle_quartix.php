@@ -84,6 +84,7 @@ try {
 	setEventMessages($langs->trans(LmdbVehicleQuartixCron::safeError($e)), null, 'errors');
 }
 $form = new Form($db);
+$mileageView = GETPOST('view', 'alpha') === 'odometer';
 llxHeader('', $dataset->snapshot_vehicle_label.' — '.$langs->trans('QxUsage'), '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card');
 lmdbQuartixBanner($service, $dataset, $object, 'quartix');
 include __DIR__.'/tpl/quartix_sharing.tpl.php';
@@ -91,8 +92,6 @@ if ($link === null && !empty($user->admin) && (int) $dataset->entity === (int) $
 	if ($cleanupAction === 'qx_cleanup') print $form->formconfirm(lmdbSharingObjectUrl($dataset), $langs->trans('QxCleanup'), $langs->trans('QxCleanupConfirm'), 'confirm_qx_cleanup', '', 0, 1);
 	print '<div class="tabsAction">'.dolGetButtonAction('', $langs->trans('QxCleanup'), 'default', lmdbSharingObjectUrl($dataset).'&action=qx_cleanup&token='.newToken()).'</div>';
 }
-$mileageView = GETPOST('view', 'alpha') === 'odometer';
-print '<p><a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&amp;quartix_id='.$quartixId.($mileageView ? '' : '&amp;view=odometer').'">'.$langs->trans($mileageView ? 'QxUsage' : 'QxOdometerHistory').'</a></p>';
 if ($mileageView) {
 	include __DIR__.'/tpl/quartix_odometer.tpl.php';
 	print dol_get_fiche_end(); llxFooter(); $db->close(); exit;
