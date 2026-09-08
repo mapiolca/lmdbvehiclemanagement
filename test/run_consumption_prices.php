@@ -267,9 +267,10 @@ checkPrice($db->expected === array(), 'All expected queries consumed');
 class ConsumptionImportProfileUser extends User
 {
 	public $allowImport = true;
+	public $allowRead = true;
 	public function hasRight($module, $permlevel1, $permlevel2 = '')
 	{
-		return $permlevel1 === 'consumption' && ($permlevel2 === 'read' || ($permlevel2 === 'import' && $this->allowImport));
+		return $module === 'lmdbvehiclemanagement' && (($permlevel1 === 'read' && $permlevel2 === '' && $this->allowRead) || ($permlevel1 === 'consumption' && $permlevel2 === 'import' && $this->allowImport));
 	}
 }
 $user = new ConsumptionImportProfileUser($db);
@@ -278,6 +279,13 @@ $profile = new modLmdbVehicleManagement($db);
 checkPrice($profile->import_code === array('lmdbvehiclemanagement_consumptions'), 'Descriptor exposes only the authorized native consumption dataset');
 checkPrice($profile->numero === 450026 && $profile->family === 'Les Métiers du Bâtiment' && $profile->phpmin === array(8, 0) && $profile->need_dolibarr_version === array(20, 0), 'Descriptor identity and minimum versions preserved');
 checkPrice(count($profile->import_fields_array[0]) === 12 && count($profile->import_updatekeys_array[0]) === 4, 'Native profile fields and update keys available');
+$declaredRights = array();
+foreach ($profile->rights as $right) $declaredRights[] = $right[4].'/'.($right[5] ?? '');
+checkPrice(in_array('read/', $declaredRights, true) && in_array('consumption/import', $declaredRights, true) && !in_array('consumption/read', $declaredRights, true), 'Import access uses existing declared module permissions');
+$user->allowRead = false;
+$profile = new modLmdbVehicleManagement($db);
+checkPrice($profile->import_code === array(), 'Missing general read permission hides consumption import');
+$user->allowRead = true;
 $user->allowImport = false;
 $profile = new modLmdbVehicleManagement($db);
 checkPrice($profile->import_code === array(), 'Administrator without import permission has no dataset');

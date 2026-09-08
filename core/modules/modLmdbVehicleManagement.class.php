@@ -908,7 +908,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			$this->import_updatekeys_array[$r] = array();
 			$this->import_run_sql_after_array[$r] = array();
 		}
-		if (is_object($user) && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'read') && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'import')) {
+		if (is_object($user) && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'import')) {
 			$r = count($this->import_code);
 			$this->import_code[$r] = 'lmdbvehiclemanagement_consumptions';
 			$this->import_label[$r] = 'ConsumptionImportDataset';

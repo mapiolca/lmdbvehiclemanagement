@@ -13,7 +13,11 @@ function dol_stringtotime($value, $mode = 0) { return strtotime($value.' UTC'); 
 class User {
 	public $id = 7; public $admin = 0; public $socid = 0;
 	public $rightsGranted = array('read' => true, 'import' => true, 'write' => true);
-	public function hasRight($module, $object, $action) { return $this->rightsGranted[$action] ?? false; }
+	public function hasRight($module, $object, $action = '') {
+		if ($module !== 'lmdbvehiclemanagement') return false;
+		if ($object === 'read' && $action === '') return $this->rightsGranted['read'];
+		return $object === 'consumption' && in_array($action, array('import', 'write'), true) && ($this->rightsGranted[$action] ?? false);
+	}
 }
 class LmdbVehicleManagementObject extends stdClass {
 	public $db; public $id = 0; public $entity = 2; public $context = array(); public $error = ''; public $errors = array();

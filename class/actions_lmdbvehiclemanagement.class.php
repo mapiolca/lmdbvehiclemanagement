@@ -108,7 +108,7 @@ class ActionsLmdbVehicleManagement
 		}
 		$rightObject = $dataset === 'lmdbvehiclemanagement_vehicles' ? 'lmdbvehicle' : ($dataset === 'lmdbvehiclemanagement_consumptions' ? 'consumption' : 'regulatorycontrol');
 		$langs->loadLangs(array('main', 'errors', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-		if (!isModEnabled('lmdbvehiclemanagement') || !empty($user->socid) || !$user->hasRight('lmdbvehiclemanagement', $rightObject, 'import') || ($rightObject === 'consumption' && !$user->hasRight('lmdbvehiclemanagement', 'consumption', 'read'))) {
+		if (!isModEnabled('lmdbvehiclemanagement') || !empty($user->socid) || !$user->hasRight('lmdbvehiclemanagement', $rightObject, 'import') || ($rightObject === 'consumption' && !$user->hasRight('lmdbvehiclemanagement', 'read'))) {
 			$this->error = $langs->trans('NotEnoughPermissions');
 			$this->errors = array();
 			return -1;

@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Affichage de l’import des pleins/recharges corrigé : utilisation du droit général de lecture du module avec le droit d’import des consommations, au lieu d’un droit de lecture spécifique inexistant. Aucun nouveau droit ni migration nécessaire.
+
 - Import natif des pleins/recharges historiques sans OD, uniquement par l’assistant Dolibarr : création, mise à jour par référence ou véhicule/date/consommable, contrôle des doublons, des entités et des consommations liées à une OD. Simulation sans triggers et enregistrement transactionnel. Ancien parcours CSV retiré ; relancer l’assistant après déploiement. Aucune migration SQL spécifique.
 
 - Navigation entre véhicules corrigée sur la fiche et tous ses onglets, y compris QUARTIX : les flèches natives transmettent l’identifiant attendu par les pages. Le filtre de partage utilise la syntaxe native USF dès Dolibarr 20, sans avertissement SQL et en conservant les restrictions d’entité et de partage individuel. Aucune migration ni réactivation nécessaire pour ce correctif.

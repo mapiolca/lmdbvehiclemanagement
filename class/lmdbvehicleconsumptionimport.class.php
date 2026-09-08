@@ -32,7 +32,7 @@ class LmdbVehicleConsumptionImport
 		$this->error = ''; $this->errors = array(); $this->updated = false; $this->unchanged = false;
 		$langs->loadLangs(array('main', 'errors', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 		if (!isModEnabled('lmdbvehiclemanagement') || !empty($user->socid)
-			|| !$user->hasRight('lmdbvehiclemanagement', 'consumption', 'read')
+			|| !$user->hasRight('lmdbvehiclemanagement', 'read')
 			|| !$user->hasRight('lmdbvehiclemanagement', 'consumption', 'import')) return $this->fail('NotEnoughPermissions');
 		$values = array();
 		$base = array_key_exists(0, $record) ? 0 : 1;
