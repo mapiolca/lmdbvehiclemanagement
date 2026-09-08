@@ -108,9 +108,14 @@ function lmdbQuartixBanner($service, $dataset, $vehicle, $tab)
 	foreach ($head as &$entry) if (in_array($entry[2], array('quartix', 'trips', 'odometer'), true)) $entry[0] .= '&quartix_id='.(int) $dataset->id;
 	unset($entry);
 	print dol_get_fiche_head($head, $tab, $langs->trans('QxData'), -1, 'car');
-	if ($vehicle !== null) lmdbVehiclePrintBanner($vehicle);
-	else print load_fiche_titre(dol_escape_htmltag($dataset->snapshot_vehicle_label ?: $langs->trans('QxHistoricalVehicle')), '', 'car').'<div class="warning">'.$langs->trans('QxVehicleWithdrawn').'</div>';
 	$entities = lmdbQuartixSourceEntities($service);
-	print '<p>'.$langs->trans('QxSource').' <span class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entities[(int) $dataset->entity] ?? $langs->trans('QxData')).'</span></span></p>';
+	$sourceHtml = $langs->trans('QxSource').' <span class="refidno multicompany-entity-card-container"><span class="fa fa-globe"></span><span class="multiselect-selected-title-text">'.dol_escape_htmltag($entities[(int) $dataset->entity] ?? $langs->trans('QxData')).'</span></span>';
+	if ($vehicle !== null) {
+		lmdbVehiclePrintBanner($vehicle, $sourceHtml);
+	} else {
+		print load_fiche_titre(dol_escape_htmltag($dataset->snapshot_vehicle_label ?: $langs->trans('QxHistoricalVehicle')), '', 'car');
+		print '<div class="refidno">'.$sourceHtml.'</div>';
+		print '<div class="warning">'.$langs->trans('QxVehicleWithdrawn').'</div>';
+	}
 	lmdbQuartixSourceSelector($service, (int) $dataset->fk_vehicle, (int) $dataset->id);
 }

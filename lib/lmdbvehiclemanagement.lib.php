@@ -352,9 +352,10 @@ function lmdbVehicleDisplayIdentifier($ref, $registration, $label = '')
  * Print the common native banner used by every vehicle tab.
  *
  * @param LmdbVehicle $object Vehicle
+ * @param string $moreHtmlAfterLabel Escaped contextual HTML displayed below the label
  * @return void
  */
-function lmdbVehiclePrintBanner($object)
+function lmdbVehiclePrintBanner($object, $moreHtmlAfterLabel = '')
 {
 	global $langs;
 
@@ -363,6 +364,9 @@ function lmdbVehiclePrintBanner($object)
 		? (string) $object->label
 		: (string) $object->registration_number.' — '.(string) $object->label;
 	$moreHtmlRef = '<div class="refidno">'.dol_escape_htmltag($secondaryIdentifier);
+	if ($moreHtmlAfterLabel !== '') {
+		$moreHtmlRef .= '<br>'.$moreHtmlAfterLabel;
+	}
 	$entityBadge = lmdbVehicleManagementEntityBadge((int) $object->entity, lmdbVehicleManagementGetEntityOptions('lmdbvehicle'));
 	if ($entityBadge !== '') {
 		$moreHtmlRef .= '<br>'.$entityBadge;
