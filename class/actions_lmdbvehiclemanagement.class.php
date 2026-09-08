@@ -103,12 +103,12 @@ class ActionsLmdbVehicleManagement
 		global $langs, $user;
 
 		$dataset = isset($parameters['datatoimport']) ? (string) $parameters['datatoimport'] : '';
-		if (!in_array($dataset, array('lmdbvehiclemanagement_vehicles', 'lmdbvehiclemanagement_regulatory_controls'), true)) {
+		if (!in_array($dataset, array('lmdbvehiclemanagement_vehicles', 'lmdbvehiclemanagement_regulatory_controls', 'lmdbvehiclemanagement_consumptions'), true)) {
 			return 0;
 		}
-		$rightObject = $dataset === 'lmdbvehiclemanagement_vehicles' ? 'lmdbvehicle' : 'regulatorycontrol';
+		$rightObject = $dataset === 'lmdbvehiclemanagement_vehicles' ? 'lmdbvehicle' : ($dataset === 'lmdbvehiclemanagement_consumptions' ? 'consumption' : 'regulatorycontrol');
 		$langs->loadLangs(array('main', 'errors', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-		if (!isModEnabled('lmdbvehiclemanagement') || !empty($user->socid) || (empty($user->admin) && !LmdbVehicleSharing::can($user, $rightObject, 'import'))) {
+		if (!isModEnabled('lmdbvehiclemanagement') || !empty($user->socid) || !$user->hasRight('lmdbvehiclemanagement', $rightObject, 'import') || ($rightObject === 'consumption' && !$user->hasRight('lmdbvehiclemanagement', 'consumption', 'read'))) {
 			$this->error = $langs->trans('NotEnoughPermissions');
 			$this->errors = array();
 			return -1;
@@ -135,6 +135,10 @@ class ActionsLmdbVehicleManagement
 			dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php');
 			$import = new LmdbVehicleImport($this->db);
 			$result = $import->createVehicleFromNativeRow($parameters['arrayrecord'], $parameters['array_match_file_to_database'], $importId, $user, $runTriggers, isset($parameters['updatekeys']) && is_array($parameters['updatekeys']) ? $parameters['updatekeys'] : array());
+		} elseif ($dataset === 'lmdbvehiclemanagement_consumptions') {
+			require_once __DIR__.'/lmdbvehicleconsumptionimport.class.php';
+			$import = new LmdbVehicleConsumptionImport($this->db);
+			$result = $import->importNativeRow($parameters['arrayrecord'], $parameters['array_match_file_to_database'], $importId, $user, $runTriggers, isset($parameters['updatekeys']) && is_array($parameters['updatekeys']) ? $parameters['updatekeys'] : array());
 		} else {
 			dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycontrolimport.class.php');
 			$import = new LmdbVehicleRegulatoryControlImport($this->db);
@@ -149,7 +153,10 @@ class ActionsLmdbVehicleManagement
 		}
 
 		// Native summaries read the driver's counter, separately from successful rows.
-		$counter = $dataset === 'lmdbvehiclemanagement_vehicles' && $import->updated ? 'nbupdate' : 'nbinsert';
+		if ($dataset === 'lmdbvehiclemanagement_consumptions' && $import->unchanged) {
+			return 1;
+		}
+		$counter = in_array($dataset, array('lmdbvehiclemanagement_vehicles', 'lmdbvehiclemanagement_consumptions'), true) && $import->updated ? 'nbupdate' : 'nbinsert';
 		if (isset($parameters['obj']) && is_object($parameters['obj']) && property_exists($parameters['obj'], $counter)) {
 			$parameters['obj']->{$counter} = (int) $parameters['obj']->{$counter} + 1;
 		}

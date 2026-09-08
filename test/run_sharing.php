@@ -5,7 +5,7 @@
 $core = isset($argv[1]) ? realpath($argv[1]) : false;
 if (!$core || !is_file($core.'/core/class/commonobject.class.php')) { fwrite(STDERR, "Usage: php test/run_sharing.php <Dolibarr htdocs>\n"); exit(2); }
 define('DOL_DOCUMENT_ROOT', $core);
-define('DOL_VERSION', '24.0.0');
+define('DOL_VERSION', getenv('LMDB_TEST_DOL_VERSION') ?: '24.0.0');
 define('MAIN_DB_PREFIX', 'sharing_long_prefix_');
 define('DOL_URL_ROOT', '');
 $conf = (object) array('entity' => 1, 'global' => new stdClass());
@@ -103,7 +103,9 @@ class SharingRecord extends LmdbVehicleManagementObject {
 	}
 }
 function checkSharing($ok, $message) { global $checks; $checks++; if (!$ok) throw new RuntimeException($message); }
+class SharingHooksProbe { use LmdbVehicleSharingHooks; public $db, $results = array(), $resprints = ''; public function __construct($db) { $this->db = $db; } }
 $checks = 0; $db = new SharingDb(); $user = new User();
+$hooks = new SharingHooksProbe($db); $hookmanager = null; $action = '';
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'entity_element_sharing (entity integer, element text, fk_element integer, UNIQUE(entity,element,fk_element))');
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'const (rowid integer PRIMARY KEY, entity integer, name text, value text)');
 $definitions = LmdbVehicleSharing::definitions();
@@ -127,8 +129,20 @@ foreach (array(1, 2, 3) as $entity) {
 		checkSharing((int) $count === ($entity === 1 ? 2 : ($entity === 2 ? 1 : 0)), $element.' SQL counts match access');
 		$record = new SharingRecord($db); $record->element = $element; $record->table_element = $definition['table'];
 		checkSharing(($record->fetch(11) > 0) === ($entity === 1), $element.' old direct URL denied');
+		$hooks->printFieldListWhere(array('showrefnav' => true), $record, $action, $hookmanager);
+		$matches = array();
+		checkSharing(preg_match('/^ AND \(te\.rowid:in:([0-9,]+)\)$/D', $hooks->resprints, $matches) === 1, $element.' navigation provides native USF on '.DOL_VERSION);
+		$navigationIds = array_values(array_filter(array_map('intval', explode(',', $matches[1]))));
+		sort($navigationIds);
+		checkSharing($navigationIds === ($entity === 1 ? array(10, 11) : ($entity === 2 ? array(10) : array())), $element.' navigation excludes unshared records and unauthorized entities');
 	}
 }
+$db->fail = 'SELECT te.rowid';
+$hooks->printFieldListWhere(array('showrefnav' => true), $record, $action, $hookmanager);
+checkSharing($hooks->resprints === ' AND (te.rowid:in:0)', 'Navigation fails closed when its access query fails');
+$db->fail = '';
+$hooks->printFieldListWhere(array(), $record, $action, $hookmanager);
+checkSharing($hooks->resprints === '', 'Navigation filter does not alter ordinary list hooks');
 $conf->entity = 2;
 $dao->setSharingsByElement('lmdbvehicle', 10, array());
 foreach ($definitions as $element => $definition) checkSharing(LmdbVehicleSharing::visible($db, $element, 10) === ($element === 'lmdbinsurancecontract'), $element.' requires its vehicle except fleet contract');
@@ -205,7 +219,6 @@ foreach (array(array('GET', 'valid'), array('POST', ''), array('POST', 'forged')
 	catch (RuntimeException $e) { checkSharing($e->getMessage() === 'CSRF denied', 'Missing/forged token and GET writes denied'); }
 }
 $_SERVER['REQUEST_METHOD'] = 'GET'; $_SERVER['SCRIPT_NAME'] = '/core/ajax/ajaxtooltip.php'; $_POST = array();
-class SharingHooksProbe { use LmdbVehicleSharingHooks; public $db, $results = array(), $resprints = ''; public function __construct($db) { $this->db = $db; } }
 $hooks = new SharingHooksProbe($db); $hookmanager = null; $action = ''; $unused = null;
 $object = new SharingRecord($db); $object->element = 'lmdbvehicle'; $object->table_element = $definitions['lmdbvehicle']['table']; $object->fetch(10);
 $conf->entity = 2;

@@ -94,9 +94,9 @@ $checks['update_synchronizes_payment_and_bank_line'] = strpos($service, 'private
 $checks['delete_removes_native_payment_and_bank_line'] = strpos($service, '$payment->delete($user)') !== false
 	&& strpos($service, '$line->delete($user)') !== false
 	&& strpos($service, '$consumption->delete($user)') !== false;
-$checks['fuel_csv_import_is_blocked_when_feature_is_enabled'] = strpos($import, 'LmdbVehicleConsumptionPayment::isEnabled()') !== false
-	&& strpos($import, "\$object->category_snapshot === 'fuel'") !== false
-	&& strpos($import, 'ConsumptionImportFuelBlockedByOdOption') !== false;
+$checks['historical_import_preserves_od_and_rejects_linked_updates'] = strpos($import, 'ConsumptionImportOdLinked') !== false
+	&& strpos($import, 'historical_without_od') !== false
+	&& strpos($import, 'new PaymentVarious') === false;
 $checks['compatibility_registry_covers_native_dependencies'] = strpos($compatibility, "'consumption_various_payment'") !== false
 	&& strpos($compatibility, "'FeatureConsumptionVariousPayment'") !== false
 	&& strpos($compatibility, "isModEnabled('bank')") !== false

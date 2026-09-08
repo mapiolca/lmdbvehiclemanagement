@@ -68,7 +68,7 @@ Le pied de page suit le cycle PDF natif, avec une mesure séparée pour les cont
 - Prix facultatif des additifs : une valeur absente est exclue des statistiques de prix, tandis qu’un zéro reste un prix connu. Les quantités et fréquences restent comptabilisées.
 - Option par entité de création d’opérations diverses avec compte bancaire, règlement, projet et ticket PDF/JPEG/PNG obligatoire. Les images sont nettoyées de leurs métadonnées.
 - Comptabilité facultative : comptes libres sans comptabilité ou en mode simplifié ; compte général du plan actif obligatoire en partie double. Données financières et ticket verrouillés après rapprochement ou transfert comptable.
-- Import CSV et export natif ; import des consommations refusé lorsque l’option d’opérations diverses est active, sans création rétroactive pour l’historique.
+- Import et export natifs ; reprise historique des consommations sans OD, même lorsque la gestion des OD est active.
 
 ### Assurances
 
@@ -162,3 +162,18 @@ Les capacités sont proposées dans le profil véhicules à partir des consommab
 Saisir uniquement un nombre positif, avec virgule ou point décimal, dans l’unité affichée. Une cellule vide ou non associée conserve la capacité ; **0 efface explicitement cette capacité**. Les autres champs du véhicule ne sont pas effaçables par cet import. Une capacité incompatible avec l’énergie effective du véhicule, un consommable indisponible ou une correspondance ambiguë provoquent une erreur de ligne avant écriture. Aucune conversion automatique entre kg et m³ n’est appliquée.
 
 Le véhicule et ses capacités sont enregistrés dans la même transaction. La simulation ne déclenche aucun événement et annule les écritures. L’import final normal émet un seul événement CRUD après enregistrement des capacités ; le mode rapide natif, lorsqu’il est proposé par Dolibarr, conserve sa désactivation des actions automatiques. Après déploiement, relancer l’assistant ou télécharger un nouveau modèle pour disposer des colonnes de capacité et compléter la correspondance d’un ancien profil. Aucune migration SQL supplémentaire n’est nécessaire.
+
+
+### Import natif des pleins et recharges
+
+Depuis **Outils → Nouvel import**, choisir **Pleins / recharges — historique sans OD**. Seul cet accès est conservé : l’ancienne page CSV et son bouton sont retirés. Relancer l’assistant après déploiement ; aucune migration SQL spécifique n’est nécessaire.
+
+Associer les colonnes avec les lecteurs CSV ou XLSX natifs. À la création : véhicule (référence ou immatriculation), code du consommable actif, date/heure, kilométrage et quantité. Le montant TTC suit les règles de la consommation ; un prix inconnu reste vide pour un additif. Dates texte : `YYYY-MM-DD HH:MM:SS` (date seule acceptée à minuit) ; une cellule Excel de type date conserve son heure. Les nombres acceptent le point ou la virgule décimale, sans unité. Conducteur : login ; son absence utilise l’auteur à la création. Description, référence d’huile, qualification et motif du relevé sont facultatifs sauf exigence métier.
+
+En création seule, une consommation existante est refusée. En mise à jour, sélectionner **la référence seule**, ou **les trois clés véhicule + date/heure + consommable**. Les clés partielles et correspondances ambiguës sont refusées. Pour modifier une clé, sélectionner la référence seule. Une cellule vide ou non associée conserve la valeur existante ; zéro est une valeur, jamais une demande d’effacement. Les lignes identiques ne produisent ni écriture ni événement et ne sont pas comptées comme insertions ou mises à jour.
+
+Cet import historique ne crée aucune OD, écriture bancaire ou pièce justificative et ne change aucun réglage global. Une consommation liée à une OD peut être reconnue comme identique mais ne peut pas être modifiée par import : utiliser sa fiche et le parcours de paiement existant. Le kilométrage n’est jamais estimé à partir de QUARTIX ou des lignes voisines.
+
+Lecture et import des consommations sont requis ; le mode mise à jour exige aussi le droit de modification, y compris pour un administrateur. Véhicules et consommations doivent appartenir à l’entité courante. Les relations sont vérifiées dans leur périmètre accessible. Consommation et relevé sont enregistrés dans une transaction, avec verrouillage des véhicules dans un ordre stable. La simulation est annulée par Dolibarr sans triggers ; le mode rapide natif conserve la suppression des actions automatiques.
+
+Validation autonome : `php test/run_consumption_native_import.php`. La préparation du classeur utilisateur et l’import réel restent une étape ultérieure.

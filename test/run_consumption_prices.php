@@ -231,17 +231,7 @@ foreach (array(array(null, 0.0, true), array(0.0, null, true), array(25.0, null,
 	checkPrice($probe->update($user) === 1 && in_array('total_ttc', $probe->context['changed_fields'], true) === $case[2], 'UPDATE detects clearing and zero/NULL transitions without numeric-string noise');
 }
 
-$import = new LmdbVehicleConsumptionImport($db);
-$build = new ReflectionMethod(LmdbVehicleConsumptionImport::class, 'buildObject');
-$build->setAccessible(true);
-foreach (array('', '0', '25.129') as $input) {
-	$db->expect('/^SELECT rowid .*registration_number = \'TEST\' AND entity = 1$/', array((object) array('rowid' => 1)));
-	$db->expect('/^SELECT rowid, category .*active = 1 AND entity IN \(1\)$/', array((object) array('rowid' => 2, 'category' => 'additive')));
-	$csv = str_getcsv('TEST;ADBLUE;2026-09-04 09:00;10000;5;'.$input, ';', '"', '');
-	$row = array_combine(array('registration_number', 'consumable_code', 'reading_date', 'odometer_km', 'quantity', 'total_ttc'), $csv);
-	$object = $build->invoke($import, $row);
-	checkPrice($object instanceof LmdbVehicleConsumption && $object->total_ttc === ($input === '' ? null : (float) price2num($input, 'MT')), 'CSV input keeps empty/zero/known amount');
-}
+// Native import amount cases are exercised by run_consumption_native_import.php.
 
 $export = new ExportCsvUtf8($db);
 $export->handle = fopen('php://memory', 'w+');
@@ -273,4 +263,22 @@ checkPrice($migrate->invoke($descriptor) === 1, 'Fresh installation leaves table
 $db->expect('/^SELECT COUNT\(\*\) AS nb FROM information_schema.TABLES/', false);
 checkPrice($migrate->invoke($descriptor) === -1 && $descriptor->error === 'TestDatabaseError', 'Migration reports metadata query failure');
 checkPrice($db->expected === array(), 'All expected queries consumed');
+// Instantiate the real descriptor with narrowly scoped native permissions.
+class ConsumptionImportProfileUser extends User
+{
+	public $allowImport = true;
+	public function hasRight($module, $permlevel1, $permlevel2 = '')
+	{
+		return $permlevel1 === 'consumption' && ($permlevel2 === 'read' || ($permlevel2 === 'import' && $this->allowImport));
+	}
+}
+$user = new ConsumptionImportProfileUser($db);
+$user->admin = 1;
+$profile = new modLmdbVehicleManagement($db);
+checkPrice($profile->import_code === array('lmdbvehiclemanagement_consumptions'), 'Descriptor exposes only the authorized native consumption dataset');
+checkPrice($profile->numero === 450026 && $profile->family === 'Les Métiers du Bâtiment' && $profile->phpmin === array(8, 0) && $profile->need_dolibarr_version === array(20, 0), 'Descriptor identity and minimum versions preserved');
+checkPrice(count($profile->import_fields_array[0]) === 12 && count($profile->import_updatekeys_array[0]) === 4, 'Native profile fields and update keys available');
+$user->allowImport = false;
+$profile = new modLmdbVehicleManagement($db);
+checkPrice($profile->import_code === array(), 'Administrator without import permission has no dataset');
 print $checks.' consumption price checks passed'.PHP_EOL;

@@ -60,6 +60,8 @@ $object = null; $action = ''; $nbok = 0;
 $params = array('datatoimport' => 'lmdbvehiclemanagement_vehicles', 'arrayrecord' => $cells, 'array_match_file_to_database' => $mapping, 'step' => 6, 'nbok' => &$nbok);
 check($hooks->ImportInsert($params, $object, $action, null) === -1, 'Standard user without import permission denied');
 $user->admin = 1;
+check($hooks->ImportInsert($params, $object, $action, null) === -1, 'Admin without explicit import permission denied');
+$user->allowed = true;
 check($hooks->ImportInsert($params, $object, $action, null) === 1 && $nbok === 1 && LmdbVehicle::$last->notrigger === 0, 'Admin real import calls business object with triggers');
 $fastParams = $params;
 unset($fastParams['nbok']);

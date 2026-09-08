@@ -2,6 +2,10 @@
 
 ## À publier
 
+- Import natif des pleins/recharges historiques sans OD, uniquement par l’assistant Dolibarr : création, mise à jour par référence ou véhicule/date/consommable, contrôle des doublons, des entités et des consommations liées à une OD. Simulation sans triggers et enregistrement transactionnel. Ancien parcours CSV retiré ; relancer l’assistant après déploiement. Aucune migration SQL spécifique.
+
+- Navigation entre véhicules corrigée sur la fiche et tous ses onglets, y compris QUARTIX : les flèches natives transmettent l’identifiant attendu par les pages. Le filtre de partage utilise la syntaxe native USF dès Dolibarr 20, sans avertissement SQL et en conservant les restrictions d’entité et de partage individuel. Aucune migration ni réactivation nécessaire pour ce correctif.
+
 - Partage individuel Multicompany 21+ des véhicules, contrats, attestations, contrôles, consommations, événements, affectations et relevés, administré depuis l’entité propriétaire avec le sélecteur et les associations natifs. Les nouveaux périmètres reprennent leur configuration historique sans écraser les choix existants ; le mode individuel doit être activé explicitement après déploiement et réactivation du module.
 - Accès aux listes, parents, infobulles, exports, historiques et documents harmonisés avec ces partages. Les contrats flotte partagés restent consultables intégralement ; les attestations et fiches véhicule conservent leurs propres restrictions. Les dossiers PDF/ZIP générés vérifient leurs objets sources à chaque téléchargement ; les anciens dossiers doivent être régénérés pour être consultés dans le nouveau périmètre individuel. QUARTIX reste en consultation depuis les entités bénéficiaires.
 

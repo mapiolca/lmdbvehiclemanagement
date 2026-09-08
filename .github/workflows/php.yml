@@ -44,4 +44,5 @@ jobs:
           php test/run_ui_contracts.php
           php test/run_consumption_od_contracts.php
           php test/run_native_import.php
+          php test/run_consumption_native_import.php
           php test/run_capacity_import_transactions.php

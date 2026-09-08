@@ -93,7 +93,7 @@ $checks = array(
 	'no_manual_actioncomm_in_module_trigger' => stripos($triggerClass, 'new ActionComm') === false && strpos($triggerClass, "MAIN_DB_PREFIX.'actioncomm'") === false,
 	'vehicle_delete_not_blocked_by_agenda_history' => strpos(file_get_contents($moduleRoot.'/class/lmdbvehicle.class.php'), 'VehicleHasAgendaEvents') === false,
 	'trigger_handler_keeps_zero_as_success' => strpos($triggerClass, 'return 0;') !== false,
-	'consumption_composite_creates_odometer' => strpos($consumptionObject, 'createFromConsumption($user)') !== false,
+	'consumption_composite_creates_odometer' => strpos($consumptionObject, 'createFromConsumption($user, $notrigger)') !== false,
 	'consumption_composite_emits_consumption_create' => strpos($consumptionObject, 'parent::create($user, $notrigger)') !== false,
 	'odometer_trigger_uses_crud_prefix' => strpos($odometerObject, "public \$TRIGGER_PREFIX = 'LMDBVEHICLEMANAGEMENT_ODOMETER';") !== false,
 );

@@ -747,7 +747,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->import_run_sql_after_array = array();
 		$this->import_TypeFields_array = array();
 		$this->import_help_array = array();
-		if (is_object($user) && empty($user->socid) && (!empty($user->admin) || $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'import'))) {
+		if (is_object($user) && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'import')) {
 			$r = 0;
 			$this->import_code[$r] = 'lmdbvehiclemanagement_vehicles';
 			$this->import_label[$r] = 'VehicleImportDataset';
@@ -870,7 +870,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 				$this->import_entities_array[$r]['t.ref'] = 'lmdbvehicle';
 			}
 		}
-		if (is_object($user) && empty($user->socid) && (!empty($user->admin) || $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'import'))) {
+		if (is_object($user) && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'import')) {
 			$r = count($this->import_code);
 			$this->import_code[$r] = 'lmdbvehiclemanagement_regulatory_controls';
 			$this->import_label[$r] = 'RegulatoryControlImportDataset';
@@ -908,6 +908,37 @@ class modLmdbVehicleManagement extends DolibarrModules
 			$this->import_updatekeys_array[$r] = array();
 			$this->import_run_sql_after_array[$r] = array();
 		}
+		if (is_object($user) && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'read') && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'import')) {
+			$r = count($this->import_code);
+			$this->import_code[$r] = 'lmdbvehiclemanagement_consumptions';
+			$this->import_label[$r] = 'ConsumptionImportDataset';
+			$this->import_icon[$r] = 'gas-pump';
+			$this->import_tables_array[$r] = array('t' => MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption');
+			$this->import_tables_creator_array[$r] = array('t' => 'fk_user_creat');
+			// References and transient reading fields are resolved by ImportInsert, never raw SQL.
+			$this->import_fields_array[$r] = array(
+				't.ref' => 'Ref', 't.fk_vehicle' => 'ConsumptionImportVehicle',
+				't.fk_consumable' => 'ConsumableCode', 't.reading_date' => 'ReadingDate',
+				't.odometer_km' => 'OdometerKm', 't.quantity' => 'Quantity', 't.total_ttc' => 'TotalTTC',
+				't.fk_user_driver' => 'ConsumptionImportDriver', 't.description' => 'Description',
+				't.oil_reference' => 'OilReference', 't.reading_kind' => 'ReadingKind', 't.reading_reason' => 'Reason',
+			);
+			$this->import_entities_array[$r] = array_fill_keys(array_keys($this->import_fields_array[$r]), 'lmdbvehicleconsumption');
+			$this->import_TypeFields_array[$r] = array_fill_keys(array_keys($this->import_fields_array[$r]), 'Text');
+			foreach (array('t.odometer_km', 't.quantity', 't.total_ttc') as $field) $this->import_TypeFields_array[$r][$field] = 'Numeric';
+			$this->import_TypeFields_array[$r]['t.reading_date'] = 'Date';
+			$this->import_fieldshidden_array[$r] = array();
+			$this->import_convertvalue_array[$r] = array();
+			$this->import_regex_array[$r] = array();
+			$this->import_examplevalues_array[$r] = array(
+				't.ref' => '', 't.fk_vehicle' => 'AA-123-BB', 't.fk_consumable' => 'DIESEL',
+				't.reading_date' => '2026-09-08 12:00:00', 't.odometer_km' => '10000', 't.quantity' => '40', 't.total_ttc' => '75.20',
+				't.fk_user_driver' => '', 't.description' => '', 't.oil_reference' => '', 't.reading_kind' => 'standard', 't.reading_reason' => '',
+			);
+			$this->import_updatekeys_array[$r] = array('t.ref' => 'Ref', 't.fk_vehicle' => 'ConsumptionImportVehicle', 't.reading_date' => 'ReadingDate', 't.fk_consumable' => 'ConsumableCode');
+			$this->import_run_sql_after_array[$r] = array();
+		}
+
 	}
 
 	/**

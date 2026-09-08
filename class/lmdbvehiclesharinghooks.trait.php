@@ -38,15 +38,17 @@ trait LmdbVehicleSharingHooks
 	{
 		$this->resprints = '';
 		if (!empty($parameters['showrefnav']) && $object instanceof LmdbVehicleManagementObject) {
-			if (version_compare(DOL_VERSION, '24.0.0', '>=')) {
-				// v24 native navigation consumes USF, not a raw SQL condition.
-				$ids = array(0);
-				$res = $this->db->query('SELECT te.rowid FROM '.MAIN_DB_PREFIX.$object->table_element.' te WHERE '.LmdbVehicleSharing::sql($this->db, $object->element, 'te'));
-				if ($res) { while (is_object($row = $this->db->fetch_object($res))) $ids[] = (int) $row->rowid; $this->db->free($res); }
-				$this->resprints = ' AND (te.rowid:in:'.implode(',', $ids).')';
-			} else {
-				$this->resprints = ' AND '.LmdbVehicleSharing::sql($this->db, $object->element, 'te');
+			// Native navigation parses USF from v20; raw SQL emits warnings even in v23.
+			// Resolve the complete sharing/parent scope first and fail closed on query errors.
+			$ids = array(0);
+			$res = $this->db->query('SELECT te.rowid FROM '.MAIN_DB_PREFIX.$object->table_element.' te WHERE '.LmdbVehicleSharing::sql($this->db, $object->element, 'te'));
+			if ($res) {
+				while (is_object($row = $this->db->fetch_object($res))) {
+					$ids[] = (int) $row->rowid;
+				}
+				$this->db->free($res);
 			}
+			$this->resprints = ' AND (te.rowid:in:'.implode(',', $ids).')';
 		}
 		return 0;
 	}

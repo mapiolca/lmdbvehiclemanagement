@@ -125,7 +125,7 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		}
 		$this->db->begin();
 		$reading = $this->buildReading();
-		$result = $reading->createFromConsumption($user);
+		$result = $reading->createFromConsumption($user, $notrigger);
 		if ($result <= 0) {
 			return $this->rollbackFrom($reading, $result);
 		}
@@ -168,7 +168,7 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		$reading->odometer_km = (float) $this->odometer_km;
 		$reading->reading_kind = (string) $this->reading_kind;
 		$reading->reason = $this->reading_reason;
-		$result = $reading->updateFromConsumption($user);
+		$result = $reading->updateFromConsumption($user, $notrigger);
 		if ($result <= 0) {
 			return $this->rollbackFrom($reading, $result);
 		}

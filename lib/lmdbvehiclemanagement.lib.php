@@ -369,7 +369,8 @@ function lmdbVehiclePrintBanner($object)
 	}
 	$moreHtmlRef .= '</div>';
 
-	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $moreHtmlRef);
+	// Every vehicle tab loads by id; keep the reference as the displayed label only.
+	dol_banner_tab($object, 'id', $linkback, 1, 'rowid', 'ref', $moreHtmlRef);
 }
 
 /**
