@@ -94,15 +94,17 @@ class LmdbVehicleQuartixTrips extends LmdbVehicleQuartixService
 	/** @param stdClass $link Association @param list<array<string,mixed>> $data QWS rows @param string $day QWS day @param string $mode Time convention @return void */
 	public function saveDay($link, $data, $day, $mode)
 	{
+		global $user;
 		$this->assertOwner($link);
 		$normalized = self::normalize($data, $link, $day, $mode);
 		$filter = ' WHERE entity='.((int) $link->entity).' AND fk_vehicle='.((int) $link->fk_vehicle)." AND trip_day='".$day."'";
 		$this->db->begin();
 		try {
+			$this->assertOwner($link, true);
 			$existing = $this->rows('SELECT rowid,source_link_id FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday'.$filter);
 			if ($existing && (int) $existing[0]->source_link_id !== (int) $link->rowid) throw new RuntimeException('QxAssociationHistoryOverlap');
-			$this->write('INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday (entity,fk_vehicle,source_link_id,remote_id,trip_day,timezone,shift_start,synced_at,has_open,trip_count) VALUES ('
-				.((int) $link->entity).','.((int) $link->fk_vehicle).','.((int) $link->rowid).','.((int) $link->remote_id).",'".$day."','".$this->db->escape($link->timezone)."','".$this->db->escape($link->shift_start)."','".$this->db->idate(dol_now())."',".((int) $normalized['open']).','.count($normalized['rows']).') ON DUPLICATE KEY UPDATE synced_at=VALUES(synced_at),has_open=VALUES(has_open),trip_count=VALUES(trip_count)');
+			$this->write('INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday (entity,fk_quartix,fk_vehicle,source_link_id,remote_id,trip_day,timezone,shift_start,synced_at,has_open,trip_count) VALUES ('
+				.((int) $link->entity).','.(int) $link->fk_quartix.','.((int) $link->fk_vehicle).','.((int) $link->rowid).','.((int) $link->remote_id).",'".$day."','".$this->db->escape($link->timezone)."','".$this->db->escape($link->shift_start)."','".$this->db->idate(dol_now())."',".((int) $normalized['open']).','.count($normalized['rows']).') ON DUPLICATE KEY UPDATE synced_at=VALUES(synced_at),has_open=VALUES(has_open),trip_count=VALUES(trip_count)');
 			$dayId = (int) $this->rows('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday'.$filter)[0]->rowid;
 			require_once __DIR__.'/lmdbvehiclequartixroutes.class.php';
 			(new LmdbVehicleQuartixRoutes($this->db))->reconcile((int) $link->entity, $dayId, $normalized['rows']);
@@ -117,6 +119,9 @@ class LmdbVehicleQuartixTrips extends LmdbVehicleQuartixService
 				}
 				$this->write('INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_trip (entity,fk_tripday,'.implode(',', array_keys($row)).') VALUES ('.implode(',', $values).')');
 			}
+			$dataset = $this->createDataset();
+			if ($dataset->fetch((int) $link->fk_quartix) <= 0) throw new RuntimeException('QxAccessDenied');
+			$dataset->changed($user, 'quartix_trips');
 			$this->db->commit();
 		} catch (Exception $e) { $this->db->rollback(); throw $e; }
 	}
@@ -125,7 +130,7 @@ class LmdbVehicleQuartixTrips extends LmdbVehicleQuartixService
 	public function purge($entity, $days, $deadline = INF)
 	{
 		global $conf, $user;
-		if ($entity !== (int) $conf->entity || !LmdbVehicleQuartixConfig::can($user, 'sync')) throw new RuntimeException('QxAccessDenied');
+		if ($entity !== (int) $conf->entity || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && $user->hasRight('lmdbvehiclemanagement', 'quartix', 'sync'))) throw new RuntimeException('QxAccessDenied');
 		$expired = $this->rows('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday WHERE entity='.$entity." AND trip_day<'".self::cutoff($days)."' ORDER BY trip_day LIMIT 100");
 		foreach ($expired as $day) {
 			if (microtime(true) >= $deadline) break;
@@ -171,6 +176,7 @@ class LmdbVehicleQuartixTrips extends LmdbVehicleQuartixService
 			if ($state !== null && (int) $state->source_link_id !== (int) $link->rowid) continue;
 			if ($state !== null && $this->db->jdate($state->synced_at) >= ($frequent ? dol_now() - 900 : $shiftTimestamp)) continue;
 			if (microtime(true) >= $deadline) return false;
+			$this->assertOwner($link);
 			$data = $client->get('/vehicles/trips', array('VehicleIDList' => (string) $link->remote_id, 'StartDay' => $day, 'EndDay' => $day));
 			$this->saveDay($link, $data, $day, $cfg['TIME_MODE']);
 			if (++$calls >= 10) break;
@@ -181,17 +187,20 @@ class LmdbVehicleQuartixTrips extends LmdbVehicleQuartixService
 	/**
 	 * @param int $id Vehicle @param string $start First day @param string $end Last day @param string $status all/open/done/private
 	 * @param int $limit Limit @param int $offset Offset @param string $sort Sort key @param string $order Direction
+	 * @param int $quartixId Source (0 resolves the local or sole authorized source)
 	 * @return array{rows:list<stdClass>,total:int,days:list<stdClass>,start:string,end:string}
 	 */
-	public function journal($id, $start, $end, $status = '', $limit = 20, $offset = 0, $sort = 'departure', $order = 'DESC')
+	public function journal($id, $start, $end, $status = '', $limit = 20, $offset = 0, $sort = 'departure', $order = 'DESC', $quartixId = 0)
 	{
-		$vehicle = $this->vehicle($id, 'location');
+		$dataset = $this->dataset($id, $quartixId);
+		global $user;
+		if (!$user->hasRight('lmdbvehiclemanagement', 'quartix', 'location')) throw new RuntimeException('QxAccessDenied');
 		LmdbVehicleQuartixRules::day($start); LmdbVehicleQuartixRules::day($end);
 		if ($start > $end) throw new RuntimeException('QxInvalidPeriod');
-		$cfg = (new LmdbVehicleQuartixConfig($this->db))->load((int) $vehicle->entity);
+		$cfg = (new LmdbVehicleQuartixConfig($this->db))->load((int) $dataset->entity);
 		$start = max($start, self::cutoff(self::retention($cfg['TRIP_RETENTION_DAYS'])));
 		$base = ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday AS d';
-		$where = ' WHERE d.entity='.((int) $vehicle->entity).' AND d.fk_vehicle='.((int) $vehicle->id)." AND d.trip_day>='".$start."' AND d.trip_day<='".$end."'";
+		$where = ' WHERE d.entity='.((int) $dataset->entity).' AND d.fk_quartix='.((int) $dataset->id)." AND d.trip_day>='".$start."' AND d.trip_day<='".$end."'";
 		$days = $this->rows('SELECT d.trip_day,d.synced_at,d.trip_count,d.has_open'.$base.$where.' ORDER BY d.trip_day DESC');
 		$base .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_trip AS t ON t.fk_tripday=d.rowid AND t.entity=d.entity';
 		if ($status === 'private') $where .= ' AND t.is_private=1';

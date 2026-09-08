@@ -2,6 +2,10 @@
 
 ## À publier
 
+- QUARTIX : chaque entité peut collecter avec son compte sur un véhicule possédé ou partagé. Sources, kilométrages, positions, utilisation, trajets et tracés appartiennent à l’entité collectrice et sont privés par défaut. Partage natif Multicompany distinct en mode sélection, sous réserve d’accès au véhicule pour le bénéficiaire ; sources consultées séparément.
+- Retrait d’un véhicule partagé : arrêt des appels et imports QUARTIX, historique du collecteur accessible depuis son tableau de bord sans lecture de la fiche retirée. Conservation actuelle et suspension manuelle respectées, nettoyage propre après dissociation. Les mutations et imports émettent les triggers CRUD de la source QUARTIX ; aucun événement sur le véhicule d’une autre entité.
+- Migration QUARTIX additive et rejouable : création des sources persistantes et liaisons des historiques existants, sans attribution automatique de partage ni modification des mesures, identifiants ou réglages. **Désactiver/réactiver le module après déploiement**, puis configurer les partages QUARTIX voulus et vérifier les permissions effectives, y compris pour les administrateurs. Dolibarr 20+/PHP 8.0+, partage individuel avec Multicompany 21+.
+
 - Partage par élément : chargement du script natif Multicompany nécessaire aux interrupteurs d’activation par famille et au mode « Tout partager par défaut ». Les clics peuvent désormais enregistrer les réglages existants via le traitement natif. Déployer le correctif puis recharger la page ; aucune migration ni réactivation nécessaire.
 
 - Import des pleins/recharges : correction de l’erreur « Fetch non appelable sur la classe » lors de la validation du consommable. Le dictionnaire utilise désormais `CommonObject` et sa vérification native d’existence, sans changement des données ni migration SQL.

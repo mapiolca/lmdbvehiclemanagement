@@ -20,7 +20,7 @@ class LmdbVehicleQuartixClient
 	/** @var string Fixed endpoint, without query parameters */ private $lastEndpoint = '';
 	/** @var int HTTP status, or zero when no response was received */ private $lastHttpStatus = 0;
 	/** @var int cURL error number, without its potentially sensitive message */ private $lastCurlError = 0;
-	/** @var stdClass|null Strict scope for a GPS reader, never a general sync permission. */ private $routeScope = null;
+	/** @var stdClass|null Strict interactive route scope, in addition to GPS and synchronization permissions. */ private $routeScope = null;
 	/** @var float */ private $deadline = INF;
 
 	/** @param DoliDB $db Database @param int $entity Current entity */
@@ -31,8 +31,8 @@ class LmdbVehicleQuartixClient
 			require_once __DIR__.'/lmdbvehiclequartixroutes.class.php';
 			$routes = new LmdbVehicleQuartixRoutes($db);
 			$this->routeScope = $routes->day($routeDay);
-			if ((int) $this->routeScope->entity !== $entity || !$routes->canRetrieve($this->routeScope)) throw new RuntimeException('QxAccessDenied');
-		} elseif (!LmdbVehicleQuartixConfig::can($user, 'sync') && !LmdbVehicleQuartixConfig::can($user, 'configure')) throw new RuntimeException('QxAccessDenied');
+			if (!$user->hasRight('lmdbvehiclemanagement', 'quartix', 'sync') || (int) $this->routeScope->entity !== $entity || !$routes->canRetrieve($this->routeScope)) throw new RuntimeException('QxAccessDenied');
+		} elseif (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && $user->hasRight('lmdbvehiclemanagement', 'quartix', 'sync')) && !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && !empty($user->admin))) throw new RuntimeException('QxAccessDenied');
 		$this->db = $db;
 		$this->entity = $entity;
 		$this->config = (new LmdbVehicleQuartixConfig($db))->load($entity, true);
@@ -45,6 +45,9 @@ class LmdbVehicleQuartixClient
 	/** @param string $path Allowed read endpoint @param array<string,int|string> $query Parameters @return array<int,mixed> */
 	public function get($path, $query = array())
 	{
+		global $user, $conf;
+		if ((int) $conf->entity !== $this->entity || !isModEnabled('lmdbvehiclemanagement') || !empty($user->socid) || !$user->hasRight('lmdbvehiclemanagement', 'read')) throw new RuntimeException('QxAccessDenied');
+		if ($path !== '/vehicles' && !$user->hasRight('lmdbvehiclemanagement', 'quartix', 'sync')) throw new RuntimeException('QxAccessDenied');
 		$this->lastEndpoint = ''; $this->lastHttpStatus = 0; $this->lastCurlError = 0;
 		if (!in_array($path, array('/vehicles', '/vehicles/live', '/vehicles/odometer', '/vehicles/tripsummary', '/vehicles/trips', '/vehicles/route'), true)) throw new RuntimeException('QxInvalidEndpoint');
 		if ($this->routeScope !== null && ($path !== '/vehicles/route' || $query !== array('VehicleID' => (int) $this->routeScope->remote_id, 'StartDay' => $this->routeScope->trip_day))) throw new RuntimeException('QxAccessDenied');
@@ -58,10 +61,12 @@ class LmdbVehicleQuartixClient
 		$throttle = $this->db->fetch_object($res);
 		$this->db->free($res);
 		if (is_object($throttle) && !empty($throttle->retry_at) && $this->db->jdate($throttle->retry_at) > dol_now()) throw new RuntimeException('QxRateLimited');
+		$this->authorizeCollection($path, $query);
 		if ($this->access === '') $this->loadTokens();
 		if ($this->access === '') $this->authenticate(false);
 		$response = $this->exchange('GET', $path, $query, $this->access);
 		if ($response['status'] === 401) {
+			$this->authorizeCollection($path, $query);
 			$this->authenticate($this->refresh !== '');
 			$response = $this->exchange('GET', $path, $query, $this->access);
 		}
@@ -176,6 +181,7 @@ class LmdbVehicleQuartixClient
 	 */
 	private function exchange($method, $path, $values, $token)
 	{
+		if ($method === 'GET') $this->authorizeCollection($path, $values);
 		if (microtime(true) >= $this->deadline) throw new RuntimeException('QxNetworkError');
 		$this->lastEndpoint = $path;
 		$this->lastHttpStatus = 0;
@@ -186,6 +192,28 @@ class LmdbVehicleQuartixClient
 			return $response;
 		} finally {
 			dol_syslog('QUARTIX entity='.$this->entity.' endpoint='.$this->lastEndpoint.' http='.$this->lastHttpStatus.' curl='.$this->lastCurlError, $this->lastHttpStatus === 200 ? LOG_DEBUG : LOG_WARNING);
+		}
+	}
+
+	/** Revalidate source, permissions and vehicle access before authentication and every retry.
+	 * @param string $path QWS endpoint @param array<string,int|string> $values Request @return void
+	 */
+	private function authorizeCollection($path, $values)
+	{
+		global $conf, $user;
+		if ((int) $conf->entity !== $this->entity || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid) || !isModEnabled('lmdbvehiclemanagement')) throw new RuntimeException('QxAccessDenied');
+		if ($path === '/vehicles' && empty($user->admin) && !$user->hasRight('lmdbvehiclemanagement', 'quartix', 'sync')) throw new RuntimeException('QxAccessDenied');
+		if ($path !== '/vehicles') {
+			if (!$user->hasRight('lmdbvehiclemanagement', 'quartix', 'sync')) throw new RuntimeException('QxAccessDenied');
+			require_once __DIR__.'/lmdbvehiclequartix.class.php';
+			$ids = explode(',', (string) ($values['VehicleIDList'] ?? $values['VehicleID'] ?? ''));
+			foreach ($ids as $id) {
+				if (!ctype_digit($id) || (int) $id <= 0) throw new RuntimeException('QxAccessDenied');
+				$res = $this->db->query('SELECT l.rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link l WHERE l.remote_id='.(int) $id.' AND '.LmdbVehicleQuartix::collectionSql($this->db, 'l'));
+				if (!$res) throw new RuntimeException('QxDatabaseError');
+				$found = is_object($this->db->fetch_object($res)); $this->db->free($res);
+				if (!$found) throw new RuntimeException('QxAccessDenied');
+			}
 		}
 	}
 

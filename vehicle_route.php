@@ -18,7 +18,7 @@ header('Cache-Control: private, no-store');
 header('Referrer-Policy: strict-origin');
 header('X-Content-Type-Options: nosniff');
 if (!isModEnabled('lmdbvehiclemanagement') || !empty($user->socid)
-	|| !LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, 'quartix', 'location')) accessforbidden();
+	|| !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'quartix', 'location')) accessforbidden();
 $dayId = GETPOSTINT('day');
 $key = (string) GETPOST('trip', 'aZ09');
 $action = GETPOST('action', 'aZ09');
@@ -27,12 +27,13 @@ $routes = new LmdbVehicleQuartixRoutes($db);
 $state = null; $error = '';
 try {
 	$day = $routes->day($dayId);
+	if (GETPOSTINT('quartix_id') > 0 && GETPOSTINT('quartix_id') !== (int) $day->fk_quartix) throw new RuntimeException('QxAccessDenied');
 	// Always authorize the individual public trip before displaying even the modal shell.
 	$state = $routes->view($dayId, $key);
 	if ($action === 'retrieve') {
 		if ($_SERVER['REQUEST_METHOD'] !== 'POST') accessforbidden();
 		$routes->requestRoute($dayId, $key);
-		if (!$json) { header('Location: '.$_SERVER['PHP_SELF'].'?day='.$dayId.'&trip='.$key); exit; }
+		if (!$json) { header('Location: '.$_SERVER['PHP_SELF'].'?quartix_id='.(int) $day->fk_quartix.'&day='.$dayId.'&trip='.$key); exit; }
 		$state = $routes->view($dayId, $key);
 	}
 } catch (Exception $e) { $error = LmdbVehicleQuartixRoutes::safeError($e); }
@@ -40,7 +41,7 @@ if ($json) {
 	header('Content-Type: application/json; charset=utf-8');
 	if ($error !== '') {
 		// Re-read an authorized last good cache after network failure; access/expiry never falls back.
-		try { $state = $routes->view($dayId, $key); } catch (Exception $ignored) { $state = null; }
+		try { if ($error === 'QxAccessDenied') throw new RuntimeException($error); $state = $routes->view($dayId, $key); } catch (Exception $ignored) { $state = null; }
 		if ($state === null) http_response_code(403);
 	}
 	if ($state !== null) {
@@ -53,12 +54,13 @@ if ($json) {
 }
 if ($error !== '') accessforbidden($langs->trans($error));
 $cfg = (new LmdbVehicleQuartixConfig($db))->load((int) $day->entity);
-$vehicle = $routes->vehicle((int) $day->fk_vehicle, 'location');
+$dataset = $routes->dataset((int) $day->fk_vehicle, (int) $day->fk_quartix);
+$quartixId = (int) $dataset->id;
 llxHeader('', $langs->trans('QxRouteTitle'), '', '', 0, 0,
 	array('/includes/leaflet/leaflet.js', '/lmdbvehiclemanagement/js/quartix_route.js'),
 	array('/includes/leaflet/leaflet.css', '/lmdbvehiclemanagement/css/quartix_route.css'));
-print load_fiche_titre($langs->trans('QxRouteTitle').' — '.dol_escape_htmltag($vehicle->ref));
+print load_fiche_titre($langs->trans('QxRouteTitle').' — '.dol_escape_htmltag($dataset->snapshot_vehicle_label));
 $routeInDialog = false;
-$routeTitle = $langs->transnoentities('QxRouteView').' — '.$vehicle->ref;
+$routeTitle = $langs->transnoentities('QxRouteView').' — '.$dataset->snapshot_vehicle_label;
 include __DIR__.'/tpl/quartix_route.tpl.php';
 llxFooter(); $db->close();

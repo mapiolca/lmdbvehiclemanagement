@@ -37,7 +37,7 @@ def page(day, dialog):
         "php", str(ROOT / "test/render_quartix_route.php"), str(args.core),
         "dialog" if dialog else "direct", day, tiles,
     ]).decode("utf-8")
-    links = " | ".join(f'<a class="qx-route-open" href="{ENDPOINT}?day={i}&amp;trip=public-fixture">{label}</a>'
+    links = " | ".join(f'<a class="qx-route-open" href="{ENDPOINT}?day={i}&amp;trip=public-fixture&amp;quartix_id=35">{label}</a>'
                        for i, label in enumerate(["Cached route", "Missing route / POST", "Privacy denial",
                            "Expired session / HTML", "Tile failure", "Leaflet failure", "Slow response",
                            "Privacy revoked", "Trip completed on refresh"], 1))
@@ -100,6 +100,9 @@ class Fixture(BaseHTTPRequestHandler):
         elif url.path.startswith("/tiles/"):
             self.reply('<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#eef3ee"/><path d="M0 128H256M128 0V256" stroke="#ccc"/><text x="20" y="30">Synthetic tile</text></svg>', "image/svg+xml")
         elif url.path == ENDPOINT and query.get("format") == ["json"]:
+            if query.get("quartix_id") != ["35"]:
+                self.reply(json.dumps({"data": None, "error": "QUARTIX source missing"}), "application/json", 403)
+                return
             requests.append(self.command + " " + url.path + " day=" + day)
             visits = sum(entry.endswith(" day=" + day) for entry in requests)
             if day == "7":

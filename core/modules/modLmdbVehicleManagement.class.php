@@ -324,7 +324,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->menu = array();
 		// Keep the dashboard and its parents consistent with the server read policy.
 		// Native user=0 filters external users; dol_eval() rejects direct socid access.
-		$vehicleReadMenuPermission = '$user->admin || $user->hasRight("lmdbvehiclemanagement", "read")';
+		$vehicleReadMenuPermission = '$user->hasRight("lmdbvehiclemanagement", "read")';
 		$r = 0;
 		$this->menu[$r++] = array(
 			'fk_menu' => '',
@@ -975,6 +975,9 @@ class modLmdbVehicleManagement extends DolibarrModules
 			return -1;
 		}
 
+		require_once __DIR__.'/../../class/lmdbvehiclequartixmigration.class.php';
+		if (LmdbVehicleQuartixMigration::run($this->db) < 0) { $this->error = 'QxMigrationFailed'; return -1; }
+
 		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleenergy.class.php');
 		$energyDictionary = new LmdbVehicleEnergy($this->db);
 		if ($energyDictionary->seedDefaults() < 0) {
@@ -1046,6 +1049,8 @@ class modLmdbVehicleManagement extends DolibarrModules
 		);
 		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleagenda.class.php');
 		foreach (array_keys(LmdbVehicleAgenda::getTriggerDefinitions()) as $triggerCode) {
+			// Telemetry events are opt-in in native Agenda; activation never enables them.
+			if (strpos($triggerCode, 'LMDBVEHICLEMANAGEMENT_QUARTIX_') === 0) continue;
 			$defaults['MAIN_AGENDA_ACTIONAUTO_'.$triggerCode] = '1';
 		}
 		foreach ($defaults as $name => $value) {
@@ -1126,8 +1131,11 @@ class modLmdbVehicleManagement extends DolibarrModules
 	private function prepareQuartixSchema()
 	{
 		$tables = array(
-			'odometer_reading' => array('is_estimate' => 'integer DEFAULT 0 NOT NULL', 'provider_key' => 'varchar(64) DEFAULT NULL'),
-			'qx_link' => array('sync_from' => 'datetime DEFAULT NULL'),
+			'odometer_reading' => array('is_estimate' => 'integer DEFAULT 0 NOT NULL', 'provider_key' => 'varchar(64) DEFAULT NULL', 'fk_quartix' => 'integer DEFAULT NULL'),
+			'qx_link' => array('sync_from' => 'datetime DEFAULT NULL', 'fk_quartix' => 'integer DEFAULT NULL'),
+			'qx_position' => array('fk_quartix' => 'integer DEFAULT NULL'),
+			'qx_usage' => array('fk_quartix' => 'integer DEFAULT NULL'),
+			'qx_tripday' => array('fk_quartix' => 'integer DEFAULT NULL'),
 		);
 		foreach ($tables as $suffix => $fields) {
 			$table = MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$suffix;

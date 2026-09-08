@@ -17,17 +17,36 @@ require_once DOL_DOCUMENT_ROOT.'/core/class/dolgraph.class.php';
 /** @var Translate $langs */
 /** @var User $user */
 $langs->loadLangs(array('other', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!LmdbVehicleQuartixConfig::can($user, 'read') || !LmdbVehicleQuartixConfig::supported()) accessforbidden();
+if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !LmdbVehicleQuartixConfig::supported()) accessforbidden();
 $id = GETPOSTINT('id');
 $service = new LmdbVehicleQuartixService($db);
-try {
-	$object = $service->vehicle($id);
-	$link = $service->link($id);
-	$cfg = (new LmdbVehicleQuartixConfig($db))->load((int) $object->entity);
-} catch (Exception $e) {
-	accessforbidden($langs->trans('QxDataUnavailable'));
-	exit;
+$dataset = lmdbQuartixPageSource($service, $id);
+$quartixId = (int) $dataset->id;
+$object = null;
+if (LmdbVehicleSharing::visible($db, 'lmdbvehicle', $id)) $object = $service->vehicle($id);
+$link = $service->link($id, $quartixId);
+$cfg = (new LmdbVehicleQuartixConfig($db))->load((int) $dataset->entity);
+$retention = LmdbVehicleQuartixTrips::retention($cfg['TRIP_RETENTION_DAYS']);
+require_once __DIR__.'/lib/lmdbvehiclesharing.lib.php';
+lmdbSharingAction($dataset);
+$cleanupAction = GETPOST('action', 'aZ09');
+if ($cleanupAction === 'confirm_qx_cleanup') {
+	$token = GETPOST('token', 'alphanohtml');
+	if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || $token === '' || empty($_SESSION['token']) || !hash_equals((string) $_SESSION['token'], $token)
+		|| empty($user->admin) || (int) $dataset->entity !== (int) $conf->entity || $link !== null) accessforbidden();
+	if (GETPOST('confirm', 'alpha') === 'yes') {
+		$locked = false;
+		try {
+			if (!$service->lock((int) $conf->entity)) throw new RuntimeException('QxBusy');
+			$locked = true;
+			$service->disassociate($user, $id, 0, 'error');
+			setEventMessages($langs->trans('RecordSaved'), null, 'mesgs');
+		} catch (Exception $e) { setEventMessages($langs->trans(LmdbVehicleQuartixCron::safeError($e)), null, 'errors'); }
+		finally { if ($locked) $service->unlock((int) $conf->entity); }
+	}
+	header('Location: '.lmdbSharingObjectUrl($dataset)); exit;
 }
+
 $group = GETPOST('group', 'alpha') === 'month' ? 'month' : 'day';
 $limit = max(1, min(1000, GETPOSTINT('limit') ?: (int) $conf->liste_limit));
 $page = max(0, GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page'));
@@ -57,17 +76,26 @@ if (!isset($arrayfields[$sortfield])) $sortfield = 'period';
 $rows = $allRows = array();
 $validPeriod = true;
 try {
-	$allRows = $service->usage($id, $dates['start'], $dates['end'], $group, 0, 0, 'period', 'ASC');
+	$allRows = $service->usage($id, $dates['start'], $dates['end'], $group, 0, 0, 'period', 'ASC', $quartixId);
 	if ($page * $limit >= count($allRows)) $page = 0;
-	$rows = $service->usage($id, $dates['start'], $dates['end'], $group, $limit, $page * $limit, $sortfield, $sortorder);
+	$rows = $service->usage($id, $dates['start'], $dates['end'], $group, $limit, $page * $limit, $sortfield, $sortorder, $quartixId);
 } catch (Exception $e) {
 	$validPeriod = false;
 	setEventMessages($langs->trans(LmdbVehicleQuartixCron::safeError($e)), null, 'errors');
 }
 $form = new Form($db);
-llxHeader('', $object->ref.' — '.$langs->trans('QxUsage'), '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card');
-print dol_get_fiche_head(lmdbVehiclePrepareHead($object), 'quartix', $langs->trans('Vehicle'), -1, $object->picto);
-lmdbVehiclePrintBanner($object);
+llxHeader('', $dataset->snapshot_vehicle_label.' — '.$langs->trans('QxUsage'), '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card');
+lmdbQuartixBanner($service, $dataset, $object, 'quartix');
+if ($link === null && !empty($user->admin) && (int) $dataset->entity === (int) $conf->entity) {
+	if ($cleanupAction === 'qx_cleanup') print $form->formconfirm(lmdbSharingObjectUrl($dataset), $langs->trans('QxCleanup'), $langs->trans('QxCleanupConfirm'), 'confirm_qx_cleanup', '', 0, 1);
+	print '<div class="tabsAction">'.dolGetButtonAction('', $langs->trans('QxCleanup'), 'default', lmdbSharingObjectUrl($dataset).'&action=qx_cleanup&token='.newToken()).'</div>';
+}
+$mileageView = GETPOST('view', 'alpha') === 'odometer';
+print '<p><a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&amp;quartix_id='.$quartixId.($mileageView ? '' : '&amp;view=odometer').'">'.$langs->trans($mileageView ? 'QxUsage' : 'QxOdometerHistory').'</a></p>';
+if ($mileageView) {
+	include __DIR__.'/tpl/quartix_odometer.tpl.php';
+	print dol_get_fiche_end(); llxFooter(); $db->close(); exit;
+}
 print '<p>'.$langs->trans('QxUsageHelp').'</p>';
 if ($link === null) print '<div class="warning">'.$langs->trans('QxNotAssociated').'</div>';
 elseif (!(int) $link->active || $cfg['ENABLED'] !== '1') print '<div class="warning">'.$langs->trans('QxPaused').'</div>';
@@ -76,7 +104,7 @@ if ($link !== null && !empty($link->sync_from)) print '<p>'.$langs->trans('QxSyn
 if ($cfg['DURATION_UNIT'] === '') print '<div class="warning">'.$langs->trans('QxDurationUnconfirmed').'</div>';
 if ($link !== null) print '<p>'.$langs->trans('QxBackfill').': '.(!empty($link->usage_cursor) ? dol_print_date($db->jdate($link->usage_cursor), 'day') : $langs->trans('QxPending')).'</p>';
 
-$param = '&id='.$id.'&group='.$group.'&limit='.$limit;
+$param = '&id='.$id.'&quartix_id='.$quartixId.'&group='.$group.'&limit='.$limit;
 foreach ($dates as $key => $dayValue) {
 	if ($validPeriod) {
 		$d = LmdbVehicleQuartixRules::day($dayValue);
@@ -86,6 +114,7 @@ foreach ($dates as $key => $dayValue) {
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $contextpage, !empty($conf->main_checkbox_left_column));
 $actionsLeft = !empty($conf->main_checkbox_left_column);
 print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'" name="qxusage"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
+print '<input type="hidden" name="quartix_id" value="'.$quartixId.'">';
 print '<input type="hidden" name="formfilteraction" id="formfilteraction" value="list"><input type="hidden" name="action" value="list"><input type="hidden" name="page" value="'.$page.'">';
 print '<input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.$sortorder.'">';
 // The native navigation needs a count above limit when another page exists.
@@ -151,7 +180,8 @@ foreach ($chartSeries as $key => $series) {
 	$graph->draw('qxusage_'.$key.'_'.$id);
 	print $graph->show();
 }
-lmdbVehicleQuartixPrintPosition($object);
+lmdbVehicleQuartixPrintPosition($dataset, $quartixId);
+lmdbSharingRender($dataset);
 print dol_get_fiche_end();
 llxFooter();
 $db->close();

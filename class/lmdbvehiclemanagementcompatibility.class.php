@@ -28,6 +28,12 @@ class LmdbVehicleManagementCompatibility
 
 		require_once __DIR__.'/lmdbvehiclesharing.class.php';
 		return array(
+			'quartix_independent_sharing' => array(
+				'label' => 'QxData', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
+				'description' => 'QxIndependentSharingCompatibility',
+				'available' => LmdbVehicleSharing::available(),
+				'reason' => LmdbVehicleSharing::available() ? '' : 'LmdbSharingRequiresMulticompany21',
+			),
 			'multicompany_individual_sharing' => array(
 				'label' => 'LmdbIndividualSharing', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
 				'description' => 'LmdbSharingRequiresMulticompany21',

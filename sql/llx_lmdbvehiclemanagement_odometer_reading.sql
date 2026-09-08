@@ -1,6 +1,7 @@
 CREATE TABLE llx_lmdbvehiclemanagement_odometer_reading (
 	rowid integer AUTO_INCREMENT PRIMARY KEY,
 	entity integer DEFAULT 1 NOT NULL,
+	fk_quartix integer DEFAULT NULL,
 	fk_vehicle integer NOT NULL,
 	reading_date datetime NOT NULL,
 	odometer_km double(24,8) NOT NULL,

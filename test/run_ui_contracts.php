@@ -257,7 +257,7 @@ $checks['odometer_list_calculates_difference_at_render_time'] = strpos($vehicleO
 	&& strpos($vehicleOdometer, '!$record->is_estimate') !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-success';") !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-danger';") !== false
-	&& strpos($vehicleOdometer, "colspan=\"7\"") !== false;
+	&& strpos($vehicleOdometer, '$showEntityColumn ? 8 : 7') !== false;
 $checks['consumption_uses_native_quick_add_hook'] = strpos($descriptor, "'main',") !== false
 	&& strpos($actionsHooks, 'function menuDropdownQuickaddItems(') !== false
 	&& strpos($actionsHooks, "dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1)") !== false

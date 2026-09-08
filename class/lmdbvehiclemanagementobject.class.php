@@ -155,7 +155,8 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 	{
 		global $conf;
 		$element = LmdbVehicleSharing::element($this->element);
-		if (!LmdbVehicleSharing::can($user) || !LmdbVehicleSharing::isAdmin($user) || !LmdbVehicleSharing::available()
+		if ($element === 'lmdbvehicleodometerreading' && !empty($this->fk_quartix)) { $this->error = 'QxSharingOnDataset'; return -1; }
+		if (!$user->hasRight('lmdbvehiclemanagement', 'read') || !LmdbVehicleSharing::isAdmin($user) || !LmdbVehicleSharing::available()
 			|| !LmdbVehicleSharing::individual($element) || (int) $this->entity !== (int) $conf->entity || empty($this->id)) {
 			$this->error = 'NotEnoughPermissions'; return -1;
 		}
@@ -172,9 +173,10 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 			}
 			$selected = array_values(array_unique($selected)); sort($selected);
 			$old = LmdbVehicleSharing::stored($this->db, $element, (int) $this->id);
-			$stored = getDolGlobalInt('MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT') ? array_values(array_diff(array_keys($allowed), $selected)) : $selected;
+			$stored = $element !== 'lmdbvehiclequartix' && getDolGlobalInt('MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT') ? array_values(array_diff(array_keys($allowed), $selected)) : $selected;
 			// Preserve grants/exclusions outside the administrator's destination cohort.
-			$stored = array_values(array_unique(array_merge($stored, array_diff($old, array_keys($allowed))))); sort($stored);
+			if ($element !== 'lmdbvehiclequartix') $stored = array_values(array_unique(array_merge($stored, array_diff($old, array_keys($allowed)))));
+			sort($stored);
 			if ($stored === $old) { $this->db->commit(); return 1; }
 			$this->oldcopy = clone $this;
 			$dao = new DaoMulticompany($this->db);

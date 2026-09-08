@@ -4,6 +4,7 @@
 // Synthetic geometry; Data{Summary,Trips} and field types verified live on 2026-09-06.
 final class QxTestRoutes extends LmdbVehicleQuartixRoutes
 {
+	protected function createDataset() { return new QxTestDataset($this->db); }
 	public $client;
 	protected function createRouteClient($entity, $dayId) { return $this->client; }
 }
@@ -65,12 +66,15 @@ $user->rights = (object) array('lmdbvehiclemanagement'=>(object) array('read'=>1
 qxReject(static function () use ($routes,$routeDayId,$routeKey) { $routes->view($routeDayId,$routeKey); }, 'QxAccessDenied');
 $user->rights->lmdbvehiclemanagement->quartix->location = 1;
 $user->rights->lmdbvehiclemanagement->quartix->sync = 0;
-$scoped = new QxTestClient($db,1,$routeDayId);
+qxReject(static function () use ($db,$routeDayId) { new QxTestClient($db,1,$routeDayId); }, 'QxAccessDenied');
 qxReject(static function () use ($db) { new QxTestClient($db,1); }, 'QxAccessDenied');
+qxCheck(!$routes->view($routeDayId,$routeKey)['can_request'], 'GPS readers can consult cache but cannot import');
+$user->rights->lmdbvehiclemanagement->quartix->sync = 1;
+$scoped = new QxTestClient($db,1,$routeDayId);
 qxReject(static function () use ($scoped) { $scoped->get('/vehicles'); }, 'QxAccessDenied');
 qxReject(static function () use ($scoped,$tripDay) { $scoped->get('/vehicles/route',array('VehicleID'=>999,'StartDay'=>$tripDay)); }, 'QxAccessDenied');
 $scoped->responses = array(qxResponse($routeReply[0]));
-qxCheck(count($scoped->get('/vehicles/route',array('VehicleID'=>(int)$tripLink->remote_id,'StartDay'=>$tripDay))) === 1, 'GPS reader has a day-scoped route client without sync permission');
+qxCheck(count($scoped->get('/vehicles/route',array('VehicleID'=>(int)$tripLink->remote_id,'StartDay'=>$tripDay))) === 1, 'Sync actor route client remains scoped to one day');
 $user->socid = 99; $user->admin = 1;
 qxReject(static function () use ($routes,$routeDayId,$routeKey) { $routes->view($routeDayId,$routeKey); }, 'QxAccessDenied');
 $user->socid = 0; $user->rights = $savedRights;
@@ -129,7 +133,8 @@ $mc = new class { public function getEntity($element,$shared=1,$object=null) { r
 foreach (array('ROUTES_ENABLED'=>'1','ENABLED'=>'1','TRIP_RETENTION_DAYS'=>'30') as $k=>$v) $db->query("INSERT INTO ".MAIN_DB_PREFIX."const (entity,name,value) VALUES (1,'LMDBVEHICLEMANAGEMENT_QX_".$k."','".$v."')");
 $calls = count($routes->client->calls);
 qxReject(static function () use ($routes,$routeDayId,$routeKey) { $routes->requestRoute($routeDayId,$routeKey); }, 'QxAccessDenied');
-qxCheck(count($routes->client->calls) === $calls && !$routes->view($routeDayId,$routeKey)['can_request'], 'Beneficiary cannot enqueue or request a route');
+qxCheck(count($routes->client->calls) === $calls, 'Vehicle recipient cannot request a private route');
+qxReject(static function () use ($routes,$routeDayId,$routeKey) { $routes->view($routeDayId,$routeKey); }, 'QxAccessDenied');
 qxReject(static function () use ($db,$routeDayId) { new QxTestClient($db,1,$routeDayId); }, 'QxAccessDenied');
 qxReject(static function () use ($routes) { $routes->processPending($routes->client,1,microtime(true)+45); }, 'QxAccessDenied');
 $conf->entity = 1; $mc = null;

@@ -72,8 +72,8 @@ class LmdbAgendaTestDb
 }
 
 $checks = array(
-	'agenda_matrix_has_8_objects' => count($objectDefinitions) === 8,
-	'agenda_matrix_has_24_crud_triggers' => count($definitions) === 24,
+	'agenda_matrix_has_9_objects' => count($objectDefinitions) === 9,
+	'agenda_matrix_has_26_crud_triggers' => count($definitions) === 26,
 	'trigger_class_uses_central_matrix' => strpos($triggerClass, 'LmdbVehicleAgenda::getTriggerDefinitions()') !== false,
 	'base_object_sets_actionmsg2' => strpos($baseObject, "context['actionmsg2']") !== false,
 	'base_object_sets_actionmsg' => strpos($baseObject, "context['actionmsg']") !== false,

@@ -10,8 +10,8 @@ $readMenus = array_filter($menuDescriptor->menu, static function ($menu) {
 });
 qxCheck(count($readMenus) === 3, 'Dashboard and both navigation parents are declared');
 foreach (array(
-	'admin without granular rights' => array(1, 0, 0, true),
-	'admin with null third party' => array(1, null, 0, true),
+	'admin without granular rights' => array(1, 0, 0, false),
+	'admin with null third party' => array(1, null, 0, false),
 	'standard reader' => array(0, 0, 1, true),
 	'standard without rights' => array(0, 0, 0, false),
 	'external reader' => array(0, 12, 1, false),
@@ -25,13 +25,13 @@ foreach (array(
 		// Native menus apply their user=0 audience outside the permission expression.
 		if (!is_string($result)) $result = (bool) $result && (empty($user->socid) || $menu['user'] !== 0);
 		qxCheck(!is_string($result) && (bool) $result === $values[3], 'Native menu evaluation: '.$menu['titre'].' / '.$profile);
-		qxCheck(((bool) verifCond($menu['perms']) && (empty($user->socid) || $menu['user'] !== 0)) === LmdbVehicleQuartixConfig::can($user, 'read'), 'Menu and server agree: '.$menu['titre'].' / '.$profile);
+		qxCheck(((bool) verifCond($menu['perms']) && (empty($user->socid) || $menu['user'] !== 0)) === (empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')), 'Menu and server agree: '.$menu['titre'].' / '.$profile);
 	}
 }
 $user = $menuUser;
 
 // Synthetic values; field names/types verified against an authenticated QWS response.
-$trips = new LmdbVehicleQuartixTrips($db);
+$trips = new QxTestTrips($db);
 $tripLink = $trips->link(1);
 $tripDay = (new DateTimeImmutable('@'.dol_now()))->modify('-1 day')->format('Y-m-d');
 $previousDay = LmdbVehicleQuartixRules::day($tripDay)->modify('-1 day')->format('Y-m-d');
@@ -89,18 +89,18 @@ $trips->saveDay($tripLink, array($trip, $second), $tripDay, 'qws');
 $firstPage = $trips->journal(1, $tripDay, $tripDay, 'done', 1, 0, 'distance', 'ASC');
 $secondPage = $trips->journal(1, $tripDay, $tripDay, 'done', 1, 1, 'distance', 'ASC');
 qxCheck($firstPage['total'] === 2 && count($firstPage['rows']) === 1 && $firstPage['rows'][0]->distance == 10 && $secondPage['rows'][0]->distance == 42, 'Journal filters, sorting and SQL pagination remain coherent');
-$user->admin = 0;
+$user->admin = 0; $user->rights->lmdbvehiclemanagement->quartix = (object) array();
 qxReject(static function () use ($trips, $tripDay) { $trips->journal(1, $tripDay, $tripDay); }, 'QxAccessDenied');
 $user->rights->lmdbvehiclemanagement->quartix = (object) array('location' => 1);
 qxCheck($trips->journal(1, $tripDay, $tripDay)['total'] === 2, 'Standard user with GPS and read rights can read journal');
 $user->rights->lmdbvehiclemanagement->quartix = (object) array();
 $user->admin = 1; $user->socid = 3;
 qxReject(static function () use ($trips, $tripDay) { $trips->journal(1, $tripDay, $tripDay); }, 'QxAccessDenied');
-$user->socid = 0;
+$user->socid = 0; $user->rights->lmdbvehiclemanagement->quartix = (object) array('location' => 1, 'sync' => 1);
 $conf->entity = 2;
 qxReject(static function () use ($trips, $tripLink, $tripDay, $trip) { $trips->saveDay($tripLink, array($trip), $tripDay, 'qws'); }, 'QxAccessDenied');
 $mc = new class { public function getEntity($element, $shared = 1, $object = null) { return '1,2'; } };
-qxCheck($trips->journal(1, $tripDay, $tripDay)['total'] === 2, 'Shared journal reads owner data and retention');
+qxReject(static function () use ($trips, $tripDay) { $trips->journal(1, $tripDay, $tripDay); }, 'QxNoData');
 $mc = null; $conf->entity = 1;
 foreach (array('', '0', '-1', '1.5', '2e2', ' 30', '9999999999') as $invalid) qxReject(static function () use ($invalid) { LmdbVehicleQuartixTrips::retention($invalid); }, 'QxInvalidRetention');
 qxCheck(LmdbVehicleQuartixTrips::retention('30') === 30 && LmdbVehicleQuartixTrips::retention('3650') === 3650, 'Retention allows positive integers beyond twelve months');
@@ -135,23 +135,23 @@ qxReject(static function () use ($trips, $client, $tripLink, $cfg) { $trips->syn
 require_once dirname(__DIR__).'/class/lmdbvehiclequartixdashboard.class.php';
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'cronjob (rowid integer PRIMARY KEY, entity integer, methodename text, status integer, classesname text, objectname text)');
 $db->query("INSERT INTO ".MAIN_DB_PREFIX."cronjob VALUES (1,1,'trips',0,'/lmdbvehiclemanagement/class/lmdbvehiclequartixcron.class.php','LmdbVehicleQuartixCron')");
-foreach (array(1, 3) as $fixtureId) $db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_usage (entity,fk_vehicle,usage_day,has_data,trip_count,distance,date_sync) VALUES (1,".$fixtureId.",'2026-07-30',1,2,42.5,'2026-07-31')");
+foreach (array(1, 3) as $fixtureId) $db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_usage (entity,fk_quartix,fk_vehicle,usage_day,has_data,trip_count,distance,date_sync) VALUES (1,".$trips->dataset($fixtureId)->id.",".$fixtureId.",'2026-07-30',1,2,42.5,'2026-07-31')");
 $fleet = new LmdbVehicleQuartixDashboard($db);
 $report = $fleet->report('2026-07-01', '2026-07-31', '', '', array(), 1);
 qxCheck($report['total'] === 3 && count($report['rows']) === 1 && $report['totals']->known_vehicles == 2 && $report['totals']->distance == 85, 'Fleet totals include filtered cohort beyond pagination and distinguish missing vehicles');
 qxCheck(count($report['comparison']) === 2 && count($report['jobs']) === 1 && $report['jobs'][0]->status == 0, 'Charts ignore missing values; jobs remain entity-scoped');
 $unlinked = $fleet->report('2026-07-01', '2026-07-31', '', 'unlinked');
 qxCheck($unlinked['total'] === 1 && $unlinked['rows'][0]->rowid == 3 && $unlinked['totals']->distance == 42.5, 'Unlinked vehicles keep their historical usage');
-$user->admin = 0;
+$user->admin = 0; $user->rights->lmdbvehiclemanagement->quartix->location = 0;
 $withoutGps = $fleet->report('2026-07-01', '2026-07-31');
 qxCheck(!property_exists($withoutGps['rows'][0], 'event_date') && !property_exists($withoutGps['rows'][0], 'location'), 'Read-only dashboard query never selects GPS fields');
 qxReject(static function () use ($fleet) { $fleet->report('2026-07-01', '2026-07-31', '', 'forged'); }, 'QxInvalidSettings');
 $user->socid = 3;
 qxReject(static function () use ($fleet) { $fleet->report('2026-07-01', '2026-07-31'); }, 'QxAccessDenied');
-$user->socid = 0; $user->admin = 1;
+$user->socid = 0; $user->admin = 1; $user->rights->lmdbvehiclemanagement->quartix->location = 1;
 qxCheck($fleet->report('2026-07-01', '2026-07-31', '', '', array(2))['total'] === 0, 'Forged entity filter cannot broaden scope');
 $mc = new class { public function getEntity($element, $shared = 1, $object = null) { return '1,2'; } };
-qxCheck($fleet->report('2026-07-01', '2026-07-31', '', '', array(2))['total'] === 1, 'Explicit shared scope enables second entity');
+qxCheck($fleet->report('2026-07-01', '2026-07-31', '', '', array(2))['total'] === 0, 'Vehicle scope alone never enables QUARTIX data');
 $mc = null;
 
 // Retained journal provenance survives unlink; erroneous associations purge only QWS cache.

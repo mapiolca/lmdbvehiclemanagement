@@ -188,7 +188,6 @@ foreach (array(0, 1) as $admin) {
 	$user->admin = $admin;
 	foreach (array('lmdbvehiclemanagement.read', 'lmdbvehiclemanagement.event.write', 'fournisseur.facture.lire', 'fournisseur.facture.creer') as $denied) {
 		$user->denied = $denied;
-		if ($admin && strpos($denied, 'lmdbvehiclemanagement.') === 0) { verifyDossier(LmdbVehicleSharing::can($user), 'Admin elevation for module rights'); continue; }
 		rejectsDossier(function () use ($service, $user) { $service->changeLink('event', 7, 9, $user); }, 'NotEnoughPermissions');
 	}
 }

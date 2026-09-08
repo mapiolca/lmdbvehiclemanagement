@@ -29,6 +29,7 @@ function lmdbSharingAction($object)
 function lmdbSharingObjectUrl($object)
 {
 	$element = LmdbVehicleSharing::element((string) $object->element);
+	if ($element === 'lmdbvehiclequartix') return dol_buildpath('/lmdbvehiclemanagement/vehicle_quartix.php', 1).'?id='.(int) $object->fk_vehicle.'&quartix_id='.(int) $object->id;
 	$cards = array('lmdbvehicle' => 'vehicle_card.php', 'lmdbinsurancecontract' => 'insurancecontract_card.php', 'lmdbvehicleregulatorycontrol' => 'regulatorycontrol_card.php', 'lmdbvehicleconsumption' => 'consumption_card.php', 'lmdbvehicleevent' => 'vehicleevent_card.php');
 	if (isset($cards[$element])) return dol_buildpath('/lmdbvehiclemanagement/'.$cards[$element], 1).'?id='.(int) $object->id;
 	if ($element === 'lmdbinsurancecertificate') return dol_buildpath('/lmdbvehiclemanagement/insurancecontract_certificate.php', 1).'?id='.(int) $object->fk_contract.'&certificate_id='.(int) $object->id;
@@ -41,6 +42,7 @@ function lmdbSharingRender($object)
 {
 	global $db, $user, $conf, $langs;
 	if (empty($object->id) || !LmdbVehicleSharing::available()) return;
+	if ($object->element === 'lmdbvehicleodometerreading' && !empty($object->fk_quartix)) { print '<p>'.$langs->trans('QxSharingOnDataset').'</p>'; return; }
 	$element = LmdbVehicleSharing::element((string) $object->element);
 	if (!LmdbVehicleSharing::individual($element)) return;
 	$langs->loadLangs(array('multicompany@multicompany', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
@@ -48,7 +50,7 @@ function lmdbSharingRender($object)
 	if ((int) $object->entity === (int) $conf->entity && LmdbVehicleSharing::isAdmin($user)) {
 		try { $destinations = LmdbVehicleSharing::destinations($db, $user, $object); }
 		catch (Exception $e) { print '<div class="error">'.$langs->trans('LmdbSharingDatabaseError').'</div></div>'; return; }
-		if (!$destinations) { print '<span class="opacitymedium">'.$langs->trans('LmdbSharingNoDestinations').'</span></div>'; return; }
+		if (!$destinations && $element !== 'lmdbvehiclequartix') { print '<span class="opacitymedium">'.$langs->trans('LmdbSharingNoDestinations').'</span></div>'; return; }
 		require_once __DIR__.'/../class/lmdbvehiclesharingform.class.php';
 		$native = new LmdbVehicleSharingForm($db);
 		$native->sharingObjectId = (int) $object->id;
@@ -75,6 +77,7 @@ function lmdbSharingRender($object)
 function lmdbSharingLink($object)
 {
 	global $langs;
+	if ($object->element === 'lmdbvehicleodometerreading' && !empty($object->fk_quartix)) return '<a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_quartix.php', 1).'?id='.(int) $object->fk_vehicle.'&amp;quartix_id='.(int) $object->fk_quartix.'">'.$langs->trans('QxSource').'</a> ';
 	if (!LmdbVehicleSharing::available() || !LmdbVehicleSharing::individual($object->element)) return '';
 	return '<a class="marginrightonly" href="'.dol_escape_htmltag(lmdbSharingObjectUrl($object)).'">'.img_picto($langs->trans('LmdbSharedWith'), 'globe').'</a> ';
 }

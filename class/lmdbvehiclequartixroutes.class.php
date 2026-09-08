@@ -39,12 +39,11 @@ class LmdbVehicleQuartixRoutes extends LmdbVehicleQuartixService
 	public function day($dayId)
 	{
 		global $user;
-		if (!LmdbVehicleQuartixConfig::can($user, 'location')) throw new RuntimeException('QxAccessDenied');
-		$rows = $this->rows('SELECT * FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday WHERE rowid='.((int) $dayId).' AND entity IN ('.$this->db->sanitize(getEntity('lmdbvehicle')).')');
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && $user->hasRight('lmdbvehiclemanagement', 'quartix', 'location'))) throw new RuntimeException('QxAccessDenied');
+		$rows = $this->rows('SELECT d.* FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday d INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_dataset q ON q.rowid=d.fk_quartix AND q.entity=d.entity AND q.fk_vehicle=d.fk_vehicle WHERE d.rowid='.((int) $dayId).' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehiclequartix', 'q'));
 		if (!$rows) throw new RuntimeException('QxAccessDenied');
 		$day = $rows[0];
-		$vehicle = $this->vehicle((int) $day->fk_vehicle, 'location');
-		if ((int) $day->entity !== (int) $vehicle->entity) throw new RuntimeException('QxAccessDenied');
+		$this->dataset((int) $day->fk_vehicle, (int) $day->fk_quartix);
 		$cfg = (new LmdbVehicleQuartixConfig($this->db))->load((int) $day->entity);
 		$reason = self::unavailable($cfg);
 		if ($reason !== '') throw new RuntimeException($reason);
@@ -69,7 +68,7 @@ class LmdbVehicleQuartixRoutes extends LmdbVehicleQuartixService
 	/** @param stdClass $day Authorized day @return stdClass|null Active original association only */
 	private function currentLink($day)
 	{
-		$rows = $this->rows('SELECT l.* FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid=l.fk_vehicle AND v.entity=l.entity WHERE l.entity='.((int) $day->entity).' AND l.fk_vehicle='.((int) $day->fk_vehicle).' AND l.rowid='.((int) $day->source_link_id).' AND l.remote_id='.((int) $day->remote_id).' AND l.active=1');
+		$rows = $this->rows('SELECT l.* FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid=l.fk_vehicle WHERE '.LmdbVehicleQuartix::collectionSql($this->db, 'l').' AND l.entity='.((int) $day->entity).' AND l.fk_vehicle='.((int) $day->fk_vehicle).' AND l.rowid='.((int) $day->source_link_id).' AND l.remote_id='.((int) $day->remote_id).' AND l.active=1');
 		return $rows[0] ?? null;
 	}
 
@@ -78,7 +77,7 @@ class LmdbVehicleQuartixRoutes extends LmdbVehicleQuartixService
 	{
 		global $conf;
 		$cfg = (new LmdbVehicleQuartixConfig($this->db))->load((int) $day->entity);
-		return (int) $day->entity === (int) $conf->entity && self::unavailable($cfg) === '' && $cfg['ENABLED'] === '1' && $this->currentLink($day) !== null && count($this->publicTrips($day)) > 0;
+		return isModEnabled('lmdbvehiclemanagement') && (int) $day->entity === (int) $conf->entity && self::unavailable($cfg) === '' && $cfg['ENABLED'] === '1' && $this->currentLink($day) !== null && count($this->publicTrips($day)) > 0;
 	}
 
 	/** @param stdClass $day Day @return stdClass|null */
@@ -94,7 +93,7 @@ class LmdbVehicleQuartixRoutes extends LmdbVehicleQuartixService
 	 */
 	public function view($dayId, $key)
 	{
-		global $conf;
+		global $conf, $user;
 		$day = $this->day($dayId); $trip = $this->trip($day, $key);
 		$cfg = (new LmdbVehicleQuartixConfig($this->db))->load((int) $day->entity);
 		$queue = $this->queueState($day);
@@ -111,21 +110,21 @@ class LmdbVehicleQuartixRoutes extends LmdbVehicleQuartixService
 		$jobs = $this->rows('SELECT rowid FROM '.MAIN_DB_PREFIX."cronjob WHERE entity=".((int) $day->entity)." AND classesname='/lmdbvehiclemanagement/class/lmdbvehiclequartixcron.class.php' AND objectname='LmdbVehicleQuartixCron' AND methodename='trips' AND status=1 LIMIT 1");
 		if ($pending && (!$jobs || ((int) $day->entity === (int) $conf->entity && !isModEnabled('cron')) || !$enabled)) $message = 'QxRouteQueueStopped';
 		return array('state' => $state, 'message' => $message, 'points' => $points, 'fetched_at' => $cache === null || $blocked ? 0 : $this->db->jdate($cache->fetched_at),
-			'in_progress' => (bool) $trip->in_progress, 'can_request' => (int) $day->entity === (int) $conf->entity && $enabled && !$pending && !$throttled && ($cache === null || $state === 'empty' || (bool) $trip->in_progress), 'poll' => $pending && $message !== 'QxRouteQueueStopped');
+			'in_progress' => (bool) $trip->in_progress, 'can_request' => $user->hasRight('lmdbvehiclemanagement', 'quartix', 'sync') && $this->canRetrieve($day) && $enabled && !$pending && !$throttled && ($cache === null || $state === 'empty' || (bool) $trip->in_progress), 'poll' => $pending && $message !== 'QxRouteQueueStopped');
 	}
 
-	/** User-requested POST, restricted to the vehicle owner entity.
+	/** User-requested POST, restricted to the data owner entity.
 	 * @param int $dayId Day @param string $key Trip selector @return void
 	 */
 	public function requestRoute($dayId, $key)
 	{
-		global $conf;
+		global $conf, $user;
 		$day = $this->day($dayId);
-		if ((int) $day->entity !== (int) $conf->entity) throw new RuntimeException('QxAccessDenied'); $this->trip($day, $key);
+		if (!$user->hasRight('lmdbvehiclemanagement', 'quartix', 'sync') || (int) $day->entity !== (int) $conf->entity || !$this->canRetrieve($day)) throw new RuntimeException('QxAccessDenied'); $this->trip($day, $key);
 		$state = $this->view($dayId, $key);
 		if (!$state['can_request']) return;
 		// INSERT..SELECT rechecks the association atomically if a dissociation races the click.
-		$this->write('INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_routequeue (entity,fk_tripday,pending,requested_at) SELECT d.entity,d.rowid,1,\''.$this->db->idate(dol_now())."' FROM ".MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday AS d INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l ON l.rowid=d.source_link_id AND l.entity=d.entity AND l.fk_vehicle=d.fk_vehicle AND l.remote_id=d.remote_id WHERE d.rowid='.((int) $dayId).' AND d.entity='.((int) $day->entity).' AND l.active=1 ON DUPLICATE KEY UPDATE pending=1,requested_at=VALUES(requested_at)');
+		$this->write('INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_routequeue (entity,fk_tripday,pending,requested_at) SELECT d.entity,d.rowid,1,\''.$this->db->idate(dol_now())."' FROM ".MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday AS d INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l ON l.rowid=d.source_link_id AND l.entity=d.entity AND l.fk_vehicle=d.fk_vehicle AND l.remote_id=d.remote_id WHERE d.rowid='.((int) $dayId).' AND d.entity='.((int) $day->entity).' AND '.LmdbVehicleQuartix::collectionSql($this->db, 'l').' ON DUPLICATE KEY UPDATE pending=1,requested_at=VALUES(requested_at)');
 		if ((int) $day->entity !== (int) $conf->entity || !$this->lock((int) $day->entity)) return;
 		try {
 			$day = $this->day($dayId);
@@ -145,10 +144,11 @@ class LmdbVehicleQuartixRoutes extends LmdbVehicleQuartixService
 	public function processPending($client, $entity, $deadline)
 	{
 		global $conf, $user;
-		if ($entity !== (int) $conf->entity || !LmdbVehicleQuartixConfig::can($user, 'sync')) throw new RuntimeException('QxAccessDenied');
+		if ($entity !== (int) $conf->entity || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && $user->hasRight('lmdbvehiclemanagement', 'quartix', 'sync'))) throw new RuntimeException('QxAccessDenied');
+		$this->write('UPDATE '.MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_routequeue SET pending=0,last_error='QxRouteStopped' WHERE entity=".$entity.' AND pending=1 AND NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday d INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link l ON l.rowid=d.source_link_id AND l.fk_quartix=d.fk_quartix AND l.remote_id=d.remote_id WHERE d.rowid='.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_routequeue.fk_tripday AND d.entity='.$entity.' AND '.LmdbVehicleQuartix::collectionSql($this->db, 'l').')');
 		$cfg = (new LmdbVehicleQuartixConfig($this->db))->load($entity);
 		if (self::unavailable($cfg) !== '' || $cfg['ENABLED'] !== '1' || microtime(true) >= $deadline) return '';
-		$rows = $this->rows('SELECT d.* FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_routequeue AS q INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday AS d ON d.rowid=q.fk_tripday AND d.entity=q.entity INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l ON l.rowid=d.source_link_id AND l.entity=d.entity AND l.fk_vehicle=d.fk_vehicle AND l.remote_id=d.remote_id WHERE q.entity='.$entity.' AND q.pending=1 AND l.active=1 AND d.trip_day>=\''.LmdbVehicleQuartixTrips::cutoff(LmdbVehicleQuartixTrips::retention($cfg['TRIP_RETENTION_DAYS']))."' AND (q.last_attempt IS NULL OR q.last_attempt<='".$this->db->idate(dol_now() - 900)."') ORDER BY COALESCE(q.last_attempt,q.requested_at),q.rowid LIMIT 1");
+		$rows = $this->rows('SELECT d.* FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_routequeue AS q INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday AS d ON d.rowid=q.fk_tripday AND d.entity=q.entity INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l ON l.rowid=d.source_link_id AND l.entity=d.entity AND l.fk_vehicle=d.fk_vehicle AND l.remote_id=d.remote_id WHERE q.entity='.$entity.' AND q.pending=1 AND '.LmdbVehicleQuartix::collectionSql($this->db, 'l').' AND d.trip_day>=\''.LmdbVehicleQuartixTrips::cutoff(LmdbVehicleQuartixTrips::retention($cfg['TRIP_RETENTION_DAYS']))."' AND (q.last_attempt IS NULL OR q.last_attempt<='".$this->db->idate(dol_now() - 900)."') ORDER BY COALESCE(q.last_attempt,q.requested_at),q.rowid LIMIT 1");
 		if (!$rows) return '';
 		try { $this->fetchDay($client, $rows[0], min($deadline, microtime(true) + 30)); }
 		catch (Exception $e) { return self::safeError($e); }
@@ -168,7 +168,7 @@ class LmdbVehicleQuartixRoutes extends LmdbVehicleQuartixService
 	private function fetchDay($client, $day, $deadline)
 	{
 		global $conf, $user;
-		if ((int) $day->entity !== (int) $conf->entity || (!LmdbVehicleQuartixConfig::can($user, 'sync') && !LmdbVehicleQuartixConfig::can($user, 'location')) || !$this->canRetrieve($day)) throw new RuntimeException('QxAccessDenied');
+		if ((int) $day->entity !== (int) $conf->entity || !isModEnabled('lmdbvehiclemanagement') || !empty($user->socid) || !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'quartix', 'sync') || !$this->canRetrieve($day)) throw new RuntimeException('QxAccessDenied');
 		$filter = ' WHERE entity='.((int) $day->entity).' AND fk_tripday='.((int) $day->rowid);
 		$state = $this->queueState($day);
 		if ($state === null || !(int) $state->pending || ($state->last_attempt !== null && $this->db->jdate($state->last_attempt) > dol_now() - 900)) return;
@@ -209,10 +209,14 @@ class LmdbVehicleQuartixRoutes extends LmdbVehicleQuartixService
 			}
 			$this->db->begin();
 			try {
+				$this->assertOwner($link, true);
 				$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_route'.$filter);
 				// Native DB debug logs may include INSERT values: encrypt geometry before SQL.
 				foreach ($cache as $key => $route) $this->write('INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_route (entity,fk_tripday,trip_key,fingerprint,geometry,fetched_at) VALUES ('.((int) $day->entity).','.((int) $day->rowid).",'".$key."','".$route['fingerprint']."','".$this->db->escape(LmdbVehicleQuartixConfig::encrypt(json_encode($route['points'], JSON_THROW_ON_ERROR)))."','".$this->db->idate(dol_now())."')");
 				$this->write('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_routequeue SET pending=0,last_error=NULL,synced_at=\''.$this->db->idate(dol_now())."'".$filter);
+				$dataset = $this->createDataset();
+				if ($dataset->fetch((int) $day->fk_quartix) <= 0) throw new RuntimeException('QxAccessDenied');
+				$dataset->changed($user, 'quartix_routes');
 				if ($this->db->commit() <= 0) throw new RuntimeException('QxDatabaseError');
 			} catch (Exception $e) { $this->db->rollback(); throw $e; }
 		} catch (Exception $e) {

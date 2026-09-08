@@ -14,6 +14,10 @@ class LmdbVehicleQuartixCron
 	/** @var string */ public $output = '';
 	/** @param DoliDB $db Database */
 	public function __construct($db) { $this->db = $db; }
+	/** Worker service, isolated from transport for integration tests. @return LmdbVehicleQuartixTrips */
+	protected function createService() { return new LmdbVehicleQuartixTrips($this->db); }
+	/** @return LmdbVehicleQuartixRoutes */
+	protected function createRoutes() { return new LmdbVehicleQuartixRoutes($this->db); }
 	/** @return int */ public function positions() { return $this->run('positions'); }
 	/** @return int */ public function odometer() { return $this->run('odometer'); }
 	/** @return int */ public function usage() { return $this->run('usage'); }
@@ -25,7 +29,7 @@ class LmdbVehicleQuartixCron
 		global $conf, $user, $langs;
 		$this->error = ''; $this->errors = array(); $this->output = '';
 		$entity = (int) $conf->entity;
-		$service = new LmdbVehicleQuartixTrips($this->db);
+		$service = $this->createService();
 		$locked = false; $client = null; $processed = 0; $failed = 0; $lastVehicle = 0;
 		try {
 			if (!in_array($kind, array('positions', 'odometer', 'usage', 'trips'), true)) throw new RuntimeException('QxInvalidEndpoint');
@@ -33,7 +37,7 @@ class LmdbVehicleQuartixCron
 			if (!isModEnabled('lmdbvehiclemanagement') || ($kind !== 'trips' && !getDolGlobalInt(LmdbVehicleQuartixConfig::PREFIX.'ENABLED'))) { $this->output = $langs->transnoentities('QxDisabled'); return 0; }
 			$unavailable = LmdbVehicleQuartixConfig::unavailableReason('jobs');
 			if ($unavailable !== '' && !($kind === 'trips' && !in_array($unavailable, array('QxRequiresCrypto', 'RequiresCronModule'), true))) { $this->error = $unavailable; $this->output = $langs->transnoentities($unavailable); return -1; }
-			if (!LmdbVehicleQuartixConfig::can($user, 'sync') || ($kind === 'odometer' && !LmdbVehicleQuartixConfig::isAdmin($user) && !LmdbVehicleSharing::can($user, 'odometer', 'write'))) throw new RuntimeException('QxAccessDenied');
+			if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && $user->hasRight('lmdbvehiclemanagement', 'quartix', 'sync')) || ($kind === 'odometer' && !$user->hasRight('lmdbvehiclemanagement', 'odometer', 'write'))) throw new RuntimeException('QxAccessDenied');
 			if (!$service->lock($entity)) { $this->output = $langs->transnoentities('QxBusy'); return 0; }
 			$locked = true;
 			$deadline = microtime(true) + 45;
@@ -56,7 +60,7 @@ class LmdbVehicleQuartixCron
 			if ($kind !== 'usage' && LmdbVehicleQuartixConfig::unavailableReason('timestamps') !== '') throw new RuntimeException('QxTimeUnconfirmed');
 			$client = $this->createClient($entity);
 			if ($kind === 'trips') {
-				$routeError = (new LmdbVehicleQuartixRoutes($this->db))->processPending($client, $entity, $deadline);
+				$routeError = $this->createRoutes()->processPending($client, $entity, $deadline);
 				if ($routeError !== '') { $failed++; $this->error = $routeError; }
 				$client->setDeadline($deadline);
 			}
@@ -66,7 +70,7 @@ class LmdbVehicleQuartixCron
 				$service->write('DELETE FROM '.MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_usage WHERE entity=".$entity." AND usage_day<'".$cutoff."' LIMIT 5000");
 			}
 			$lastVehicle = (int) $state->last_vehicle;
-			$base = 'SELECT l.* FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid=l.fk_vehicle AND v.entity=l.entity WHERE l.entity='.$entity.' AND l.active=1';
+			$base = 'SELECT l.* FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid=l.fk_vehicle WHERE '.LmdbVehicleQuartix::collectionSql($this->db, 'l').' AND l.entity='.$entity.' AND l.active=1';
 			// The worker wakes every 15 minutes; each odometer is imported once per UTC day.
 			$today = gmdate('Y-m-d', dol_now());
 			if ($kind === 'odometer') $base .= " AND (l.odometer_synced IS NULL OR l.odometer_synced<'".$today."')";

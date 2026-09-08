@@ -21,8 +21,12 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	/** @var string */
 	public $picto = 'gauge-high';
 
+	/** @var ?int Persistent QUARTIX data owner; null for ordinary readings. */
+	public $fk_quartix = null;
+
 	/** @var array<string,mixed> */
 	public $fields = array(
+		'fk_quartix' => array('type' => 'integer', 'label' => 'QxData', 'visible' => 0, 'notnull' => -1),
 		'rowid' => array('type' => 'integer', 'label' => 'TechnicalID', 'position' => 1, 'notnull' => 1, 'visible' => 0, 'noteditable' => 1),
 		'entity' => array('type' => 'integer', 'label' => 'Entity', 'position' => 10, 'notnull' => 1, 'visible' => 0, 'default' => 1, 'index' => 1),
 		'fk_vehicle' => array('type' => 'integer:LmdbVehicle:lmdbvehiclemanagement/class/lmdbvehicle.class.php:0', 'label' => 'Vehicle', 'position' => 20, 'notnull' => 1, 'visible' => 1, 'index' => 1),
@@ -272,16 +276,18 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	{
 		global $conf;
 		require_once __DIR__.'/lmdbvehiclequartixconfig.class.php';
-		if (!LmdbVehicleQuartixConfig::can($user, 'configure') || empty($this->id) || $this->fetch((int) $this->id) <= 0
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && !empty($user->admin)) || empty($this->id) || $this->fetch((int) $this->id) <= 0
 			|| (int) $this->entity !== (int) $conf->entity || !$this->is_estimate || $this->source !== 'external'
 			|| !is_string($this->provider_key) || !preg_match('/^[a-f0-9]{64}$/D', $this->provider_key)) {
 			$this->error = 'QxAccessDenied'; return -1;
 		}
 		$this->db->begin();
-		if ($this->lockVehicleRow((int) $this->fk_vehicle) < 0) { $this->db->rollback(); return -1; }
+		$lock = $this->db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_dataset WHERE rowid='.(int) $this->fk_quartix.' AND entity='.(int) $conf->entity.' FOR UPDATE');
+		if (!$lock || !is_object($this->db->fetch_object($lock))) { $this->db->rollback(); return -1; }
+		$this->db->free($lock);
 		$this->context['quartix_cleanup'] = true;
 		// Estimates never participate in the real-reading progression constraints.
-		$result = parent::delete($user);
+		$result = parent::delete($user, 1);
 		if ($result < 0) $this->db->rollback();
 		else $this->db->commit();
 		return $result;
@@ -290,7 +296,7 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	/** @inheritdoc */
 	protected function validateBusinessRules()
 	{
-		if ($this->loadVehicleEntity() < 0) {
+		if (!$this->quartixSync && $this->loadVehicleEntity() < 0) {
 			return -1;
 		}
 		if ($this->reading_date <= 0) {
@@ -303,7 +309,7 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 			$this->errors[] = $this->error;
 			return -1;
 		}
-		if ($this->is_estimate || $this->provider_key !== null) {
+		if ($this->fk_quartix !== null || $this->is_estimate || $this->provider_key !== null) {
 			if (!$this->quartixSync || $this->source !== 'external' || $this->reading_kind !== 'standard' || !$this->is_estimate || !is_string($this->provider_key) || !preg_match('/^[a-f0-9]{64}$/D', $this->provider_key)) {
 				$this->error = 'QxOwnsReading';
 				return -1;
@@ -467,14 +473,18 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	 * @param int $vehicleId Vehicle id
 	 * @param int $limit Page size (0 for full history)
 	 * @param int $offset Page offset
+	 * @param int|null $quartixId Optional source filter; 0 excludes QUARTIX observations
+	 * @param list<int> $entities Optional entity filter within authorized readings
 	 * @return array<int,self>|int<-1,-1>
 	 */
-	public function fetchAllByVehicle($vehicleId, $limit = 0, $offset = 0)
+	public function fetchAllByVehicle($vehicleId, $limit = 0, $offset = 0, $quartixId = null, $entities = array())
 	{
 		$records = array();
 		$sql = 'SELECT * FROM '.MAIN_DB_PREFIX.$this->table_element.' AS r';
 		$sql .= ' WHERE fk_vehicle = '.((int) $vehicleId);
 		$sql .= ' AND '.LmdbVehicleSharing::sql($this->db, $this->element, 'r');
+		if ($quartixId !== null) $sql .= ' AND (r.fk_quartix IS NULL OR r.fk_quartix='.(int) $quartixId.')';
+		if ($entities) $sql .= ' AND r.entity IN ('.implode(',', array_map('intval', $entities)).')';
 		$sql .= ' ORDER BY reading_date DESC, rowid DESC';
 		if ($limit > 0) $sql .= $this->db->plimit(min(1000, $limit), max(0, $offset));
 		$resql = $this->db->query($sql);
@@ -511,10 +521,15 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 		return $records;
 	}
 
-	/** @param int $vehicleId Vehicle @param self|null $after Count rows newer than this reading @return int Count or -1 */
-	public function countByVehicle($vehicleId, $after = null)
+	/** @param int $vehicleId Vehicle @param self|null $after Count rows newer than this reading
+	 * @param int|null $quartixId Optional source filter; 0 excludes QUARTIX observations
+	 * @param list<int> $entities Optional entity filter within authorized readings @return int Count or -1
+	 */
+	public function countByVehicle($vehicleId, $after = null, $quartixId = null, $entities = array())
 	{
 		$sql = 'SELECT COUNT(*) AS nb FROM '.MAIN_DB_PREFIX.$this->table_element.' AS r'.' WHERE fk_vehicle='.((int) $vehicleId).' AND '.LmdbVehicleSharing::sql($this->db, $this->element, 'r');
+		if ($quartixId !== null) $sql .= ' AND (r.fk_quartix IS NULL OR r.fk_quartix='.(int) $quartixId.')';
+		if ($entities) $sql .= ' AND r.entity IN ('.implode(',', array_map('intval', $entities)).')';
 		if ($after !== null) $sql .= " AND (reading_date>'".$this->db->idate($after->reading_date)."' OR (reading_date='".$this->db->idate($after->reading_date)."' AND rowid>".((int) $after->id).'))';
 		$res = $this->db->query($sql);
 		if (!$res) { $this->error = $this->db->lasterror(); return -1; }
@@ -561,7 +576,8 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 		global $conf, $langs;
 		require_once __DIR__.'/lmdbvehiclequartixconfig.class.php';
 		require_once __DIR__.'/lmdbvehiclequartixrules.class.php';
-		if (!LmdbVehicleQuartixConfig::can($user, 'sync') || (!LmdbVehicleQuartixConfig::isAdmin($user) && !LmdbVehicleSharing::can($user, 'odometer', 'write')) || $date <= 0 || $date > dol_now() + 300 || !is_finite($km) || $km < 0 || $remoteId <= 0) {
+		require_once __DIR__.'/lmdbvehiclequartix.class.php';
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && $user->hasRight('lmdbvehiclemanagement', 'quartix', 'sync')) || !$user->hasRight('lmdbvehiclemanagement', 'odometer', 'write') || $date <= 0 || $date > dol_now() + 300 || !is_finite($km) || $km < 0 || $remoteId <= 0) {
 			$this->error = 'QxAccessDenied'; return -1;
 		}
 		$this->db->begin();
@@ -571,7 +587,7 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 			$this->id = 0;
 			$this->oldcopy = null;
 			if ($this->lockVehicleRow($vehicleId) < 0) throw new RuntimeException('QxDatabaseError');
-			$mapping = $this->db->query('SELECT l.timezone,l.sync_from FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid=l.fk_vehicle AND v.entity=l.entity WHERE l.entity='.((int) $conf->entity).' AND l.fk_vehicle='.((int) $vehicleId).' AND l.remote_id='.((int) $remoteId).' AND l.active=1');
+			$mapping = $this->db->query('SELECT l.timezone,l.sync_from,l.fk_quartix FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid=l.fk_vehicle WHERE '.LmdbVehicleQuartix::collectionSql($this->db, 'l').' AND l.entity='.((int) $conf->entity).' AND l.fk_vehicle='.((int) $vehicleId).' AND l.remote_id='.((int) $remoteId).' AND l.active=1');
 			if (!$mapping) throw new RuntimeException('QxDatabaseError');
 			$owner = $this->db->fetch_object($mapping);
 			$this->db->free($mapping);
@@ -587,21 +603,27 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 				if ($this->reading_date > $date || ($this->reading_date === $date && (float) $this->odometer_km === $km)) { $this->db->commit(); return (int) $this->id; }
 			}
 			$this->fk_vehicle = $vehicleId;
-			if ($this->loadVehicleEntity() < 0 || (int) $this->entity !== (int) $conf->entity) throw new RuntimeException('QxAccessDenied');
+			$this->entity = (int) $conf->entity; $this->fk_quartix = (int) $owner->fk_quartix;
 			$langs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
 			$this->source = 'external'; $this->is_estimate = 1; $this->provider_key = $key;
 			$this->reading_kind = 'standard'; $this->reading_date = $date; $this->odometer_km = $km;
 			$this->reason = $langs->transnoentities('QxEstimate');
 			$this->context = array('trigger_reason' => 'quartix_estimate');
 			$this->quartixSync = true; $this->externalTransaction = true;
-			$result = empty($this->id) ? $this->create($user) : $this->update($user);
+			$result = empty($this->id) ? $this->create($user, 1) : $this->update($user, 1);
 			if ($result <= 0) throw new RuntimeException('QxDatabaseError');
+			$dataset = $this->createQuartixDataset();
+			if ($dataset->fetch((int) $this->fk_quartix) <= 0) throw new RuntimeException('QxAccessDenied');
+			$dataset->changed($user, 'quartix_odometer');
 			$this->db->commit();
 			return (int) $this->id;
 		} catch (Exception $e) {
 			$this->db->rollback(); $this->error = $e->getMessage(); return -1;
 		} finally { $this->quartixSync = false; $this->externalTransaction = false; }
 	}
+
+	/** Native data object; replaceable for trigger failure tests. @return LmdbVehicleQuartix */
+	protected function createQuartixDataset() { return new LmdbVehicleQuartix($this->db); }
 
 	/** @inheritdoc */
 	public function LibStatut($status, $mode = 0)

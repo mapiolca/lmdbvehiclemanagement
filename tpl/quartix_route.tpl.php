@@ -14,6 +14,7 @@ if (!defined('DOL_DOCUMENT_ROOT')) exit;
 print '<div id="'.($routeInDialog ? 'qx-route-dialog' : 'qx-route-content').'"'.($routeInDialog ? ' class="hidden"' : '').'>';
 print '<div class="info">'.$langs->trans('QxRouteHelp').'</div>';
 print '<form id="qx-route-form" method="POST" action="'.dol_escape_htmltag(dol_buildpath('/lmdbvehiclemanagement/vehicle_route.php', 1)).'">';
+print '<input type="hidden" name="quartix_id" value="'.(int) ($quartixId ?? 0).'">';
 print '<input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="retrieve"><input type="hidden" name="day" value="'.((int) $dayId).'"><input type="hidden" name="trip" value="'.dol_escape_htmltag($key).'">';
 print '<div id="qx-route-status" class="info hidden" role="status" aria-live="polite"></div><p id="qx-route-fetched" class="opacitymedium"></p>';
 print '<div id="qx-route-provisional" class="warning hidden">'.$langs->trans('QxRouteProvisional').'</div>';

@@ -384,6 +384,10 @@ class ActionsLmdbVehicleManagement
 	public function getElementProperties($parameters, &$object, &$action, $hookmanager)
 	{
 		$elementType = isset($parameters['elementType']) ? (string) $parameters['elementType'] : '';
+		if (in_array($elementType, array('lmdbvehiclequartix', 'lmdbvehiclequartix@lmdbvehiclemanagement', 'lmdbvehiclemanagement_lmdbvehiclequartix'), true)) {
+			$this->results = array_replace($this->results, array('module' => 'lmdbvehiclemanagement', 'element' => 'lmdbvehiclequartix', 'table_element' => 'lmdbvehiclemanagement_qx_dataset', 'subelement' => 'lmdbvehiclequartix', 'classpath' => 'lmdbvehiclemanagement/class', 'classfile' => 'lmdbvehiclequartix', 'classname' => 'LmdbVehicleQuartix'));
+			return 0;
+		}
 		$vehicleDefinition = array(
 			'module' => 'lmdbvehiclemanagement',
 			'element' => 'lmdbvehicle',

@@ -21,15 +21,6 @@ class LmdbVehicleQuartixConfig
 		return empty($user->socid) && !empty($user->admin);
 	}
 
-	/** @param User $user User @param string $action read, location, sync or configure @return bool */
-	public static function can($user, $action)
-	{
-		if (!empty($user->socid) || !isModEnabled('lmdbvehiclemanagement')) return false;
-		if (self::isAdmin($user)) return true;
-		if ($action === 'configure' || !LmdbVehicleSharing::can($user, '', 'read')) return false;
-		return $action === 'read' || (in_array($action, array('location', 'sync'), true) && LmdbVehicleSharing::can($user, 'quartix', $action));
-	}
-
 	/** @return bool Native encryption and transport exist on the supported baseline. */
 	public static function supported()
 	{
@@ -121,7 +112,7 @@ class LmdbVehicleQuartixConfig
 	public function save($user, $values)
 	{
 		global $conf;
-		if (!self::can($user, 'configure')) throw new RuntimeException('QxAccessDenied');
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && !empty($user->admin))) throw new RuntimeException('QxAccessDenied');
 		self::validateApplication($values['APPLICATION'] ?? '');
 		if (!in_array($values['TIME_MODE'], array('', 'offset', 'local', 'qws'), true) || !in_array($values['DURATION_UNIT'], array('', 'seconds', 'minutes', 'hours'), true)) throw new RuntimeException('QxInvalidSettings');
 		foreach (array('CUSTOMER', 'USERNAME') as $key) {

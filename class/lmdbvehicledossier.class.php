@@ -58,7 +58,7 @@ class LmdbVehicleDossier
 	{
 		if (LmdbVehicleSharing::element($object->element) !== '') $this->sharingObjects[$object->element.':'.$object->id] = array($object->element, (int) $object->id);
 		$lines = array();
-		$excluded = array('rowid', 'entity', 'tms', 'import_key', 'model_pdf', 'last_main_doc', 'fk_user_creat', 'fk_user_modif', 'note_private', 'fk_vehicle', 'fk_payment_various', 'fk_odometer_reading', 'fk_requirement');
+		$excluded = array('fk_quartix', 'rowid', 'entity', 'tms', 'import_key', 'model_pdf', 'last_main_doc', 'fk_user_creat', 'fk_user_modif', 'note_private', 'fk_vehicle', 'fk_payment_various', 'fk_odometer_reading', 'fk_requirement');
 		foreach ($onlyFields ?? array_keys($object->fields) as $key) {
 			if (in_array($key, $excluded, true) || !isset($object->fields[$key]) || !property_exists($object, $key)) continue;
 			$field = $object->fields[$key];
@@ -151,7 +151,7 @@ class LmdbVehicleDossier
 	public function collect($vehicle, $langs)
 	{
 		global $user;
-		if (!LmdbVehicleSharing::can($user, '', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)
+		if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)
 			|| !LmdbVehicleSharing::canReadObject($this->db, $user, $vehicle)) throw new RuntimeException('NotEnoughPermissions');
 		$langs->loadLangs(array('main', 'bills', 'suppliers', 'companies', 'users', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 		$this->sharingObjects = array();
@@ -281,7 +281,7 @@ class LmdbVehicleDossier
 	{
 		global $user, $conf;
 		if (!LmdbVehicleManagementCompatibility::isFeatureAvailable('vehicle_dossier')) throw new RuntimeException('LmdbDossierUnavailable');
-		if (!LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) throw new RuntimeException('NotEnoughPermissions');
+		if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) throw new RuntimeException('NotEnoughPermissions');
 		$dir = getMultidirOutput($vehicle, 'lmdbvehiclemanagement', 1);
 		if (!is_string($dir) || $dir === '' || strpos($dir, 'error-diroutput-') === 0 || dol_mkdir($dir.'/temp') < 0) throw new RuntimeException('LmdbDossierWriteFailed');
 		$dir = rtrim($dir, '/\\');

@@ -91,7 +91,7 @@ Le pied de page suit le cycle PDF natif, avec une mesure séparée pour les cont
 - Listes avec colonnes personnalisables, filtres, badges de statut et tooltips Ajax ; formulaires adaptés aux écrans mobiles.
 - Partages Multicompany configurables, documents dans l’entité propriétaire, filtres Environnement lorsqu’un partage est actif et conservation des réglages à la réactivation.
 
-Le [guide du partage individuel](doc/multicompany-sharing.md) décrit la sélection des entités bénéficiaires pour les véhicules, contrats, attestations, contrôles, consommations, événements, affectations et relevés. Multicompany 21+ est nécessaire pour ce mode ; chaque famille conserve un périmètre indépendant. Les infobulles, téléchargements et dossiers respectent aussi les retraits de partage. QUARTIX reste administré chez le propriétaire du véhicule.
+Le [guide du partage individuel](doc/multicompany-sharing.md) décrit la sélection des entités bénéficiaires pour les véhicules, contrats, attestations, contrôles, consommations, événements, affectations et relevés. Multicompany 21+ est nécessaire pour ce mode ; chaque famille conserve un périmètre indépendant. Les infobulles, téléchargements et dossiers respectent aussi les retraits de partage. Les sources QUARTIX appartiennent à l’entité collectrice, même sur un véhicule partagé. Elles sont privées par défaut et disposent de leur propre partage explicite ; voir le [guide de propriété QUARTIX](doc/quartix-ownership.md).
 
 ## Installation et mise à jour
 

@@ -104,7 +104,7 @@ class SharingRecord extends LmdbVehicleManagementObject {
 }
 function checkSharing($ok, $message) { global $checks; $checks++; if (!$ok) throw new RuntimeException($message); }
 class SharingHooksProbe { use LmdbVehicleSharingHooks; public $db, $results = array(), $resprints = ''; public function __construct($db) { $this->db = $db; } }
-$checks = 0; $db = new SharingDb(); $user = new User();
+$checks = 0; $db = new SharingDb(); $user = new User(); $user->rights['lmdbvehiclemanagement.read'] = 1;
 $hooks = new SharingHooksProbe($db); $hookmanager = null; $action = '';
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'entity_element_sharing (entity integer, element text, fk_element integer, UNIQUE(entity,element,fk_element))');
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'const (rowid integer PRIMARY KEY, entity integer, name text, value text)');
@@ -112,8 +112,8 @@ $definitions = LmdbVehicleSharing::definitions();
 $conf->global->MULTICOMPANY_SHARINGS_ENABLED = 1;
 $conf->global->MULTICOMPANY_SHARING_BYELEMENT_ENABLED = 1;
 foreach ($definitions as $element => $definition) {
-	$db->query('CREATE TABLE '.MAIN_DB_PREFIX.$definition['table'].' (rowid integer PRIMARY KEY, entity integer, fk_vehicle integer, fk_contract integer, ref text)');
-	foreach (array(10, 11) as $id) $db->query('INSERT INTO '.MAIN_DB_PREFIX.$definition['table'].' VALUES ('.$id.',1,10,10,\'REF-'.$id.'\')');
+	$db->query('CREATE TABLE '.MAIN_DB_PREFIX.$definition['table'].' (rowid integer PRIMARY KEY, entity integer, fk_vehicle integer, fk_contract integer, ref text, fk_quartix integer DEFAULT NULL, is_estimate integer DEFAULT 0)');
+	foreach (array(10, 11) as $id) $db->query('INSERT INTO '.MAIN_DB_PREFIX.$definition['table'].' (rowid,entity,fk_vehicle,fk_contract,ref) VALUES ('.$id.',1,10,10,\'REF-'.$id.'\')');
 	$conf->global->{'MULTICOMPANY_'.strtoupper($element).'_SHARING_ENABLED'} = 1;
 	$conf->global->{'MULTICOMPANY_'.strtoupper($element).'_SHARING_BYELEMENT_ENABLED'} = 1;
 	foreach (array(1, 2, 3) as $entity) DaoMulticompany::$fixtures[$entity]['sharings'][$element] = $entity === 1 ? array() : array(1);
@@ -161,7 +161,7 @@ foreach ($definitions as $element => $definition) {
 	checkSharing(!LmdbVehicleSharing::visible($db, $element, 10), $element.' revoked on next query');
 	$dao->setSharingsByElement($element, 10, array(2));
 	$conf->global->{'MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT'} = 1;
-	checkSharing(!LmdbVehicleSharing::visible($db, $element, 10), $element.' native exclusion mode');
+	checkSharing(LmdbVehicleSharing::visible($db, $element, 10) === ($element === 'lmdbvehiclequartix'), $element.' exclusion mode never broadens QUARTIX');
 	$conf->global->{'MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT'} = 0;
 }
 $conf->entity = 1;
@@ -178,6 +178,7 @@ foreach ($definitions as $element => $definition) {
 	$dao->setSharingsByElement($element, 10, array(2));
 	$conf->entity = 2; checkSharing($record->setSharingEntities($user, array()) < 0, $element.' beneficiary cannot administer sharing'); $conf->entity = 1;
 	$user->admin = 0; checkSharing($record->setSharingEntities($user, array()) < 0, $element.' standard reader cannot administer sharing'); $user->admin = 1;
+	if ($element === 'lmdbvehiclequartix') continue; // Selection-only family, exercised separately below.
 	$conf->global->{'MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT'} = 1;
 	checkSharing($record->setSharingEntities($user, array(2)) > 0 && LmdbVehicleSharing::stored($db, $element, 10) === array(3), $element.' native exclusion storage matches selected beneficiaries');
 	$conf->entity = 2; checkSharing(LmdbVehicleSharing::visible($db, $element, 10), $element.' selected destination reads in exclusion mode');
@@ -196,7 +197,7 @@ $record->element = 'lmdbvehicleevent'; $record->table_element = $definitions['lm
 checkSharing($record->setSharingEntities($user, array(3)) < 0 && LmdbVehicleSharing::stored($db, 'lmdbvehicleevent', 10) === array(2), 'Parent absent at destination rolls back entire grant');
 foreach (array(0, 1, 2) as $admin) {
 	$user->admin = $admin; $user->rights = array();
-	checkSharing(LmdbVehicleSharing::can($user) === ($admin > 0), 'Administrative elevation');
+	checkSharing(!LmdbVehicleSharing::can($user), 'No implicit administrative elevation');
 	$user->socid = 42; checkSharing(!LmdbVehicleSharing::can($user), 'External users never elevated'); $user->socid = 0;
 }
 $user->admin = 0; $user->rights['lmdbvehiclemanagement.read'] = 1;
@@ -224,7 +225,7 @@ $object = new SharingRecord($db); $object->element = 'lmdbvehicle'; $object->tab
 $conf->entity = 2;
 foreach (array(0, 1) as $admin) {
 	$user->admin = $admin; $user->rights = array();
-	checkSharing($hooks->restrictedArea(array('features' => 'lmdbvehiclemanagement', 'objectid' => 10), $unused, $action, $hookmanager) === $admin, 'Tooltip respects native reader/admin rights');
+	checkSharing($hooks->restrictedArea(array('features' => 'lmdbvehiclemanagement', 'objectid' => 10), $unused, $action, $hookmanager) === 0, 'Tooltip refuses missing read rights even for administrators');
 	$user->rights['lmdbvehiclemanagement.read'] = 1;
 	checkSharing($hooks->restrictedArea(array('features' => 'lmdbvehiclemanagement', 'objectid' => 10), $unused, $action, $hookmanager) === 1, 'Read-only tooltip of shared vehicle');
 }
@@ -245,11 +246,12 @@ if (!empty($argv[2])) {
 			$html = $form->formSelectSharingByElement((object) array('id' => 0, 'element' => $element), $element);
 			$dom = new DOMDocument(); @$dom->loadHTML($html); $xpath = new DOMXPath($dom);
 			$selected = $xpath->query('//select[@name="'.$element.'_to[]"]/option');
-			checkSharing($selected->length === 1 && (int) $selected->item(0)->getAttribute('value') === ($exclusion ? 3 : 2), 'Native selector preserves effective selection '.$element);
+			checkSharing($selected->length === 1 && (int) $selected->item(0)->getAttribute('value') === ($exclusion && $element !== 'lmdbvehiclequartix' ? 3 : 2), 'Native selector preserves effective selection '.$element);
 			checkSharing(strpos($html, 'checkIfElementIsUsed') === false, 'External object avoids unsupported core class loader');
 		}
 	}
 }
+require __DIR__.'/quartix_sharing_cases.php';
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'element_contact (rowid integer, element_id integer, fk_c_type_contact integer)');
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'c_type_contact (rowid integer, element text)');
 foreach ($definitions as $element => $definition) {
@@ -263,7 +265,7 @@ foreach ($definitions as $element => $definition) {
 }
 $db->query('DROP TABLE '.MAIN_DB_PREFIX.'entity_element_sharing');
 $enabled['multicompany'] = false;
-$db->query('INSERT INTO '.MAIN_DB_PREFIX.$record->table_element." VALUES (11,1,10,10,'REF-11')");
+$db->query('INSERT INTO '.MAIN_DB_PREFIX.$record->table_element." (rowid,entity,fk_vehicle,fk_contract,ref) VALUES (11,1,10,10,'REF-11')");
 $record->fetch(11);
 checkSharing($record->delete($user) > 0, 'Multicompany files without an installed native table do not prevent business deletion');
 echo $checks." sharing checks passed (SQLite/API doubles; native Multicompany browser validation remains required)\n";

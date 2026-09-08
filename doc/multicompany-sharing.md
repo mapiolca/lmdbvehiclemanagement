@@ -4,7 +4,7 @@
 
 Le module reste compatible Dolibarr 20+ et PHP 8.0+. Le partage individuel nécessite Multicompany 21+ et ses API natives de formulaire et de persistance. L’onglet **Compatibilité** indique leur disponibilité. Aucun identifiant de module, droit, objet ou modèle de numérotation n’est modifié.
 
-1. Déployer le module, puis le désactiver et le réactiver avec Multicompany actif. La migration complète les périmètres absents à partir de leur ancien partage. Elle conserve les valeurs désactivées, les listes vides et les réglages existants. Elle n’active pas le mode individuel.
+1. Déployer le module, puis le désactiver et le réactiver avec Multicompany actif. La migration complète les périmètres absents à partir de leur ancien partage. Elle conserve les valeurs désactivées, les listes vides et les réglages existants. Elle n’active pas le mode individuel. La nouvelle famille QUARTIX ne reprend aucun ancien périmètre ni aucune autorisation.
 2. Dans les réglages natifs Multicompany, activer les partages et leur gestion par élément. Pour chaque entité bénéficiaire, sélectionner les entités sources autorisées pour les familles du module.
 3. Dans les réglages du module véhicules, onglet **Partage individuel**, le super-administrateur choisit les familles gérées individuellement. Les interrupteurs utilisent les constantes et le traitement AJAX natifs Multicompany. Cet onglet complète la page native, dont les interrupteurs de granularité des versions 21/22 sont limités aux familles core.
 4. Depuis l’entité propriétaire, un administrateur ouvre la fiche et renseigne **Partagé avec**. Pour les attestations, affectations et relevés, le lien globe de la ligne ouvre ce réglage dans leur écran existant. Les destinations proposées sont actives, accessibles à cet administrateur et configurées pour recevoir cette famille depuis le propriétaire.
@@ -21,13 +21,14 @@ Chaque famille possède son propre périmètre :
 | Consommation | `lmdbvehicleconsumption` | Véhicule |
 | Événement métier | `lmdbvehicleevent` | Véhicule |
 | Affectation | `lmdbvehicleassignment` | Véhicule |
+| Données QUARTIX | `lmdbvehiclequartix` | Véhicule pour les bénéficiaires ; historique conservé chez le collecteur |
 | Relevé kilométrique | `lmdbvehicleodometerreading` | Véhicule |
 
-En mode **sélection**, les associations stockées désignent les bénéficiaires. En mode **Tout partager par défaut**, elles désignent les exclusions. Le sélecteur affiche dans les deux cas les bénéficiaires effectifs. Changer ce mode inverse l’interprétation des associations existantes : choisir le mode avant de saisir les partages et contrôler les accès après tout changement. Désactiver puis réactiver une famille conserve ses associations.
+Pour QUARTIX, seul le mode **sélection** est utilisé ; aucune exclusion ni valeur « Tout partager par défaut » ne peut élargir les accès. Les kilométrages QUARTIX suivent exclusivement cette famille. Pour les autres familles, en mode **sélection**, les associations stockées désignent les bénéficiaires. En mode **Tout partager par défaut**, elles désignent les exclusions. Le sélecteur affiche dans les deux cas les bénéficiaires effectifs. Changer ce mode inverse l’interprétation des associations existantes : choisir le mode avant de saisir les partages et contrôler les accès après tout changement. Désactiver puis réactiver une famille conserve ses associations.
 
 ## Consultation, droits et documents
 
-Le partage ne donne aucun droit fonctionnel supplémentaire à un utilisateur standard. Le droit de lecture du module reste nécessaire ; les droits de modification, suppression, génération et consultation GPS restent distincts. L’élévation administrateur ne dispense pas des contrôles d’entité et de parent. Les comptes externes n’accèdent pas à ces objets.
+Le partage ne donne aucun droit fonctionnel supplémentaire à un utilisateur standard. Le droit de lecture du module reste nécessaire ; les droits de modification, suppression, génération et consultation GPS restent distincts. Aucune élévation administrateur n’accorde de permission fonctionnelle : les droits sont exigés pour tous les profils, puis les accès aux objets et parents sont contrôlés. Les comptes externes n’accèdent pas à ces objets.
 
 Un contrat flotte partagé reste consultable dans son intégralité, avec ses documents de contrat, même lorsque certains véhicules couverts sont privés. Cette règle n’ouvre pas leurs fiches. Les attestations possèdent leur partage propre, y compris lorsqu’elles sont stockées dans le répertoire du contrat.
 
@@ -37,7 +38,7 @@ Les fichiers restent dans le répertoire documentaire du propriétaire. La lectu
 
 Un dossier composé PDF/ZIP doit encore être autorisé pour chacun des objets et factures qu’il contient. À sa génération, un fichier privé `.sharing.meta` accompagne le dossier et conserve leurs identifiants ainsi que les empreintes des fichiers. Ce fichier n’est ni un stockage de partages ni un document public. Un retrait d’accès à une source invalide le téléchargement du dossier existant ; une nouvelle génération peut produire un dossier limité aux sources restantes. Les anciens dossiers dépourvus de cette information doivent être régénérés pour une consultation inter-entités ou en mode individuel. Cette règle ne peut pas retirer une copie déjà téléchargée.
 
-QUARTIX utilise les associations, paramètres et caches de l’entité propriétaire après autorisation du véhicule. Une entité bénéficiaire consulte les données disponibles mais ne modifie pas les associations, ne lance pas de synchronisation et ne demande pas de nouveaux tracés.
+QUARTIX utilise les associations, paramètres et caches de l’entité collectrice, qui peut différer du propriétaire du véhicule. Les données sont privées par défaut et le propriétaire conserve son historique après retrait du véhicule. Voir le [guide dédié](quartix-ownership.md). Une entité bénéficiaire consulte les données disponibles mais ne modifie pas les associations, ne lance pas de synchronisation et ne demande pas de nouveaux tracés.
 
 ## Intégration native et rôle du filtre métier
 

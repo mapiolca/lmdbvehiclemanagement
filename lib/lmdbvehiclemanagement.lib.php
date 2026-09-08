@@ -91,9 +91,9 @@ function lmdbVehiclePrepareHead($object)
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_regulatory.php', 1).'?id='.$id, $langs->trans('RegulatoryControls'), 'regulatory');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_history.php', 1).'?id='.$id, $langs->trans('VehicleHistory'), 'history');
 	require_once __DIR__.'/../class/lmdbvehiclequartixconfig.class.php';
-	if (LmdbVehicleQuartixConfig::supported() && LmdbVehicleQuartixConfig::can($user, 'read')) {
+	if (LmdbVehicleQuartixConfig::supported() && (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read'))) {
 		$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_quartix.php', 1).'?id='.$id, $langs->trans('QxUsage'), 'quartix');
-		if (LmdbVehicleQuartixConfig::can($user, 'location')) $head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_trips.php', 1).'?id='.$id, $langs->trans('QxJournal'), 'trips');
+		if ($user->hasRight('lmdbvehiclemanagement', 'quartix', 'location')) $head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_trips.php', 1).'?id='.$id, $langs->trans('QxJournal'), 'trips');
 	}
 
 	return $head;

@@ -21,7 +21,7 @@ require_once __DIR__.'/../lib/lmdbvehiclemanagement.lib.php';
 /** @var Translate $langs */
 /** @var User $user */
 $langs->loadLangs(array('admin', 'other', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!LmdbVehicleQuartixConfig::can($user, 'configure')) accessforbidden();
+if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && !empty($user->admin))) accessforbidden();
 $entity = (int) $conf->entity;
 $config = new LmdbVehicleQuartixConfig($db);
 $service = new LmdbVehicleQuartixService($db);
@@ -97,12 +97,12 @@ print load_fiche_titre($langs->trans('QxTitle'), $linkback, 'technic');
 print dol_get_fiche_head(lmdbVehicleManagementAdminPrepareHead(), 'quartix', $langs->trans('QxTitle'), -1, 'car');
 if ($action === 'unlink') {
 	try {
-		$unlinkVehicle = $service->vehicle($vehicleId, 'configure');
+		$unlinkVehicle = $service->dataset($vehicleId);
 		$unlinkLink = $service->link($vehicleId);
 		if ((int) $unlinkVehicle->entity !== $entity || $unlinkLink === null || (int) $unlinkLink->rowid !== $linkId) throw new RuntimeException('QxAssociationChanged');
 		$unlinkOptions = array('reassignment' => $langs->trans('QxUnlinkReassignment'), 'error' => $langs->trans('QxUnlinkError'));
 		$questions = array(array('type' => 'other', 'label' => $langs->trans('QxUnlinkMode'), 'value' => $form->selectarray('unlink_mode', $unlinkOptions, 'reassignment', 0, 0, 0, '', 0, 0, 0, '', 'minwidth200', 1)));
-		print $form->formconfirm($_SERVER['PHP_SELF'].'?vehicle_id='.$vehicleId.'&link_id='.$linkId, $langs->trans('QxUnlink'), $langs->trans('QxUnlinkConfirm', dol_escape_htmltag($unlinkVehicle->ref)), 'confirm_unlink', $questions, 'no', 0);
+		print $form->formconfirm($_SERVER['PHP_SELF'].'?vehicle_id='.$vehicleId.'&link_id='.$linkId, $langs->trans('QxUnlink'), $langs->trans('QxUnlinkConfirm', dol_escape_htmltag($unlinkVehicle->snapshot_vehicle_label)), 'confirm_unlink', $questions, 'no', 0);
 	} catch (Exception $e) {
 		print '<div class="error">'.$langs->trans(LmdbVehicleQuartixCron::safeError($e)).'</div>';
 	}
@@ -143,7 +143,7 @@ $catalogSession = $_SESSION[$sessionKey] ?? array();
 $remoteOptions = is_array($catalogSession) && ($catalogSession['expires'] ?? 0) > dol_now() && isset($catalogSession['options']) && is_array($catalogSession['options']) ? $catalogSession['options'] : array();
 try {
 	$localOptions = array();
-	$vehicles = $service->rows('SELECT v.rowid,v.ref,v.registration_number,v.label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v WHERE v.entity='.$entity.' AND NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l WHERE l.fk_vehicle=v.rowid AND l.entity=v.entity) ORDER BY v.ref');
+	$vehicles = $service->rows('SELECT v.rowid,v.ref,v.registration_number,v.label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').' AND NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l WHERE l.fk_vehicle=v.rowid AND l.entity='.$entity.') ORDER BY v.ref');
 	foreach ($vehicles as $v) $localOptions[(int) $v->rowid] = trim($v->ref.' — '.$v->registration_number.' '.$v->label);
 	if ($remoteOptions && $localOptions) {
 		$timezones = array_combine(DateTimeZone::listIdentifiers(), DateTimeZone::listIdentifiers());
@@ -156,12 +156,12 @@ try {
 		print '</table></div><div class="center"><button class="button" type="submit">'.$langs->trans('QxAssociate').'</button></div></form>';
 	}
 	$mapPage = max(0, GETPOSTINT('page'));
-	$links = $service->rows('SELECT l.*,v.ref FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid=l.fk_vehicle AND v.entity=l.entity WHERE l.entity='.$entity.' ORDER BY v.ref LIMIT 101 OFFSET '.($mapPage * 100));
+	$links = $service->rows('SELECT l.*,q.snapshot_vehicle_label AS ref FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link AS l INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_dataset AS q ON q.rowid=l.fk_quartix AND q.entity=l.entity WHERE l.entity='.$entity.' ORDER BY q.snapshot_vehicle_label LIMIT 101 OFFSET '.($mapPage * 100));
 	print '<div class="div-table-responsive-no-min"><table class="noborder centpercent"><tr class="liste_titre">';
 	foreach (array('Vehicle', 'QxRemoteVehicle', 'QxTimezone', 'QxShiftStart', 'Status', 'QxBackfill', 'Action') as $label) print '<td>'.$langs->trans($label).'</td>';
 	print '</tr>';
 	foreach (array_slice($links, 0, 100) as $link) {
-		print '<tr class="oddeven"><td><a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_quartix.php', 1).'?id='.((int) $link->fk_vehicle).'">'.dol_escape_htmltag($link->ref).'</a></td><td>'.dol_escape_htmltag($remoteOptions[(int) $link->remote_id] ?? $langs->trans('QxAssociatedVehicle')).'</td><td>'.dol_escape_htmltag($link->timezone).'</td><td>'.dol_escape_htmltag($link->shift_start).'</td><td>'.dolGetStatus($langs->trans((int) $link->active ? 'Enabled' : 'Disabled'), '', '', (int) $link->active ? 'status4' : 'status5', 5).'</td><td>'.(!empty($link->usage_cursor) ? dol_print_date($db->jdate($link->usage_cursor), 'day') : $langs->trans('QxPending')).'</td><td>';
+		print '<tr class="oddeven"><td><a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_quartix.php', 1).'?id='.((int) $link->fk_vehicle).'&amp;quartix_id='.(int) $link->fk_quartix.'">'.dol_escape_htmltag($link->ref).'</a></td><td>'.dol_escape_htmltag($remoteOptions[(int) $link->remote_id] ?? $langs->trans('QxAssociatedVehicle')).'</td><td>'.dol_escape_htmltag($link->timezone).'</td><td>'.dol_escape_htmltag($link->shift_start).'</td><td>'.dolGetStatus($langs->trans((int) $link->active ? 'Enabled' : 'Disabled'), '', '', (int) $link->active ? 'status4' : 'status5', 5).'</td><td>'.(!empty($link->usage_cursor) ? dol_print_date($db->jdate($link->usage_cursor), 'day') : $langs->trans('QxPending')).'</td><td>';
 		print '<a class="reposition" href="'.$_SERVER['PHP_SELF'].'?action=setactive&amp;token='.newToken().'&amp;vehicle_id='.((int) $link->fk_vehicle).'&amp;active='.((int) $link->active ? 0 : 1).'" aria-label="'.dol_escape_htmltag($langs->trans((int) $link->active ? 'Disable' : 'Enable')).'">'.img_picto($langs->trans((int) $link->active ? 'Enabled' : 'Disabled'), (int) $link->active ? 'switch_on' : 'switch_off').'</a>';
 		print ' <a class="reposition marginleftonly" href="'.$_SERVER['PHP_SELF'].'?action=unlink&amp;token='.newToken().'&amp;vehicle_id='.((int) $link->fk_vehicle).'&amp;link_id='.((int) $link->rowid).'">'.img_picto($langs->trans('QxUnlink'), 'unlink').' '.$langs->trans('QxUnlink').'</a></td></tr>';
 	}

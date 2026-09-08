@@ -341,11 +341,12 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	 */
 	public function delete(User $user, $notrigger = 0)
 	{
+		global $conf;
 		require_once __DIR__.'/lmdbvehiclequartixservice.class.php';
 		$quartix = new LmdbVehicleQuartixService($this->db);
 		try { $owner = $quartix->vehicle((int) $this->id); }
 		catch (Exception $e) { $this->error = 'QxAccessDenied'; return -1; }
-		if ((int) $owner->entity !== (int) $this->entity || !LmdbVehicleQuartixConfig::can($user, 'configure') && !LmdbVehicleSharing::can($user, '', 'delete')) { $this->error = 'QxAccessDenied'; return -1; }
+		if ((int) $owner->entity !== (int) $this->entity || (int) $owner->entity !== (int) $conf->entity || !$user->hasRight('lmdbvehiclemanagement', 'delete')) { $this->error = 'QxAccessDenied'; return -1; }
 		if (!$quartix->lock((int) $this->entity)) { $this->error = 'QxBusy'; return -1; }
 		try {
 			$tables = array(

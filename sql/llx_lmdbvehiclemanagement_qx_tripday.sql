@@ -1,6 +1,7 @@
 CREATE TABLE llx_lmdbvehiclemanagement_qx_tripday (
 	rowid integer AUTO_INCREMENT PRIMARY KEY,
 	entity integer DEFAULT 1 NOT NULL,
+	fk_quartix integer DEFAULT NULL,
 	fk_vehicle integer NOT NULL,
 	source_link_id integer NOT NULL,
 	remote_id integer NOT NULL,

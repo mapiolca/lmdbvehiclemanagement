@@ -31,7 +31,7 @@ if (!LmdbVehicleSharing::available()) {
 		print '<tr class="oddeven"><td>'.$langs->trans($definition['label']).'</td><td>';
 		// Same global flags/endpoint as native Multicompany granularity, including CSRF.
 		print ajax_mcconstantonoff('MULTICOMPANY_'.strtoupper($element).'_SHARING_BYELEMENT_ENABLED', array(), 0, 0, 0, 1);
-		print '</td><td>'.ajax_mcconstantonoff('MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT', array(), 0, 0, 0, 1).'</td></tr>';
+		print '</td><td>'.($element === 'lmdbvehiclequartix' ? $langs->trans('QxSelectionOnly') : ajax_mcconstantonoff('MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT', array(), 0, 0, 0, 1)).'</td></tr>';
 	}
 	print '</table></div>';
 }
