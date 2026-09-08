@@ -73,8 +73,8 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 	/** @var ?string */ public $last_main_doc;
 
 	/** Date and mileage are transient proxies for the owned odometer reading. */
-	/** @var int */ public $reading_date = 0;
-	/** @var float */ public $odometer_km = 0.0;
+	/** @var int|null */ public $reading_date = 0;
+	/** @var float|null */ public $odometer_km = 0.0;
 	/** @var string */ public $reading_kind = 'standard';
 	/** @var ?string */ public $reading_reason;
 
@@ -94,10 +94,13 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		}
 		if ($result > 0 && (int) $this->fk_odometer_reading > 0) {
 			$reading = new LmdbVehicleOdometerReading($this->db);
-			if ($reading->fetch((int) $this->fk_odometer_reading) <= 0) {
-				$this->error = $reading->error ?: 'InvalidOdometerReading';
-				$this->errors = $reading->errors;
-				return -1;
+			$readingResult = $reading->fetch((int) $this->fk_odometer_reading);
+			if ($readingResult < 0) { $this->error = $reading->error; $this->errors = $reading->errors; return $readingResult; }
+			if ($readingResult === 0) {
+				// Sharing a consumption does not grant access to its separate odometer record.
+				$this->reading_date = null; $this->odometer_km = null;
+				$this->reading_kind = ''; $this->reading_reason = null;
+				return $result;
 			}
 			$this->reading_date = (int) $reading->reading_date;
 			$this->odometer_km = (float) $reading->odometer_km;
@@ -218,8 +221,8 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 	{
 		global $conf, $langs;
 
-		$sql = 'SELECT entity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle';
-		$sql .= ' WHERE rowid = '.((int) $this->fk_vehicle).' AND entity IN ('.getEntity('lmdbvehicle').')';
+		$sql = 'SELECT entity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS sv';
+		$sql .= ' WHERE rowid = '.((int) $this->fk_vehicle).' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'sv');
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			$this->error = $this->db->lasterror();
@@ -434,7 +437,7 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		$sql = 'SELECT c.fk_consumable FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption AS c';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading AS r ON r.rowid = c.fk_odometer_reading AND r.entity = c.entity';
 		$sql .= " WHERE c.fk_vehicle = ".((int) $vehicleId)." AND c.category_snapshot = 'fuel'";
-		$sql .= ' AND c.entity IN ('.getEntity('lmdbvehicleconsumption').') ORDER BY r.reading_date DESC, c.rowid DESC LIMIT 1';
+		$sql .= ' AND '.LmdbVehicleSharing::sql($db, 'lmdbvehicleconsumption', 'c').' AND '.LmdbVehicleSharing::sql($db, 'lmdbvehicleodometerreading', 'r').' ORDER BY r.reading_date DESC, c.rowid DESC LIMIT 1';
 		$resql = $db->query($sql);
 		if ($resql && is_object($row = $db->fetch_object($resql))) {
 			$id = (int) $row->fk_consumable;

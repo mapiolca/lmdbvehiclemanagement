@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -20,9 +21,9 @@ $id = GETPOSTINT('id');
 $assignmentId = GETPOSTINT('assignment_id');
 $action = GETPOST('action', 'aZ09');
 $confirm = GETPOST('confirm', 'alpha');
-$permissionToManage = $user->hasRight('lmdbvehiclemanagement', 'assignment', 'write');
+$permissionToManage = LmdbVehicleSharing::can($user, 'assignment', 'write');
 $vehicle = new LmdbVehicle($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 
 $assignment = new LmdbVehicleAssignment($db);
@@ -51,6 +52,8 @@ function lmdbVehicleAssignmentPopulateFromPost($target, $vehicleId)
 	$target->reason = GETPOST('reason', 'alphanohtml') ?: null;
 	$target->status = GETPOSTINT('status') === 1 ? LmdbVehicleAssignment::STATUS_ACTIVE : LmdbVehicleAssignment::STATUS_INACTIVE;
 }
+
+if ($assignmentId > 0) lmdbSharingAction($assignment);
 
 if ($action === 'add') {
 	if (!$permissionToManage) accessforbidden();
@@ -88,6 +91,7 @@ if ($action === 'delete' && $assignmentId > 0) {
 $head = lmdbVehiclePrepareHead($vehicle);
 print dol_get_fiche_head($head, 'assignments', $langs->trans('Vehicle'), -1, $vehicle->picto);
 lmdbVehiclePrintBanner($vehicle);
+if ($assignmentId > 0) lmdbSharingRender($assignment);
 
 if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
 	print '<form class="lmdb-responsive-form" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
@@ -120,6 +124,7 @@ if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
 		$driverLink = $driver->id > 0 ? $driver->getNomUrl(1) : '';
 		print '<tr class="oddeven" id="assignment-'.((int) $record->id).'"><td>'.$driverLink.'</td><td>'.dol_print_date($record->date_start, 'dayhour').'</td><td>'.($record->date_end ? dol_print_date($record->date_end, 'dayhour') : '').'</td>';
 		print '<td>'.$langs->trans($record->fields['assignment_type']['arrayofkeyval'][$record->assignment_type]).'</td><td class="center">'.$langs->trans($record->is_primary ? 'Yes' : 'No').'</td><td class="center">'.$record->getLibStatut(5).'</td><td class="nowraponall">';
+		print lmdbSharingLink($record);
 		if ($permissionToManage) {
 			print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&assignment_id='.$record->id.'&action=edit">'.img_edit().'</a> ';
 			print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&assignment_id='.$record->id.'&action=delete&token='.newToken().'">'.img_delete().'</a>';

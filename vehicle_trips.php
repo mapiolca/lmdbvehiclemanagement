@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -18,7 +19,7 @@ $langs->loadLangs(array('other', 'lmdbvehiclemanagement@lmdbvehiclemanagement'))
 // Tile requests originate from the journal now; disclose only its origin as referrer.
 header('Referrer-Policy: strict-origin');
 if (!LmdbVehicleQuartixConfig::supported() || !isModEnabled('lmdbvehiclemanagement') || !empty($user->socid)
-	|| !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'quartix', 'location')) accessforbidden();
+	|| !LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, 'quartix', 'location')) accessforbidden();
 $id = GETPOSTINT('id');
 $service = new LmdbVehicleQuartixTrips($db);
 try {

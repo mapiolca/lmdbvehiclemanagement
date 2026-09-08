@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -14,7 +15,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 
 /** @var Conf $conf */ /** @var DoliDB $db */ /** @var HookManager $hookmanager */ /** @var Translate $langs */ /** @var User $user */
 $langs->loadLangs(array('main', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 
 $limit = GETPOSTINT('limit') ?: (int) $conf->liste_limit;
 $page = GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page');
@@ -62,7 +63,7 @@ include DOL_DOCUMENT_ROOT.'/core/actions_changeselectedfields.inc.php';
 $resultOptions = array();
 $resql = $db->query('SELECT code, label FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_control_result WHERE entity IN ('.getEntity('c_lmdbvehiclemanagement_control_result').') AND active = 1 ORDER BY position');
 if ($resql) { while (is_object($row = $db->fetch_object($resql))) $resultOptions[(string) $row->code] = $langs->trans((string) $row->label); $db->free($resql); }
-$where = ' WHERE t.entity IN ('.$entityScope.')';
+$where = ' WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicleregulatorycontrol', 't');
 if ($searchRef !== '') $where .= natural_search('t.ref', $searchRef);
 if ($searchVehicle !== '') $where .= natural_search(array('v.ref', 'v.registration_number', 'v.label'), $searchVehicle);
 if ($searchRule !== '') $where .= natural_search('r.label', $searchRule);
@@ -86,7 +87,7 @@ foreach (array('search_ref' => $searchRef, 'search_vehicle' => $searchVehicle, '
 if ($searchStatus >= 0) $param .= '&search_status='.$searchStatus;
 foreach ($searchEntities as $entityId) $param .= '&search_entity[]='.((int) $entityId);
 print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="formfilteraction" id="formfilteraction" value="list"><input type="hidden" name="action" value="list"><input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'"><input type="hidden" name="page" value="'.$page.'">';
-$newButton = dolGetButtonTitle($langs->trans('NewRegulatoryControl'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&token='.newToken(), '', $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write'));
+$newButton = dolGetButtonTitle($langs->trans('NewRegulatoryControl'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&token='.newToken(), '', LmdbVehicleSharing::can($user, 'regulatorycontrol', 'write'));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'clipboard-check', 0, $newButton, '', $limit, 0, 0, 1);
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, $conf->main_checkbox_left_column);

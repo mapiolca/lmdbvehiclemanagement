@@ -22,8 +22,10 @@ foreach (array(
 	$user->rights = (object) array('lmdbvehiclemanagement' => (object) array('read' => $values[2]));
 	foreach ($readMenus as $menu) {
 		$result = dol_eval($menu['perms'], 1, 1, '1');
+		// Native menus apply their user=0 audience outside the permission expression.
+		if (!is_string($result)) $result = (bool) $result && (empty($user->socid) || $menu['user'] !== 0);
 		qxCheck(!is_string($result) && (bool) $result === $values[3], 'Native menu evaluation: '.$menu['titre'].' / '.$profile);
-		qxCheck((bool) verifCond($menu['perms']) === LmdbVehicleQuartixConfig::can($user, 'read'), 'Menu and server agree: '.$menu['titre'].' / '.$profile);
+		qxCheck(((bool) verifCond($menu['perms']) && (empty($user->socid) || $menu['user'] !== 0)) === LmdbVehicleQuartixConfig::can($user, 'read'), 'Menu and server agree: '.$menu['titre'].' / '.$profile);
 	}
 }
 $user = $menuUser;

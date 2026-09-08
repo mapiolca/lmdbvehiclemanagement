@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../../class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -365,7 +366,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 101,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "lmdbvehicle", "write")',
+			'perms' => '$user->admin || $user->hasRight("lmdbvehiclemanagement", "lmdbvehicle", "write")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -379,7 +380,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 102,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -393,7 +394,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 103,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -417,7 +418,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 200,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -431,7 +432,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 201,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -445,7 +446,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 202,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "write")',
+			'perms' => '$user->admin || $user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "write")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -459,7 +460,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 203,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -474,7 +475,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 300,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -488,7 +489,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 301,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "consumption", "write")',
+			'perms' => '$user->admin || $user->hasRight("lmdbvehiclemanagement", "consumption", "write")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -502,7 +503,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 302,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -517,7 +518,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 400,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -531,7 +532,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 401,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "insurance", "write")',
+			'perms' => '$user->admin || $user->hasRight("lmdbvehiclemanagement", "insurance", "write")',
 			'target' => '',
 			'user' => 0,
 		);
@@ -545,7 +546,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 			'langs' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
 			'position' => 402,
 			'enabled' => 'isModEnabled("lmdbvehiclemanagement")',
-			'perms' => '$user->hasRight("lmdbvehiclemanagement", "read")',
+			'perms' => $vehicleReadMenuPermission,
 			'target' => '',
 			'user' => 0,
 		);
@@ -564,7 +565,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->export_code[$r] = 'lmdbvehiclemanagement_vehicles';
 		$this->export_label[$r] = 'VehicleExportDataset';
 		$this->export_icon[$r] = 'car';
-		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && $user->hasRight("lmdbvehiclemanagement", "lmdbvehicle", "export")';
+		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && ($user->admin || $user->hasRight("lmdbvehiclemanagement", "lmdbvehicle", "export"))';
 		$this->export_permission[$r] = array(array('lmdbvehiclemanagement', 'lmdbvehicle', 'export'));
 		$this->export_fields_array[$r] = array(
 			't.ref' => 'Ref',
@@ -631,13 +632,13 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_asset_type AS asset ON asset.rowid = t.fk_asset_type';
 		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy AS energy ON energy.rowid = t.fk_energy';
 		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'societe AS owner ON owner.rowid = t.fk_soc_owner';
-		$this->export_sql_end[$r] .= ' WHERE t.entity IN ('.getEntity('lmdbvehicle').')';
+		$this->export_sql_end[$r] .= ' WHERE '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 't');
 
 		$r++;
 		$this->export_code[$r] = 'lmdbvehiclemanagement_consumptions';
 		$this->export_label[$r] = 'ConsumptionExportDataset';
 		$this->export_icon[$r] = 'gas-pump';
-		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && $user->hasRight("lmdbvehiclemanagement", "consumption", "export")';
+		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && ($user->admin || $user->hasRight("lmdbvehiclemanagement", "consumption", "export"))';
 		$this->export_permission[$r] = array(array('lmdbvehiclemanagement', 'consumption', 'export'));
 		$this->export_fields_array[$r] = array(
 			't.ref' => 'Ref', 'r.reading_date' => 'Date', 'v.ref' => 'VehicleRef', 'v.registration_number' => 'RegistrationNumber',
@@ -654,17 +655,17 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->export_entities_array[$r] = array_fill_keys(array_keys($this->export_fields_array[$r]), 'lmdbvehicleconsumption');
 		$this->export_sql_start[$r] = 'SELECT DISTINCT ';
 		$this->export_sql_end[$r] = ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption AS t';
-		$this->export_sql_end[$r] .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading AS r ON r.rowid = t.fk_odometer_reading AND r.entity = t.entity';
+		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading AS r ON r.rowid = t.fk_odometer_reading AND r.entity = t.entity AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicleodometerreading', 'r');
 		$this->export_sql_end[$r] .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND v.entity = t.entity';
 		$this->export_sql_end[$r] .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c ON c.rowid = t.fk_consumable';
 		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user AS u ON u.rowid = COALESCE(t.fk_user_driver, t.fk_user_creat)';
-		$this->export_sql_end[$r] .= ' WHERE t.entity IN ('.getEntity('lmdbvehicleconsumption').')';
+		$this->export_sql_end[$r] .= ' WHERE '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicleconsumption', 't');
 
 		$r++;
 		$this->export_code[$r] = 'lmdbvehiclemanagement_regulatory_controls';
 		$this->export_label[$r] = 'RegulatoryControlExportDataset';
 		$this->export_icon[$r] = 'clipboard-check';
-		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && $user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "export")';
+		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && ($user->admin || $user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "export"))';
 		$this->export_permission[$r] = array(array('lmdbvehiclemanagement', 'regulatorycontrol', 'export'));
 		$this->export_fields_array[$r] = array(
 			't.ref' => 'Ref', 't.control_date' => 'RegulatoryControlDate', 'v.ref' => 'VehicleRef', 'v.registration_number' => 'RegistrationNumber',
@@ -692,13 +693,13 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'societe AS s ON s.rowid = t.fk_soc_provider';
 		$this->export_sql_end[$r] .= ' LEFT JOIN (SELECT vp.entity, vp.fk_vehicle, GROUP_CONCAT(profile.code ORDER BY profile.code SEPARATOR 0x2C20) AS profile_codes FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_regulatory_profile AS vp INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_regulatory_profile AS profile ON profile.rowid = vp.fk_profile WHERE vp.confirmed = 1 GROUP BY vp.entity, vp.fk_vehicle) AS profiles ON profiles.entity = t.entity AND profiles.fk_vehicle = t.fk_vehicle';
 		$this->export_sql_end[$r] .= ' LEFT JOIN (SELECT answer.entity, answer.fk_vehicle, GROUP_CONCAT(CONCAT(question.code, 0x3D, choice_answer.code, IF(answer.applicable_since IS NULL, 0x20, CONCAT(0x40, answer.applicable_since))) ORDER BY question.position SEPARATOR 0x3B20) AS qualification_answers FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_regulatory_answer AS answer INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_regulatory_question AS question ON question.rowid = answer.fk_question AND question.entity = answer.entity INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_regulatory_question_choice AS choice_answer ON choice_answer.rowid = answer.fk_choice AND choice_answer.entity = answer.entity GROUP BY answer.entity, answer.fk_vehicle) AS answers ON answers.entity = t.entity AND answers.fk_vehicle = t.fk_vehicle';
-		$this->export_sql_end[$r] .= ' WHERE t.entity IN ('.getEntity('lmdbvehicleregulatorycontrol').')';
+		$this->export_sql_end[$r] .= ' WHERE '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicleregulatorycontrol', 't');
 
 		$r++;
 		$this->export_code[$r] = 'lmdbvehiclemanagement_safety_register';
 		$this->export_label[$r] = 'RegulatorySafetyRegisterExportDataset';
 		$this->export_icon[$r] = 'shield-alt';
-		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && $user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "export")';
+		$this->export_enabled[$r] = 'isModEnabled("lmdbvehiclemanagement") && ($user->admin || $user->hasRight("lmdbvehiclemanagement", "regulatorycontrol", "export"))';
 		$this->export_permission[$r] = array(array('lmdbvehiclemanagement', 'regulatorycontrol', 'export'));
 		$this->export_fields_array[$r] = array(
 			'v.ref' => 'VehicleRef', 'v.registration_number' => 'RegistrationNumber', 'v.label' => 'Label', 'asset.label' => 'AssetType',
@@ -729,7 +730,7 @@ class modLmdbVehicleManagement extends DolibarrModules
 		$this->export_sql_end[$r] .= ' LEFT JOIN '.MAIN_DB_PREFIX.'societe AS s ON s.rowid = t.fk_soc_provider';
 		$this->export_sql_end[$r] .= ' LEFT JOIN (SELECT vp.entity, vp.fk_vehicle, GROUP_CONCAT(profile.code ORDER BY profile.code SEPARATOR 0x2C20) AS profile_codes FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_regulatory_profile AS vp INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_regulatory_profile AS profile ON profile.rowid = vp.fk_profile WHERE vp.confirmed = 1 GROUP BY vp.entity, vp.fk_vehicle) AS profiles ON profiles.entity = t.entity AND profiles.fk_vehicle = t.fk_vehicle';
 		$this->export_sql_end[$r] .= ' LEFT JOIN (SELECT answer.entity, answer.fk_vehicle, GROUP_CONCAT(CONCAT(question.code, 0x3D, choice_answer.code, IF(answer.applicable_since IS NULL, 0x20, CONCAT(0x40, answer.applicable_since))) ORDER BY question.position SEPARATOR 0x3B20) AS qualification_answers FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_regulatory_answer AS answer INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_regulatory_question AS question ON question.rowid = answer.fk_question AND question.entity = answer.entity INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_regulatory_question_choice AS choice_answer ON choice_answer.rowid = answer.fk_choice AND choice_answer.entity = answer.entity GROUP BY answer.entity, answer.fk_vehicle) AS answers ON answers.entity = t.entity AND answers.fk_vehicle = t.fk_vehicle';
-		$this->export_sql_end[$r] .= ' WHERE t.entity IN ('.getEntity('lmdbvehicleregulatorycontrol').') AND t.status IN (1, 2, 3)';
+		$this->export_sql_end[$r] .= ' WHERE '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicleregulatorycontrol').' AND t.status IN (1, 2, 3)';
 
 		$this->import_code = array();
 		$this->import_label = array();
@@ -1029,6 +1030,11 @@ class modLmdbVehicleManagement extends DolibarrModules
 			}
 		}
 
+		dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclesharingmigration.class.php');
+		if (LmdbVehicleSharingMigration::run($this->db) < 0) {
+			$this->error = 'LmdbSharingDatabaseError';
+			return -1;
+		}
 		if ($this->mergeMulticompanySharingDefinition((int) $conf->entity) < 0) {
 			return -1;
 		}

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 /** Hooks restricted to the native invoice and the two vehicle source cards. */
@@ -17,7 +18,7 @@ trait LmdbVehicleSupplierInvoiceHooks
 		if (!isModEnabled('lmdbvehiclemanagement')) return 0;
 		if ($object instanceof LmdbVehicle && $action === 'builddoc') {
 			require_once __DIR__.'/lmdbvehicledossier.class.php';
-			if (!$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) accessforbidden();
+			if (!LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) accessforbidden();
 			$langs->load('main');
 			if ($object->generateDocument(GETPOST('model', 'aZ09'), $langs) > 0) setEventMessages($langs->trans('FileGenerated'), null, 'mesgs');
 			else setEventMessages($object->error, $object->errors, 'errors');
@@ -36,7 +37,7 @@ trait LmdbVehicleSupplierInvoiceHooks
 			if ($object instanceof FactureFournisseur && $action === 'add' && ($type !== '' || $sourceId > 0)) {
 				$source = $service->fetchSource($type, $sourceId);
 				$right = $source instanceof LmdbVehicleEvent ? 'event' : 'regulatorycontrol';
-				if (!LmdbVehicleManagementCompatibility::isFeatureAvailable('supplier_invoice_links') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', $right, 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !$user->hasRight('fournisseur', 'facture', 'creer') || !empty($user->socid)) throw new RuntimeException('NotEnoughPermissions');
+				if (!LmdbVehicleManagementCompatibility::isFeatureAvailable('supplier_invoice_links') || !LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, $right, 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !$user->hasRight('fournisseur', 'facture', 'creer') || !empty($user->socid)) throw new RuntimeException('NotEnoughPermissions');
 				if ((int) $source->entity !== (int) $conf->entity) throw new RuntimeException('LmdbInvoiceSameEntity');
 				$object->context['lmdb_invoice_source'] = array('type' => $type, 'id' => $sourceId);
 				return 0; // Core creates the draft; BILL_SUPPLIER_CREATE links before commit.
@@ -111,7 +112,7 @@ trait LmdbVehicleSupplierInvoiceHooks
 		$this->resprints = '';
 		if (!($object instanceof LmdbVehicleEvent) && !($object instanceof LmdbVehicleRegulatoryControl)) return 0;
 		$right = $object instanceof LmdbVehicleEvent ? 'event' : 'regulatorycontrol';
-		if (!LmdbVehicleManagementCompatibility::isFeatureAvailable('supplier_invoice_links') || (int) $object->entity !== (int) $conf->entity || !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', $right, 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !$user->hasRight('fournisseur', 'facture', 'creer') || !empty($user->socid)) return 0;
+		if (!LmdbVehicleManagementCompatibility::isFeatureAvailable('supplier_invoice_links') || (int) $object->entity !== (int) $conf->entity || !LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, $right, 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !$user->hasRight('fournisseur', 'facture', 'creer') || !empty($user->socid)) return 0;
 		$type = $object instanceof LmdbVehicleEvent ? 'event' : 'control';
 		$supplierId = (int) ($type === 'event' ? $object->fk_soc : $object->fk_soc_provider);
 		$url = DOL_URL_ROOT.'/fourn/facture/card.php?action=create&lmdb_source_type='.$type.'&lmdb_source_id='.((int) $object->id);
@@ -137,12 +138,12 @@ trait LmdbVehicleSupplierInvoiceHooks
 	{
 		global $conf, $user, $langs;
 		$this->results = array();
-		if ($object->element !== 'invoice_supplier' || !LmdbVehicleManagementCompatibility::isFeatureAvailable('supplier_invoice_links') || (int) $object->entity !== (int) $conf->entity || !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || !$user->hasRight('fournisseur', 'facture', 'creer') || !empty($user->socid)) return 0;
+		if ($object->element !== 'invoice_supplier' || !LmdbVehicleManagementCompatibility::isFeatureAvailable('supplier_invoice_links') || (int) $object->entity !== (int) $conf->entity || !LmdbVehicleSharing::can($user, '', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || !$user->hasRight('fournisseur', 'facture', 'creer') || !empty($user->socid)) return 0;
 		$langs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
 		foreach (array('event' => array('vehicle_event', 'lmdbvehicleevent', 'VehicleEvent'), 'regulatorycontrol' => array('regulatory_control', 'lmdbvehicleregulatorycontrol', 'RegulatoryControl')) as $right => $definition) {
-			if (!$user->hasRight('lmdbvehiclemanagement', $right, 'write')) continue;
+			if (!LmdbVehicleSharing::can($user, $right, 'write')) continue;
 			$this->results['lmdbvehiclemanagement_'.$definition[1]] = array('enabled' => true, 'perms' => true, 'label' => $definition[2],
-				'sql' => 'SELECT t.rowid, t.ref, 0 AS socid, v.label AS name, 0 AS client, 0 AS fournisseur, NULL AS ref_supplier, NULL AS total_ht FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$definition[0].' t INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle v ON v.rowid = t.fk_vehicle AND v.entity IN ('.getEntity('lmdbvehicle').') WHERE t.entity = '.((int) $conf->entity).' ORDER BY t.ref');
+				'sql' => 'SELECT t.rowid, t.ref, 0 AS socid, v.label AS name, 0 AS client, 0 AS fournisseur, NULL AS ref_supplier, NULL AS total_ht FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$definition[0].' t INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle v ON v.rowid = t.fk_vehicle AND v.entity IN ('.getEntity('lmdbvehicle').') WHERE t.entity = '.((int) $conf->entity).' AND '.LmdbVehicleSharing::sql($this->db, $definition[1]).' ORDER BY t.ref');
 		}
 		return 0;
 	}

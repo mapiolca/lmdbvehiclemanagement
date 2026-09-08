@@ -2,6 +2,9 @@
 
 ## À publier
 
+- Partage individuel Multicompany 21+ des véhicules, contrats, attestations, contrôles, consommations, événements, affectations et relevés, administré depuis l’entité propriétaire avec le sélecteur et les associations natifs. Les nouveaux périmètres reprennent leur configuration historique sans écraser les choix existants ; le mode individuel doit être activé explicitement après déploiement et réactivation du module.
+- Accès aux listes, parents, infobulles, exports, historiques et documents harmonisés avec ces partages. Les contrats flotte partagés restent consultables intégralement ; les attestations et fiches véhicule conservent leurs propres restrictions. Les dossiers PDF/ZIP générés vérifient leurs objets sources à chaque téléchargement ; les anciens dossiers doivent être régénérés pour être consultés dans le nouveau périmètre individuel. QUARTIX reste en consultation depuis les entités bénéficiaires.
+
 - Intégration continue : remplacement du workflow Composer inadapté au module par une vérification de syntaxe et les sept suites autonomes, dont les imports et leurs transactions, sur PHP 8.0 et 8.5.
 
 - Import véhicules : toutes les capacités du dictionnaire actif sont importables en création et mise à jour, dont les batteries en kWh et les fluides. Unités et compatibilité énergétique contrôlées, cellules vides conservées et zéro explicite pour effacer une capacité. Enregistrement transactionnel avec le véhicule, simulation annulée et événement CRUD unique après les capacités en mode normal. Relancer l’assistant après déploiement pour actualiser les colonnes ; aucune migration SQL supplémentaire.

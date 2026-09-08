@@ -213,9 +213,9 @@ class LmdbVehicleEvent extends LmdbVehicleManagementObject
 	/** @return int<-1,1> */
 	private function loadVehicleEntity()
 	{
-		$sql = 'SELECT entity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle';
+		$sql = 'SELECT entity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS sv';
 		$sql .= ' WHERE rowid = '.((int) $this->fk_vehicle);
-		$sql .= ' AND entity IN ('.getEntity('lmdbvehicle').')';
+		$sql .= ' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'sv');
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			$this->error = $this->db->lasterror();

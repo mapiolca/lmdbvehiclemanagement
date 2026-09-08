@@ -60,6 +60,8 @@ final class ConsumptionPriceDb
 	public function free($result) {}
 	/** @param string $value Input @return string */
 	public function escape($value) { return str_replace("'", "''", $value); }
+	/** @param string $value Trusted test scope @return string */
+	public function sanitize($value) { return $value; }
 	/** @param string $value Date @return int */
 	public function jdate($value) { return (int) strtotime($value); }
 	/** @return string */
@@ -144,7 +146,7 @@ foreach (array(null, '0', '25') as $amount) {
 		'capacity' => null, 'driver_firstname' => null, 'driver_lastname' => null, 'driver_login' => null);
 }
 // A requested entity filter is intersected with the accessible scope, never substituted for it.
-$db->expect('/^SELECT .*r.entity = t.entity.*v.entity = t.entity.*cap.entity = t.entity.*WHERE t.entity IN \(1\) AND t.fk_vehicle = 1 AND t.category_snapshot = \'additive\' AND t.entity IN \(1,2\) ORDER BY /', $fetchedRows);
+$db->expect('/^SELECT .*r.entity = t.entity.*v.entity = t.entity.*cap.entity = t.entity.*WHERE \(t.entity IN \(1\).*r.entity IN \(1\).* AND t.fk_vehicle = 1 AND t.category_snapshot = \'additive\' AND t.entity IN \(1,2\) ORDER BY /', $fetchedRows);
 $loaded = $stats->fetchRows(array('vehicle_id' => 1, 'category' => 'additive', 'entity_ids' => array(1, 2)));
 checkPrice(is_array($loaded) && $loaded[0]['total_ttc'] === null && $loaded[1]['total_ttc'] === 0.0 && $loaded[2]['total_ttc'] === 25.0, 'SQL loading preserves unknown, zero and positive price');
 
@@ -178,7 +180,7 @@ foreach (array('additive', 'fuel') as $category) {
 		$object->total_ttc = $input;
 		$object->category_snapshot = $category === 'fuel' ? 'additive' : 'fuel'; // Ignore submitted category.
 		$consumable->category = $category;
-		$db->expect('/^SELECT entity .*WHERE rowid = 1 AND entity IN \(1\)$/', array((object) array('entity' => 1)));
+		$db->expect('/^SELECT entity .*WHERE rowid = 1 AND \(sv.entity IN \(1\)\)$/', array((object) array('entity' => 1)));
 		$db->expect('/^SELECT rowid, entity, code, label, category, unit, requires_oil_reference, active .*WHERE rowid = 2 AND entity IN \(1\)$/', array(clone $consumable));
 		if ($category === 'fuel') $db->expect('/^SELECT 1 .*v.entity = 1.*ce.entity IN \(1\) LIMIT 1$/', array((object) array('found' => 1)));
 		$result = $validate->invoke($object);
@@ -202,7 +204,7 @@ foreach (array('additive', 'fuel') as $category) {
 $object = new LmdbVehicleConsumption($db);
 $object->entity = 1;
 $object->fk_vehicle = 1;
-$db->expect('/^SELECT entity .*entity IN \(1\)$/', array((object) array('entity' => 2)));
+$db->expect('/^SELECT entity .*\(sv.entity IN \(1\)\)$/', array((object) array('entity' => 2)));
 checkPrice($validate->invoke($object) === -1 && $object->error === 'CannotMoveObjectBetweenEntities', 'Cross-entity consumption refused before price handling');
 
 $conf->global->MAIN_MAX_DECIMALS_TOT = 3;
@@ -213,7 +215,7 @@ $object->fk_vehicle = 1;
 $object->fk_consumable = 2;
 $object->total_ttc = '25.1239';
 $consumable->category = 'additive';
-$db->expect('/^SELECT entity .*entity IN \(1\)$/', array((object) array('entity' => 1)));
+$db->expect('/^SELECT entity .*\(sv.entity IN \(1\)\)$/', array((object) array('entity' => 1)));
 $db->expect('/^SELECT rowid, entity, code, label, category, unit, requires_oil_reference, active .*entity IN \(1\)$/', array(clone $consumable));
 checkPrice($validate->invoke($object) === 1 && $object->total_ttc === (float) price2num('25.1239', 'MT') && $object->total_ttc === 25.124, 'Total follows native precision setting');
 checkPrice($object->getUnitPrice() === (float) price2num(25.124 / 7, 'MU') && $object->getUnitPrice() === 3.59, 'Unit price follows native precision setting');

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -20,9 +21,9 @@ $id = GETPOSTINT('id');
 $readingId = GETPOSTINT('reading_id');
 $action = GETPOST('action', 'aZ09');
 $confirm = GETPOST('confirm', 'alpha');
-$permissionToManage = $user->hasRight('lmdbvehiclemanagement', 'odometer', 'write');
+$permissionToManage = LmdbVehicleSharing::can($user, 'odometer', 'write');
 $vehicle = new LmdbVehicle($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 
 $reading = new LmdbVehicleOdometerReading($db);
@@ -48,6 +49,8 @@ function lmdbVehicleOdometerPopulateFromPost($target, $vehicleId)
 	$target->reading_kind = GETPOST('reading_kind', 'alpha');
 	$target->reason = GETPOST('reason', 'alphanohtml') ?: null;
 }
+
+if ($readingId > 0) lmdbSharingAction($reading);
 
 if ($action === 'add') {
 	if (!$permissionToManage) accessforbidden();
@@ -85,6 +88,7 @@ if ($action === 'delete' && $readingId > 0) {
 $head = lmdbVehiclePrepareHead($vehicle);
 print dol_get_fiche_head($head, 'odometer', $langs->trans('Vehicle'), -1, $vehicle->picto);
 lmdbVehiclePrintBanner($vehicle);
+if ($readingId > 0) lmdbSharingRender($reading);
 
 if ($permissionToManage && !$reading->is_estimate && ($action === 'create' || $action === 'edit')) {
 	print '<form class="lmdb-responsive-form" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
@@ -132,6 +136,7 @@ if ($permissionToManage && !$reading->is_estimate && ($action === 'create' || $a
 		}
 		print '<tr class="oddeven" id="odometer-'.((int) $record->id).'"><td>'.dol_print_date($record->reading_date, 'dayhour').'</td><td class="right">'.price($record->odometer_km, 0, $langs, 1, -1, -1).' km</td><td class="right nowraponall">'.$differenceHtml.'</td>';
 		print '<td>'.($record->is_estimate ? dolGetStatus($langs->trans($record->estimate_conflict ? 'QxEstimateConflict' : 'QxEstimate'), '', '', $record->estimate_conflict ? 'status8' : 'status1', 5) : $langs->trans($record->fields['source']['arrayofkeyval'][$record->source])).'</td><td>'.$langs->trans($record->fields['reading_kind']['arrayofkeyval'][$record->reading_kind]).'</td><td>'.dol_htmlentitiesbr((string) $record->reason).'</td><td class="nowraponall">';
+		print lmdbSharingLink($record);
 		if ($permissionToManage && !$record->is_estimate && $record->source !== 'consumption') {
 			print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&reading_id='.$record->id.'&action=edit">'.img_edit().'</a> ';
 			print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&reading_id='.$record->id.'&action=delete&token='.newToken().'">'.img_delete().'</a>';

@@ -111,16 +111,17 @@ class LmdbVehicleQuartixRoutes extends LmdbVehicleQuartixService
 		$jobs = $this->rows('SELECT rowid FROM '.MAIN_DB_PREFIX."cronjob WHERE entity=".((int) $day->entity)." AND classesname='/lmdbvehiclemanagement/class/lmdbvehiclequartixcron.class.php' AND objectname='LmdbVehicleQuartixCron' AND methodename='trips' AND status=1 LIMIT 1");
 		if ($pending && (!$jobs || ((int) $day->entity === (int) $conf->entity && !isModEnabled('cron')) || !$enabled)) $message = 'QxRouteQueueStopped';
 		return array('state' => $state, 'message' => $message, 'points' => $points, 'fetched_at' => $cache === null || $blocked ? 0 : $this->db->jdate($cache->fetched_at),
-			'in_progress' => (bool) $trip->in_progress, 'can_request' => $enabled && !$pending && !$throttled && ($cache === null || $state === 'empty' || (bool) $trip->in_progress), 'poll' => $pending && $message !== 'QxRouteQueueStopped');
+			'in_progress' => (bool) $trip->in_progress, 'can_request' => (int) $day->entity === (int) $conf->entity && $enabled && !$pending && !$throttled && ($cache === null || $state === 'empty' || (bool) $trip->in_progress), 'poll' => $pending && $message !== 'QxRouteQueueStopped');
 	}
 
-	/** User-requested POST. Shared entities can enqueue but never instantiate a client.
+	/** User-requested POST, restricted to the vehicle owner entity.
 	 * @param int $dayId Day @param string $key Trip selector @return void
 	 */
 	public function requestRoute($dayId, $key)
 	{
 		global $conf;
-		$day = $this->day($dayId); $this->trip($day, $key);
+		$day = $this->day($dayId);
+		if ((int) $day->entity !== (int) $conf->entity) throw new RuntimeException('QxAccessDenied'); $this->trip($day, $key);
 		$state = $this->view($dayId, $key);
 		if (!$state['can_request']) return;
 		// INSERT..SELECT rechecks the association atomically if a dissociation races the click.

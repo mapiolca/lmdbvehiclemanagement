@@ -41,10 +41,11 @@ final class DossierDb extends DoliDBMysqli
 	public $dictionaries = array();
 	/** @var int */
 	public $dictionaryReads = 0;
+	public $invoiceVisible = true;
 	public function query($sql, $usesavepoint = 0, $type = 'auto', $result_mode = 0)
 	{
 		$rows = array();
-		if (preg_match('/^SELECT (.*?) FROM test_dossier_(lmdbvehiclemanagement_[a-z_]+) as t /is', $sql, $m)) {
+		if (preg_match('/^SELECT (.*?) FROM test_dossier_(lmdbvehiclemanagement_[a-z_]+) (?:as )?t /is', $sql, $m)) {
 			preg_match('/t.rowid\s*=\s*(\d+)/', $sql, $id);
 			foreach ($this->records[$m[2]] ?? array() as $stored) {
 				if ((isset($id[1]) && $stored['rowid'] != $id[1]) || $stored['entity'] !== 1) continue;
@@ -52,7 +53,7 @@ final class DossierDb extends DoliDBMysqli
 				foreach (explode(',', $m[1]) as $field) { $key = preg_replace('/^t\./', '', trim($field)); $row->$key = $stored[$key] ?? null; }
 				$rows[] = $row;
 			}
-		} elseif (preg_match('/^SELECT rowid FROM test_dossier_(lmdbvehiclemanagement_[a-z_]+) WHERE fk_vehicle = (\d+)/', $sql, $m)) {
+		} elseif (preg_match('/^SELECT rowid FROM test_dossier_(lmdbvehiclemanagement_[a-z_]+) (?:AS src )?WHERE fk_vehicle = (\d+)/', $sql, $m)) {
 			foreach ($this->records[$m[1]] ?? array() as $stored) if ($stored['entity'] === 1 && $stored['fk_vehicle'] == $m[2]) $rows[] = (object) array('rowid' => $stored['rowid']);
 		} elseif (preg_match('/FROM test_dossier_(c_lmdbvehiclemanagement_energy|c_lmdbvehiclemanagement_consumable) WHERE /', $sql, $dictionary)) {
 			$this->dictionaryReads++;
@@ -62,6 +63,7 @@ final class DossierDb extends DoliDBMysqli
 			}
 		} elseif (strpos($sql, 'FROM test_dossier_document_model') !== false) $rows[] = (object) array('id' => 'lmdb_vehicle_dossier', 'doc_template_name' => 'lmdb_vehicle_dossier', 'label' => 'Dossier véhicule', 'description' => '');
 		elseif (strpos($sql, 'FROM test_dossier_ecm_files WHERE entity') !== false) $rows = $this->ecm;
+		elseif (preg_match('/^SELECT rowid FROM test_dossier_facture_fourn WHERE /', $sql)) { if ($this->invoiceVisible) $rows[] = (object) array('rowid' => 9); }
 		elseif (preg_match('/^SELECT .* FROM test_dossier_facture_fourn as t /s', $sql)) {
 			preg_match('/^SELECT (.*?) FROM /s', $sql, $m);
 			$row = new stdClass();
@@ -157,6 +159,12 @@ if (($argv[2] ?? '') === 'access') {
 	require_once dirname(__DIR__).'/class/actions_lmdbvehiclemanagement.class.php';
 	$case = $argv[3] ?? 'read';
 	$db->records['lmdbvehiclemanagement_vehicle'] = array(array('rowid' => 7, 'entity' => $case === 'entity' ? 2 : 1, 'ref' => 'VEH-TEST'));
+	foreach (array('vehicle_event' => array(7), 'regulatory_control' => array(8), 'consumption' => array(11, 12, 13), 'odometer_reading' => array(21)) as $table => $ids) {
+		foreach ($ids as $id) $db->records['lmdbvehiclemanagement_'.$table][] = array('rowid' => $id, 'entity' => 1, 'fk_vehicle' => 7);
+	}
+	if ($case === 'revoked_source') $db->records['lmdbvehiclemanagement_vehicle_event'] = array();
+	if ($case === 'revoked_reading') $db->records['lmdbvehiclemanagement_odometer_reading'] = array();
+	if ($case === 'revoked_invoice') $db->invoiceVisible = false;
 	if ($case === 'invoice') $user->denied = 'fournisseur.facture.lire';
 	if ($case === 'vehicle') $user->denied = 'lmdbvehiclemanagement.read';
 	if ($case === 'external') $user->socid = 5;
@@ -180,6 +188,7 @@ foreach (array(0, 1) as $admin) {
 	$user->admin = $admin;
 	foreach (array('lmdbvehiclemanagement.read', 'lmdbvehiclemanagement.event.write', 'fournisseur.facture.lire', 'fournisseur.facture.creer') as $denied) {
 		$user->denied = $denied;
+		if ($admin && strpos($denied, 'lmdbvehiclemanagement.') === 0) { verifyDossier(LmdbVehicleSharing::can($user), 'Admin elevation for module rights'); continue; }
 		rejectsDossier(function () use ($service, $user) { $service->changeLink('event', 7, 9, $user); }, 'NotEnoughPermissions');
 	}
 }
@@ -255,6 +264,7 @@ file_put_contents(DOL_DATA_ROOT.'/source/sub/report.txt', 'Different original');
 file_put_contents(DOL_DATA_ROOT.'/source/lmdb-dossier-7.zip', 'OLD DOSSIER MUST NOT BE INCLUDED');
 $vehicle = new DossierVehicleProbe($db); $vehicle->id = 7; $vehicle->entity = 1; $vehicle->ref = 'VEH-TEST';
 $vehicle->fk_energy = 1;
+$db->records['lmdbvehiclemanagement_vehicle'] = array(array('rowid' => 7, 'entity' => 1, 'ref' => 'VEH-TEST'));
 $emptyData = $builder->collect($vehicle, $langs);
 verifyDossier(count($emptyData['sections']) === 7 && !$emptyData['files'], 'Complete empty dossier collection, excluding previous dossiers');
 verifyDossier($langs->transnoentities('LmdbVehicleDossier') === 'Dossier véhicule', 'Module translations loaded');
@@ -308,6 +318,7 @@ foreach (array('lmdbvehiclemanagement.read', 'lmdbvehiclemanagement.lmdbvehicle.
 $user->denied = '';
 $vehicle->entity = 1;
 $db->records = array(
+	'lmdbvehiclemanagement_vehicle' => array(array('rowid' => 7, 'entity' => 1, 'ref' => 'VEH-TEST')),
 	'lmdbvehiclemanagement_vehicle_event' => array(array('rowid' => 7, 'entity' => 1, 'fk_vehicle' => 7, 'ref' => 'EVT-7', 'label' => 'Entretien terminé', 'status' => 2, 'event_date' => '2026-09-01 12:00:00')),
 	'lmdbvehiclemanagement_regulatory_control' => array(array('rowid' => 8, 'entity' => 1, 'fk_vehicle' => 7, 'ref' => 'CTL-8', 'status' => 1, 'control_date' => '2026-09-02 12:00:00')),
 	'lmdbvehiclemanagement_consumption' => array(),
@@ -462,11 +473,15 @@ $publicDocument = new EcmFiles($db); $publicDocument->filename = 'LMDB-DOSSIER-7
 verifyDossier($trigger->runTrigger('ECMFILES_MODIFY', $publicDocument, $user, $langs, $conf) === -1, 'Public sharing rejected, including case variants');
 $renameAction = '';
 verifyDossier($hooks->renameUploadedFile(array('filenamefrom' => 'lmdb-dossier-7.pdf', 'filenameto' => 'public.pdf'), $vehicle, $renameAction, $hookmanager) === -1, 'Protected file cannot be renamed to bypass access rules');
+verifyDossier($hooks->renameUploadedFile(array('filenamefrom' => 'ordinary.txt', 'filenameto' => 'lmdb-dossier-7.sharing.meta'), $vehicle, $renameAction, $hookmanager) === -1, 'A native rename cannot forge the dossier access manifest');
+verifyDossier($hooks->renameUploadedFile(array('filenamefrom' => 'VEH-TEST/lmdb-dossier-7.sharing.meta', 'filenameto' => 'public.txt'), $vehicle, $renameAction, $hookmanager) === -1, 'Native metadata cannot be renamed or published');
 verifyDossier($hooks->renameUploadedFile(array('filenamefrom' => 'ordinary.pdf', 'filenameto' => 'ordinary-renamed.pdf'), $vehicle, $renameAction, $hookmanager) === 0, 'Ordinary native rename remains available');
 $draftInvoice->id = 9; $db->links = array(); $db->failInsert = true;
 verifyDossier($trigger->runTrigger('BILL_SUPPLIER_CREATE', $draftInvoice, $user, $langs, $conf) === -1 && !$db->links && !$db->snapshots, 'Failed native creation link propagates rollback to invoice trigger caller');
 $db->failInsert = false;
-foreach (array('read' => 'ALLOWED', 'readonly' => 'ALLOWED', 'preview' => 'ALLOWED', 'invoice' => 'DENIED', 'vehicle' => 'DENIED', 'external' => 'DENIED', 'public' => 'DENIED', 'authenticated_public' => 'DENIED', 'entity' => 'DENIED', 'path' => 'DENIED') as $case => $expected) {
+dol_mkdir(dirname($path).'/thumbs');
+file_put_contents(dirname($path).'/thumbs/lmdb-dossier-7.pdf_preview.png', 'preview fixture');
+foreach (array('read' => 'ALLOWED', 'readonly' => 'ALLOWED', 'preview' => 'ALLOWED', 'revoked_source' => 'DENIED', 'revoked_reading' => 'DENIED', 'revoked_invoice' => 'DENIED', 'invoice' => 'DENIED', 'vehicle' => 'DENIED', 'external' => 'DENIED', 'public' => 'DENIED', 'authenticated_public' => 'DENIED', 'entity' => 'DENIED', 'path' => 'DENIED') as $case => $expected) {
 	$process = proc_open(array(PHP_BINARY, __FILE__, DOL_DOCUMENT_ROOT, 'access', $case), array(1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes);
 	if (!is_resource($process)) throw new RuntimeException('Cannot start access test');
 	$output = stream_get_contents($pipes[1]); $errors = stream_get_contents($pipes[2]); fclose($pipes[1]); fclose($pipes[2]); $code = proc_close($process);

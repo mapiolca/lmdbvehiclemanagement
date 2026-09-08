@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -30,7 +31,7 @@ $searchLabel = GETPOST('search_label', 'alphanohtml');
 if (GETPOST('button_removefilter', 'alpha')) $searchLabel = '';
 
 $object = new LmdbVehicleInsuranceContract($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !isModEnabled('agenda') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !isModEnabled('agenda') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $canReadAllAgenda = $user->hasRight('agenda', 'allactions', 'read');
 if (!$user->hasRight('agenda', 'myactions', 'read') && !$canReadAllAgenda) accessforbidden();

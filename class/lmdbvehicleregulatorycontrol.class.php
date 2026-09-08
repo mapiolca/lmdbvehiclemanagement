@@ -218,7 +218,7 @@ class LmdbVehicleRegulatoryControl extends LmdbVehicleManagementObject
 	protected function validateBusinessRules()
 	{
 		if ($this->fk_vehicle <= 0 || $this->fk_requirement <= 0) return $this->businessError('RegulatoryRequirementRequired');
-		$sql = 'SELECT req.entity, req.fk_vehicle, req.fk_rule FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS req WHERE req.rowid = '.((int) $this->fk_requirement).' AND req.active = 1 AND req.entity IN ('.getEntity('lmdbvehicleregulatorycontrol').')';
+		$sql = 'SELECT req.entity, req.fk_vehicle, req.fk_rule FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS req WHERE req.rowid = '.((int) $this->fk_requirement).' AND req.active = 1 AND req.entity IN ('.getEntity('lmdbvehicleregulatorycontrol').') AND '.LmdbVehicleSharing::requirementSql($this->db);
 		$resql = $this->db->query($sql);
 		if (!$resql) { $this->error = $this->db->lasterror(); return -1; }
 		$row = $this->db->fetch_object($resql); $this->db->free($resql);

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -23,15 +24,15 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'companies', 'other', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09') ?: 'view';
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionToWrite = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write');
-$permissionToDelete = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'delete');
-$permissionToManageService = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'service');
+$permissionToWrite = LmdbVehicleSharing::can($user, 'lmdbvehicle', 'write');
+$permissionToDelete = LmdbVehicleSharing::can($user, 'lmdbvehicle', 'delete');
+$permissionToManageService = LmdbVehicleSharing::can($user, 'lmdbvehicle', 'service');
 
 $object = new LmdbVehicle($db);
 $hookmanager->initHooks(array('lmdbvehiclecard', 'globalcard'));
@@ -89,6 +90,8 @@ function lmdbVehicleCapacityValuesFromPost($options)
 	}
 	return $values;
 }
+
+if ($id > 0) lmdbSharingAction($object);
 
 $parameters = array('id' => $id);
 $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action);
@@ -251,6 +254,7 @@ if ($action === 'create' || $action === 'edit') {
 	$head = lmdbVehiclePrepareHead($object);
 	print dol_get_fiche_head($head, 'card', $langs->trans('Vehicle'), -1, 'car');
 	lmdbVehiclePrintBanner($object);
+if ($id > 0 && !in_array($action, array('create', 'edit'), true)) lmdbSharingRender($object);
 
 	print '<div class="fichecenter"><div class="fichehalfleft"><div class="underbanner clearboth"></div><table class="border centpercent tableforfield">';
 	print '<tr><td class="titlefield">'.$langs->trans('RegistrationNumber').'</td><td>'.dol_escape_htmltag($object->registration_number).'</td></tr>';
@@ -317,7 +321,7 @@ if ($action === 'create' || $action === 'edit') {
 	} elseif ($permissionToManageService && (int) $object->status === LmdbVehicle::STATUS_IN_SERVICE) {
 		print dolGetButtonAction('', $langs->trans('PutOutOfService'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=set_out_of_service&token='.newToken());
 	}
-if ($user->hasRight('lmdbvehiclemanagement', 'event', 'write')) {
+if (LmdbVehicleSharing::can($user, 'event', 'write')) {
 		print dolGetButtonAction('', $langs->trans('NewVehicleEvent'), 'default', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create&vehicle_id='.$id);
 	}
 	if ($permissionToDelete) print dolGetButtonAction('', $langs->trans('Delete'), 'delete', $_SERVER['PHP_SELF'].'?id='.$id.'&action=delete&token='.newToken());

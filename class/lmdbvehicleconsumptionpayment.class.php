@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 require_once DOL_DOCUMENT_ROOT.'/compta/bank/class/paymentvarious.class.php';
@@ -132,7 +133,7 @@ class LmdbVehicleConsumptionPayment
 	{
 		global $conf;
 
-		if (!$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')) {
+		if (!LmdbVehicleSharing::can($user, 'consumption', 'write')) {
 			return $this->businessError('NotEnoughPermissions');
 		}
 		$fuelResult = self::isEnabled() ? $this->consumableIsFuel((int) $consumption->fk_consumable) : 0;
@@ -231,7 +232,7 @@ class LmdbVehicleConsumptionPayment
 	 */
 	public function updateConsumption($consumption, User $user)
 	{
-		if (!$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')) {
+		if (!LmdbVehicleSharing::can($user, 'consumption', 'write')) {
 			return $this->businessError('NotEnoughPermissions');
 		}
 		$current = new LmdbVehicleConsumption($this->db);
@@ -291,7 +292,7 @@ class LmdbVehicleConsumptionPayment
 	 */
 	public function deleteConsumption($consumption, User $user)
 	{
-		if (!$user->hasRight('lmdbvehiclemanagement', 'consumption', 'delete')) {
+		if (!LmdbVehicleSharing::can($user, 'consumption', 'delete')) {
 			return $this->businessError('NotEnoughPermissions');
 		}
 		if (empty($consumption->fk_payment_various)) {
@@ -349,7 +350,7 @@ class LmdbVehicleConsumptionPayment
 	 */
 	public function replaceReceipt($consumption, $upload, User $user)
 	{
-		if (!$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')) {
+		if (!LmdbVehicleSharing::can($user, 'consumption', 'write')) {
 			return $this->businessError('NotEnoughPermissions');
 		}
 		$locked = $this->isLocked($consumption);
@@ -469,8 +470,8 @@ class LmdbVehicleConsumptionPayment
 	/** @param int $vehicleId Vehicle @return int Entity or -1 on error */
 	private function getVehicleEntity($vehicleId)
 	{
-		$sql = 'SELECT entity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle';
-		$sql .= ' WHERE rowid = '.((int) $vehicleId).' AND entity IN ('.getEntity('lmdbvehicle').')';
+		$sql = 'SELECT entity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS sv';
+		$sql .= ' WHERE rowid = '.((int) $vehicleId).' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'sv');
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			$this->error = $this->db->lasterror();
@@ -522,7 +523,7 @@ class LmdbVehicleConsumptionPayment
 	{
 		$registration = '';
 		$consumableLabel = '';
-		$sql = 'SELECT registration_number, ref FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle';
+		$sql = 'SELECT registration_number, ref FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS sv';
 		$sql .= ' WHERE rowid = '.((int) $consumption->fk_vehicle).' AND entity = '.((int) $consumption->entity);
 		$resql = $this->db->query($sql);
 		if ($resql && is_object($row = $this->db->fetch_object($resql))) {

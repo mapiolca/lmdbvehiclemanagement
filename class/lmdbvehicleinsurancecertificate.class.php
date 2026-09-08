@@ -16,7 +16,7 @@ class LmdbVehicleInsuranceCertificate extends LmdbVehicleManagementObject
 	public const STATUS_ARCHIVED = 9;
 
 	/** @var string */ public $element = 'lmdbinsurancecertificate';
-	/** @var string */ public $table_element = 'lmdbvehiclemanagement_insurance_certificate';
+	/** @var string */ public $table_element = 'lmdbvehiclemanagement_insurance_certificate AS cert';
 	/** @var string */ public $TRIGGER_PREFIX = 'LMDBVEHICLEMANAGEMENT_CERTIFICATE';
 	/** @var string */ public $entity_scope_element = 'lmdbvehicle';
 	/** @var string */ public $picto = 'file-shield';
@@ -291,9 +291,9 @@ class LmdbVehicleInsuranceCertificate extends LmdbVehicleManagementObject
 	 */
 	public static function getApplicable($db, $contractId, $vehicleId)
 	{
-		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_certificate';
+		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_certificate AS cert';
 		$sql .= ' WHERE fk_contract = '.((int) $contractId).' AND (fk_vehicle = '.((int) $vehicleId).' OR fk_vehicle IS NULL)';
-		$sql .= ' AND entity IN ('.getEntity('lmdbvehicle').') AND status NOT IN ('.self::STATUS_DRAFT.', '.self::STATUS_ARCHIVED.')';
+		$sql .= ' AND '.LmdbVehicleSharing::sql($db, 'lmdbinsurancecertificate', 'cert').' AND status NOT IN ('.self::STATUS_DRAFT.', '.self::STATUS_ARCHIVED.')';
 		$sql .= ' ORDER BY (fk_vehicle = '.((int) $vehicleId).') DESC, date_creation DESC, rowid DESC LIMIT 1';
 		$resql = $db->query($sql);
 		if (!$resql) {

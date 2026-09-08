@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 require_once __DIR__.'/lmdbvehiclequartixtrips.class.php';
@@ -32,7 +33,7 @@ class LmdbVehicleQuartixCron
 			if (!isModEnabled('lmdbvehiclemanagement') || ($kind !== 'trips' && !getDolGlobalInt(LmdbVehicleQuartixConfig::PREFIX.'ENABLED'))) { $this->output = $langs->transnoentities('QxDisabled'); return 0; }
 			$unavailable = LmdbVehicleQuartixConfig::unavailableReason('jobs');
 			if ($unavailable !== '' && !($kind === 'trips' && !in_array($unavailable, array('QxRequiresCrypto', 'RequiresCronModule'), true))) { $this->error = $unavailable; $this->output = $langs->transnoentities($unavailable); return -1; }
-			if (!LmdbVehicleQuartixConfig::can($user, 'sync') || ($kind === 'odometer' && !LmdbVehicleQuartixConfig::isAdmin($user) && !$user->hasRight('lmdbvehiclemanagement', 'odometer', 'write'))) throw new RuntimeException('QxAccessDenied');
+			if (!LmdbVehicleQuartixConfig::can($user, 'sync') || ($kind === 'odometer' && !LmdbVehicleQuartixConfig::isAdmin($user) && !LmdbVehicleSharing::can($user, 'odometer', 'write'))) throw new RuntimeException('QxAccessDenied');
 			if (!$service->lock($entity)) { $this->output = $langs->transnoentities('QxBusy'); return 0; }
 			$locked = true;
 			$deadline = microtime(true) + 45;

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -25,15 +26,15 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'users', 'agenda', 'currencies', 'banks', 'projects', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $vehicleIdFromUrl = GETPOSTINT('vehicle_id');
 $action = GETPOST('action', 'aZ09') ?: ($id > 0 ? 'view' : 'create');
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write');
-$permissionDelete = $user->hasRight('lmdbvehiclemanagement', 'consumption', 'delete');
+$permissionWrite = LmdbVehicleSharing::can($user, 'consumption', 'write');
+$permissionDelete = LmdbVehicleSharing::can($user, 'consumption', 'delete');
 $object = new LmdbVehicleConsumption($db);
 if ($id > 0 && $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $consumptionPayment = new LmdbVehicleConsumptionPayment($db);
@@ -97,7 +98,7 @@ function lmdbConsumptionSuggestedConsumables($db, $compatibility)
 	}
 	$sql = 'SELECT t.fk_vehicle, t.fk_consumable FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption AS t';
 	$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading AS r ON r.rowid = t.fk_odometer_reading AND r.entity = t.entity';
-	$sql .= " WHERE t.category_snapshot = 'fuel' AND t.entity IN (".getEntity('lmdbvehicleconsumption').')';
+	$sql .= " WHERE t.category_snapshot = 'fuel' AND ".LmdbVehicleSharing::sql($db, 'lmdbvehicleconsumption', 't').' AND '.LmdbVehicleSharing::sql($db, 'lmdbvehicleodometerreading', 'r');
 	$sql .= ' ORDER BY r.reading_date DESC, t.rowid DESC';
 	$resql = $db->query($sql);
 	$seen = array();
@@ -146,6 +147,8 @@ if ($cancel) {
 	header('Location: '.($id > 0 ? $_SERVER['PHP_SELF'].'?id='.$id : dol_buildpath('/lmdbvehiclemanagement/consumption_list.php', 1)));
 	exit;
 }
+if ($id > 0) lmdbSharingAction($object);
+
 $parameters = array('id' => $id);
 $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action);
 if ($reshook < 0) setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
@@ -294,6 +297,7 @@ if ($action === 'create' || $action === 'edit') {
 	$head = lmdbVehicleConsumptionPrepareHead($object);
 	print dol_get_fiche_head($head, 'card', $langs->trans('ConsumptionEntry'), -1, $object->picto);
 	lmdbVehicleConsumptionPrintBanner($object);
+if ($id > 0 && !in_array($action, array('create', 'edit'), true)) lmdbSharingRender($object);
 	$vehicle = new LmdbVehicle($db);
 	$vehicleLink = $vehicle->fetch((int) $object->fk_vehicle) > 0 ? $vehicle->getNomUrl(1) : '';
 	$consumable = new LmdbVehicleConsumable($db);

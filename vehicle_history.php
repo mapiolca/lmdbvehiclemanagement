@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -63,7 +64,7 @@ $filters = array(
 if ($searchStatus !== null) $filters['status'] = $searchStatus;
 
 $vehicle = new LmdbVehicle($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $history = new LmdbVehicleHistory($db);
 $total = $history->countTimeline($id, $sourceFilter, $filters);
@@ -84,6 +85,7 @@ llxHeader('', $vehicle->ref.' - '.$langs->trans('VehicleHistory'), '', '', 0, 0,
 $head = lmdbVehiclePrepareHead($vehicle);
 print dol_get_fiche_head($head, 'history', $langs->trans('Vehicle'), -1, $vehicle->picto);
 lmdbVehiclePrintBanner($vehicle);
+lmdbSharingPartialNotice();
 
 $param = '&id='.$id;
 foreach ($sourceFilter as $source) $param .= '&search_source[]='.urlencode($source);
@@ -111,8 +113,8 @@ $odometerStatusObject = new LmdbVehicleOdometerReading($db);
 $consumptionStatusObject = new LmdbVehicleConsumption($db);
 $insuranceContractStatusObject = new LmdbVehicleInsuranceContract($db);
 $insuranceCertificateStatusObject = new LmdbVehicleInsuranceCertificate($db);
-$canManageAssignments = $user->hasRight('lmdbvehiclemanagement', 'assignment', 'write');
-$canManageOdometer = $user->hasRight('lmdbvehiclemanagement', 'odometer', 'write');
+$canManageAssignments = LmdbVehicleSharing::can($user, 'assignment', 'write');
+$canManageOdometer = LmdbVehicleSharing::can($user, 'odometer', 'write');
 $typeTranslations = array(
 	'maintenance' => 'EventTypeMaintenance',
 	'breakdown' => 'EventTypeBreakdown',

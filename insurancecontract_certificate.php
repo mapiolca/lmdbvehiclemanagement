@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -20,18 +21,24 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
 $certificateId = GETPOSTINT('certificate_id');
 $downloadCertificate = GETPOSTINT('download_certificate');
-$permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write');
-$permissionUpload = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'upload');
-$permissionValidate = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'validate');
-$permissionDelete = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'delete');
+$permissionWrite = LmdbVehicleSharing::can($user, 'insurance', 'write');
+$permissionUpload = LmdbVehicleSharing::can($user, 'insurance', 'upload');
+$permissionValidate = LmdbVehicleSharing::can($user, 'insurance', 'validate');
+$permissionDelete = LmdbVehicleSharing::can($user, 'insurance', 'delete');
 $contract = new LmdbVehicleInsuranceContract($db);
 if ($id <= 0 || $contract->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
+
+$sharingCertificate = new LmdbVehicleInsuranceCertificate($db);
+if ($certificateId > 0) {
+	if ($sharingCertificate->fetch($certificateId) <= 0 || (int) $sharingCertificate->fk_contract !== $id) accessforbidden();
+	lmdbSharingAction($sharingCertificate);
+}
 
 $vehicleIds = $contract->getVehicleIds();
 $vehicleOptions = array();
@@ -50,6 +57,7 @@ if ($downloadCertificate === 1) {
 	if ($certificateId <= 0 || $certificate->fetch($certificateId) <= 0 || (int) $certificate->fk_contract !== $id || (int) $certificate->entity !== (int) $contract->entity) accessforbidden();
 	$path = $certificate->getDocumentPath();
 	if ($path === '' || !is_file($path)) accessforbidden($langs->trans('FileNotFound'));
+	header('Cache-Control: private, no-store');
 	header('Content-Type: '.((string) $certificate->file_mime ?: 'application/octet-stream'));
 	header('Content-Length: '.((int) filesize($path)));
 	header('Content-Disposition: inline; filename="'.dol_sanitizeFileName(basename($path)).'"');
@@ -104,8 +112,8 @@ if ($action === 'save_certificate' || $action === 'submit_certificate') {
 }
 
 $certificates = array();
-$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_certificate';
-$sql .= ' WHERE fk_contract = '.$id.' AND entity = '.((int) $contract->entity).' ORDER BY date_creation DESC, rowid DESC';
+$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_certificate AS cert';
+$sql .= ' WHERE fk_contract = '.$id.' AND entity = '.((int) $contract->entity).' AND '.LmdbVehicleSharing::sql($db, 'lmdbinsurancecertificate', 'cert').' ORDER BY date_creation DESC, rowid DESC';
 $resql = $db->query($sql);
 if ($resql) {
 	while (is_object($row = $db->fetch_object($resql))) {
@@ -120,6 +128,7 @@ llxHeader('', $contract->ref.' - '.$langs->trans('InsuranceCertificates'), '', '
 $head = lmdbInsuranceContractPrepareHead($contract);
 print dol_get_fiche_head($head, 'certificates', $langs->trans('InsuranceContract'), -1, $contract->picto);
 lmdbInsuranceContractPrintBanner($contract);
+if ($certificateId > 0) lmdbSharingRender($sharingCertificate);
 print load_fiche_titre($langs->trans('InsuranceCertificates'), '', 'file-shield');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 print '<tr class="liste_titre"><th>'.$langs->trans('InsuranceCertificateScope').'</th><th>'.$langs->trans('Period').'</th><th>'.$langs->trans('InsuranceEvidence').'</th><th class="center">'.$langs->trans('Status').'</th><th>'.$langs->trans('InsuranceRejectionReason').'</th><th></th></tr>';
@@ -133,6 +142,7 @@ foreach ($certificates as $certificate) {
 	$link = !empty($certificate->file_name) ? $_SERVER['PHP_SELF'].'?id='.$id.'&download_certificate=1&certificate_id='.((int) $certificate->id) : '';
 	print '<td>'.($link ? '<a href="'.$link.'">'.img_picto('', 'paperclip', 'class="pictofixedwidth"').dol_escape_htmltag(basename((string) $certificate->file_name)).'</a>' : '').'</td>';
 	print '<td class="center">'.$certificate->getLibStatut(5).'</td><td>'.dol_escape_htmltag((string) $certificate->rejection_reason).'</td><td class="right">';
+	print lmdbSharingLink($certificate);
 	$canSubmit = $permissionUpload && ((!empty($certificate->fk_vehicle) && in_array((int) $certificate->fk_vehicle, $eligibleVehicleIds, true)) || (empty($certificate->fk_vehicle) && $permissionWrite));
 	if ((int) $certificate->status === LmdbVehicleInsuranceCertificate::STATUS_DRAFT && $canSubmit) print lmdbInsuranceCertificatePostButton($id, (int) $certificate->id, 'submit_existing_certificate', $langs->trans('SubmitForReview'), 'button');
 	if ((int) $certificate->status === LmdbVehicleInsuranceCertificate::STATUS_PENDING && $permissionValidate) {

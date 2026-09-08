@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 require_once __DIR__.'/lmdbvehicle.class.php';
@@ -20,6 +21,11 @@ require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
  */
 class LmdbVehicleDossier
 {
+	/** @var array<string,array{0:string,1:int}> Sources embedded in the generated pair. */
+	private $sharingObjects = array();
+	/** @var list<int> Native supplier invoices embedded in the dossier. */
+	private $sharingInvoices = array();
+
 	/** @var DoliDB */ private $db;
 	/** @param DoliDB $db Database */
 	public function __construct($db) { $this->db = $db; }
@@ -50,6 +56,7 @@ class LmdbVehicleDossier
 	 */
 	private function describe($object, $langs, $onlyFields = null)
 	{
+		if (LmdbVehicleSharing::element($object->element) !== '') $this->sharingObjects[$object->element.':'.$object->id] = array($object->element, (int) $object->id);
 		$lines = array();
 		$excluded = array('rowid', 'entity', 'tms', 'import_key', 'model_pdf', 'last_main_doc', 'fk_user_creat', 'fk_user_modif', 'note_private', 'fk_vehicle', 'fk_payment_various', 'fk_odometer_reading', 'fk_requirement');
 		foreach ($onlyFields ?? array_keys($object->fields) as $key) {
@@ -144,10 +151,13 @@ class LmdbVehicleDossier
 	public function collect($vehicle, $langs)
 	{
 		global $user;
-		if (!$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)
-			|| !in_array((int) $vehicle->entity, array_map('intval', explode(',', getEntity('lmdbvehicle'))), true)) throw new RuntimeException('NotEnoughPermissions');
+		if (!LmdbVehicleSharing::can($user, '', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)
+			|| !LmdbVehicleSharing::canReadObject($this->db, $user, $vehicle)) throw new RuntimeException('NotEnoughPermissions');
 		$langs->loadLangs(array('main', 'bills', 'suppliers', 'companies', 'users', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
+		$this->sharingObjects = array();
+		$this->sharingInvoices = array();
 		$data = array('sections' => array(), 'files' => array(), 'warnings' => array());
+		if (LmdbVehicleSharing::partialView()) $data['warnings'][] = $langs->trans('LmdbSharingPartialView');
 		$technical = $this->describe($vehicle, $langs);
 		$sql = 'SELECT d.label, d.unit, cap.capacity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity cap INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable d ON d.rowid = cap.fk_consumable AND d.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') WHERE cap.entity = '.((int) $vehicle->entity).' AND cap.fk_vehicle = '.((int) $vehicle->id).' ORDER BY cap.rowid';
 		foreach ($this->rows($sql) as $row) $technical[] = array($row->label, price($row->capacity, 0, $langs).' '.$row->unit);
@@ -182,6 +192,7 @@ class LmdbVehicleDossier
 			$batch = $history->getTimeline((int) $vehicle->id, array(), 200, $offset, array(), 'event_timestamp', 'ASC');
 			if (!is_array($batch)) throw new RuntimeException('LmdbDossierReadFailed');
 			foreach ($batch as $entry) {
+				$this->sharingObjects[$entry['source_object'].':'.$entry['source_id']] = array($entry['source_object'], (int) $entry['source_id']);
 				$statusObject = $statusObjects[$entry['source_object']] ?? null;
 				$status = $statusObject ? strip_tags($statusObject->LibStatut($entry['status'], 5)) : '';
 				$cells = array(dol_print_date($entry['date'], 'dayhour', 'tzuser', $langs), $langs->transnoentities('TimelineSource'.ucfirst($entry['source'])),
@@ -194,8 +205,8 @@ class LmdbVehicleDossier
 		$recordSections = array();
 		$invoiceRefs = array();
 		$invoiceSections = array();
-		foreach (array('event' => array('vehicle_event', 'lmdbvehicle', 'VehicleEvent'), 'control' => array('regulatory_control', 'lmdbvehicleregulatorycontrol', 'RegulatoryControl')) as $kind => $definition) {
-			$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$definition[0].' WHERE fk_vehicle = '.((int) $vehicle->id).' AND entity IN ('.getEntity($definition[1]).') ORDER BY rowid';
+		foreach (array('event' => array('vehicle_event', 'lmdbvehicleevent', 'VehicleEvent'), 'control' => array('regulatory_control', 'lmdbvehicleregulatorycontrol', 'RegulatoryControl')) as $kind => $definition) {
+			$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$definition[0].' AS src WHERE fk_vehicle = '.((int) $vehicle->id).' AND '.LmdbVehicleSharing::sql($this->db, $definition[1], 'src').' ORDER BY rowid';
 			$details = array();
 			foreach ($this->rows($sql) as $row) {
 				$service = new LmdbVehicleSupplierInvoice($this->db);
@@ -210,6 +221,7 @@ class LmdbVehicleDossier
 					$description[] = array($langs->transnoentities('SupplierInvoice'), $invoice->ref);
 					if (isset($invoiceRefs[$invoice->id])) continue;
 					$invoiceRefs[$invoice->id] = $invoice->ref;
+					$this->sharingInvoices[] = (int) $invoice->id;
 					$dir = getMultidirOutput($invoice).'/'.get_exdir($invoice->id, 2, 0, 0, $invoice, 'invoice_supplier').dol_sanitizeFileName($invoice->ref);
 					$invoiceFiles = $this->attachments($invoice, $dir, 'invoices/'.((int) $invoice->entity).'-'.((int) $invoice->id).'-'.dol_sanitizeFileName($invoice->ref), $data, $langs);
 					if ($invoice->fetch_thirdparty() < 0) throw new RuntimeException('LmdbDossierReadFailed');
@@ -240,13 +252,14 @@ class LmdbVehicleDossier
 		$consumption = new LmdbVehicleConsumption($this->db);
 		$consumptionColumns = array($langs->transnoentities('ReadingDate'), $langs->transnoentities('OdometerKm'));
 		foreach ($consumptionFields as $field) $consumptionColumns[] = $langs->transnoentities($consumption->fields[$field]['label']);
-		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption WHERE fk_vehicle = '.((int) $vehicle->id).' AND entity IN ('.getEntity('lmdbvehicleconsumption').') ORDER BY rowid';
+		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption AS src WHERE fk_vehicle = '.((int) $vehicle->id).' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicleconsumption', 'src').' ORDER BY rowid';
 		foreach ($this->rows($sql) as $row) {
 			$consumption = new LmdbVehicleConsumption($this->db);
 			if ($consumption->fetch((int) $row->rowid) <= 0) throw new RuntimeException('LmdbDossierReadFailed');
+			if ($consumption->reading_date !== null) $this->sharingObjects['lmdbvehicleodometerreading:'.$consumption->fk_odometer_reading] = array('lmdbvehicleodometerreading', (int) $consumption->fk_odometer_reading);
 			$consumptions[] = array_merge(array(
 				dol_print_date($consumption->reading_date, 'dayhour', 'tzuser', $langs),
-				price($consumption->odometer_km, 0, $langs).' km',
+				$consumption->odometer_km === null ? '' : price($consumption->odometer_km, 0, $langs).' km',
 			), array_column($this->describe($consumption, $langs, $consumptionFields), 1));
 			// Deliberately no attachments() and no traversal of linked PaymentVarious.
 		}
@@ -268,7 +281,7 @@ class LmdbVehicleDossier
 	{
 		global $user, $conf;
 		if (!LmdbVehicleManagementCompatibility::isFeatureAvailable('vehicle_dossier')) throw new RuntimeException('LmdbDossierUnavailable');
-		if (!$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) throw new RuntimeException('NotEnoughPermissions');
+		if (!LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) throw new RuntimeException('NotEnoughPermissions');
 		$dir = getMultidirOutput($vehicle, 'lmdbvehiclemanagement', 1);
 		if (!is_string($dir) || $dir === '' || strpos($dir, 'error-diroutput-') === 0 || dol_mkdir($dir.'/temp') < 0) throw new RuntimeException('LmdbDossierWriteFailed');
 		$dir = rtrim($dir, '/\\');
@@ -301,10 +314,17 @@ class LmdbVehicleDossier
 					if (hash_final($hash) !== $file['sha256']) throw new RuntimeException('LmdbDossierWriteFailed');
 				}
 			} finally { $zip->close(); }
+			$manifest = json_encode(array('objects' => array_values($this->sharingObjects), 'invoices' => $this->sharingInvoices,
+				'pdf' => hash_file('sha256', $temp.'/package/'.$base.'.pdf'), 'zip' => hash_file('sha256', $temp.'/'.$base.'.zip')), JSON_THROW_ON_ERROR);
+			if (file_put_contents($temp.'/'.$base.'.sharing.meta', $manifest) === false) throw new RuntimeException('LmdbDossierWriteFailed');
+			// Native preview names are reused: remove old images before publishing new content.
+			foreach (dol_dir_list($dir, 'files', 1, '^'.preg_quote($base, '/').'\\.pdf(_preview|\\.png)', '^temp$') as $preview) {
+				if (dol_delete_file($preview['fullname'], 0, 0, 0, null, false, 0) <= 0) throw new RuntimeException('LmdbDossierWriteFailed');
+			}
 			$this->db->begin();
 			try {
 				$vehicle->oldcopy = clone $vehicle;
-				foreach (array('pdf' => $temp.'/package/'.$base.'.pdf', 'zip' => $temp.'/'.$base.'.zip') as $extension => $built) {
+				foreach (array('pdf' => $temp.'/package/'.$base.'.pdf', 'zip' => $temp.'/'.$base.'.zip', 'sharing.meta' => $temp.'/'.$base.'.sharing.meta') as $extension => $built) {
 					$final = $dir.'/'.$base.'.'.$extension;
 					if (is_file($final)) {
 						$backup = $temp.'/previous.'.$extension;
@@ -314,7 +334,7 @@ class LmdbVehicleDossier
 					// Native dol_move may remove an existing target before a failed retry.
 					$published[] = $final;
 					if (dol_move($built, $final, '0', 1, 0, 0) <= 0) throw new RuntimeException('LmdbDossierWriteFailed');
-					if ($vehicle->indexFile($final, $extension === 'pdf' ? 1 : 0) < 0) throw new RuntimeException('LmdbDossierWriteFailed');
+					if ($extension !== 'sharing.meta' && $vehicle->indexFile($final, $extension === 'pdf' ? 1 : 0) < 0) throw new RuntimeException('LmdbDossierWriteFailed');
 				}
 				$vehicle->context['trigger_reason'] = 'document_generation';
 				$vehicle->context['changed_fields'] = array('last_main_doc');

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 require_once __DIR__.'/lmdbvehiclequartixtrips.class.php';
 
@@ -21,7 +22,7 @@ class LmdbVehicleQuartixDashboard extends LmdbVehicleQuartixService
 		$scope = array_values(array_filter(array_map('intval', explode(',', getEntity('lmdbvehicle'))), static function ($id) { return $id > 0; }));
 		if ($entities) $scope = array_values(array_intersect($scope, array_map('intval', $entities)));
 		$scopeSql = implode(',', $scope ?: array(0));
-		$where = ' WHERE v.entity IN ('.$scopeSql.')';
+		$where = ' WHERE v.entity IN ('.$scopeSql.') AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'v');
 		if ($vehicle !== '') $where .= natural_search(array('v.ref', 'v.registration_number', 'v.label'), $vehicle);
 		$state = "CASE WHEN l.rowid IS NULL THEN 'unlinked' WHEN l.active=0 OR COALESCE(c.value,'0')<>'1' THEN 'suspended' ELSE 'associated' END";
 		if ($association !== '') {

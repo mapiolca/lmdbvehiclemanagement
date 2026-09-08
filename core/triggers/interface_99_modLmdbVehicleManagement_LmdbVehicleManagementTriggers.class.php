@@ -39,7 +39,7 @@ class InterfaceLmdbVehicleManagementTriggers extends DolibarrTriggers
 
 		$actions = LmdbVehicleAgenda::getTriggerDefinitions();
 		if (in_array($action, array('ECMFILES_CREATE', 'ECMFILES_MODIFY'), true) && $object->element === 'ecmfiles'
-			&& preg_match('/^lmdb-dossier-[0-9]+\.(pdf|zip)$/i', (string) $object->filename) && !empty($object->share)) {
+			&& preg_match('/^lmdb-dossier-[0-9]+\.(pdf|zip|sharing\.meta)$/i', (string) $object->filename) && !empty($object->share)) {
 			$langs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
 			$this->error = $langs->trans('LmdbDossierNoPublicShare');
 			return -1;
@@ -66,4 +66,3 @@ class InterfaceLmdbVehicleManagementTriggers extends DolibarrTriggers
 		return 0;
 	}
 }
-

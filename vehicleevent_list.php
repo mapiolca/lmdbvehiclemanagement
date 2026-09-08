@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -18,7 +19,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 
 $limit = GETPOSTINT('limit') ?: (int) $conf->liste_limit;
 $page = GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page');
@@ -56,9 +57,9 @@ $arrayfields = array(
 	'e.event_date' => array('label' => 'EventDate', 'checked' => 1, 'enabled' => 1, 'position' => 50),
 	'e.status' => array('label' => 'Status', 'checked' => 1, 'enabled' => 1, 'position' => 60),
 );
-$entityScope = getEntity('lmdbvehicle');
+$entityScope = getEntity(LmdbVehicleSharing::scopeElement('lmdbvehicleevent'));
 $allowedEntityIds = array_values(array_filter(array_map('intval', explode(',', $entityScope))));
-$entityOptions = lmdbVehicleManagementGetEntityOptions('lmdbvehicle');
+$entityOptions = lmdbVehicleManagementGetEntityOptions(LmdbVehicleSharing::scopeElement('lmdbvehicleevent'));
 $showEntityColumn = !empty($entityOptions);
 if (!$showEntityColumn) $searchEntities = array();
 if ($showEntityColumn) {
@@ -70,7 +71,7 @@ $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action
 if ($reshook < 0) setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
 include DOL_DOCUMENT_ROOT.'/core/actions_changeselectedfields.inc.php';
 $vehicleOptions = array();
-$sqlVehicles = 'SELECT rowid, ref, registration_number FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle WHERE entity IN ('.$entityScope.') ORDER BY registration_number';
+$sqlVehicles = 'SELECT rowid, ref, registration_number FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').' ORDER BY registration_number';
 $resVehicles = $db->query($sqlVehicles);
 if (!$resVehicles) {
 	dol_print_error($db);
@@ -79,7 +80,7 @@ if (!$resVehicles) {
 while (is_object($vehicleRow = $db->fetch_object($resVehicles))) $vehicleOptions[(int) $vehicleRow->rowid] = lmdbVehicleDisplayIdentifier((string) $vehicleRow->ref, (string) $vehicleRow->registration_number);
 $db->free($resVehicles);
 
-$where = ' WHERE e.entity IN ('.$entityScope.')';
+$where = ' WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicleevent', 'e');
 if ($searchRef !== '') $where .= natural_search('e.ref', $searchRef);
 if ($searchVehicle > 0) $where .= ' AND e.fk_vehicle = '.((int) $searchVehicle);
 if ($searchLabel !== '') $where .= natural_search('e.label', $searchLabel);
@@ -133,7 +134,7 @@ print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'"
 print '<input type="hidden" name="token" value="'.newToken().'">';
 print '<input type="hidden" name="formfilteraction" id="formfilteraction" value="list">';
 print '<input type="hidden" name="action" value="list"><input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'"><input type="hidden" name="page" value="'.((int) $page).'">';
-$newButton = dolGetButtonTitle($langs->trans('NewVehicleEvent'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create&token='.newToken(), '', $user->hasRight('lmdbvehiclemanagement', 'event', 'write'));
+$newButton = dolGetButtonTitle($langs->trans('NewVehicleEvent'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create&token='.newToken(), '', LmdbVehicleSharing::can($user, 'event', 'write'));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'calendar-day', 0, $newButton, '', $limit, 0, 0, 1);
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, $conf->main_checkbox_left_column);

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 define('CSRFCHECK_WITH_TOKEN', 1);
@@ -17,7 +18,7 @@ header('Cache-Control: private, no-store');
 header('Referrer-Policy: strict-origin');
 header('X-Content-Type-Options: nosniff');
 if (!isModEnabled('lmdbvehiclemanagement') || !empty($user->socid)
-	|| !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'quartix', 'location')) accessforbidden();
+	|| !LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, 'quartix', 'location')) accessforbidden();
 $dayId = GETPOSTINT('day');
 $key = (string) GETPOST('trip', 'aZ09');
 $action = GETPOST('action', 'aZ09');

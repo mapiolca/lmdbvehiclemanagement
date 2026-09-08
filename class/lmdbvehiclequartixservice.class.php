@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 require_once __DIR__.'/lmdbvehiclequartixclient.class.php';
@@ -142,7 +143,7 @@ class LmdbVehicleQuartixService
 		global $conf, $user;
 		$vehicle = $this->vehicle($vehicleId);
 		if ($entity !== (int) $vehicle->entity
-			|| (!LmdbVehicleQuartixConfig::can($user, 'configure') && !$user->hasRight('lmdbvehiclemanagement', 'delete'))) throw new RuntimeException('QxAccessDenied');
+			|| (!LmdbVehicleQuartixConfig::can($user, 'configure') && !LmdbVehicleSharing::can($user, '', 'delete'))) throw new RuntimeException('QxAccessDenied');
 		$filter = ' WHERE entity='.$entity.' AND fk_vehicle='.$vehicleId;
 		foreach (array('qx_route', 'qx_routequeue') as $table) $this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$table.' WHERE entity='.$entity.' AND fk_tripday IN (SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday'.$filter.')');
 		$this->write('DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_trip WHERE entity='.$entity.' AND fk_tripday IN (SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_tripday'.$filter.')');

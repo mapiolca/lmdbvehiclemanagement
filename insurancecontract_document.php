@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -25,11 +26,11 @@ $backtopage = GETPOST('backtopage', 'alphanohtml');
 $sortfield = GETPOST('sortfield', 'aZ09comma') ?: 'name';
 $sortorder = strtoupper(GETPOST('sortorder', 'alpha')) === 'DESC' ? 'DESC' : 'ASC';
 $object = new LmdbVehicleInsuranceContract($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 
 $permissiontoread = true;
-$permissiontoadd = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write') ? 1 : 0;
+$permissiontoadd = LmdbVehicleSharing::can($user, 'insurance', 'write') ? 1 : 0;
 $permissiontodelete = $permissiontoadd;
 $upload_dirold = '';
 $forceFullTextIndexation = '';

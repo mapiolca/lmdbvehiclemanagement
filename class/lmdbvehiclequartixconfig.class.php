@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 require_once DOL_DOCUMENT_ROOT.'/core/lib/security.lib.php';
@@ -25,8 +26,8 @@ class LmdbVehicleQuartixConfig
 	{
 		if (!empty($user->socid) || !isModEnabled('lmdbvehiclemanagement')) return false;
 		if (self::isAdmin($user)) return true;
-		if ($action === 'configure' || !$user->hasRight('lmdbvehiclemanagement', 'read')) return false;
-		return $action === 'read' || (in_array($action, array('location', 'sync'), true) && $user->hasRight('lmdbvehiclemanagement', 'quartix', $action));
+		if ($action === 'configure' || !LmdbVehicleSharing::can($user, '', 'read')) return false;
+		return $action === 'read' || (in_array($action, array('location', 'sync'), true) && LmdbVehicleSharing::can($user, 'quartix', $action));
 	}
 
 	/** @return bool Native encryption and transport exist on the supported baseline. */

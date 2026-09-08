@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 /**
  * @var LmdbVehicleEvent|LmdbVehicleRegulatoryControl $object
@@ -10,7 +11,7 @@
 if (!defined('DOL_DOCUMENT_ROOT')) exit;
 $invoiceLinkRight = $object instanceof LmdbVehicleEvent ? 'event' : 'regulatorycontrol';
 if (LmdbVehicleManagementCompatibility::isFeatureAvailable('supplier_invoice_links') && (int) $object->entity === (int) $conf->entity
-	&& $user->hasRight('lmdbvehiclemanagement', 'read') && $user->hasRight('lmdbvehiclemanagement', $invoiceLinkRight, 'write')
+	&& LmdbVehicleSharing::can($user, '', 'read') && LmdbVehicleSharing::can($user, $invoiceLinkRight, 'write')
 	&& $user->hasRight('fournisseur', 'facture', 'lire') && $user->hasRight('fournisseur', 'facture', 'creer') && empty($user->socid)) {
 	$langs->loadLangs(array('bills', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';

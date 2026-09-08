@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementobject.class.php');
@@ -477,7 +478,7 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 		$sql .= ' AND c.status = '.self::STATUS_ACTIVE;
 		$sql .= " AND c.date_start <= '".$date."' AND (c.date_end IS NULL OR c.date_end >= '".$date."')";
 		$sql .= " AND cv.date_start <= '".$date."' AND (cv.date_end IS NULL OR cv.date_end >= '".$date."')";
-		$sql .= " AND c.entity IN (".getEntity('lmdbvehicle').') ORDER BY cv.date_start DESC, c.rowid DESC LIMIT 1';
+		$sql .= ' AND '.LmdbVehicleSharing::sql($db, 'lmdbinsurancecontract', 'c').' ORDER BY cv.date_start DESC, c.rowid DESC LIMIT 1';
 		$resql = $db->query($sql);
 		if (!$resql) {
 			return null;
@@ -503,7 +504,7 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 	{
 		$sql = 'SELECT c.rowid, cv.coverage_type, cv.date_start, cv.date_end FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract AS c';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle AS cv ON cv.fk_contract = c.rowid AND cv.entity = c.entity';
-		$sql .= ' WHERE cv.fk_vehicle = '.((int) $vehicleId).' AND c.entity IN ('.getEntity('lmdbvehicle').')';
+		$sql .= ' WHERE cv.fk_vehicle = '.((int) $vehicleId).' AND '.LmdbVehicleSharing::sql($db, 'lmdbinsurancecontract', 'c');
 		$sql .= ' ORDER BY (cv.coverage_type = \'primary\') DESC, c.status ASC, cv.date_start DESC';
 		$resql = $db->query($sql);
 		if (!$resql) {
@@ -781,8 +782,8 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 	/** @return int<-1,1> */
 	private function vehicleBelongsToContractEntity($vehicleId)
 	{
-		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle';
-		$sql .= ' WHERE rowid = '.((int) $vehicleId).' AND entity = '.((int) $this->entity).' AND entity IN ('.getEntity('lmdbvehicle').')';
+		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS sv';
+		$sql .= ' WHERE rowid = '.((int) $vehicleId).' AND entity = '.((int) $this->entity).' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'sv');
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			$this->error = $this->db->lasterror();

@@ -76,6 +76,8 @@ final class QxTestDb
 			$sql = 'DELETE FROM '.$del[1].' WHERE rowid IN (SELECT ec.rowid FROM '.$del[1].' AS ec INNER JOIN '.$del[2].' AS ctc ON ctc.rowid=ec.fk_c_type_contact WHERE '.$del[3].')';
 		}
 		$sql = preg_replace('/\s+FOR UPDATE\b/i', '', $sql);
+		// SQLite adapter: this aggregate is a set of energy IDs, independent of ordering.
+		$sql = str_replace("GROUP_CONCAT(DISTINCT ce.fk_energy ORDER BY ce.fk_energy SEPARATOR ',')", 'GROUP_CONCAT(DISTINCT ce.fk_energy)', $sql);
 		$sql = str_replace('INSERT IGNORE INTO', 'INSERT OR IGNORE INTO', $sql);
 		$sql = preg_replace('/rowid integer AUTO_INCREMENT PRIMARY KEY/i', 'rowid integer PRIMARY KEY AUTOINCREMENT', $sql);
 		$sql = preg_replace('/\bAUTO_INCREMENT\b/i', '', $sql);
@@ -170,6 +172,10 @@ foreach (array('odometer_reading', 'vehicle', 'qx_link', 'qx_position', 'qx_usag
 }
 foreach (array('qx_route' => array('entity,fk_tripday,trip_key'), 'qx_routequeue' => array('entity,fk_tripday'), 'qx_link' => array('entity,fk_vehicle', 'entity,remote_id'), 'qx_position' => array('entity,fk_vehicle'), 'qx_usage' => array('entity,fk_vehicle,usage_day'), 'qx_tripday' => array('entity,fk_vehicle,trip_day'), 'qx_job' => array('entity,job_kind'), 'odometer_reading' => array('entity,fk_vehicle,provider_key')) as $table => $keys) {
 	foreach ($keys as $i => $columns) $db->query('CREATE UNIQUE INDEX qx_'.$table.'_'.$i.' ON '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$table.' ('.$columns.')');
+}
+// Import descriptor exposes capacity dictionaries even in a QUARTIX-only fixture.
+foreach (array('c_lmdbvehiclemanagement_consumable', 'lmdbvehiclemanagement_consumable_energy') as $table) {
+	$db->query(str_replace('llx_', MAIN_DB_PREFIX, file_get_contents(dirname(__DIR__).'/sql/llx_'.$table.'.sql')));
 }
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'const (rowid integer PRIMARY KEY, entity integer, name text, value text, type text, visible integer, note text)');
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'extrafields (rowid integer PRIMARY KEY, elementtype text)');

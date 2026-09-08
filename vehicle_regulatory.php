@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -15,14 +16,14 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var Translate $langs */
 /** @var User $user */
 $langs->loadLangs(array('main', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
 $vehicle = new LmdbVehicle($db);
 if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
-$permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write');
-$permissionDerogation = $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'derogation');
+$permissionWrite = LmdbVehicleSharing::can($user, 'lmdbvehicle', 'write');
+$permissionDerogation = LmdbVehicleSharing::can($user, 'regulatorycontrol', 'derogation');
 $regulatoryService = new LmdbVehicleRegulatoryService($db);
 $questionnaire = $regulatoryService->getQualificationQuestionnaire((int) $vehicle->id, (int) $vehicle->entity);
 
@@ -82,7 +83,7 @@ $sql .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS re
 $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r ON r.rowid = req.fk_rule AND r.entity = req.entity';
 $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_control_type AS ct ON ct.rowid = r.fk_control_type AND ct.entity = r.entity';
 $sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control AS c ON c.rowid = req.fk_last_control AND c.entity = req.entity';
-$sql .= ' WHERE req.entity = '.((int) $vehicle->entity).' AND req.fk_vehicle = '.((int) $vehicle->id).' AND req.active = 1 ORDER BY req.retained_due_date IS NULL, req.retained_due_date, r.label';
+$sql .= ' WHERE req.entity = '.((int) $vehicle->entity).' AND req.fk_vehicle = '.((int) $vehicle->id).' AND '.LmdbVehicleSharing::requirementSql($db).' AND req.active = 1 ORDER BY req.retained_due_date IS NULL, req.retained_due_date, r.label';
 $resql = $db->query($sql);
 if ($resql) { while (is_object($row = $db->fetch_object($resql))) $requirements[] = $row; $db->free($resql); }
 
@@ -90,6 +91,7 @@ llxHeader('', $vehicle->ref.' - '.$langs->trans('RegulatoryControls'), '', '', 0
 $head = lmdbVehiclePrepareHead($vehicle);
 print dol_get_fiche_head($head, 'regulatory', $langs->trans('VehicleOrEquipment'), -1, $vehicle->picto);
 lmdbVehiclePrintBanner($vehicle);
+lmdbSharingPartialNotice();
 
 print load_fiche_titre($langs->trans('RegulatoryQualification'), '', 'tags');
 if ($permissionWrite) {
@@ -117,7 +119,7 @@ if ($permissionWrite) {
 }
 
 print '<div class="tabsAction">';
-if ($user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write')) print dolGetButtonAction('', $langs->trans('NewRegulatoryControl'), 'default', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&vehicle_id='.$id.'&token='.newToken());
+if (LmdbVehicleSharing::can($user, 'regulatorycontrol', 'write')) print dolGetButtonAction('', $langs->trans('NewRegulatoryControl'), 'default', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&vehicle_id='.$id.'&token='.newToken());
 print '</div>';
 print load_fiche_titre($langs->trans('RegulatoryRequirements'), '', 'clipboard-check');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';

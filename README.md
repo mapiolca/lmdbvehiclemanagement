@@ -91,6 +91,8 @@ Le pied de page suit le cycle PDF natif, avec une mesure séparée pour les cont
 - Listes avec colonnes personnalisables, filtres, badges de statut et tooltips Ajax ; formulaires adaptés aux écrans mobiles.
 - Partages Multicompany configurables, documents dans l’entité propriétaire, filtres Environnement lorsqu’un partage est actif et conservation des réglages à la réactivation.
 
+Le [guide du partage individuel](doc/multicompany-sharing.md) décrit la sélection des entités bénéficiaires pour les véhicules, contrats, attestations, contrôles, consommations, événements, affectations et relevés. Multicompany 21+ est nécessaire pour ce mode ; chaque famille conserve un périmètre indépendant. Les infobulles, téléchargements et dossiers respectent aussi les retraits de partage. QUARTIX reste administré chez le propriétaire du véhicule.
+
 ## Installation et mise à jour
 
 Copier le répertoire `lmdbvehiclemanagement` dans le répertoire des modules externes de Dolibarr, puis activer **Gestion des véhicules et engins** depuis la liste des modules. Une réactivation conservatrice initialise les dictionnaires et règles absents sans remplacer les réglages, choix Agenda, modèles, crons ou partages existants.
@@ -108,6 +110,12 @@ Pour toute création ou modification de tableau, utiliser comme référence la [
 Ses tests hors ligne utilisent les objets Dolibarr et une base en mémoire, sans accès à QUARTIX :
 
     php test/run_quartix.php /chemin/vers/dolibarr/htdocs
+
+Les accès individuels, parents, modes de sélection/exclusion, transactions et migrations sont vérifiés avec SQLite et des doubles des API natives :
+
+    php test/run_sharing.php /chemin/vers/dolibarr/htdocs
+
+Un second argument facultatif désignant une archive officielle Multicompany 21 ou 22 charge en lecture seule sa classe de rendu native pour vérifier le sélecteur. Il n’installe pas Multicompany et ne remplace pas une validation sur trois entités MySQL/MariaDB. La matrice de validation est détaillée dans le guide du partage individuel.
 
 Les règles indépendantes de la base peuvent être vérifiées avec la commande suivante :
 

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__.'/../class/lmdbvehiclesharing.class.php';
+require_once __DIR__.'/lmdbvehiclesharing.lib.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -55,6 +57,7 @@ function lmdbVehicleManagementAdminPrepareHead()
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/insurance.php', 1), $langs->trans('Insurance'), 'insurance');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/regulatory.php', 1), $langs->trans('RegulatoryControls'), 'regulatory');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/quartix.php', 1), $langs->trans('QxTitle'), 'quartix');
+	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/sharing.php', 1), $langs->trans('LmdbIndividualSharing'), 'sharing');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/compatibility.php', 1), $langs->trans('Compatibility'), 'compatibility');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/admin/about.php', 1), $langs->trans('About'), 'about');
 
@@ -429,8 +432,8 @@ function lmdbInsuranceContractPrepareHead($object)
 	}
 
 	$certificateCount = 0;
-	$sql = 'SELECT COUNT(*) AS total FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_certificate';
-	$sql .= ' WHERE fk_contract = '.$id.' AND entity = '.((int) $object->entity);
+	$sql = 'SELECT COUNT(*) AS total FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_certificate AS cert';
+	$sql .= ' WHERE cert.fk_contract = '.$id.' AND cert.entity = '.((int) $object->entity).' AND '.LmdbVehicleSharing::sql($db, 'lmdbinsurancecertificate', 'cert');
 	$resql = $db->query($sql);
 	if ($resql && is_object($row = $db->fetch_object($resql))) {
 		$certificateCount = (int) $row->total;
@@ -485,7 +488,7 @@ function lmdbInsuranceContractPrintBanner($object)
 
 	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/insurancecontract_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
 	$moreHtmlRef = '<div class="refidno">'.dol_escape_htmltag($object->label);
-	$entityBadge = lmdbVehicleManagementEntityBadge((int) $object->entity, lmdbVehicleManagementGetEntityOptions('lmdbvehicle'));
+	$entityBadge = lmdbVehicleManagementEntityBadge((int) $object->entity, lmdbVehicleManagementGetEntityOptions(LmdbVehicleSharing::scopeElement('lmdbinsurancecontract')));
 	if ($entityBadge !== '') {
 		$moreHtmlRef .= '<br>'.$entityBadge;
 	}
@@ -509,12 +512,13 @@ function lmdbVehiclePrintInsuranceBlock($object)
 	dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsuranceconfig.class.php');
 	$allContracts = LmdbVehicleInsuranceContract::getForVehicle($db, (int) $object->id);
 	$contract = LmdbVehicleInsuranceContract::getPrimaryForVehicle($db, (int) $object->id);
+	$partialView = LmdbVehicleSharing::partialView();
 	$headerActions = '';
 	if ($contract instanceof LmdbVehicleInsuranceContract) {
 		$headerActions = $contract->getNomUrl(1);
 	} elseif (!empty($allContracts)) {
 		$headerActions = $allContracts[0]['contract']->getNomUrl(1);
-	} elseif ($user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')) {
+	} elseif (LmdbVehicleSharing::can($user, 'insurance', 'write')) {
 		$linkUrl = dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance_link.php', 1).'?id='.((int) $object->id);
 		$createUrl = dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'?action=create&vehicle_id='.((int) $object->id);
 		$headerActions = dolGetButtonTitle($langs->trans('LinkInsuranceContract'), '', 'fa fa-link', $linkUrl);
@@ -525,7 +529,7 @@ function lmdbVehiclePrintInsuranceBlock($object)
 	print '<tr class="liste_titre"><th colspan="2">'.$langs->trans('InsuranceContract');
 	print '<span class="right marginleftonly">'.$headerActions.'</span></th></tr>';
 	if (!$contract instanceof LmdbVehicleInsuranceContract) {
-		print '<tr class="oddeven"><td colspan="2"><span class="opacitymedium">'.$langs->trans('InsuranceNoActiveContract').'</span></td></tr>';
+		print '<tr class="oddeven"><td colspan="2"><span class="opacitymedium">'.$langs->trans($partialView ? 'LmdbSharingNoAccessibleContract' : 'InsuranceNoActiveContract').'</span></td></tr>';
 		print '</table></div>';
 		return;
 	}
@@ -541,7 +545,7 @@ function lmdbVehiclePrintInsuranceBlock($object)
 	print '<tr><td>'.$langs->trans('InsurancePolicyNumber').'</td><td>'.dol_escape_htmltag($contract->policy_number).'</td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceCoverageFormula').'</td><td>'.dol_escape_htmltag((string) $contract->coverage_formula).'</td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceContractPeriod').'</td><td>'.dol_print_date($contract->date_start, 'day').' — '.($contract->date_end ? dol_print_date($contract->date_end, 'day') : $langs->trans('NoLimit')).'</td></tr>';
-	$status = dolGetStatus($langs->trans('InsuranceCertificateMissing'), '', '', 'status8', 5);
+	$status = dolGetStatus($langs->trans($partialView ? 'LmdbSharingNoAccessibleCertificate' : 'InsuranceCertificateMissing'), '', '', $partialView ? 'status0' : 'status8', 5);
 	$certificatePeriod = '';
 	$evidence = '';
 	if ($certificate instanceof LmdbVehicleInsuranceCertificate) {
@@ -567,6 +571,7 @@ function lmdbVehiclePrintInsuranceBlock($object)
 	print '<tr><td>'.$langs->trans('InsuranceEvidence').'</td><td>'.$evidence.'</td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceComplementaryContracts').'</td><td>'.((int) $complementary).'</td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceAssistancePhone').'</td><td>'.dol_escape_htmltag((string) $contract->assistance_phone).'</td></tr>';
+	if ($partialView) print '<tr><td colspan="2"><span class="opacitymedium">'.$langs->trans('LmdbSharingPartialView').'</span></td></tr>';
 	print '</table></div>';
 }
 

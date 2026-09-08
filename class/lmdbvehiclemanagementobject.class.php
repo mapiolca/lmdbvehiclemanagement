@@ -3,6 +3,7 @@
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/commonobject.class.php';
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleagenda.class.php');
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 
 /**
  * Shared business behavior for module objects.
@@ -140,10 +141,57 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 	 */
 	public function fetch($id, $ref = null)
 	{
-		$scopeElement = $this->entity_scope_element !== '' ? $this->entity_scope_element : $this->element;
-		$morewhere = ' AND t.entity IN ('.getEntity($scopeElement).')';
+		$morewhere = ' AND '.LmdbVehicleSharing::sql($this->db, $this->element);
 
 		return $this->fetchCommon($id, $ref, $morewhere);
+	}
+
+	/**
+	 * Replace destination grants through the native DAO. The vehicle/contract parent
+	 * must already be visible in each destination; this method never shares a parent.
+	 * @param User $user Administrator @param list<int> $entityIds Selected destinations @return int
+	 */
+	public function setSharingEntities($user, $entityIds)
+	{
+		global $conf;
+		$element = LmdbVehicleSharing::element($this->element);
+		if (!LmdbVehicleSharing::can($user) || !LmdbVehicleSharing::isAdmin($user) || !LmdbVehicleSharing::available()
+			|| !LmdbVehicleSharing::individual($element) || (int) $this->entity !== (int) $conf->entity || empty($this->id)) {
+			$this->error = 'NotEnoughPermissions'; return -1;
+		}
+		$this->db->begin();
+		try {
+			$res = $this->db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.$this->table_element.' WHERE rowid = '.((int) $this->id).' AND entity = '.((int) $conf->entity).' FOR UPDATE');
+			if (!$res || !is_object($this->db->fetch_object($res))) throw new RuntimeException('RecordNotFound');
+			$this->db->free($res);
+			$allowed = LmdbVehicleSharing::destinations($this->db, $user, $this);
+			$selected = array();
+			foreach ($entityIds as $id) {
+				if (!is_int($id) || !isset($allowed[$id])) throw new RuntimeException('NotEnoughPermissions');
+				$selected[] = $id;
+			}
+			$selected = array_values(array_unique($selected)); sort($selected);
+			$old = LmdbVehicleSharing::stored($this->db, $element, (int) $this->id);
+			$stored = getDolGlobalInt('MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT') ? array_values(array_diff(array_keys($allowed), $selected)) : $selected;
+			// Preserve grants/exclusions outside the administrator's destination cohort.
+			$stored = array_values(array_unique(array_merge($stored, array_diff($old, array_keys($allowed))))); sort($stored);
+			if ($stored === $old) { $this->db->commit(); return 1; }
+			$this->oldcopy = clone $this;
+			$dao = new DaoMulticompany($this->db);
+			if ($dao->setSharingsByElement($element, (int) $this->id, $stored) < 0) throw new RuntimeException('LmdbSharingDatabaseError');
+			foreach ($selected as $destination) {
+				$sql = 'SELECT t.rowid FROM '.MAIN_DB_PREFIX.$this->table_element.' t WHERE t.rowid = '.((int) $this->id).' AND '.LmdbVehicleSharing::sql($this->db, $element, 't', true, $destination);
+				$res = $this->db->query($sql);
+				if (!$res || !is_object($this->db->fetch_object($res))) throw new RuntimeException('LmdbSharingParentRequired');
+				$this->db->free($res);
+			}
+			$this->context['trigger_reason'] = 'sharing_change';
+			$this->context['changed_fields'] = array('sharing_entities');
+			if ($this->call_trigger($this->TRIGGER_PREFIX.'_UPDATE', $user) < 0) throw new RuntimeException($this->error ?: 'LmdbSharingDatabaseError');
+			$this->db->commit(); return 1;
+		} catch (Throwable $e) {
+			$this->db->rollback(); $this->error = $e->getMessage(); $this->errors = array($this->error); return -1;
+		}
 	}
 
 	/**
@@ -208,6 +256,20 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 		}
 
 		$this->db->begin();
+		$cleanSharing = LmdbVehicleSharing::available(false);
+		if ($cleanSharing && !isModEnabled('multicompany')) {
+			// Files can be present before Multicompany has ever created its native table.
+			$res = $this->db->query("SELECT COUNT(*) AS nb FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '".$this->db->escape(MAIN_DB_PREFIX.'entity_element_sharing')."'");
+			if (!$res) { $this->error = 'LmdbSharingDatabaseError'; $this->db->rollback(); return -1; }
+			$table = $this->db->fetch_object($res); $this->db->free($res);
+			$cleanSharing = is_object($table) && (int) $table->nb > 0;
+		}
+		if ($cleanSharing) {
+			$sharingDao = new DaoMulticompany($this->db);
+			if ($sharingDao->setSharingsByElement(LmdbVehicleSharing::element($this->element), (int) $this->id, array()) < 0) {
+				$this->error = 'LmdbSharingDatabaseError'; $this->db->rollback(); return -1;
+			}
+		}
 		if (!$notrigger && $this->call_trigger($this->TRIGGER_PREFIX.'_DELETE', $user) < 0) {
 			$this->db->rollback();
 			return -1;
@@ -353,8 +415,16 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 	 * as the insurance contract does for its insurer.
 	 *
 	 * @param array<string,mixed> $params Tooltip parameters
-	 * @return array<string,string>
+	 * @return string
 	 */
+	public function getTooltipContent($params)
+	{
+		global $user, $langs;
+		if (!LmdbVehicleSharing::canReadObject($this->db, $user, $this)) return $langs->trans('NotEnoughPermissions');
+		return parent::getTooltipContent($params);
+	}
+
+	/** @param array<string,mixed> $params Tooltip parameters @return array<string,string> */
 	public function getTooltipContentArray($params)
 	{
 		global $langs;
@@ -604,9 +674,9 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 	 */
 	protected function lockVehicleRow($vehicleId)
 	{
-		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle';
+		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS sv';
 		$sql .= ' WHERE rowid = '.((int) $vehicleId);
-		$sql .= ' AND entity IN ('.getEntity('lmdbvehicle').') FOR UPDATE';
+		$sql .= ' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'sv').' FOR UPDATE';
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			$this->error = $this->db->lasterror();

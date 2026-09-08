@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 /**
@@ -197,7 +198,7 @@ class LmdbVehicleConsumable
 		}
 		if ($category === 'fuel' && $vehicleId > 0) {
 			$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
-			$sql .= ' AND v.rowid = '.((int) $vehicleId).' AND v.entity IN ('.getEntity('lmdbvehicle').')';
+			$sql .= ' AND v.rowid = '.((int) $vehicleId).' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'v');
 		}
 		$sql .= ' ORDER BY c.position, c.code';
 		$resql = $this->db->query($sql);

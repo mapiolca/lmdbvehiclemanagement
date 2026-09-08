@@ -70,6 +70,16 @@ $consumptionSql = readModuleSource('sql/llx_lmdbvehiclemanagement_consumption.sq
 $frLang = readModuleSource('langs/fr_FR/lmdbvehiclemanagement.lang');
 $enLang = readModuleSource('langs/en_US/lmdbvehiclemanagement.lang');
 $checks = array();
+$sharingClass = readModuleSource('class/lmdbvehiclesharing.class.php');
+$checks['sharing_keeps_native_rights_and_admin_elevation'] = strpos($sharingClass, 'self::isAdmin($user)') !== false && strpos($sharingClass, "\$user->hasRight('lmdbvehiclemanagement'") !== false;
+foreach (array('vehicle_assignment.php', 'vehicle_odometer.php', 'insurancecontract_certificate.php') as $card) {
+	$source = readModuleSource($card);
+	$checks['sharing_inline_entry_'.$card] = strpos($source, 'lmdbSharingLink(') !== false && strpos($source, 'lmdbSharingAction(') !== false && strpos($source, 'lmdbSharingRender(') !== false;
+}
+foreach (array('linked_vehicle_source.tpl.php', 'linkedobjectblock.tpl.php', 'supplier_invoice_link.tpl.php') as $template) {
+	$checks['sharing_template_include_'.$template] = strpos(readModuleSource('tpl/'.$template), "__DIR__.'/../class/lmdbvehiclesharing.class.php'") !== false;
+}
+
 
 $orderedTabs = array(
 	'vehicle_card.php',
@@ -112,7 +122,7 @@ $checks['environment_display_uses_actual_sharing_scope'] = strpos($library, 'fun
 	&& strpos($library, 'function lmdbVehicleManagementEntityBadge($entityId, $entityOptions)') !== false
 	&& strpos($library, 'multicompany-entity-card-container') !== false;
 $checks['card_banners_hide_environment_without_sharing'] = substr_count($library, 'lmdbVehicleManagementGetEntityOptions(') >= 4
-	&& strpos($vehicleEventCard, "lmdbVehicleManagementGetEntityOptions('lmdbvehicle')") !== false;
+	&& strpos($vehicleEventCard, "lmdbVehicleManagementGetEntityOptions(LmdbVehicleSharing::scopeElement('lmdbvehicleevent'))") !== false;
 $checks['registration_numbering_model_is_native'] = strpos($vehicleRegistrationNumbering, 'extends ModeleNumRefLmdbVehicle') !== false
 	&& strpos($vehicleRegistrationNumbering, 'normalizeRegistrationNumber') !== false;
 $checks['vehicle_ref_is_synchronized_on_create_and_update'] = substr_count($vehicleClass, 'usesRegistrationAsReference()') >= 2
@@ -192,10 +202,10 @@ $checks['insurance_compatibility_route_only_redirects'] = strpos($insurancePage,
 	&& strpos($insurancePage, '<form') === false;
 $checks['insurance_mutations_use_csrf_tokens'] = substr_count($insuranceCertificate, "name=\"token\" value=\"'.newToken()") >= 3
 	&& strpos($insuranceLink, "name=\"token\" value=\"'.newToken()") !== false;
-$checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')") !== false
-	&& strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'upload')") !== false
-	&& strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'validate')") !== false
-	&& strpos($insuranceCertificate, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'delete')") !== false
+$checks['insurance_uses_native_permission_checks'] = strpos($insuranceCertificate, "LmdbVehicleSharing::can(\$user, 'insurance', 'write')") !== false
+	&& strpos($insuranceCertificate, "LmdbVehicleSharing::can(\$user, 'insurance', 'upload')") !== false
+	&& strpos($insuranceCertificate, "LmdbVehicleSharing::can(\$user, 'insurance', 'validate')") !== false
+	&& strpos($insuranceCertificate, "LmdbVehicleSharing::can(\$user, 'insurance', 'delete')") !== false
 	&& strpos($library, 'function lmdbVehicleManagementCanDo(') === false;
 $checks['insurance_download_is_read_only_route'] = strpos($insuranceCertificate, '$downloadCertificate === 1') !== false && strpos($insuranceCertificate, "\$action === 'download_certificate'") === false;
 $checks['insurance_admin_uses_native_selects_and_switches'] = strpos($insuranceAdmin, 'ajax_constantonoff(') !== false && strpos($insuranceAdmin, "multiselectarray('recipient_users'") !== false && strpos($insuranceAdmin, "multiselectarray('recipient_groups'") !== false;
@@ -253,7 +263,7 @@ $checks['consumption_uses_native_quick_add_hook'] = strpos($descriptor, "'main',
 	&& strpos($actionsHooks, "dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1)") !== false
 	&& strpos($actionsHooks, 'DOL_URL_ROOT_ALT') === false
 	&& strpos($actionsHooks, "'title' => 'NewConsumption@lmdbvehiclemanagement'") !== false
-	&& strpos($actionsHooks, "\$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')") !== false;
+	&& strpos($actionsHooks, "LmdbVehicleSharing::can(\$user, 'consumption', 'write')") !== false;
 $checks['module_objects_use_native_ajax_tooltips'] = strpos($baseObjectClass, 'public function getTooltipContentArray($params)') !== false
 	&& strpos($baseObjectClass, "getDolGlobalInt('MAIN_ENABLE_AJAX_TOOLTIP')") !== false
 	&& strpos($baseObjectClass, "'objecttype' => \$this->element.'@'.\$this->module") !== false
@@ -323,9 +333,9 @@ $checks['insurance_list_uses_native_pattern'] = strpos($insuranceList, 'print_ba
 	&& strpos($insuranceList, 'div-table-responsive') !== false
 	&& strpos($insuranceList, 'lmdbVehicleManagementEntityBadge(') !== false;
 $checks['insurance_list_bar_is_inside_form'] = strpos($insuranceList, "print '<form method=\"POST\"") < strpos($insuranceList, 'print_barre_liste(');
-$checks['insurance_pages_use_native_permissions'] = strpos($insuranceCard, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false
-	&& strpos($insuranceCard, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')") !== false
-	&& strpos($insuranceList, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false;
+$checks['insurance_pages_use_native_permissions'] = strpos($insuranceCard, "LmdbVehicleSharing::can(\$user, '', 'read')") !== false
+	&& strpos($insuranceCard, "LmdbVehicleSharing::can(\$user, 'insurance', 'write')") !== false
+	&& strpos($insuranceList, "LmdbVehicleSharing::can(\$user, '', 'read')") !== false;
 $checks['insurance_form_is_shared'] = strpos($insuranceCard, 'lmdbInsurancePrintContractForm(') !== false
 	&& strpos($insuranceLibrary, 'function lmdbInsurancePrintContractForm') !== false;
 $insuranceCardClearPosition = strpos($insuranceCard, 'print \'<div class="clearboth"></div>\';');
@@ -371,7 +381,7 @@ $checks['insurance_card_uses_native_tabs'] = strpos($insuranceCard, "dol_get_fic
 	&& strpos($insuranceCard, 'lmdbInsuranceContractPrepareHead($object)') !== false;
 $checks['insurance_contacts_use_native_template'] = strpos($insuranceContact, '/contacts.tpl.php') !== false
 	&& strpos($insuranceContact, '$object->socid = (int) $object->fk_soc') !== false
-	&& strpos($insuranceContact, "\$user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')") !== false;
+	&& strpos($insuranceContact, "LmdbVehicleSharing::can(\$user, 'insurance', 'write')") !== false;
 $checks['insurance_notes_use_native_actions_and_template'] = strpos($insuranceNote, '/core/actions_setnotes.inc.php') !== false
 	&& strpos($insuranceNote, '/notes.tpl.php') !== false;
 $checks['insurance_documents_use_native_actions_and_template'] = strpos($insuranceDocument, '/core/actions_linkedfiles.inc.php') !== false
@@ -435,8 +445,8 @@ $checks['consumption_synchronizes_odometer_transactionally'] = strpos($consumpti
 $checks['consumption_form_uses_native_required_style'] = strpos($consumptionCard, 'titlefieldcreate fieldrequired') !== false
 	&& substr_count($consumptionCard, 'fieldrequired') >= 6
 	&& strpos($consumptionCard, ' required') === false;
-$checks['consumption_pages_use_native_rights'] = strpos($consumptionCard, "\$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')") !== false
-	&& strpos($consumptionList, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false;
+$checks['consumption_pages_use_native_rights'] = strpos($consumptionCard, "LmdbVehicleSharing::can(\$user, 'consumption', 'write')") !== false
+	&& strpos($consumptionList, "LmdbVehicleSharing::can(\$user, '', 'read')") !== false;
 $checks['consumption_creator_is_default_driver'] = strpos($consumptionClass, 'if (empty($this->fk_user_driver))') !== false
 	&& strpos($consumptionClass, '$this->fk_user_driver = (int) $user->id;') !== false
 	&& strpos($consumptionCard, '$object->fk_user_driver = (int) $user->id;') !== false

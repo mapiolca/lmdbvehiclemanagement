@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementobject.class.php');
@@ -189,11 +190,11 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	{
 		global $user, $conf;
 		require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
-		if (!$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
+		if (!LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
 		$models = getListOfModels($this->db, 'lmdbvehicle');
 		if ($modele === '') $modele = getDolGlobalString('LMDBVEHICLEMANAGEMENT_DOSSIER_MODEL');
 		if ($modele !== 'lmdb_vehicle_dossier' || !is_array($models) || !isset($models[$modele])) { $this->error = $outputlangs->trans('LmdbDossierModelInactive'); return -1; }
-		if (!in_array((int) $this->entity, array_map('intval', explode(',', getEntity('lmdbvehicle'))), true)) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
+		if (!LmdbVehicleSharing::canReadObject($this->db, $user, $this)) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
 		return $this->commonGenerateDocument('core/modules/lmdbvehiclemanagement/doc/', $modele, $outputlangs, $hidedetails, $hidedesc, $hideref, $moreparams);
 	}
 
@@ -209,8 +210,8 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		global $conf, $user;
 		if (!preg_match('/^lmdb-dossier-[0-9]+\.(pdf|zip)$/i', basename($destfull))) return parent::indexFile($destfull, $update_main_doc_field);
 		$directory = getMultidirOutput($this, 'lmdbvehiclemanagement', 1);
-		if (!$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)
-			|| !in_array((int) $this->entity, array_map('intval', explode(',', getEntity('lmdbvehicle'))), true)
+		if (!LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)
+			|| !LmdbVehicleSharing::canReadObject($this->db, $user, $this)
 			|| !is_string($directory) || realpath(dirname($destfull)) !== realpath($directory)
 			|| pathinfo($destfull, PATHINFO_FILENAME) !== 'lmdb-dossier-'.((int) $this->id)) { $this->error = 'NotEnoughPermissions'; return -1; }
 		$consultationEntity = $conf->entity;
@@ -344,7 +345,7 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		$quartix = new LmdbVehicleQuartixService($this->db);
 		try { $owner = $quartix->vehicle((int) $this->id); }
 		catch (Exception $e) { $this->error = 'QxAccessDenied'; return -1; }
-		if ((int) $owner->entity !== (int) $this->entity || !LmdbVehicleQuartixConfig::can($user, 'configure') && !$user->hasRight('lmdbvehiclemanagement', 'delete')) { $this->error = 'QxAccessDenied'; return -1; }
+		if ((int) $owner->entity !== (int) $this->entity || !LmdbVehicleQuartixConfig::can($user, 'configure') && !LmdbVehicleSharing::can($user, '', 'delete')) { $this->error = 'QxAccessDenied'; return -1; }
 		if (!$quartix->lock((int) $this->entity)) { $this->error = 'QxBusy'; return -1; }
 		try {
 			$tables = array(
@@ -459,8 +460,8 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		}
 
 		$this->db->begin();
-		$sql = 'SELECT status, commissioning_date FROM '.MAIN_DB_PREFIX.$this->table_element;
-		$sql .= ' WHERE rowid = '.((int) $this->id).' AND entity IN ('.getEntity('lmdbvehicle').') FOR UPDATE';
+		$sql = 'SELECT status, commissioning_date FROM '.MAIN_DB_PREFIX.$this->table_element.' AS t';
+		$sql .= ' WHERE t.rowid = '.((int) $this->id).' AND '.LmdbVehicleSharing::sql($this->db, $this->element).' FOR UPDATE';
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			$this->error = $this->db->lasterror();

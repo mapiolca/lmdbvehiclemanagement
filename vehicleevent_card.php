@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -23,9 +24,9 @@ $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09') ?: 'view';
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionToWrite = $user->hasRight('lmdbvehiclemanagement', 'event', 'write');
+$permissionToWrite = LmdbVehicleSharing::can($user, 'event', 'write');
 $object = new LmdbVehicleEvent($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 if ($id > 0 && $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $hookmanager->initHooks(array('lmdbvehicleeventcard', 'globalcard'));
 
@@ -58,6 +59,8 @@ function lmdbVehicleEventPopulateFromPost($event)
 	$event->odometer_km = $odometer === '' ? null : (float) price2num($odometer);
 	$event->status = GETPOSTINT('status');
 }
+
+if ($id > 0) lmdbSharingAction($object);
 
 $parameters = array('id' => $id);
 $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action);
@@ -102,7 +105,7 @@ if (empty($reshook)) {
 $form = new Form($db);
 $formfile = new FormFile($db);
 $vehicleOptions = array();
-$sqlVehicles = 'SELECT rowid, registration_number, ref FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle WHERE entity IN ('.getEntity('lmdbvehicle').') ORDER BY registration_number';
+$sqlVehicles = 'SELECT rowid, registration_number, ref FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS lmdb_v WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'lmdb_v').' ORDER BY registration_number';
 $resVehicles = $db->query($sqlVehicles);
 if (!$resVehicles) {
 	dol_print_error($db);
@@ -146,12 +149,13 @@ if ($action === 'create' || $action === 'edit') {
 	print dol_get_fiche_head($head, 'card', $langs->trans('VehicleEvent'), -1, $object->picto);
 	$linkback = '<a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicleevent_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans('BackToList').'</a>';
 	$moreHtmlRef = '<div class="refidno">'.dol_escape_htmltag($object->label);
-	$entityBadge = lmdbVehicleManagementEntityBadge((int) $object->entity, lmdbVehicleManagementGetEntityOptions('lmdbvehicle'));
+	$entityBadge = lmdbVehicleManagementEntityBadge((int) $object->entity, lmdbVehicleManagementGetEntityOptions(LmdbVehicleSharing::scopeElement('lmdbvehicleevent')));
 	if ($entityBadge !== '') {
 		$moreHtmlRef .= '<br>'.$entityBadge;
 	}
 	$moreHtmlRef .= '</div>';
 	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $moreHtmlRef);
+	lmdbSharingRender($object);
 	$vehicle = new LmdbVehicle($db);
 	$vehicleLink = $vehicle->fetch((int) $object->fk_vehicle) > 0 ? $vehicle->getNomUrl(1) : '';
 	print '<div class="fichecenter"><div class="fichehalfleft"><div class="underbanner clearboth"></div><table class="border centpercent tableforfield">';

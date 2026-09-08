@@ -119,7 +119,7 @@ $trips->saveDay($tripLink,array($trip),$tripDay,'qws');
 qxReject(static function () use ($routes,$routeDayId,$routeKey) { $routes->view($routeDayId,$routeKey); }, 'QxRouteUnavailable');
 qxCheck((int)$db->pdo->query('SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_routequeue'.$queueFilter)->fetchColumn() === 0, 'Private journal snapshot cancels pending retrieval');
 
-// Shared reads enqueue in the owner without loading its secrets; fake entities are denied.
+// Beneficiaries can read cached routes, but cannot request new traces or load secrets.
 $trip['IsPrivate'] = false; $trip['InProgress'] = false;
 $rawRoute['InProgress'] = false; $routeReply[0]['Trips'] = array($rawRoute);
 $trips->saveDay($tripLink,array($trip),$tripDay,'qws');
@@ -128,14 +128,14 @@ qxReject(static function () use ($routes,$routeDayId,$routeKey) { $routes->view(
 $mc = new class { public function getEntity($element,$shared=1,$object=null) { return '1,2'; } };
 foreach (array('ROUTES_ENABLED'=>'1','ENABLED'=>'1','TRIP_RETENTION_DAYS'=>'30') as $k=>$v) $db->query("INSERT INTO ".MAIN_DB_PREFIX."const (entity,name,value) VALUES (1,'LMDBVEHICLEMANAGEMENT_QX_".$k."','".$v."')");
 $calls = count($routes->client->calls);
-$routes->requestRoute($routeDayId,$routeKey);
-$routes->requestRoute($routeDayId,$routeKey);
-qxCheck(count($routes->client->calls) === $calls && $routes->view($routeDayId,$routeKey)['state'] === 'pending', 'Shared click only enqueues and repeated clicks coalesce');
+qxReject(static function () use ($routes,$routeDayId,$routeKey) { $routes->requestRoute($routeDayId,$routeKey); }, 'QxAccessDenied');
+qxCheck(count($routes->client->calls) === $calls && !$routes->view($routeDayId,$routeKey)['can_request'], 'Beneficiary cannot enqueue or request a route');
 qxReject(static function () use ($db,$routeDayId) { new QxTestClient($db,1,$routeDayId); }, 'QxAccessDenied');
 qxReject(static function () use ($routes) { $routes->processPending($routes->client,1,microtime(true)+45); }, 'QxAccessDenied');
 $conf->entity = 1; $mc = null;
 $routes->client->responses = array(qxResponse($routeReply[0]));
-qxCheck($routes->processPending($routes->client,1,microtime(true)+45) === '' && $routes->view($routeDayId,$routeKey)['state'] === 'ready', 'Owner job fulfills the shared request');
+$routes->requestRoute($routeDayId,$routeKey);
+qxCheck($routes->processPending($routes->client,1,microtime(true)+45) === '' && $routes->view($routeDayId,$routeKey)['state'] === 'ready', 'Owner alone requests and retrieves the route');
 $lifecycle = new QxTestService($db);
 $db->begin();
 $lifecycle->disassociate($user,1,(int)$tripLink->rowid,'reassignment');

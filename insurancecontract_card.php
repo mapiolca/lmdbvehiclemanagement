@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 // Strict pre-bootstrap allowlist: force native token checks for these custom GET/POST actions.
@@ -31,15 +32,15 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'companies', 'contacts', 'other', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $preselectedVehicleId = GETPOSTINT('vehicle_id');
 $action = GETPOST('action', 'aZ09') ?: ($id > 0 ? 'view' : 'create');
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write');
-$permissionDelete = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'delete');
+$permissionWrite = LmdbVehicleSharing::can($user, 'insurance', 'write');
+$permissionDelete = LmdbVehicleSharing::can($user, 'insurance', 'delete');
 $object = new LmdbVehicleInsuranceContract($db);
 $coverage = array(
 	'vehicle_ids' => array(),
@@ -54,6 +55,8 @@ if ($cancel) {
 	header('Location: '.($id > 0 ? $_SERVER['PHP_SELF'].'?id='.$id : dol_buildpath('/lmdbvehiclemanagement/insurancecontract_list.php', 1)));
 	exit;
 }
+
+if ($id > 0) lmdbSharingAction($object);
 
 $parameters = array('id' => $id);
 $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action);
@@ -147,6 +150,7 @@ if ($action === 'create' || $action === 'edit') {
 	$head = lmdbInsuranceContractPrepareHead($object);
 	print dol_get_fiche_head($head, 'card', $langs->trans('InsuranceContract'), -1, $object->picto);
 	lmdbInsuranceContractPrintBanner($object);
+if ($id > 0 && !in_array($action, array('create', 'edit'), true)) lmdbSharingRender($object);
 	$company = new Societe($db);
 	$companyLink = $company->fetch((int) $object->fk_soc) > 0 ? $company->getNomUrl(1) : '';
 	$contactLink = '';
@@ -171,7 +175,10 @@ if ($action === 'create' || $action === 'edit') {
 	print '</table></div><div class="fichehalfright"><div class="underbanner clearboth"></div>';
 	print load_fiche_titre($langs->trans('Vehicles'), '', 'car');
 	print '<div class="div-table-responsive-no-min"><table class="noborder centpercent"><tr class="liste_titre"><th>'.$langs->trans('Vehicle').'</th><th>'.$langs->trans('InsuranceCoverageType').'</th><th>'.$langs->trans('Period').'</th></tr>';
-	$sqlVehicles = 'SELECT v.rowid, v.ref, v.registration_number, v.label, cv.coverage_type, cv.date_start, cv.date_end FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle AS cv';
+	// Fleet coverage remains complete; only accessible vehicle cards receive a link.
+	$sqlVehicles = 'SELECT v.rowid, v.ref, v.registration_number, v.label, cv.coverage_type, cv.date_start, cv.date_end';
+	$sqlVehicles .= ', CASE WHEN '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').' THEN 1 ELSE 0 END AS vehicle_visible';
+	$sqlVehicles .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle AS cv';
 	$sqlVehicles .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = cv.fk_vehicle AND v.entity = cv.entity';
 	$sqlVehicles .= ' WHERE cv.fk_contract = '.((int) $object->id).' AND cv.entity = '.((int) $object->entity).' ORDER BY v.ref';
 	$resVehicles = $db->query($sqlVehicles);
@@ -180,7 +187,8 @@ if ($action === 'create' || $action === 'edit') {
 		while (is_object($vehicleRow = $db->fetch_object($resVehicles))) {
 			$vehicleCount++;
 			$vehicleUrl = dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?id='.((int) $vehicleRow->rowid);
-			print '<tr class="oddeven"><td><a href="'.$vehicleUrl.'">'.img_picto('', 'car', 'class="pictofixedwidth"').dol_escape_htmltag(lmdbVehicleDisplayIdentifier((string) $vehicleRow->ref, (string) $vehicleRow->registration_number, (string) $vehicleRow->label)).'</a></td>';
+			$vehicleLabel = img_picto('', 'car', 'class="pictofixedwidth"').dol_escape_htmltag(lmdbVehicleDisplayIdentifier((string) $vehicleRow->ref, (string) $vehicleRow->registration_number, (string) $vehicleRow->label));
+			print '<tr class="oddeven"><td>'.(!empty($vehicleRow->vehicle_visible) ? '<a href="'.$vehicleUrl.'">'.$vehicleLabel.'</a>' : $vehicleLabel).'</td>';
 			print '<td>'.$langs->trans($vehicleRow->coverage_type === LmdbVehicleInsuranceContract::COVERAGE_PRIMARY ? 'InsuranceCoveragePrimary' : 'InsuranceCoverageComplementary').'</td>';
 			print '<td>'.dol_print_date($db->jdate($vehicleRow->date_start), 'day').' — '.(!empty($vehicleRow->date_end) ? dol_print_date($db->jdate($vehicleRow->date_end), 'day') : $langs->trans('NoLimit')).'</td></tr>';
 		}

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 /** Aggregated consumption statistics produced without per-row SQL queries. */
@@ -32,7 +33,7 @@ class LmdbVehicleConsumptionStats
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND v.entity = t.entity';
 		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity AS cap ON cap.entity = t.entity AND cap.fk_vehicle = t.fk_vehicle AND cap.fk_consumable = t.fk_consumable';
 		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user AS u ON u.rowid = COALESCE(t.fk_user_driver, t.fk_user_creat)';
-		$sql .= ' WHERE t.entity IN ('.getEntity('lmdbvehicleconsumption').')';
+		$sql .= ' WHERE '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicleconsumption', 't').' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicleodometerreading', 'r');
 		if (isset($filters['vehicle_id']) && (int) $filters['vehicle_id'] > 0) $sql .= ' AND t.fk_vehicle = '.((int) $filters['vehicle_id']);
 		if (isset($filters['user_id']) && (int) $filters['user_id'] > 0) $sql .= ' AND COALESCE(t.fk_user_driver, t.fk_user_creat) = '.((int) $filters['user_id']);
 		if (isset($filters['consumable_id']) && (int) $filters['consumable_id'] > 0) $sql .= ' AND t.fk_consumable = '.((int) $filters['consumable_id']);

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -13,7 +14,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 
 /** @var Conf $conf */ /** @var DoliDB $db */ /** @var Translate $langs */ /** @var User $user */
 $langs->loadLangs(array('main', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 $limit = GETPOSTINT('limit') ?: (int) $conf->liste_limit; $page = GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page'); if ($page < 0 || GETPOST('button_search', 'alpha') || GETPOST('button_removefilter', 'alpha')) $page = 0; $offset = $limit * $page;
 $sortfield = GETPOST('sortfield', 'aZ09comma') ?: 'req.retained_due_date'; $sortorder = strtoupper(GETPOST('sortorder', 'alpha')) === 'DESC' ? 'DESC' : 'ASC';
 $contextpage = GETPOST('contextpage', 'aZ09');
@@ -22,7 +23,8 @@ $startDate = GETPOSTINT('date_startyear') > 0 ? dol_mktime(0, 0, 0, GETPOSTINT('
 $endDate = GETPOSTINT('date_endyear') > 0 ? dol_mktime(23, 59, 59, GETPOSTINT('date_endmonth'), GETPOSTINT('date_endday'), GETPOSTINT('date_endyear')) : 0;
 $searchVehicle = GETPOSTINT('search_vehicle'); $searchAssetType = GETPOSTINT('search_asset_type'); $searchProfile = GETPOSTINT('search_profile'); $searchControlType = GETPOSTINT('search_control_type'); $searchStatus = GETPOST('search_status', 'aZ09'); $searchProvider = GETPOSTINT('search_provider'); $searchTerritory = GETPOST('search_territory', 'aZ09'); $searchEntities = GETPOSTISARRAY('search_entity') ? GETPOST('search_entity', 'array:int') : array();
 if (GETPOST('button_removefilter', 'alpha')) { $startDate = $endDate = $searchVehicle = $searchAssetType = $searchProfile = $searchControlType = $searchProvider = 0; $searchStatus = $searchTerritory = ''; $searchEntities = array(); }
-$form = new Form($db); $vehiclePrototype = new LmdbVehicle($db); $listObject = new LmdbVehicleRegulatoryControl($db);
+$form = new Form($db);
+ $vehiclePrototype = new LmdbVehicle($db); $listObject = new LmdbVehicleRegulatoryControl($db);
 $arrayfields = array(
 	'req.retained_due_date' => array('label' => 'RetainedDueDate', 'checked' => 1, 'enabled' => 1, 'position' => 10),
 	'v.ref' => array('label' => 'VehicleOrEquipment', 'checked' => 1, 'enabled' => 1, 'position' => 20),
@@ -33,7 +35,7 @@ $arrayfields = array(
 	's.nom' => array('label' => 'ControlBody', 'checked' => 1, 'enabled' => 1, 'position' => 70),
 	'v.regulatory_territory' => array('label' => 'RegulatoryTerritory', 'checked' => 1, 'enabled' => 1, 'position' => 80),
 );
-/** @var array<int,string> $vehicleOptions */ $vehicleOptions = array(); $resql = $db->query('SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle WHERE entity IN ('.getEntity('lmdbvehicle').') ORDER BY ref'); if ($resql) { while (is_object($row = $db->fetch_object($resql))) $vehicleOptions[(int) $row->rowid] = (trim((string) $row->registration_number) !== '' ? (string) $row->registration_number : (string) $row->ref).' — '.(string) $row->label; $db->free($resql); }
+/** @var array<int,string> $vehicleOptions */ $vehicleOptions = array(); $resql = $db->query('SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS lmdb_v WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'lmdb_v').' ORDER BY ref'); if ($resql) { while (is_object($row = $db->fetch_object($resql))) $vehicleOptions[(int) $row->rowid] = (trim((string) $row->registration_number) !== '' ? (string) $row->registration_number : (string) $row->ref).' — '.(string) $row->label; $db->free($resql); }
 /** @var array<int,string> $assetTypeOptions */ $assetTypeOptions = array(); $knownAssetTypeCodes = array(); $resql = $db->query('SELECT rowid, code, label FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_asset_type WHERE entity IN ('.getEntity('c_lmdbvehiclemanagement_asset_type').') AND active = 1 ORDER BY CASE WHEN entity = '.((int) $conf->entity).' THEN 0 ELSE 1 END, position'); if ($resql) { while (is_object($row = $db->fetch_object($resql))) { if (isset($knownAssetTypeCodes[$row->code])) continue; $knownAssetTypeCodes[$row->code] = true; $assetTypeOptions[(int) $row->rowid] = $langs->trans((string) $row->label); } $db->free($resql); }
 /** @var array<int,string> $profileOptions */ $profileOptions = array(); $knownProfileCodes = array(); $resql = $db->query('SELECT rowid, code, label FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_regulatory_profile WHERE entity IN ('.getEntity('c_lmdbvehiclemanagement_regulatory_profile').') AND active = 1 ORDER BY CASE WHEN entity = '.((int) $conf->entity).' THEN 0 ELSE 1 END, position'); if ($resql) { while (is_object($row = $db->fetch_object($resql))) { if (isset($knownProfileCodes[$row->code])) continue; $knownProfileCodes[$row->code] = true; $profileOptions[(int) $row->rowid] = $langs->trans((string) $row->label); } $db->free($resql); }
 /** @var array<int,string> $controlTypeOptions */ $controlTypeOptions = array(); $knownControlTypeCodes = array(); $resql = $db->query('SELECT rowid, code, label FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_control_type WHERE entity IN ('.getEntity('c_lmdbvehiclemanagement_control_type').') AND active = 1 ORDER BY CASE WHEN entity = '.((int) $conf->entity).' THEN 0 ELSE 1 END, position'); if ($resql) { while (is_object($row = $db->fetch_object($resql))) { if (isset($knownControlTypeCodes[$row->code])) continue; $knownControlTypeCodes[$row->code] = true; $controlTypeOptions[(int) $row->rowid] = $langs->trans((string) $row->label); } $db->free($resql); }
@@ -46,7 +48,7 @@ $parameters = array('arrayfields' => &$arrayfields);
 $reshook = $hookmanager->executeHooks('doActions', $parameters, $listObject, $action);
 if ($reshook < 0) setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
 include DOL_DOCUMENT_ROOT.'/core/actions_changeselectedfields.inc.php';
-$where = ' WHERE req.active = 1 AND req.entity IN ('.$entityScope.')';
+$where = ' WHERE req.active = 1 AND req.entity IN ('.$entityScope.') AND '.LmdbVehicleSharing::requirementSql($db);
 if ($startDate > 0) $where .= " AND req.retained_due_date >= '".$db->idate($startDate)."'";
 if ($endDate > 0) $where .= " AND req.retained_due_date <= '".$db->idate($endDate)."'";
 if ($searchVehicle > 0) $where .= ' AND req.fk_vehicle = '.$searchVehicle;
@@ -64,10 +66,11 @@ $sql .= ' (SELECT GROUP_CONCAT(p.label ORDER BY p.position SEPARATOR \'||\') FRO
 $sql .= $from.$where.$db->order($sortfield, $sortorder).$db->plimit($limit + 1, $offset); $resql = $db->query($sql); if (!$resql) { dol_print_error($db); exit; } $num = $db->num_rows($resql);
 
 $title = $langs->trans('RegulatoryControlSchedule'); llxHeader('', $title, '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-list page-regulatorycontrol-schedule bodyforlist');
+lmdbSharingPartialNotice();
 $param = ''; if ($startDate) $param .= '&date_startday='.dol_print_date($startDate, '%d').'&date_startmonth='.dol_print_date($startDate, '%m').'&date_startyear='.dol_print_date($startDate, '%Y'); if ($endDate) $param .= '&date_endday='.dol_print_date($endDate, '%d').'&date_endmonth='.dol_print_date($endDate, '%m').'&date_endyear='.dol_print_date($endDate, '%Y');
 foreach (array('search_vehicle' => $searchVehicle, 'search_asset_type' => $searchAssetType, 'search_profile' => $searchProfile, 'search_control_type' => $searchControlType, 'search_status' => $searchStatus, 'search_provider' => $searchProvider, 'search_territory' => $searchTerritory) as $name => $value) if ($value !== '' && $value !== 0) $param .= '&'.$name.'='.urlencode((string) $value); foreach ($searchEntities as $entityId) $param .= '&search_entity[]='.((int) $entityId);
 print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="formfilteraction" id="formfilteraction" value="list"><input type="hidden" name="action" value="list"><input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'"><input type="hidden" name="page" value="'.((int) $page).'">';
-$newButton = dolGetButtonTitle($langs->trans('NewRegulatoryControl'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&token='.newToken(), '', $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write')); print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'calendar-check', 0, $newButton, '', $limit, 0, 0, 1);
+$newButton = dolGetButtonTitle($langs->trans('NewRegulatoryControl'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&token='.newToken(), '', LmdbVehicleSharing::can($user, 'regulatorycontrol', 'write')); print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'calendar-check', 0, $newButton, '', $limit, 0, 0, 1);
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, $conf->main_checkbox_left_column);
 print '<div class="div-table-responsive"><table class="tagtable nobottomiftotal noborder liste"><tr class="liste_titre_filter">';

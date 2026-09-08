@@ -6,6 +6,7 @@
  *
  * @phpstan-type CompatibilityFeature array{
  *   label:string,
+ *   description?:string,
  *   min_dolibarr:string,
  *   min_php:string,
  *   available:bool,
@@ -25,7 +26,14 @@ class LmdbVehicleManagementCompatibility
 		$dolibarr20 = version_compare(DOL_VERSION, '20.0.0', '>=');
 		$php80 = version_compare(PHP_VERSION, '8.0.0', '>=');
 
+		require_once __DIR__.'/lmdbvehiclesharing.class.php';
 		return array(
+			'multicompany_individual_sharing' => array(
+				'label' => 'LmdbIndividualSharing', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
+				'description' => 'LmdbSharingRequiresMulticompany21',
+				'available' => LmdbVehicleSharing::available(),
+				'reason' => LmdbVehicleSharing::available() ? '' : 'LmdbSharingRequiresMulticompany21',
+			),
 			'quartix_routes' => array(
 				'label' => 'QxRouteTitle', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
 				'available' => LmdbVehicleQuartixConfig::unavailableReason('routes') === '',

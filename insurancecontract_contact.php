@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -23,11 +24,11 @@ $langs->loadLangs(array('companies', 'users', 'lmdbvehiclemanagement@lmdbvehicle
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
 $object = new LmdbVehicleInsuranceContract($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $object->socid = (int) $object->fk_soc;
 $object->fetch_thirdparty();
-$permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write');
+$permissionWrite = LmdbVehicleSharing::can($user, 'insurance', 'write');
 
 $hookmanager->initHooks(array('lmdbinsurancecontractcontact', 'globalcard'));
 $parameters = array('id' => $id);

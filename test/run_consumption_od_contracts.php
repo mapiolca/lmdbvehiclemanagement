@@ -59,7 +59,7 @@ $checks['native_various_payment_is_created_as_debit'] = strpos($service, 'new Pa
 	&& strpos($service, '$payment->num_payment = \'\';') !== false
 	&& strpos($service, '$payment->chqbank = \'\';') !== false;
 $checks['od_label_uses_consumption_vehicle_and_consumable'] = strpos($service, "\$consumption->ref.' - '.\$registration.' - '.\$consumableLabel") !== false;
-$checks['creation_is_transactional_and_uses_consumption_permission'] = strpos($service, "\$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')") !== false
+$checks['creation_is_transactional_and_uses_consumption_permission'] = strpos($service, "LmdbVehicleSharing::can(\$user, 'consumption', 'write')") !== false
 	&& strpos($service, "\$user->hasRight('banque'") === false
 	&& strpos($service, '$this->db->begin();') !== false
 	&& strpos($service, '$this->db->rollback();') !== false
@@ -78,7 +78,7 @@ $checks['card_collects_project_payment_mode_and_receipt'] = strpos($card, "selec
 	&& strpos($card, "select_types_paiements(getDolGlobalInt(LmdbVehicleConsumptionPayment::CONST_PAYMENT_MODE)") !== false
 	&& strpos($card, 'name="receipt" accept="application/pdf,image/jpeg,image/png"') !== false
 	&& strpos($card, 'createConsumption($object, $upload, GETPOSTINT(\'payment_mode_id\'), $user)') !== false;
-$checks['receipt_route_is_scoped_to_consumption_readers'] = strpos($receiptRoute, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false
+$checks['receipt_route_is_scoped_to_consumption_readers'] = strpos($receiptRoute, "LmdbVehicleSharing::can(\$user, '', 'read')") !== false
 	&& strpos($receiptRoute, '$consumption->fetch($id)') !== false
 	&& strpos($receiptRoute, '$consumptionPayment->getReceiptPath($consumption)') !== false
 	&& strpos($receiptRoute, 'X-Content-Type-Options: nosniff') !== false;

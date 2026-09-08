@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementobject.class.php');
@@ -352,9 +353,9 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	/** @return int<-1,1> */
 	private function loadVehicleEntity()
 	{
-		$sql = 'SELECT entity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle';
+		$sql = 'SELECT entity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS sv';
 		$sql .= ' WHERE rowid = '.((int) $this->fk_vehicle);
-		$sql .= ' AND entity IN ('.getEntity('lmdbvehicle').')';
+		$sql .= ' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'sv');
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			$this->error = $this->db->lasterror();
@@ -471,9 +472,9 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	public function fetchAllByVehicle($vehicleId, $limit = 0, $offset = 0)
 	{
 		$records = array();
-		$sql = 'SELECT * FROM '.MAIN_DB_PREFIX.$this->table_element;
+		$sql = 'SELECT * FROM '.MAIN_DB_PREFIX.$this->table_element.' AS r';
 		$sql .= ' WHERE fk_vehicle = '.((int) $vehicleId);
-		$sql .= ' AND entity IN ('.getEntity('lmdbvehicle').')';
+		$sql .= ' AND '.LmdbVehicleSharing::sql($this->db, $this->element, 'r');
 		$sql .= ' ORDER BY reading_date DESC, rowid DESC';
 		if ($limit > 0) $sql .= $this->db->plimit(min(1000, $limit), max(0, $offset));
 		$resql = $this->db->query($sql);
@@ -493,7 +494,7 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 			foreach (array('next' => $records[0], 'previous' => $records[count($records) - 1]) as $side => $edge) {
 				$operator = $side === 'next' ? '>' : '<';
 				$order = $side === 'next' ? 'ASC' : 'DESC';
-				$sql = 'SELECT * FROM '.MAIN_DB_PREFIX.$this->table_element.' WHERE fk_vehicle='.((int) $vehicleId).' AND entity IN ('.getEntity('lmdbvehicle').') AND is_estimate=0';
+				$sql = 'SELECT * FROM '.MAIN_DB_PREFIX.$this->table_element.' AS r'.' WHERE fk_vehicle='.((int) $vehicleId).' AND '.LmdbVehicleSharing::sql($this->db, $this->element, 'r').' AND is_estimate=0';
 				$sql .= " AND (reading_date".$operator."'".$this->db->idate($edge->reading_date)."' OR (reading_date='".$this->db->idate($edge->reading_date)."' AND rowid".$operator.((int) $edge->id).')) ORDER BY reading_date '.$order.',rowid '.$order.' LIMIT 1';
 				$res = $this->db->query($sql);
 				if (!$res) { $this->error = $this->db->lasterror(); return -1; }
@@ -513,7 +514,7 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 	/** @param int $vehicleId Vehicle @param self|null $after Count rows newer than this reading @return int Count or -1 */
 	public function countByVehicle($vehicleId, $after = null)
 	{
-		$sql = 'SELECT COUNT(*) AS nb FROM '.MAIN_DB_PREFIX.$this->table_element.' WHERE fk_vehicle='.((int) $vehicleId).' AND entity IN ('.getEntity('lmdbvehicle').')';
+		$sql = 'SELECT COUNT(*) AS nb FROM '.MAIN_DB_PREFIX.$this->table_element.' AS r'.' WHERE fk_vehicle='.((int) $vehicleId).' AND '.LmdbVehicleSharing::sql($this->db, $this->element, 'r');
 		if ($after !== null) $sql .= " AND (reading_date>'".$this->db->idate($after->reading_date)."' OR (reading_date='".$this->db->idate($after->reading_date)."' AND rowid>".((int) $after->id).'))';
 		$res = $this->db->query($sql);
 		if (!$res) { $this->error = $this->db->lasterror(); return -1; }
@@ -560,7 +561,7 @@ class LmdbVehicleOdometerReading extends LmdbVehicleManagementObject
 		global $conf, $langs;
 		require_once __DIR__.'/lmdbvehiclequartixconfig.class.php';
 		require_once __DIR__.'/lmdbvehiclequartixrules.class.php';
-		if (!LmdbVehicleQuartixConfig::can($user, 'sync') || (!LmdbVehicleQuartixConfig::isAdmin($user) && !$user->hasRight('lmdbvehiclemanagement', 'odometer', 'write')) || $date <= 0 || $date > dol_now() + 300 || !is_finite($km) || $km < 0 || $remoteId <= 0) {
+		if (!LmdbVehicleQuartixConfig::can($user, 'sync') || (!LmdbVehicleQuartixConfig::isAdmin($user) && !LmdbVehicleSharing::can($user, 'odometer', 'write')) || $date <= 0 || $date > dol_now() + 300 || !is_finite($km) || $km < 0 || $remoteId <= 0) {
 			$this->error = 'QxAccessDenied'; return -1;
 		}
 		$this->db->begin();

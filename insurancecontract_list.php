@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -17,7 +18,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
 
 $limit = GETPOSTINT('limit') ?: (int) $conf->liste_limit;
 $page = GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page');
@@ -53,9 +54,9 @@ $arrayfields = array(
 	'c.status' => array('label' => 'Status', 'checked' => 1, 'enabled' => 1, 'position' => 70),
 );
 
-$entityScope = getEntity('lmdbvehicle');
+$entityScope = getEntity(LmdbVehicleSharing::scopeElement('lmdbinsurancecontract'));
 $allowedEntityIds = array_values(array_filter(array_map('intval', explode(',', $entityScope))));
-$entityOptions = lmdbVehicleManagementGetEntityOptions('lmdbvehicle');
+$entityOptions = lmdbVehicleManagementGetEntityOptions(LmdbVehicleSharing::scopeElement('lmdbinsurancecontract'));
 $showEntityColumn = !empty($entityOptions);
 if (!$showEntityColumn) $searchEntities = array();
 if ($showEntityColumn) {
@@ -68,7 +69,7 @@ $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action
 if ($reshook < 0) setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
 include DOL_DOCUMENT_ROOT.'/core/actions_changeselectedfields.inc.php';
 
-$where = ' WHERE c.entity IN ('.$entityScope.')';
+$where = ' WHERE '.LmdbVehicleSharing::sql($db, 'lmdbinsurancecontract', 'c');
 if ($searchRef !== '') $where .= natural_search('c.ref', $searchRef);
 if ($searchPolicy !== '') $where .= natural_search('c.policy_number', $searchPolicy);
 if ($searchLabel !== '') $where .= natural_search('c.label', $searchLabel);
@@ -127,7 +128,7 @@ print '<input type="hidden" name="action" value="list">';
 print '<input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'">';
 print '<input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'">';
 print '<input type="hidden" name="page" value="'.((int) $page).'">';
-$newButton = dolGetButtonTitle($langs->trans('NewInsuranceContract'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'?action=create&token='.newToken(), '', $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write'));
+$newButton = dolGetButtonTitle($langs->trans('NewInsuranceContract'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'?action=create&token='.newToken(), '', LmdbVehicleSharing::can($user, 'insurance', 'write'));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'shield-alt', 0, $newButton, '', $limit, 0, 0, 1);
 
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;

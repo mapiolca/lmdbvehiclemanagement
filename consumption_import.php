@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -15,7 +16,7 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumptionimport.clas
 
 $langs->loadLangs(array('main', 'imports', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'consumption', 'import') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, 'consumption', 'import') || !empty($user->socid)) accessforbidden();
 $action = GETPOST('action', 'aZ09');
 if ($action === 'import') {
 	$upload = isset($_FILES['import_file']) && is_array($_FILES['import_file']) ? $_FILES['import_file'] : array();

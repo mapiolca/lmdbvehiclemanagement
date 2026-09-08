@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 /** Access checks for the protected PDF/ZIP family, including native public previews. */
@@ -15,7 +16,7 @@ trait LmdbVehicleDossierHooks
 	public function moveUploadedFile($parameters, &$object, &$action, $hookmanager)
 	{
 		global $langs;
-		if (preg_match('/^lmdb-dossier-[0-9]+\.(pdf|zip)$/i', basename((string) ($parameters['dest_file'] ?? '')))) {
+		if (preg_match('/^lmdb-dossier-[0-9]+\.(pdf|zip|sharing\.meta)$/i', basename((string) ($parameters['dest_file'] ?? '')))) {
 			$langs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
 			// dol_move_uploaded_file ignores negative hook results on v20+.
 			accessforbidden($langs->trans('LmdbDossierKeepFilename'));
@@ -34,7 +35,7 @@ trait LmdbVehicleDossierHooks
 	{
 		global $langs;
 		foreach (array('filenamefrom', 'filenameto') as $key) {
-			if (preg_match('/^lmdb-dossier-[0-9]+\.(pdf|zip)$/i', (string) ($parameters[$key] ?? ''))) {
+			if (preg_match('/^lmdb-dossier-[0-9]+\.(pdf|zip|sharing\.meta)$/i', basename((string) ($parameters[$key] ?? '')))) {
 				$langs->load('lmdbvehiclemanagement@lmdbvehiclemanagement');
 				setEventMessages($langs->trans('LmdbDossierKeepFilename'), null, 'errors');
 				return -1;
@@ -52,17 +53,20 @@ trait LmdbVehicleDossierHooks
 	 */
 	public function checkSecureAccess($parameters, &$object, &$action, $hookmanager)
 	{
+		$sharing = LmdbVehicleSharing::documentAccess($this->db, $parameters['fuser'] ?? null, (string) ($parameters['original_file'] ?? ''));
+		if ($sharing === false) httponly_accessforbidden('', 403);
+		if ($sharing === true) $this->results['accessallowed'] = 1;
 		$path = str_replace('\\', '/', (string) ($parameters['original_file'] ?? ''));
-		if (!preg_match('~(?:^|/)lmdb-dossier-([0-9]+)(?:[./-]|$)~i', $path, $match)) return 0;
+		if (!preg_match('~(?:^|/)lmdb-dossier-([0-9]+)(?:[./-]|$)~i', $path, $match)) return $sharing === true ? 1 : 0;
 		$actor = $parameters['fuser'] ?? null;
 		// The core ignores accessallowed=0 from this hook: denial must stop output.
-		if (!is_object($actor) || empty($actor->id) || !empty($actor->socid) || !$actor->hasRight('lmdbvehiclemanagement', 'read') || !$actor->hasRight('fournisseur', 'facture', 'lire') || GETPOST('hashp', 'aZ09') !== '') httponly_accessforbidden('', 403);
+		if (!is_object($actor) || empty($actor->id) || !empty($actor->socid) || !LmdbVehicleSharing::can($actor, '', 'read') || !$actor->hasRight('fournisseur', 'facture', 'lire') || GETPOST('hashp', 'aZ09') !== '') httponly_accessforbidden('', 403);
 		require_once __DIR__.'/lmdbvehicle.class.php';
 		$vehicle = new LmdbVehicle($this->db);
 		if ($vehicle->fetch((int) $match[1]) <= 0 || (int) $vehicle->entity !== (int) ($parameters['entity'] ?? 0)) httponly_accessforbidden('', 403);
 		$directory = getMultidirOutput($vehicle, 'lmdbvehiclemanagement', 1);
 		if (!is_string($directory) || strpos($path, rtrim(str_replace('\\', '/', $directory), '/').'/') !== 0) httponly_accessforbidden('', 403);
-		return 0;
+		return $sharing === true ? 1 : 0;
 	}
 
 	/**
@@ -72,12 +76,15 @@ trait LmdbVehicleDossierHooks
 	public function downloadDocument($parameters, &$object, &$action, $hookmanager)
 	{
 		global $user;
+		$sharing = LmdbVehicleSharing::documentAccess($this->db, $user, (string) ($parameters['fullpath_original_file'] ?? ''));
+		if ($sharing === false) httponly_accessforbidden('', 403);
+		if ($sharing === true) header('Cache-Control: private, no-store');
 		$path = str_replace('\\', '/', (string) ($parameters['fullpath_original_file'] ?? ''));
 		if (!preg_match('~(?:^|/)lmdb-dossier-([0-9]+)(?:[./-]|$)~i', $path, $match)) return 0;
 		header('Cache-Control: private, no-store');
 		header('Pragma: no-cache');
 		header('Expires: 0');
-		if (empty($user->id) || !empty($user->socid) || !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || GETPOST('hashp', 'aZ09') !== '') httponly_accessforbidden('', 403);
+		if (empty($user->id) || !empty($user->socid) || !LmdbVehicleSharing::can($user, '', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || GETPOST('hashp', 'aZ09') !== '') httponly_accessforbidden('', 403);
 		require_once __DIR__.'/lmdbvehicle.class.php';
 		$vehicle = new LmdbVehicle($this->db);
 		if ($vehicle->fetch((int) $match[1]) <= 0) httponly_accessforbidden('', 403);
@@ -97,12 +104,15 @@ trait LmdbVehicleDossierHooks
 		global $user, $fullpath_original_file;
 		$this->resprints = '';
 		if (!in_array(basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')), array('viewimage.php', 'document.php'), true)) return 0;
+		$sharing = LmdbVehicleSharing::documentAccess($this->db, $user, (string) $fullpath_original_file);
+		if ($sharing === false) { http_response_code(403); header('Content-Length: 0'); exit; }
+		if ($sharing === true) header('Cache-Control: private, no-store');
 		$path = str_replace('\\', '/', (string) $fullpath_original_file);
 		if (!preg_match('~(?:^|/)lmdb-dossier-([0-9]+)(?:[./-]|$)~i', $path, $match)) return 0;
 		header('Cache-Control: private, no-store');
 		header('Pragma: no-cache');
 		header('Expires: 0');
-		if (empty($user->id) || !empty($user->socid) || !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || GETPOST('hashp', 'aZ09') !== '') {
+		if (empty($user->id) || !empty($user->socid) || !LmdbVehicleSharing::can($user, '', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || GETPOST('hashp', 'aZ09') !== '') {
 			// Do not call top_httphead()/accessforbidden() recursively from its hook.
 			http_response_code(403); header('Content-Length: 0'); exit;
 		}
