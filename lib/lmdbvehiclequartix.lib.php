@@ -117,5 +117,4 @@ function lmdbQuartixBanner($service, $dataset, $vehicle, $tab)
 		print '<div class="refidno">'.$sourceHtml.'</div>';
 		print '<div class="warning">'.$langs->trans('QxVehicleWithdrawn').'</div>';
 	}
-	lmdbQuartixSourceSelector($service, (int) $dataset->fk_vehicle, (int) $dataset->id);
 }

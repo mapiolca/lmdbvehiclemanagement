@@ -2,7 +2,7 @@
 
 ## À publier
 
-- Présentation QUARTIX : le propriétaire des données apparaît dans la bannière native, sous le libellé du véhicule, avec son badge d’entité. **Relevés kilométriques QUARTIX** et le retour **Utilisation QUARTIX** utilisent des boutons d’action natifs, regroupés à côté de **Gérer le partage des données QUARTIX**. La source sélectionnée et les restrictions d’accès sont conservées ; aucune migration ni réactivation nécessaire.
+- Présentation QUARTIX : le propriétaire des données apparaît dans la bannière native, sous le libellé du véhicule, avec son badge d’entité. Le sélecteur de source reste à gauche, sur la même ligne que les boutons d’action natifs **Relevés kilométriques QUARTIX** (ou **Utilisation QUARTIX**) et **Gérer le partage des données QUARTIX**, placés à droite ; les groupes passent à la ligne sur écran étroit. La source sélectionnée et les restrictions d’accès sont conservées ; aucune migration ni réactivation nécessaire.
 
 - Partage véhicule déplacé à la fin des formulaires **Créer** et **Modifier**, avant les boutons, avec enregistrement commun et transactionnel ; le sélecteur n’apparaît plus sur la fiche en consultation. Dans **Utilisation QUARTIX**, l’action **Gérer le partage des données QUARTIX** ouvre une modale dédiée à la source sélectionnée, réservée à son administrateur propriétaire. Les choix sont conservés après erreur et annulés à la fermeture de la modale. Déployer les fichiers PHP/JS puis recharger la page ; aucune migration ni réactivation supplémentaire.
 

@@ -87,6 +87,9 @@ $form = new Form($db);
 $mileageView = GETPOST('view', 'alpha') === 'odometer';
 llxHeader('', $dataset->snapshot_vehicle_label.' — '.$langs->trans('QxUsage'), '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card');
 lmdbQuartixBanner($service, $dataset, $object, 'quartix');
+ob_start();
+lmdbQuartixSourceSelector($service, $id, $quartixId);
+$sourceSelectorHtml = ob_get_clean();
 include __DIR__.'/tpl/quartix_sharing.tpl.php';
 if ($link === null && !empty($user->admin) && (int) $dataset->entity === (int) $conf->entity) {
 	if ($cleanupAction === 'qx_cleanup') print $form->formconfirm(lmdbSharingObjectUrl($dataset), $langs->trans('QxCleanup'), $langs->trans('QxCleanupConfirm'), 'confirm_qx_cleanup', '', 0, 1);

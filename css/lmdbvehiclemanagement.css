@@ -1,5 +1,17 @@
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
+/* Native source form and action buttons share one responsive row. */
+.lmdb-quartix-actions {
+	align-items: center;
+	gap: 1em;
+}
+
+.lmdb-quartix-buttons {
+	margin-left: auto;
+	justify-content: flex-end;
+	row-gap: 1em;
+}
+
 /*
  * The native column selector is rendered inside the responsive list wrapper.
  * Keep its native markup and styling while allowing the open menu to overlay

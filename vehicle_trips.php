@@ -83,6 +83,7 @@ llxHeader('', $dataset->snapshot_vehicle_label.' — '.$langs->trans('QxJournal'
 	$routeAvailable ? array('/includes/leaflet/leaflet.js', '/lmdbvehiclemanagement/js/quartix_route.js') : array(),
 	$routeAvailable ? array('/includes/leaflet/leaflet.css', '/lmdbvehiclemanagement/css/quartix_route.css') : array());
 lmdbQuartixBanner($service, $dataset, $object, 'trips');
+lmdbQuartixSourceSelector($service, $id, $quartixId);
 print '<p>'.$langs->trans('QxJournalHelp').'</p><p class="opacitymedium">'.$langs->trans('QxJournalRetention', $retention).'</p>';
 if ($link === null) print '<div class="warning">'.$langs->trans('QxNotAssociated').'</div>';
 elseif (!(int) $link->active || $cfg['ENABLED'] !== '1') print '<div class="warning">'.$langs->trans('QxPaused').'</div>';
