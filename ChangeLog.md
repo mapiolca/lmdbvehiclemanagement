@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Partage par élément : chargement du script natif Multicompany nécessaire aux interrupteurs d’activation par famille et au mode « Tout partager par défaut ». Les clics peuvent désormais enregistrer les réglages existants via le traitement natif. Déployer le correctif puis recharger la page ; aucune migration ni réactivation nécessaire.
+
 - Import des pleins/recharges : correction de l’erreur « Fetch non appelable sur la classe » lors de la validation du consommable. Le dictionnaire utilise désormais `CommonObject` et sa vérification native d’existence, sans changement des données ni migration SQL.
 
 - Affichage de l’import des pleins/recharges corrigé : utilisation du droit général de lecture du module avec le droit d’import des consommations, au lieu d’un droit de lecture spécifique inexistant. Aucun nouveau droit ni migration nécessaire.

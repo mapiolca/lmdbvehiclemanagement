@@ -8,7 +8,12 @@ if (!$res) die('Include of main fails');
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 $langs->loadLangs(array('admin', 'multicompany@multicompany', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 if (!LmdbVehicleSharing::isAdmin($user) || !isModEnabled('lmdbvehiclemanagement')) accessforbidden();
-llxHeader('', $langs->trans('LmdbIndividualSharing'));
+$extrajs = array();
+if (LmdbVehicleSharing::available() && empty($user->entity)) {
+	// ajax_mcconstantonoff() requires the same script as native granularity.php.
+	$extrajs[] = '/multicompany/core/js/lib_head.js';
+}
+llxHeader('', $langs->trans('LmdbIndividualSharing'), '', '', '', '', $extrajs);
 $linkback = '<a href="'.DOL_URL_ROOT.'/admin/modules.php?search_keyword=lmdbvehiclemanagement">'.$langs->trans('BackToModuleList').'</a>';
 print load_fiche_titre($langs->trans('LmdbIndividualSharing'), $linkback, 'car');
 print dol_get_fiche_head(lmdbVehicleManagementAdminPrepareHead(), 'sharing', $langs->trans('ModuleLmdbVehicleManagementName'), -1, 'car');
