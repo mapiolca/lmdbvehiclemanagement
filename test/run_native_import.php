@@ -1,6 +1,8 @@
 <?php
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 // Standalone boundary regression: native CSV/XLSX rows, without database writes.
+// Native CommonObject validation is exercised separately by run_consumption_prices.php.
+class CommonObject {}
 class User
 {
 	public $admin = 0;

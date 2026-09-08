@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Import des pleins/recharges : correction de l’erreur « Fetch non appelable sur la classe » lors de la validation du consommable. Le dictionnaire utilise désormais `CommonObject` et sa vérification native d’existence, sans changement des données ni migration SQL.
+
 - Affichage de l’import des pleins/recharges corrigé : utilisation du droit général de lecture du module avec le droit d’import des consommations, au lieu d’un droit de lecture spécifique inexistant. Aucun nouveau droit ni migration nécessaire.
 
 - Import natif des pleins/recharges historiques sans OD, uniquement par l’assistant Dolibarr : création, mise à jour par référence ou véhicule/date/consommable, contrôle des doublons, des entités et des consommations liées à une OD. Simulation sans triggers et enregistrement transactionnel. Ancien parcours CSV retiré ; relancer l’assistant après déploiement. Aucune migration SQL spécifique.

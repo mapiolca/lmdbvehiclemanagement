@@ -21,7 +21,7 @@ if (is_file(DOL_DOCUMENT_ROOT.'/version.inc.php')) {
 }
 $conf = (object) array(
 	'global' => (object) array('MAIN_MAX_DECIMALS_TOT' => 2, 'MAIN_MAX_DECIMALS_UNIT' => 5),
-	'entity' => 1, 'currency' => 'EUR', 'modules' => array(),
+	'entity' => 1, 'currency' => 'EUR', 'modules' => array(), 'modules_parts' => array('hooks' => array()),
 	'file' => (object) array('dol_document_root' => array('main' => DOL_DOCUMENT_ROOT, 'alt0' => dirname(__DIR__, 2))),
 	'lmdbvehiclemanagement' => (object) array('dir_temp' => __DIR__.'/price-graph-test-'.getmypid()),
 );
@@ -42,6 +42,8 @@ require_once DOL_DOCUMENT_ROOT.'/core/modules/export/export_csvutf8.modules.php'
 /** Reject unexpected SQL, including any unplanned write. */
 final class ConsumptionPriceDb
 {
+	/** @return string Native table prefix. */
+	public function prefix() { return MAIN_DB_PREFIX; }
 	/** @var list<array{pattern:string,rows:list<object>|false}> */ public $expected = array();
 	/** @param string $pattern SQL expression @param list<object>|false $rows Result @return void */
 	public function expect($pattern, $rows) { $this->expected[] = array('pattern' => $pattern, 'rows' => $rows); }
@@ -118,6 +120,12 @@ function priceRow($amount, $quantity = 5.0, $day = 0)
 }
 
 $db = new ConsumptionPriceDb();
+$validationObject = new LmdbVehicleConsumption($db);
+$db->expect('/^SELECT rowid FROM test_prices_c_lmdbvehiclemanagement_consumable WHERE entity IN \(1\) AND rowid = 1$/', array((object) array('rowid' => 1)));
+checkPrice($validationObject->validateField($validationObject->fields, 'fk_consumable', '1'), 'Real native validator accepts an existing consumable relation');
+$db->expect('/^SELECT rowid FROM test_prices_c_lmdbvehiclemanagement_consumable WHERE entity IN \(1\) AND rowid = 999$/', array());
+checkPrice(!$validationObject->validateField($validationObject->fields, 'fk_consumable', '999'), 'Real native validator rejects a missing consumable relation');
+checkPrice($db->expected === array(), 'Native validation actually checks the dictionary in the current entity');
 $stats = new LmdbVehicleConsumptionStats($db);
 $rows = array(priceRow(25.0, 10.0), priceRow(null, 5.0, 1));
 $group = $stats->summarize($rows)['1:1:1:L:EUR'];

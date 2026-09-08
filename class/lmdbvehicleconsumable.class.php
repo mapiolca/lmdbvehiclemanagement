@@ -1,12 +1,20 @@
 <?php
+if (!class_exists('CommonObject')) {
+	require_once DOL_DOCUMENT_ROOT.'/core/class/commonobject.class.php';
+}
 require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 /**
  * Access to the entity-scoped consumable dictionary and its P.3 compatibility.
  */
-class LmdbVehicleConsumable
+class LmdbVehicleConsumable extends CommonObject
 {
+	/** @var string Module owning the dictionary. */
+	public $module = 'lmdbvehiclemanagement';
+	/** @var string Table used by native linked-field validation. */
+	public $table_element = 'c_lmdbvehiclemanagement_consumable';
+
 	/** @var string Dictionary identifier used by native field rendering. */
 	public $element = 'c_lmdbvehiclemanagement_consumable';
 
