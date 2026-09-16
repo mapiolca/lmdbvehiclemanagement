@@ -46,7 +46,9 @@ document.addEventListener('DOMContentLoaded', function () {
 			var credit = document.createElement('span'); credit.textContent = options.attribution;
 			var attribution = credit.innerHTML;
 			if (options.tiles === 'https://tile.openstreetmap.org/{z}/{x}/{y}.png') attribution = '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">' + attribution + '</a>';
-			L.tileLayer(options.tiles, {maxZoom: 19, attribution: attribution}).on('tileerror', function () {
+			// Identify the site to the tile provider without exposing the page path or trip parameters.
+			// Scope this to tile images: Dolibarr keeps its own policy for the rest of the page.
+			L.tileLayer(options.tiles, {maxZoom: 19, attribution: attribution, referrerPolicy: 'strict-origin'}).on('tileerror', function () {
 				if (stopped) return;
 				tileFailed = true; message(options.tilesFailure, 'warning');
 			}).addTo(map);

@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Carte QUARTIX : référent limité au domaine de l’instance sur les images du fond de carte, afin de respecter l’identification demandée par OpenStreetMap même avec la politique de sécurité native Dolibarr. Aucun identifiant de véhicule, trajet ou token dans ce référent ; aucune modification de configuration ni migration nécessaire.
+
 - Saisie des contrôles : les exigences proposées suivent uniquement le véhicule sélectionné, y compris après un changement de véhicule ou une erreur de saisie. Une sélection devenue incompatible est effacée. Aucune migration ni réactivation nécessaire.
 - Descriptions : largeur réduite avec les paramètres de l’éditeur et les classes natives Dolibarr, dans les fiches véhicule, plein/recharge, contrat, événement et la création de règle réglementaire.
 

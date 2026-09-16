@@ -15,7 +15,6 @@ require_once __DIR__.'/class/lmdbvehiclequartixroutes.class.php';
 /** @var User $user */
 $langs->loadLangs(array('other', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 header('Cache-Control: private, no-store');
-header('Referrer-Policy: strict-origin');
 header('X-Content-Type-Options: nosniff');
 if (!isModEnabled('lmdbvehiclemanagement') || !empty($user->socid)
 	|| !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'quartix', 'location')) accessforbidden();

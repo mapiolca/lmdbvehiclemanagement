@@ -16,8 +16,6 @@ require_once __DIR__.'/lib/lmdbvehiclemanagement.lib.php';
 /** @var Translate $langs */
 /** @var User $user */
 $langs->loadLangs(array('other', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-// Tile requests originate from the journal now; disclose only its origin as referrer.
-header('Referrer-Policy: strict-origin');
 if (!LmdbVehicleQuartixConfig::supported() || !isModEnabled('lmdbvehiclemanagement') || !empty($user->socid)
 	|| !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'quartix', 'location')) accessforbidden();
 $id = GETPOSTINT('id');
