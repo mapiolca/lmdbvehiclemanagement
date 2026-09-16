@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -25,15 +26,15 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'users', 'agenda', 'currencies', 'banks', 'projects', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $vehicleIdFromUrl = GETPOSTINT('vehicle_id');
 $action = GETPOST('action', 'aZ09') ?: ($id > 0 ? 'view' : 'create');
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionWrite = $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write');
-$permissionDelete = $user->hasRight('lmdbvehiclemanagement', 'consumption', 'delete');
+$permissionWrite = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write'));
+$permissionDelete = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'delete'));
 $object = new LmdbVehicleConsumption($db);
 if ($id > 0 && $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $consumptionPayment = new LmdbVehicleConsumptionPayment($db);
@@ -53,8 +54,8 @@ function lmdbConsumptionVehicleOptions($db)
 	global $conf;
 
 	$options = array();
-	$sql = 'SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle';
-	$sql .= ' WHERE entity = '.((int) $conf->entity).' AND status <> '.LmdbVehicle::STATUS_SOLD.' ORDER BY ref';
+	$sql = 'SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v';
+	$sql .= ' WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').' AND status <> '.LmdbVehicle::STATUS_SOLD.' ORDER BY ref';
 	$resql = $db->query($sql);
 	if ($resql) {
 		while (is_object($row = $db->fetch_object($resql))) {
@@ -73,8 +74,10 @@ function lmdbConsumptionCompatibilityByVehicle($db)
 	$map = array();
 	$sql = 'SELECT DISTINCT v.rowid AS vehicle_id, ce.fk_consumable';
 	$sql .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v';
-	$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_energy = v.fk_energy';
-	$sql .= ' WHERE v.entity = '.((int) $conf->entity);
+	$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy ve ON ve.rowid = v.fk_energy'
+		.' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy e ON e.code = ve.code'
+		.' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_energy = e.rowid';
+	$sql .= ' WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v');
 	$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
 	$resql = $db->query($sql);
 	if ($resql) {
@@ -97,7 +100,7 @@ function lmdbConsumptionSuggestedConsumables($db, $compatibility)
 	}
 	$sql = 'SELECT t.fk_vehicle, t.fk_consumable FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption AS t';
 	$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading AS r ON r.rowid = t.fk_odometer_reading AND r.entity = t.entity';
-	$sql .= " WHERE t.category_snapshot = 'fuel' AND t.entity IN (".getEntity('lmdbvehicleconsumption').')';
+	$sql .= " WHERE t.category_snapshot = 'fuel' AND ".LmdbVehicleSharing::sql($db, 'lmdbvehicleconsumption', 't').' AND '.LmdbVehicleSharing::sql($db, 'lmdbvehicleodometerreading', 'r');
 	$sql .= ' ORDER BY r.reading_date DESC, t.rowid DESC';
 	$resql = $db->query($sql);
 	$seen = array();
@@ -146,6 +149,8 @@ if ($cancel) {
 	header('Location: '.($id > 0 ? $_SERVER['PHP_SELF'].'?id='.$id : dol_buildpath('/lmdbvehiclemanagement/consumption_list.php', 1)));
 	exit;
 }
+if ($id > 0) lmdbSharingAction($object);
+
 $parameters = array('id' => $id);
 $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action);
 if ($reshook < 0) setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
@@ -278,7 +283,7 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('ReadingKind').'</td><td>'.$form->selectarray('reading_kind', array('standard' => $langs->trans('ReadingKindStandard'), 'correction' => $langs->trans('ReadingKindCorrection'), 'replacement' => $langs->trans('ReadingKindReplacement')), $object->reading_kind, 0, 0, 0, '', 1, 0, 0, '', 'minwidth200', 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('ReadingReason').'</td><td><input class="flat minwidth500" name="reading_reason" value="'.dol_escape_htmltag((string) $object->reading_reason).'"></td></tr>';
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>';
-	$editor = new DolEditor('description', (string) $object->description, '', 160, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '100%');
+	$editor = new DolEditor('description', (string) $object->description, '90%', 160, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '90%');
 	print $editor->Create(1).'</td></tr></table></div>';
 	if ($financialLocked) print '<div class="warning">'.$langs->trans('ConsumptionOdLockedFieldsInfo').'</div>';
 	print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'" formnovalidate></div></form>';
@@ -294,6 +299,7 @@ if ($action === 'create' || $action === 'edit') {
 	$head = lmdbVehicleConsumptionPrepareHead($object);
 	print dol_get_fiche_head($head, 'card', $langs->trans('ConsumptionEntry'), -1, $object->picto);
 	lmdbVehicleConsumptionPrintBanner($object);
+if ($id > 0 && !in_array($action, array('create', 'edit'), true)) lmdbSharingRender($object);
 	$vehicle = new LmdbVehicle($db);
 	$vehicleLink = $vehicle->fetch((int) $object->fk_vehicle) > 0 ? $vehicle->getNomUrl(1) : '';
 	$consumable = new LmdbVehicleConsumable($db);

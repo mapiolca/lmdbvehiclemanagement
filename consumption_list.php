@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -18,7 +19,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'users', 'currencies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 $limit = GETPOSTINT('limit') ?: (int) $conf->liste_limit;
 $page = GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page');
 if ($page < 0 || GETPOST('button_search', 'alpha') || GETPOST('button_removefilter', 'alpha')) $page = 0;
@@ -65,7 +66,7 @@ if ($showEntityColumn) {
 	$arrayfields['t.entity'] = array('label' => 'Environment', 'checked' => 1, 'enabled' => 1, 'position' => 110);
 }
 $vehicleOptions = array();
-$resOptions = $db->query('SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle WHERE entity IN ('.getEntity('lmdbvehicle').') ORDER BY ref');
+$resOptions = $db->query('SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS lmdb_v WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'lmdb_v').' ORDER BY ref');
 if ($resOptions) {
 	while (is_object($row = $db->fetch_object($resOptions))) $vehicleOptions[(int) $row->rowid] = lmdbVehicleDisplayIdentifier((string) $row->ref, (string) $row->registration_number, (string) $row->label);
 	$db->free($resOptions);
@@ -76,7 +77,7 @@ $parameters = array('arrayfields' => &$arrayfields);
 $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action);
 if ($reshook < 0) setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
 include DOL_DOCUMENT_ROOT.'/core/actions_changeselectedfields.inc.php';
-$where = ' WHERE t.entity IN ('.$entityScope.')';
+$where = ' WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicleconsumption', 't');
 if ($searchRef !== '') $where .= natural_search('t.ref', $searchRef);
 if ($searchVehicle > 0) $where .= ' AND t.fk_vehicle = '.$searchVehicle;
 if ($searchDriver > 0) $where .= ' AND COALESCE(t.fk_user_driver, t.fk_user_creat) = '.$searchDriver;
@@ -87,11 +88,11 @@ if ($showEntityColumn && !empty($searchEntities)) {
 	$where .= !empty($filtered) ? ' AND t.entity IN ('.implode(',', $filtered).')' : ' AND 1 = 0';
 }
 $sqlFrom = ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption AS t';
-$sqlFrom .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading AS r ON r.rowid = t.fk_odometer_reading AND r.entity = t.entity';
-$sqlFrom .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND v.entity = t.entity';
+$sqlFrom .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading AS r ON r.rowid = t.fk_odometer_reading AND r.entity = t.entity AND '.LmdbVehicleSharing::sql($db, 'lmdbvehicleodometerreading', 'r');
+$sqlFrom .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').'';
 $sqlFrom .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c ON c.rowid = t.fk_consumable';
 $sqlFrom .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user AS u ON u.rowid = COALESCE(t.fk_user_driver, t.fk_user_creat)';
-$sqlFrom .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity AS cap ON cap.entity = t.entity AND cap.fk_vehicle = t.fk_vehicle AND cap.fk_consumable = t.fk_consumable';
+$sqlFrom .= ' LEFT JOIN (SELECT ca.entity, ca.fk_vehicle, cc.code, cc.unit, cc.category, MAX(ca.capacity) AS capacity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity ca INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable cc ON cc.rowid = ca.fk_consumable GROUP BY ca.entity, ca.fk_vehicle, cc.code, cc.unit, cc.category HAVING COUNT(*) = 1) AS cap ON cap.entity = v.entity AND cap.fk_vehicle = v.rowid AND cap.code = c.code AND cap.unit = c.unit AND cap.category = c.category';
 $resCount = $db->query('SELECT COUNT(*) AS total'.$sqlFrom.$where);
 if (!$resCount) { dol_print_error($db); exit; }
 $total = is_object($countRow = $db->fetch_object($resCount)) ? (int) $countRow->total : 0;
@@ -117,8 +118,7 @@ if ($searchCategory !== '') $param .= '&search_category='.urlencode($searchCateg
 foreach ($searchEntities as $entityId) $param .= '&search_entity[]='.((int) $entityId);
 print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="formfilteraction" id="formfilteraction" value="list"><input type="hidden" name="action" value="list"><input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'"><input type="hidden" name="page" value="'.((int) $page).'">';
 $newButton = '';
-if ($user->hasRight('lmdbvehiclemanagement', 'consumption', 'import')) $newButton .= dolGetButtonTitle($langs->trans('Import'), '', 'fa fa-file-import', dol_buildpath('/lmdbvehiclemanagement/consumption_import.php', 1), '', true);
-$newButton .= dolGetButtonTitle($langs->trans('NewConsumption'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&token='.newToken(), '', $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write'));
+$newButton .= dolGetButtonTitle($langs->trans('NewConsumption'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&token='.newToken(), '', (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'gas-pump', 0, $newButton, '', $limit, 0, 0, 1);
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, $conf->main_checkbox_left_column);
@@ -151,7 +151,7 @@ while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 	if ($conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn"></td>';
 	if (!empty($arrayfields['t.ref']['checked'])) print '<td class="nowraponall">'.$object->getNomUrl(1).'</td>';
 	if (!empty($arrayfields['r.reading_date']['checked'])) print '<td>'.dol_print_date($db->jdate($row->reading_date), 'dayhour').'</td>';
-	if (!empty($arrayfields['v.ref']['checked'])) print '<td>'.$vehicle->getNomUrl(1).'</td>';
+	if (!empty($arrayfields['v.ref']['checked'])) print '<td>'.($row->vehicle_ref !== null ? $vehicle->getNomUrl(1) : '').'</td>';
 	if (!empty($arrayfields['u.lastname']['checked'])) print '<td>'.dol_escape_htmltag(trim((string) $row->firstname.' '.(string) $row->lastname) ?: (string) $row->login).'</td>';
 	if (!empty($arrayfields['c.label']['checked'])) print '<td>'.dol_escape_htmltag((string) $row->consumable_label).'</td>';
 	if (!empty($arrayfields['t.quantity']['checked'])) print '<td class="right">'.price($row->quantity).' '.dol_escape_htmltag(LmdbVehicleConsumable::unitLabel((string) $row->unit_snapshot)).'</td>';

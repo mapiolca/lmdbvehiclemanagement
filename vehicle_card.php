@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -90,6 +91,8 @@ function lmdbVehicleCapacityValuesFromPost($options)
 	return $values;
 }
 
+if ($id > 0) lmdbSharingAction($object);
+
 $parameters = array('id' => $id);
 $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action);
 if ($reshook < 0) setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
@@ -108,6 +111,7 @@ if (empty($reshook)) {
 			$capacityDictionary = new LmdbVehicleConsumable($db);
 			$compatibleCapacityOptions = !empty($object->fk_energy) ? $capacityDictionary->getCapacityOptions((int) $object->fk_energy) : array();
 			$capacityResult = $object->saveCapacities($user, lmdbVehicleCapacityValuesFromPost($compatibleCapacityOptions));
+			if ($capacityResult > 0) $capacityResult = lmdbSharingSavePosted($object, true);
 			if ($capacityResult > 0) {
 				$db->commit();
 				setEventMessages($langs->trans('VehicleCreated'), null, 'mesgs');
@@ -118,6 +122,7 @@ if (empty($reshook)) {
 		}
 		$db->rollback();
 		lmdbVehicleManagementSetObjectErrors($object);
+		$object->id = 0; // The whole creation was rolled back, including capacities and shares.
 		$action = 'create';
 	} elseif ($action === 'update') {
 		if (!$permissionToWrite || $id <= 0) accessforbidden();
@@ -128,6 +133,7 @@ if (empty($reshook)) {
 			$capacityDictionary = new LmdbVehicleConsumable($db);
 			$compatibleCapacityOptions = !empty($object->fk_energy) ? $capacityDictionary->getCapacityOptions((int) $object->fk_energy) : array();
 			$capacityResult = $object->saveCapacities($user, lmdbVehicleCapacityValuesFromPost($compatibleCapacityOptions));
+			if ($capacityResult > 0) $capacityResult = lmdbSharingSavePosted($object, true);
 			if ($capacityResult > 0) {
 				$db->commit();
 				setEventMessages($langs->trans('VehicleUpdated'), null, 'mesgs');
@@ -241,10 +247,11 @@ if ($action === 'create' || $action === 'edit') {
 		print '<tr><td>'.$langs->trans('LinkedResource').'</td><td>'.$formResource->select_resource_list($object->fk_resource ?: 0, 'fk_resource', array(), 1, 1, 0, array(), array(), 2, 0, 'minwidth300').'</td></tr>';
 	}
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>';
-	$doleditor = new DolEditor('description', (string) $object->description, '', 160, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '100%');
+	$doleditor = new DolEditor('description', (string) $object->description, '90%', 160, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '90%');
 	print $doleditor->Create(1);
 	print '</td></tr>';
 	print '</table></div>';
+	lmdbSharingRender($object, true);
 	print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'" formnovalidate></div>';
 	print '</form>';
 } elseif ($id > 0) {
@@ -317,7 +324,7 @@ if ($action === 'create' || $action === 'edit') {
 	} elseif ($permissionToManageService && (int) $object->status === LmdbVehicle::STATUS_IN_SERVICE) {
 		print dolGetButtonAction('', $langs->trans('PutOutOfService'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=set_out_of_service&token='.newToken());
 	}
-if ($user->hasRight('lmdbvehiclemanagement', 'event', 'write')) {
+if ((isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'event', 'write'))) {
 		print dolGetButtonAction('', $langs->trans('NewVehicleEvent'), 'default', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create&vehicle_id='.$id);
 	}
 	if ($permissionToDelete) print dolGetButtonAction('', $langs->trans('Delete'), 'delete', $_SERVER['PHP_SELF'].'?id='.$id.'&action=delete&token='.newToken());

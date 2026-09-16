@@ -1,6 +1,7 @@
 CREATE TABLE llx_lmdbvehiclemanagement_qx_position (
 	rowid integer AUTO_INCREMENT PRIMARY KEY,
 	entity integer DEFAULT 1 NOT NULL,
+	fk_quartix integer DEFAULT NULL,
 	fk_vehicle integer NOT NULL,
 	event_date datetime NOT NULL,
 	fetched_at datetime NOT NULL,

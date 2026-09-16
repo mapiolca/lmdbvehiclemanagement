@@ -17,13 +17,17 @@ require_once DOL_DOCUMENT_ROOT.'/core/class/dolgraph.class.php';
 /** @var Translate $langs */
 /** @var User $user */
 $langs->loadLangs(array('other', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!LmdbVehicleQuartixConfig::can($user, 'read') || !LmdbVehicleQuartixConfig::supported()) accessforbidden();
+if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !LmdbVehicleQuartixConfig::supported()) accessforbidden();
 $service = new LmdbVehicleQuartixDashboard($db);
 $form = new Form($db); $object = new LmdbVehicle($db);
 $hookmanager->initHooks(array('lmdbvehiclequartixdashboard'));
-$gps = LmdbVehicleQuartixConfig::can($user, 'location');
-$entityOptions = lmdbVehicleManagementGetEntityOptions('lmdbvehicle');
-$entities = GETPOSTISARRAY('search_entity') ? GETPOST('search_entity', 'array:int') : array();
+$gps = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && $user->hasRight('lmdbvehiclemanagement', 'quartix', 'location'));
+require_once __DIR__.'/lib/lmdbvehiclequartix.lib.php';
+header('Cache-Control: private, no-store');
+$entityOptions = lmdbQuartixSourceEntities(new LmdbVehicleQuartixService($db));
+$sourceEntity = GETPOSTINT('source_entity') ?: (int) $conf->entity;
+if (!isset($entityOptions[$sourceEntity])) accessforbidden();
+$entities = array($sourceEntity);
 $search = GETPOST('search_vehicle', 'alphanohtml');
 $association = GETPOST('search_association', 'alpha');
 $limit = max(1, min(1000, GETPOSTINT('limit') ?: (int) $conf->liste_limit));
@@ -32,7 +36,7 @@ $sortfield = GETPOST('sortfield', 'aZ09') ?: 'vehicle';
 $sortorder = strtoupper(GETPOST('sortorder', 'alpha')) === 'DESC' ? 'DESC' : 'ASC';
 $reset = GETPOSTISSET('button_removefilter_x') || GETPOSTISSET('button_removefilter');
 if ($reset || GETPOSTISSET('button_search_x') || GETPOSTISSET('button_search')) $page = 0;
-if ($reset) { $search = $association = ''; $entities = array(); }
+if ($reset) { $search = $association = ''; $entities = array((int) $conf->entity); }
 $dates = array();
 foreach (array('start', 'end') as $key) {
 	$day = GETPOSTINT($key.'day'); $month = GETPOSTINT($key.'month'); $year = GETPOSTINT($key.'year');
@@ -66,7 +70,7 @@ llxHeader('', $langs->trans('QxDashboardTitle'));
 print load_fiche_titre($langs->trans('QxDashboardTitle'), '', 'car');
 print '<p>'.$langs->trans('QxDashboardHelp').'</p>';
 $param = '&limit='.$limit.'&search_vehicle='.urlencode($search).'&search_association='.urlencode($association);
-foreach ($entities as $entity) $param .= '&search_entity%5B%5D='.((int) $entity);
+$param .= '&source_entity='.(int) $entities[0];
 foreach ($dates as $key => $value) if ($valid) {
 	$d = LmdbVehicleQuartixRules::day($value); $param .= '&'.$key.'day='.$d->format('d').'&'.$key.'month='.$d->format('m').'&'.$key.'year='.$d->format('Y');
 }
@@ -85,7 +89,7 @@ $visible = array_filter($arrayfields, static function ($field) { return !empty($
 // Hidden columns must not silently remove an active SQL filter on the next POST.
 if (!isset($visible['vehicle'])) print '<input type="hidden" name="search_vehicle" value="'.dol_escape_htmltag($search).'">';
 if (!isset($visible['association'])) print '<input type="hidden" name="search_association" value="'.dol_escape_htmltag($association).'">';
-if (!isset($visible['entity'])) foreach ($entities as $entity) print '<input type="hidden" name="search_entity[]" value="'.((int) $entity).'">';
+if (!isset($visible['entity'])) print '<input type="hidden" name="source_entity" value="'.(int) $entities[0].'">';
 $states = array('associated' => 'QxAssociated', 'suspended' => 'QxSuspended', 'unlinked' => 'QxUnassociated');
 print '<div class="div-table-responsive-no-min"><table class="tagtable liste listwithfilterbefore" id="quartix-fleet-list"><thead><tr class="liste_titre_filter">';
 if ($actionsLeft) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons('left').'</td>';
@@ -95,7 +99,7 @@ foreach ($visible as $key => $field) {
 	elseif ($key === 'association') {
 		$options = array('' => $langs->trans('All')); foreach ($states as $state => $label) $options[$state] = $langs->trans($label);
 		print $form->selectarray('search_association', $options, $association, 0, 0, 0, '', 0, 0, 0, '', '', 1);
-	} elseif ($key === 'entity') print $form->multiselectarray('search_entity', $entityOptions, $entities, 0, 0, 'minwidth150');
+	} elseif ($key === 'entity') print $form->selectarray('source_entity', $entityOptions, $entities[0], 0, 0, 0, '', 0, 0, 0, '', 'minwidth150', 1);
 	print '</td>';
 }
 if (!$actionsLeft) print '<td class="liste_titre center maxwidthsearch actioncolumn">'.$form->showFilterButtons().'</td>';
@@ -105,14 +109,14 @@ foreach ($visible as $key => $field) print getTitleFieldOfList($field['label'], 
 if (!$actionsLeft) print getTitleFieldOfList($selectedfields, 0, $_SERVER['PHP_SELF'], '', '', '', '', $sortfield, $sortorder, 'center maxwidthsearch actioncolumn ');
 print '</tr></thead><tbody>';
 foreach ($result['rows'] ?? array() as $row) {
-	$vehicle = new LmdbVehicle($db); $vehicle->id = (int) $row->rowid; $vehicle->ref = $row->ref; $vehicle->entity = (int) $row->entity; $vehicle->label = $row->label; $vehicle->registration_number = $row->registration_number;
+	$vehicle = new LmdbVehicleQuartix($db); $vehicle->id = (int) $row->quartix_id; $vehicle->fk_vehicle = (int) $row->rowid; $vehicle->snapshot_vehicle_label = $row->ref; $vehicle->entity = (int) $row->entity;
 	print '<tr class="oddeven">';
 	if ($actionsLeft) print '<td class="center actioncolumn"></td>';
 	foreach ($visible as $key => $field) {
 		print '<td class="'.($field['align'] ?? 'left').'" data-col="'.$key.'">';
 		if ($key === 'vehicle') {
 			print $vehicle->getNomUrl(1).' '.dol_escape_htmltag($row->label);
-			if ($gps) print ' <a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_trips.php', 1).'?id='.$vehicle->id.'">'.$langs->trans('QxJournal').'</a>';
+			if ($gps) print ' <a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_trips.php', 1).'?id='.$vehicle->fk_vehicle.'&amp;quartix_id='.$vehicle->id.'">'.$langs->trans('QxJournal').'</a>';
 		} elseif ($key === 'association') print dolGetStatus($langs->trans($states[$row->association]), '', '', $row->association === 'associated' ? 'status4' : 'status5', 5);
 		elseif ($key === 'entity') print lmdbVehicleManagementEntityBadge((int) $row->entity, $entityOptions);
 		elseif ($key === 'coverage') print ((int) $row->known_days).' / '.$result['expected'];

@@ -223,7 +223,7 @@ class LmdbVehicleRegulatoryService
 	public function initializeSuggestedProfiles($vehicle, User $user)
 	{
 		$codes = $this->suggestProfileCodes($vehicle);
-		if (empty($codes)) return 1;
+		if (empty($codes)) return $this->synchronizeRequirements($vehicle, $user);
 		$ids = $this->getProfileIdsByCodes((int) $vehicle->entity, $codes);
 		foreach ($ids as $profileId) {
 			$sql = 'INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_regulatory_profile (entity, fk_vehicle, fk_profile, origin, confirmed, date_creation, fk_user_creat) SELECT ';
@@ -267,7 +267,7 @@ class LmdbVehicleRegulatoryService
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r ON r.rowid = rp.fk_rule AND r.entity = vp.entity AND r.active = 1';
 		$sql .= ' AND (r.effective_from IS NULL OR r.effective_from <= CURRENT_DATE) AND (r.effective_to IS NULL OR r.effective_to >= CURRENT_DATE)';
 		$sql .= ' AND NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS override_rule WHERE override_rule.entity = r.entity AND override_rule.fk_parent_rule = r.rowid AND override_rule.active = 1 AND (override_rule.effective_from IS NULL OR override_rule.effective_from <= CURRENT_DATE) AND (override_rule.effective_to IS NULL OR override_rule.effective_to >= CURRENT_DATE))';
-		$sql .= ' WHERE vp.entity = '.((int) $vehicle->entity).' AND vp.fk_vehicle = '.((int) $vehicle->id).' AND vp.confirmed = 1';
+		$sql .= ' WHERE vp.entity = '.((int) $vehicle->entity).' AND vp.fk_vehicle = '.((int) $vehicle->id)." AND (vp.confirmed = 1 OR vp.origin = 'deduced')";
 		$resql = $this->db->query($sql);
 		if (!$resql) return $this->fail();
 		while (is_object($row = $this->db->fetch_object($resql))) {
@@ -387,7 +387,8 @@ class LmdbVehicleRegulatoryService
 	 */
 	public function synchronizeEntityRequirements($entity, User $user)
 	{
-		$sql = 'SELECT v.rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v';
+		$sql = 'SELECT v.*, at.code AS asset_type FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v';
+		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_asset_type AS at ON at.rowid = v.fk_asset_type';
 		$sql .= ' WHERE v.entity = '.((int) $entity).' ORDER BY v.rowid';
 		$resql = $this->db->query($sql);
 		if (!$resql) {
@@ -395,15 +396,13 @@ class LmdbVehicleRegulatoryService
 		}
 		$vehicleIds = array();
 		while (is_object($row = $this->db->fetch_object($resql))) {
-			$vehicleIds[] = (int) $row->rowid;
+			$row->id = (int) $row->rowid;
+			$vehicleIds[] = $row;
 		}
 		$this->db->free($resql);
 
-		foreach ($vehicleIds as $vehicleId) {
-			$vehicle = new stdClass();
-			$vehicle->id = $vehicleId;
-			$vehicle->entity = (int) $entity;
-			if ($this->synchronizeRequirements($vehicle, $user) < 0) {
+		foreach ($vehicleIds as $vehicle) {
+			if ($this->refreshSuggestedProfiles($vehicle, $user) < 0) {
 				return -1;
 			}
 		}
@@ -413,16 +412,23 @@ class LmdbVehicleRegulatoryService
 	/** @param int $vehicleId Vehicle @param int $entity Entity @return int<-1,1> */
 	public function recalculateVehicle($vehicleId, $entity)
 	{
-		$sql = 'SELECT req.rowid, req.fk_rule, req.requirement_kind, req.fk_source_control, req.derogation_until, req.blocking_mode, req.applicability_date, r.calculator_code, r.applicability_code, r.initial_delay_months, r.recurrence_months, r.recurrence_days,';
+		// Requirements belong to the vehicle. A validated control may belong to
+		// another entity; the caller's entity must not fragment the common deadline.
+		$sql = 'UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement SET active = 0';
+		$sql .= ' WHERE fk_vehicle = '.((int) $vehicleId)." AND requirement_kind = 'recheck' AND fk_source_control > 0";
+		$sql .= ' AND entity = (SELECT v.entity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle v WHERE v.rowid = '.((int) $vehicleId).')';
+		$sql .= ' AND NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control source_control WHERE source_control.rowid = fk_source_control AND source_control.fk_vehicle = '.((int) $vehicleId).' AND source_control.status = 1)';
+		if (!$this->db->query($sql)) return $this->fail();
+		$sql = 'SELECT req.rowid, req.entity, req.fk_rule, req.requirement_kind, req.fk_source_control, req.derogation_until, req.blocking_mode, req.applicability_date, r.calculator_code, r.applicability_code, r.initial_delay_months, r.recurrence_months, r.recurrence_days,';
 		$sql .= ' v.eu_category, v.first_registration_date, v.commissioning_date, v.construction_date, energy.code AS energy_code, c.rowid AS control_id, c.control_date, c.result_code, c.official_valid_until, c.calculated_valid_until, c.retained_valid_until,';
 		$sql .= ' cr.requires_recheck, cr.is_blocking';
 		$sql .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS req';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r ON r.rowid = req.fk_rule AND r.entity = req.entity';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = req.fk_vehicle AND v.entity = req.entity';
 		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy AS energy ON energy.rowid = v.fk_energy';
-		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control AS c ON c.rowid = (SELECT c2.rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control AS c2 WHERE c2.entity = req.entity AND c2.fk_vehicle = req.fk_vehicle AND c2.fk_rule = req.fk_rule AND c2.status = 1 ORDER BY c2.control_date DESC, c2.rowid DESC LIMIT 1)';
+		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control AS c ON c.rowid = (SELECT c2.rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control AS c2 WHERE c2.fk_vehicle = req.fk_vehicle AND c2.fk_rule = req.fk_rule AND c2.status = 1 ORDER BY c2.control_date DESC, c2.rowid DESC LIMIT 1)';
 		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_control_result AS cr ON cr.code = c.result_code AND cr.entity = req.entity';
-		$sql .= ' WHERE req.entity = '.((int) $entity).' AND req.fk_vehicle = '.((int) $vehicleId).' AND req.active = 1';
+		$sql .= ' WHERE req.fk_vehicle = '.((int) $vehicleId).' AND req.active = 1';
 		$resql = $this->db->query($sql);
 		if (!$resql) return $this->fail();
 		while (is_object($row = $this->db->fetch_object($resql))) {
@@ -436,7 +442,7 @@ class LmdbVehicleRegulatoryService
 			$sqlUpdate .= ', qualification_status = '.($qualification === 'complete' ? "'complete'" : "'incomplete'");
 			$sqlUpdate .= ', calculated_due_date = '.($calculated > 0 ? "'".$this->db->idate($calculated)."'" : 'NULL');
 			$sqlUpdate .= ', retained_due_date = '.($retained > 0 ? "'".$this->db->idate($retained)."'" : 'NULL');
-			$sqlUpdate .= ", status = '".$this->db->escape($status)."', last_evaluated = '".$this->db->idate(dol_now())."' WHERE rowid = ".((int) $row->rowid).' AND entity = '.((int) $entity);
+			$sqlUpdate .= ", status = '".$this->db->escape($status)."', last_evaluated = '".$this->db->idate(dol_now())."' WHERE rowid = ".((int) $row->rowid).' AND entity = '.((int) $row->entity);
 			if (!$this->db->query($sqlUpdate)) { $this->db->free($resql); return $this->fail(); }
 		}
 		$this->db->free($resql);
@@ -447,10 +453,10 @@ class LmdbVehicleRegulatoryService
 	public function ensureRecheckRequirement($control, User $user)
 	{
 		if (empty($control->result_code)) return 1;
-		$sql = 'SELECT r.code, r.recheck_days, r.default_blocking_mode, cr.requires_recheck, cr.is_blocking, v.regulatory_territory, v.eu_category FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r';
+		$sql = 'SELECT r.entity, r.code, r.recheck_days, r.default_blocking_mode, cr.requires_recheck, cr.is_blocking, v.regulatory_territory, v.eu_category FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r';
 		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_control_result AS cr ON cr.code = \''.$this->db->escape((string) $control->result_code).'\' AND cr.entity = r.entity';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = '.((int) $control->fk_vehicle).' AND v.entity = r.entity';
-		$sql .= ' WHERE r.rowid = '.((int) $control->fk_rule).' AND r.entity = '.((int) $control->entity);
+		$sql .= ' WHERE r.rowid = '.((int) $control->fk_rule);
 		$resql = $this->db->query($sql);
 		if (!$resql) return $this->fail();
 		$row = $this->db->fetch_object($resql);
@@ -460,8 +466,8 @@ class LmdbVehicleRegulatoryService
 		$dueDate = $recheckDays > 0 ? dol_time_plus_duree((int) $control->control_date, $recheckDays, 'd') : 0;
 		$blockingMode = !empty($row->is_blocking) ? (string) $row->default_blocking_mode : 'none';
 		$sql = 'INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement (entity, fk_vehicle, fk_rule, requirement_kind, fk_source_control, fk_last_control, qualification_status, calculated_due_date, retained_due_date, status, blocking_mode, date_creation, fk_user_creat) SELECT ';
-		$sql .= ((int) $control->entity).', '.((int) $control->fk_vehicle).', '.((int) $control->fk_rule).", 'recheck', ".((int) $control->id).', '.((int) $control->id).", 'complete', ".($dueDate > 0 ? "'".$this->db->idate($dueDate)."'" : 'NULL').', '.($dueDate > 0 ? "'".$this->db->idate($dueDate)."'" : 'NULL').", 'recheck_required', '".$this->db->escape($blockingMode)."', '".$this->db->idate(dol_now())."', ".((int) $user->id);
-		$sql .= ' WHERE NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement WHERE entity = '.((int) $control->entity).' AND fk_vehicle = '.((int) $control->fk_vehicle).' AND fk_rule = '.((int) $control->fk_rule)." AND requirement_kind = 'recheck' AND fk_source_control = ".((int) $control->id).')';
+		$sql .= ((int) $row->entity).', '.((int) $control->fk_vehicle).', '.((int) $control->fk_rule).", 'recheck', ".((int) $control->id).', '.((int) $control->id).", 'complete', ".($dueDate > 0 ? "'".$this->db->idate($dueDate)."'" : 'NULL').', '.($dueDate > 0 ? "'".$this->db->idate($dueDate)."'" : 'NULL').", 'recheck_required', '".$this->db->escape($blockingMode)."', '".$this->db->idate(dol_now())."', ".((int) $user->id);
+		$sql .= ' WHERE NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement WHERE entity = '.((int) $row->entity).' AND fk_vehicle = '.((int) $control->fk_vehicle).' AND fk_rule = '.((int) $control->fk_rule)." AND requirement_kind = 'recheck' AND fk_source_control = ".((int) $control->id).')';
 		return $this->db->query($sql) ? 1 : $this->fail();
 	}
 

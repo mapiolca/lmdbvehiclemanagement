@@ -21,7 +21,7 @@ if (is_file(DOL_DOCUMENT_ROOT.'/version.inc.php')) {
 }
 $conf = (object) array(
 	'global' => (object) array('MAIN_MAX_DECIMALS_TOT' => 2, 'MAIN_MAX_DECIMALS_UNIT' => 5),
-	'entity' => 1, 'currency' => 'EUR', 'modules' => array(),
+	'entity' => 1, 'currency' => 'EUR', 'modules' => array(), 'modules_parts' => array('hooks' => array()),
 	'file' => (object) array('dol_document_root' => array('main' => DOL_DOCUMENT_ROOT, 'alt0' => dirname(__DIR__, 2))),
 	'lmdbvehiclemanagement' => (object) array('dir_temp' => __DIR__.'/price-graph-test-'.getmypid()),
 );
@@ -42,6 +42,8 @@ require_once DOL_DOCUMENT_ROOT.'/core/modules/export/export_csvutf8.modules.php'
 /** Reject unexpected SQL, including any unplanned write. */
 final class ConsumptionPriceDb
 {
+	/** @return string Native table prefix. */
+	public function prefix() { return MAIN_DB_PREFIX; }
 	/** @var list<array{pattern:string,rows:list<object>|false}> */ public $expected = array();
 	/** @param string $pattern SQL expression @param list<object>|false $rows Result @return void */
 	public function expect($pattern, $rows) { $this->expected[] = array('pattern' => $pattern, 'rows' => $rows); }
@@ -60,6 +62,8 @@ final class ConsumptionPriceDb
 	public function free($result) {}
 	/** @param string $value Input @return string */
 	public function escape($value) { return str_replace("'", "''", $value); }
+	/** @param string $value Trusted test scope @return string */
+	public function sanitize($value) { return $value; }
 	/** @param string $value Date @return int */
 	public function jdate($value) { return (int) strtotime($value); }
 	/** @return string */
@@ -116,6 +120,12 @@ function priceRow($amount, $quantity = 5.0, $day = 0)
 }
 
 $db = new ConsumptionPriceDb();
+$validationObject = new LmdbVehicleConsumption($db);
+$db->expect('/^SELECT rowid FROM test_prices_c_lmdbvehiclemanagement_consumable WHERE entity IN \(1\) AND rowid = 1$/', array((object) array('rowid' => 1)));
+checkPrice($validationObject->validateField($validationObject->fields, 'fk_consumable', '1'), 'Real native validator accepts an existing consumable relation');
+$db->expect('/^SELECT rowid FROM test_prices_c_lmdbvehiclemanagement_consumable WHERE entity IN \(1\) AND rowid = 999$/', array());
+checkPrice(!$validationObject->validateField($validationObject->fields, 'fk_consumable', '999'), 'Real native validator rejects a missing consumable relation');
+checkPrice($db->expected === array(), 'Native validation actually checks the dictionary in the current entity');
 $stats = new LmdbVehicleConsumptionStats($db);
 $rows = array(priceRow(25.0, 10.0), priceRow(null, 5.0, 1));
 $group = $stats->summarize($rows)['1:1:1:L:EUR'];
@@ -144,7 +154,7 @@ foreach (array(null, '0', '25') as $amount) {
 		'capacity' => null, 'driver_firstname' => null, 'driver_lastname' => null, 'driver_login' => null);
 }
 // A requested entity filter is intersected with the accessible scope, never substituted for it.
-$db->expect('/^SELECT .*r.entity = t.entity.*v.entity = t.entity.*cap.entity = t.entity.*WHERE t.entity IN \(1\) AND t.fk_vehicle = 1 AND t.category_snapshot = \'additive\' AND t.entity IN \(1,2\) ORDER BY /', $fetchedRows);
+$db->expect('/^SELECT .*r.entity = t.entity.*v.entity IN \(1\).*cap.entity = v.entity.*WHERE \(t.entity = 1 OR \(t.entity IN \(1\).*r.entity IN \(1\).* AND t.fk_vehicle = 1 AND t.category_snapshot = \'additive\' AND t.entity IN \(1,2\) ORDER BY /', $fetchedRows);
 $loaded = $stats->fetchRows(array('vehicle_id' => 1, 'category' => 'additive', 'entity_ids' => array(1, 2)));
 checkPrice(is_array($loaded) && $loaded[0]['total_ttc'] === null && $loaded[1]['total_ttc'] === 0.0 && $loaded[2]['total_ttc'] === 25.0, 'SQL loading preserves unknown, zero and positive price');
 
@@ -178,9 +188,9 @@ foreach (array('additive', 'fuel') as $category) {
 		$object->total_ttc = $input;
 		$object->category_snapshot = $category === 'fuel' ? 'additive' : 'fuel'; // Ignore submitted category.
 		$consumable->category = $category;
-		$db->expect('/^SELECT entity .*WHERE rowid = 1 AND entity IN \(1\)$/', array((object) array('entity' => 1)));
+		$db->expect('/^SELECT entity .*WHERE rowid = 1 AND \(sv.entity IN \(1\)\)$/', array((object) array('entity' => 1)));
 		$db->expect('/^SELECT rowid, entity, code, label, category, unit, requires_oil_reference, active .*WHERE rowid = 2 AND entity IN \(1\)$/', array(clone $consumable));
-		if ($category === 'fuel') $db->expect('/^SELECT 1 .*v.entity = 1.*ce.entity IN \(1\) LIMIT 1$/', array((object) array('found' => 1)));
+		if ($category === 'fuel') $db->expect('/^SELECT 1 .*energy.code = vehicle_energy.code.*ce.entity IN \(1\) LIMIT 1$/', array((object) array('found' => 1)));
 		$result = $validate->invoke($object);
 		checkPrice($db->expected === array(), 'All validation queries checked for entity');
 		if ($input === -2.0) {
@@ -202,8 +212,8 @@ foreach (array('additive', 'fuel') as $category) {
 $object = new LmdbVehicleConsumption($db);
 $object->entity = 1;
 $object->fk_vehicle = 1;
-$db->expect('/^SELECT entity .*entity IN \(1\)$/', array((object) array('entity' => 2)));
-checkPrice($validate->invoke($object) === -1 && $object->error === 'CannotMoveObjectBetweenEntities', 'Cross-entity consumption refused before price handling');
+$db->expect('/^SELECT entity .*\(sv.entity IN \(1\)\)$/', array());
+checkPrice($validate->invoke($object) === -1 && $object->error === 'InvalidVehicle', 'Inaccessible vehicle refused before price handling');
 
 $conf->global->MAIN_MAX_DECIMALS_TOT = 3;
 $conf->global->MAIN_MAX_DECIMALS_UNIT = 2;
@@ -213,7 +223,7 @@ $object->fk_vehicle = 1;
 $object->fk_consumable = 2;
 $object->total_ttc = '25.1239';
 $consumable->category = 'additive';
-$db->expect('/^SELECT entity .*entity IN \(1\)$/', array((object) array('entity' => 1)));
+$db->expect('/^SELECT entity .*\(sv.entity IN \(1\)\)$/', array((object) array('entity' => 1)));
 $db->expect('/^SELECT rowid, entity, code, label, category, unit, requires_oil_reference, active .*entity IN \(1\)$/', array(clone $consumable));
 checkPrice($validate->invoke($object) === 1 && $object->total_ttc === (float) price2num('25.1239', 'MT') && $object->total_ttc === 25.124, 'Total follows native precision setting');
 checkPrice($object->getUnitPrice() === (float) price2num(25.124 / 7, 'MU') && $object->getUnitPrice() === 3.59, 'Unit price follows native precision setting');
@@ -229,17 +239,7 @@ foreach (array(array(null, 0.0, true), array(0.0, null, true), array(25.0, null,
 	checkPrice($probe->update($user) === 1 && in_array('total_ttc', $probe->context['changed_fields'], true) === $case[2], 'UPDATE detects clearing and zero/NULL transitions without numeric-string noise');
 }
 
-$import = new LmdbVehicleConsumptionImport($db);
-$build = new ReflectionMethod(LmdbVehicleConsumptionImport::class, 'buildObject');
-$build->setAccessible(true);
-foreach (array('', '0', '25.129') as $input) {
-	$db->expect('/^SELECT rowid .*registration_number = \'TEST\' AND entity = 1$/', array((object) array('rowid' => 1)));
-	$db->expect('/^SELECT rowid, category .*active = 1 AND entity IN \(1\)$/', array((object) array('rowid' => 2, 'category' => 'additive')));
-	$csv = str_getcsv('TEST;ADBLUE;2026-09-04 09:00;10000;5;'.$input, ';', '"', '');
-	$row = array_combine(array('registration_number', 'consumable_code', 'reading_date', 'odometer_km', 'quantity', 'total_ttc'), $csv);
-	$object = $build->invoke($import, $row);
-	checkPrice($object instanceof LmdbVehicleConsumption && $object->total_ttc === ($input === '' ? null : (float) price2num($input, 'MT')), 'CSV input keeps empty/zero/known amount');
-}
+// Native import amount cases are exercised by run_consumption_native_import.php.
 
 $export = new ExportCsvUtf8($db);
 $export->handle = fopen('php://memory', 'w+');
@@ -271,4 +271,30 @@ checkPrice($migrate->invoke($descriptor) === 1, 'Fresh installation leaves table
 $db->expect('/^SELECT COUNT\(\*\) AS nb FROM information_schema.TABLES/', false);
 checkPrice($migrate->invoke($descriptor) === -1 && $descriptor->error === 'TestDatabaseError', 'Migration reports metadata query failure');
 checkPrice($db->expected === array(), 'All expected queries consumed');
+// Instantiate the real descriptor with narrowly scoped native permissions.
+class ConsumptionImportProfileUser extends User
+{
+	public $allowImport = true;
+	public $allowRead = true;
+	public function hasRight($module, $permlevel1, $permlevel2 = '')
+	{
+		return $module === 'lmdbvehiclemanagement' && (($permlevel1 === 'read' && $permlevel2 === '' && $this->allowRead) || ($permlevel1 === 'consumption' && $permlevel2 === 'import' && $this->allowImport));
+	}
+}
+$user = new ConsumptionImportProfileUser($db);
+$user->admin = 1;
+$profile = new modLmdbVehicleManagement($db);
+checkPrice($profile->import_code === array('lmdbvehiclemanagement_consumptions'), 'Descriptor exposes only the authorized native consumption dataset');
+checkPrice($profile->numero === 450026 && $profile->family === 'Les Métiers du Bâtiment' && $profile->phpmin === array(8, 0) && $profile->need_dolibarr_version === array(20, 0), 'Descriptor identity and minimum versions preserved');
+checkPrice(count($profile->import_fields_array[0]) === 12 && count($profile->import_updatekeys_array[0]) === 4, 'Native profile fields and update keys available');
+$declaredRights = array();
+foreach ($profile->rights as $right) $declaredRights[] = $right[4].'/'.($right[5] ?? '');
+checkPrice(in_array('read/', $declaredRights, true) && in_array('consumption/import', $declaredRights, true) && !in_array('consumption/read', $declaredRights, true), 'Import access uses existing declared module permissions');
+$user->allowRead = false;
+$profile = new modLmdbVehicleManagement($db);
+checkPrice($profile->import_code === array(), 'Missing general read permission hides consumption import');
+$user->allowRead = true;
+$user->allowImport = false;
+$profile = new modLmdbVehicleManagement($db);
+checkPrice($profile->import_code === array(), 'Administrator without import permission has no dataset');
 print $checks.' consumption price checks passed'.PHP_EOL;

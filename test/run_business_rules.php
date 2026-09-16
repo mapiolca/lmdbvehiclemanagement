@@ -1,6 +1,8 @@
 <?php
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
+// Dictionary definitions only; native linked-field validation is tested in run_consumption_prices.php.
+class CommonObject {}
 require_once dirname(__DIR__).'/class/lmdbvehiclemanagementrules.class.php';
 require_once dirname(__DIR__).'/class/lmdbvehicleenergy.class.php';
 require_once dirname(__DIR__).'/class/lmdbvehicleconsumable.class.php';

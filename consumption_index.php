@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -19,7 +20,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'currencies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 $vehicleId = GETPOSTINT('vehicle_id');
 $driverId = GETPOSTINT('driver_id');
 $consumableId = GETPOSTINT('consumable_id');
@@ -51,9 +52,10 @@ $dateStart = $dateStartDay > 0 && $dateStartMonth > 0 && $dateStartYear > 0 ? do
 $dateEnd = $dateEndDay > 0 && $dateEndMonth > 0 && $dateEndYear > 0 ? dol_mktime(23, 59, 59, $dateEndMonth, $dateEndDay, $dateEndYear) : 0;
 $effectiveDateEnd = $dateEnd > 0 ? $dateEnd : dol_now();
 $form = new Form($db);
+
 $dictionary = new LmdbVehicleConsumable($db);
 $vehicleOptions = array();
-$resql = $db->query('SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle WHERE entity IN ('.getEntity('lmdbvehicle').') ORDER BY ref');
+$resql = $db->query('SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS lmdb_v WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'lmdb_v').' ORDER BY ref');
 if ($resql) {
 	while (is_object($row = $db->fetch_object($resql))) $vehicleOptions[(int) $row->rowid] = lmdbVehicleDisplayIdentifier((string) $row->ref, (string) $row->registration_number, (string) $row->label);
 	$db->free($resql);
@@ -77,6 +79,7 @@ if (!is_array($rows)) { setEventMessages($service->error, null, 'errors'); $rows
 $groups = $service->summarize($rows);
 
 llxHeader('', $langs->trans('ConsumptionSummary'), '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-list');
+lmdbSharingPartialNotice();
 print load_fiche_titre($langs->trans('ConsumptionSummary'), '', 'chart-line');
 print '<form method="GET" action="'.$_SERVER['PHP_SELF'].'"><div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 print '<tr class="liste_titre"><th>'.$langs->trans('Period').'</th><th>'.$langs->trans('Vehicle').'</th><th>'.$langs->trans('Driver').'</th><th>'.$langs->trans('Consumable').'</th><th>'.$langs->trans('ConsumptionNature').'</th>';
@@ -91,7 +94,7 @@ print '<td class="center nowraponall">'.$form->showFilterButtons().'</td></tr></
 
 print '<div class="tabsAction">';
 print dolGetButtonAction('', $langs->trans('ConsumptionList'), 'default', dol_buildpath('/lmdbvehiclemanagement/consumption_list.php', 1));
-if ($user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')) print dolGetButtonAction('', $langs->trans('NewConsumption'), 'default', dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&token='.newToken());
+if ((isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write'))) print dolGetButtonAction('', $langs->trans('NewConsumption'), 'default', dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&token='.newToken());
 print '</div>';
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent"><tr class="liste_titre"><th>'.$langs->trans('Vehicle').'</th><th>'.$langs->trans('Consumable').'</th><th>'.$langs->trans('Unit').'</th><th class="right">'.$langs->trans('Entries').'</th><th class="right">'.$langs->trans('TotalQuantity').'</th><th class="right">'.$langs->trans('TotalCost').'</th><th class="right">'.$langs->trans('AverageConsumption100').'</th><th class="right">'.$langs->trans('WeightedUnitPrice').'</th><th class="right">'.$langs->trans('PeakQuantity').'</th><th class="right">'.$langs->trans('PeakUnitPrice').'</th><th class="right">'.$langs->trans('PeakConsumption100').'</th><th class="right">'.$langs->trans('ExcludedIntervals').'</th>';
 if (!empty($entityOptions)) print '<th class="center">'.$langs->trans('Environment').'</th>';
@@ -107,7 +110,7 @@ foreach ($groups as $group) {
 		$linkedVehicle->ref = (string) $group['vehicle_ref'];
 		$linkedVehicle->registration_number = (string) $group['registration_number'];
 		$linkedVehicle->label = (string) $group['vehicle_label'];
-		$vehicleLinks[$vehicleLinkKey] = $linkedVehicle->getNomUrl(1);
+		$vehicleLinks[$vehicleLinkKey] = $linkedVehicle->ref !== '' ? $linkedVehicle->getNomUrl(1) : '';
 	}
 	print '<tr class="oddeven"><td>'.$vehicleLinks[$vehicleLinkKey].'</td><td>'.dol_escape_htmltag((string) $group['consumable_label']).'</td><td>'.dol_escape_htmltag($unit).'</td><td class="right">'.((int) $group['count']).'</td><td class="right">'.price($group['total_quantity']).'</td><td class="right">'.($group['total_cost'] !== null ? price($group['total_cost']).' '.dol_escape_htmltag((string) $group['currency']) : $langs->trans('NotDefined')).'</td><td class="right">'.($group['consumption_100'] !== null ? price($group['consumption_100']) : '').'</td><td class="right">'.($group['weighted_unit_price'] !== null ? price($group['weighted_unit_price']).' '.dol_escape_htmltag((string) $group['currency']).'/'.dol_escape_htmltag($unit) : $langs->trans('NotDefined')).'</td><td class="right">'.price($group['peak_quantity']).'</td><td class="right">'.($group['peak_unit_price'] !== null ? price($group['peak_unit_price']).' '.dol_escape_htmltag((string) $group['currency']).'/'.dol_escape_htmltag($unit) : $langs->trans('NotDefined')).'</td><td class="right">'.($group['peak_consumption_100'] !== null ? price($group['peak_consumption_100']) : '').'</td><td class="right">'.((int) $group['excluded_intervals']).'</td>';
 	if (!empty($entityOptions)) {

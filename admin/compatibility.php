@@ -49,7 +49,9 @@ print '<table class="noborder centpercent">';
 print '<tr class="liste_titre"><td>'.$langs->trans('MainFeatures').'</td><td>Dolibarr</td><td>PHP</td><td>'.$langs->trans('Status').'</td><td>'.$langs->trans('UnavailableReason').'</td></tr>';
 foreach (LmdbVehicleManagementCompatibility::getCompatibilityFeatures() as $feature) {
 	print '<tr class="oddeven">';
-	print '<td>'.$langs->trans($feature['label']).'</td>';
+	print '<td>'.$langs->trans($feature['label']);
+	if (!empty($feature['description'])) print '<br><span class="opacitymedium">'.$langs->trans($feature['description']).'</span>';
+	print '</td>';
 	print '<td>&ge; '.dol_escape_htmltag($feature['min_dolibarr']).'</td>';
 	print '<td>&ge; '.dol_escape_htmltag($feature['min_php']).'</td>';
 	print '<td>'.dolGetStatus($langs->trans($feature['available'] ? 'Available' : 'Unavailable'), '', '', $feature['available'] ? 'status4' : 'status6', 5).'</td>';

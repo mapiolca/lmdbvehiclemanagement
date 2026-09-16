@@ -42,7 +42,7 @@ class LmdbVehicleInsuranceCron
 		$sql = 'SELECT cv.fk_contract, cv.fk_vehicle, cv.date_start AS coverage_start, v.ref AS vehicle_ref, v.registration_number, v.label AS vehicle_label';
 		$sql .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle AS cv';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract AS c ON c.rowid = cv.fk_contract AND c.entity = cv.entity';
-		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = cv.fk_vehicle AND v.entity = cv.entity';
+		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = cv.fk_vehicle AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'v');
 		$sql .= ' WHERE cv.entity = '.$entity.' AND c.status = '.LmdbVehicleInsuranceContract::STATUS_ACTIVE.' AND v.status <> 4';
 		$sql .= " AND cv.date_start <= '".$this->db->idate($today)."' AND (cv.date_end IS NULL OR cv.date_end >= '".$this->db->idate($today)."')";
 		$resql = $this->db->query($sql);

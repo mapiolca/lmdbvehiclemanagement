@@ -25,6 +25,10 @@ $conf = (object) array(
 	'file' => (object) array('instance_unique_id' => 'quartix-tests-only-instance-key', 'dol_document_root' => array('main' => $coreRoot, 'alt0' => dirname(__DIR__, 2)),
 		'dol_url_root' => array('main' => '', 'alt0' => '/custom')),
 );
+require_once $coreRoot.'/core/class/conf.class.php';
+$testConf = new Conf();
+foreach (get_object_vars($conf) as $key => $value) $testConf->{$key} = $value;
+$conf = $testConf;
 require_once $coreRoot.'/core/lib/functions.lib.php';
 if (is_file($coreRoot.'/core/lib/html.lib.php')) require_once $coreRoot.'/core/lib/html.lib.php';
 require_once $coreRoot.'/core/class/translate.class.php';
@@ -60,6 +64,7 @@ final class QxTestDb
 	/** @param string $sql SQL @return object|false */
 	public function query($sql)
 	{
+		$sql = str_replace("GROUP_CONCAT(DISTINCT energy_alias.rowid ORDER BY energy_alias.rowid SEPARATOR ',')", 'GROUP_CONCAT(DISTINCT energy_alias.rowid)', $sql);
 		$this->queries[] = $sql;
 		if ($this->failPattern !== '' && strpos($sql, $this->failPattern) !== false) { $this->error = 'Injected failure'; return false; }
 		if (strpos($sql, 'GET_LOCK(') !== false) { $acquired = !$this->locked; $this->locked = true; return (object) array('rows' => array((object) array('acquired' => (int) $acquired)), 'pos' => 0); }
@@ -75,7 +80,12 @@ final class QxTestDb
 		if (preg_match('/^DELETE ec FROM (\w+) AS ec INNER JOIN (\w+) AS ctc ON ctc.rowid = ec.fk_c_type_contact WHERE (.+)$/D', $sql, $del)) {
 			$sql = 'DELETE FROM '.$del[1].' WHERE rowid IN (SELECT ec.rowid FROM '.$del[1].' AS ec INNER JOIN '.$del[2].' AS ctc ON ctc.rowid=ec.fk_c_type_contact WHERE '.$del[3].')';
 		}
+		if (preg_match('/^UPDATE (\w+) s INNER JOIN (\w+) q ON q.entity=s.entity AND q.fk_vehicle=s.fk_vehicle SET s.fk_quartix=q.rowid WHERE (.+)$/D', $sql, $join)) {
+			$sql = 'UPDATE '.$join[1].' AS s SET fk_quartix=(SELECT q.rowid FROM '.$join[2].' q WHERE q.entity=s.entity AND q.fk_vehicle=s.fk_vehicle) WHERE '.$join[3];
+		}
 		$sql = preg_replace('/\s+FOR UPDATE\b/i', '', $sql);
+		// SQLite adapter: this aggregate is a set of energy IDs, independent of ordering.
+		$sql = str_replace("GROUP_CONCAT(DISTINCT ce.fk_energy ORDER BY ce.fk_energy SEPARATOR ',')", 'GROUP_CONCAT(DISTINCT ce.fk_energy)', $sql);
 		$sql = str_replace('INSERT IGNORE INTO', 'INSERT OR IGNORE INTO', $sql);
 		$sql = preg_replace('/rowid integer AUTO_INCREMENT PRIMARY KEY/i', 'rowid integer PRIMARY KEY AUTOINCREMENT', $sql);
 		$sql = preg_replace('/\bAUTO_INCREMENT\b/i', '', $sql);
@@ -128,8 +138,15 @@ final class QxTestClient extends LmdbVehicleQuartixClient
 		return $response;
 	}
 }
+final class QxTestDataset extends LmdbVehicleQuartix
+{
+	public static $events = 0;
+	public static $failTrigger = false;
+	public function call_trigger($name, $user) { self::$events++; return self::$failTrigger ? -1 : 1; }
+}
 final class QxTestReading extends LmdbVehicleOdometerReading
 {
+	protected function createQuartixDataset() { return new QxTestDataset($this->db); }
 	/** @var int */ public static $events = 0;
 	/** @var bool */ public static $failTrigger = false;
 	public function call_trigger($triggerName, $user) { self::$events++; return self::$failTrigger ? -1 : 1; }
@@ -142,6 +159,7 @@ final class QxTestVehicle extends LmdbVehicle
 }
 final class QxTestService extends LmdbVehicleQuartixService
 {
+	protected function createDataset() { return new QxTestDataset($this->db); }
 	public function vehicle($id, $action = 'read')
 	{
 		parent::vehicle($id, $action); // Exercise production permissions and entity checks.
@@ -151,8 +169,14 @@ final class QxTestService extends LmdbVehicleQuartixService
 	}
 	protected function createReading() { return new QxTestReading($this->db); }
 }
+final class QxTestTrips extends LmdbVehicleQuartixTrips
+{
+	protected function createDataset() { return new QxTestDataset($this->db); }
+}
 final class QxTestCron extends LmdbVehicleQuartixCron
 {
+	protected function createService() { return new QxTestTrips($this->db); }
+	protected function createRoutes() { return new QxTestRoutes($this->db); }
 	/** @var QxTestClient */ public $client;
 	protected function createClient($entity) { return $this->client; }
 }
@@ -162,14 +186,20 @@ function qxReject($call, $code) { try { $call(); } catch (RuntimeException $e) {
 function qxResponse($data, $status = 200, $retry = 900) { return array('status' => $status, 'body' => json_encode(array('Meta' => array('Code' => 0), 'Data' => $data)), 'retry' => $retry); }
 
 $db = new QxTestDb();
+$db->query('CREATE TABLE '.MAIN_DB_PREFIX.'entity_element_sharing (rowid integer PRIMARY KEY, element text, fk_element integer, entity integer)');
 $user = new User($db); $user->id = 1; $user->admin = 1; $user->socid = 0;
-$extrafields = (object) array('attributes' => array('lmdbvehiclemanagement_odometer_reading' => array('loaded' => 1), 'lmdbvehiclemanagement_vehicle' => array('loaded' => 1)));
-foreach (array('odometer_reading', 'vehicle', 'qx_link', 'qx_position', 'qx_usage', 'qx_token', 'qx_job', 'qx_tripday', 'qx_trip', 'qx_route', 'qx_routequeue') as $table) {
+$user->rights = (object) array('lmdbvehiclemanagement' => (object) array('read' => 1, 'delete' => 1, 'odometer' => (object) array('write' => 1), 'quartix' => (object) array('location' => 1, 'sync' => 1)));
+$extrafields = (object) array('attributes' => array('lmdbvehiclemanagement_qx_dataset' => array('loaded' => 1), 'lmdbvehiclemanagement_odometer_reading' => array('loaded' => 1), 'lmdbvehiclemanagement_vehicle' => array('loaded' => 1)));
+foreach (array('odometer_reading', 'vehicle', 'qx_dataset', 'qx_link', 'qx_position', 'qx_usage', 'qx_token', 'qx_job', 'qx_tripday', 'qx_trip', 'qx_route', 'qx_routequeue') as $table) {
 	$sql = file_get_contents(dirname(__DIR__).'/sql/llx_lmdbvehiclemanagement_'.$table.'.sql');
 	$db->query(str_replace('llx_', MAIN_DB_PREFIX, $sql));
 }
-foreach (array('qx_route' => array('entity,fk_tripday,trip_key'), 'qx_routequeue' => array('entity,fk_tripday'), 'qx_link' => array('entity,fk_vehicle', 'entity,remote_id'), 'qx_position' => array('entity,fk_vehicle'), 'qx_usage' => array('entity,fk_vehicle,usage_day'), 'qx_tripday' => array('entity,fk_vehicle,trip_day'), 'qx_job' => array('entity,job_kind'), 'odometer_reading' => array('entity,fk_vehicle,provider_key')) as $table => $keys) {
+foreach (array('qx_dataset' => array('entity,fk_vehicle'), 'qx_route' => array('entity,fk_tripday,trip_key'), 'qx_routequeue' => array('entity,fk_tripday'), 'qx_link' => array('entity,fk_vehicle', 'entity,remote_id'), 'qx_position' => array('entity,fk_vehicle'), 'qx_usage' => array('entity,fk_vehicle,usage_day'), 'qx_tripday' => array('entity,fk_vehicle,trip_day'), 'qx_job' => array('entity,job_kind'), 'odometer_reading' => array('entity,fk_vehicle,provider_key')) as $table => $keys) {
 	foreach ($keys as $i => $columns) $db->query('CREATE UNIQUE INDEX qx_'.$table.'_'.$i.' ON '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_'.$table.' ('.$columns.')');
+}
+// Import descriptor exposes capacity dictionaries even in a QUARTIX-only fixture.
+foreach (array('c_lmdbvehiclemanagement_consumable', 'lmdbvehiclemanagement_consumable_energy') as $table) {
+	$db->query(str_replace('llx_', MAIN_DB_PREFIX, file_get_contents(dirname(__DIR__).'/sql/llx_'.$table.'.sql')));
 }
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'const (rowid integer PRIMARY KEY, entity integer, name text, value text, type text, visible integer, note text)');
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'extrafields (rowid integer PRIMARY KEY, elementtype text)');
@@ -262,11 +292,14 @@ qxReject(static function () use ($db) { new QxTestClient($db, 1); }, 'QxAccessDe
 $conf->entity = 1;
 $conf->global->LMDBVEHICLEMANAGEMENT_QX_APPLICATION = 'test-application-A';
 
+$db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_vehicle (rowid,entity,ref,label,fk_user_creat,date_creation) VALUES (1,1,'QX-A','Vehicle A',1,'2026-01-01'),(2,2,'QX-B','Vehicle B',1,'2026-01-01')");
+$db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_dataset (rowid,entity,fk_vehicle,snapshot_vehicle_label) VALUES (1,1,1,'QX-A'),(2,2,2,'QX-B')");
+$db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_link (entity,fk_quartix,fk_vehicle,remote_id,timezone,shift_start,date_creation,fk_user_creat) VALUES (1,1,1,10,'Europe/Paris','08:00:00','2026-01-01',1),(2,2,2,10,'Europe/Paris','08:00:00','2026-01-01',1)");
 // Live QWS returns VehicleId; the historical PDF uses VehicleID. Preserve one
 // canonical field for every consumer, while rejecting conflicting identities.
 foreach (array('/vehicles', '/vehicles/live', '/vehicles/odometer', '/vehicles/tripsummary') as $endpoint) {
 	$client->responses = array(qxResponse(array(array('VehicleId' => 10, 'Description' => 'Test vehicle'), array('VehicleID' => 20))));
-	qxCheck($client->get($endpoint) === array(array('Description' => 'Test vehicle', 'VehicleID' => 10), array('VehicleID' => 20)), 'Both documented and live ID spellings work for '.$endpoint);
+	qxCheck($client->get($endpoint, $endpoint === '/vehicles' ? array() : array('VehicleIDList' => '10')) === array(array('Description' => 'Test vehicle', 'VehicleID' => 10), array('VehicleID' => 20)), 'Both documented and live ID spellings work for '.$endpoint);
 }
 $client->responses = array(qxResponse(array(array('VehicleID' => 10, 'VehicleId' => 10))));
 qxCheck($client->get('/vehicles') === array(array('VehicleID' => 10)), 'Matching aliases leave only the canonical identifier');
@@ -284,6 +317,7 @@ qxCheck($dailyData[0]['Date'] === '2026-08-30' && $dailyData[0]['NumberOfTrips']
 foreach (array(array(), array('VehicleIDList' => '10,20'), array('GroupBy' => 'day'), array('EndDay' => '2026-08-31'), array('VehicleIDList' => '0'), array('VehicleIDList' => '9999999999999999999999999')) as $override) {
 	$query = $override === array() ? array() : array_replace($dayQuery, $override);
 	$client->responses = array(qxResponse(array($periodSummary)));
+	if (empty($query['VehicleIDList']) || $query['VehicleIDList'] !== '10') { qxReject(static function () use ($client, $query) { $client->get('/vehicles/tripsummary', $query); }, 'QxAccessDenied'); continue; }
 	$data = $client->get('/vehicles/tripsummary', $query);
 	qxReject(static function () use ($data) { LmdbVehicleQuartixRules::summaries($data, 10, '2026-08-30', '2026-08-31'); }, 'QxInvalidResponse');
 }
@@ -293,12 +327,10 @@ foreach (array(array('VehicleID' => 20), array('VehicleID' => null), array('Date
 }
 
 // Real SQL constraints and native CommonObject persistence in two entities.
-$db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_vehicle (rowid,entity,ref,label,fk_user_creat,date_creation) VALUES (1,1,'QX-A','Vehicle A',1,'2026-01-01'),(2,2,'QX-B','Vehicle B',1,'2026-01-01')");
-$db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_link (entity,fk_vehicle,remote_id,timezone,shift_start,date_creation,fk_user_creat) VALUES (1,1,10,'Europe/Paris','08:00:00','2026-01-01',1),(2,2,10,'Europe/Paris','08:00:00','2026-01-01',1)");
-$service = new LmdbVehicleQuartixService($db);
+$service = new QxTestService($db);
 $link = $service->link(1);
 qxCheck($link !== null && $link->entity == 1, 'Owner association loaded');
-qxReject(static function () use ($service) { $service->link(2); }, 'QxAccessDenied');
+qxCheck($service->link(2) === null, 'No foreign association is exposed');
 $service->saveUsage($link, array($summary), '2026-08-30', '2026-08-31');
 $service->saveUsage($link, array($summary), '2026-08-30', '2026-08-31');
 $rows = $service->usage(1, '2026-08-01', '2026-08-31', 'month');
@@ -348,20 +380,20 @@ qxCheck($actual->update($user) < 0, 'Real progression still enforced');
 $estimated = new QxTestReading($db); $estimated->fetch($estimateId); $estimated->is_estimate = 0;
 qxCheck($estimated->update($user) < 0 && $estimated->error === 'QxOwnsReading', 'Clearing input marker does not grant ownership');
 qxCheck($estimated->delete($user) < 0 && $estimated->error === 'QxOwnsReading', 'Clearing input marker does not grant deletion');
-QxTestReading::$failTrigger = true;
+QxTestDataset::$failTrigger = true;
 $failed = new QxTestReading($db);
 qxCheck($failed->saveQuartix($user, 1, 10, strtotime('2026-09-01 12:00 UTC'), '2026-09-01', 1200.0) < 0, 'Failed CRUD rolls back');
-QxTestReading::$failTrigger = false;
+QxTestDataset::$failTrigger = false;
 qxCheck(count($actual->fetchAllByVehicle(1)) === 4, 'Failed CRUD left no estimate');
 $conf->entity = 2;
 $foreignReading = new QxTestReading($db);
 qxCheck($foreignReading->saveQuartix($user, 1, 10, $estimateDate, '2026-08-30', 1200.0) < 0, 'Owner-only imports');
 qxCheck($foreignReading->saveQuartix($user, 2, 10, $estimateDate, '2026-08-30', 500.0) > 0, 'Same remote id isolated in second entity');
 $mc = new class {
-	public function getEntity($element, $shared = 1, $object = null) { return '1,2'; }
+	public function getEntity($element, $shared = 1, $object = null) { global $conf; return $element === 'lmdbvehiclequartix' ? (string) $conf->entity : '1,2'; }
 };
-qxCheck($service->position(1)->entity == 1, 'Shared GPS reads from vehicle owner');
-qxCheck($service->usage(1, '2026-08-01', '2026-08-31', 'month')[0]->distance == 42.5, 'Shared usage reads from vehicle owner');
+qxReject(static function () use ($service) { $service->position(1); }, 'QxNoData');
+qxReject(static function () use ($service) { $service->usage(1, '2026-08-01', '2026-08-31', 'month'); }, 'QxNoData');
 qxReject(static function () use ($service, $link, $summary) { $service->saveUsage($link, array($summary), '2026-08-30', '2026-08-31'); }, 'QxAccessDenied');
 $mc = null;
 $conf->entity = 1;
@@ -369,12 +401,16 @@ $conf->entity = 1;
 // GPS is neither inherited from read nor exposed to external users.
 $user->admin = 0;
 $user->rights = (object) array('lmdbvehiclemanagement' => (object) array('read' => 1));
-qxCheck(LmdbVehicleQuartixConfig::can($user, 'read') && !LmdbVehicleQuartixConfig::can($user, 'location') && !LmdbVehicleQuartixConfig::can($user, 'sync'), 'Read permission does not imply GPS or sync');
+qxCheck($user->hasRight('lmdbvehiclemanagement', 'read') && !$user->hasRight('lmdbvehiclemanagement', 'quartix', 'location'), 'Read does not imply GPS');
 qxReject(static function () use ($service) { $service->position(1); }, 'QxAccessDenied');
-$user->socid = 12; $user->admin = 1;
-qxCheck(!LmdbVehicleQuartixConfig::can($user, 'location'), 'External user cannot use GPS even with stale admin flag');
+$user->admin = 1;
+qxReject(static function () use ($service) { $service->position(1); }, 'QxAccessDenied');
+$user->socid = 12;
+qxReject(static function () use ($service) { $service->dataset(1); }, 'QxAccessDenied');
 $user->socid = 0;
-qxCheck(LmdbVehicleQuartixConfig::can($user, 'location') && LmdbVehicleQuartixConfig::can($user, 'sync'), 'Admin has functional rights without granular grants');
+$user->rights->lmdbvehiclemanagement->quartix = (object) array('location' => 1, 'sync' => 1);
+$user->rights->lmdbvehiclemanagement->odometer = (object) array('write' => 1);
+$user->rights->lmdbvehiclemanagement->delete = 1;
 
 // Execute real cron orchestration against the offline transport.
 $db->query("UPDATE ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_usage SET date_sync='2026-01-01' WHERE entity=1");
@@ -421,7 +457,8 @@ qxCheck($cron->usage() === 0 && count($cron->client->calls) === $requestCount, '
 // Validation failures abort the batch before the next vehicle and preserve the cursor.
 $db->query('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_job SET retry_at=NULL WHERE entity=1');
 $db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_vehicle (rowid,entity,ref,label,fk_user_creat,date_creation) VALUES (3,1,'QX-C','Vehicle C',1,'2026-01-01')");
-$db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_link (entity,fk_vehicle,remote_id,timezone,shift_start,date_creation,fk_user_creat) VALUES (1,3,20,'Europe/Paris','08:00:00','2026-01-01',1)");
+$db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_dataset (rowid,entity,fk_vehicle,snapshot_vehicle_label) VALUES (3,1,3,'QX-C')");
+$db->query("INSERT INTO ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_link (entity,fk_quartix,fk_vehicle,remote_id,timezone,shift_start,date_creation,fk_user_creat) VALUES (1,3,3,20,'Europe/Paris','08:00:00','2026-01-01',1)");
 $db->query("UPDATE ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_job SET last_vehicle=0 WHERE entity=1 AND job_kind='usage'");
 $db->query("UPDATE ".MAIN_DB_PREFIX."lmdbvehiclemanagement_qx_usage SET date_sync='2026-01-01' WHERE entity=1 AND fk_vehicle=1");
 $cursorBefore = $service->link(1)->usage_cursor;
@@ -484,10 +521,10 @@ require_once dirname(__DIR__).'/lib/lmdbvehiclequartix.lib.php';
 $vehicle = $service->vehicle(1);
 ob_start(); lmdbVehicleQuartixPrintPosition($vehicle); $gpsHtml = ob_get_clean();
 qxCheck(strpos($gpsHtml, '48.6') !== false && strpos($gpsHtml, '<script>not HTML</script>') === false, 'Authorized GPS renders escaped data');
-$user->admin = 0;
+$user->admin = 0; $user->rights->lmdbvehiclemanagement->quartix->location = 0;
 ob_start(); lmdbVehicleQuartixPrintPosition($vehicle); $deniedHtml = ob_get_clean();
 qxCheck($deniedHtml === '', 'No GPS fragment for read-only users');
-$user->admin = 1;
+$user->admin = 1; $user->rights->lmdbvehiclemanagement->quartix->location = 1;
 require_once DOL_DOCUMENT_ROOT.'/core/class/dolgraph.class.php';
 $graph = new DolGraph();
 $graph->SetData(array(array('Known day', 42.5)));
@@ -501,6 +538,9 @@ qxCheck(strpos($graph->show(), '42.5') !== false && strpos($graph->show(), 'qx_t
 require __DIR__.'/quartix_association_cases.php';
 require __DIR__.'/quartix_trip_cases.php';
 require __DIR__.'/quartix_route_cases.php';
+
+require __DIR__.'/quartix_ownership_cases.php';
+require __DIR__.'/quartix_migration_cases.php';
 
 // Upgrade twice, preserving real data and avoiding duplicate columns.
 $db->query('ALTER TABLE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link DROP COLUMN sync_from');

@@ -46,7 +46,9 @@ document.addEventListener('DOMContentLoaded', function () {
 			var credit = document.createElement('span'); credit.textContent = options.attribution;
 			var attribution = credit.innerHTML;
 			if (options.tiles === 'https://tile.openstreetmap.org/{z}/{x}/{y}.png') attribution = '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">' + attribution + '</a>';
-			L.tileLayer(options.tiles, {maxZoom: 19, attribution: attribution}).on('tileerror', function () {
+			// Identify the site to the tile provider without exposing the page path or trip parameters.
+			// Scope this to tile images: Dolibarr keeps its own policy for the rest of the page.
+			L.tileLayer(options.tiles, {maxZoom: 19, attribution: attribution, referrerPolicy: 'strict-origin'}).on('tileerror', function () {
 				if (stopped) return;
 				tileFailed = true; message(options.tilesFailure, 'warning');
 			}).addTo(map);
@@ -97,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	function start() {
 		stopped = false; first = true; retryRead = false;
 		actions.classList.add('hidden');
-		url.search = new URLSearchParams({day: form.elements.day.value, trip: form.elements.trip.value, format: 'json'}).toString();
+		url.search = new URLSearchParams({day: form.elements.day.value, trip: form.elements.trip.value, quartix_id: form.elements.quartix_id.value, format: 'json'}).toString();
 		load(false);
 	}
 	function sizeDialog() {
@@ -125,6 +127,7 @@ document.addEventListener('DOMContentLoaded', function () {
 				var selection = new URL(link.href).searchParams;
 				form.elements.day.value = selection.get('day') || '';
 				form.elements.trip.value = selection.get('trip') || '';
+				form.elements.quartix_id.value = selection.get('quartix_id') || '0';
 				sizeDialog(); window.jQuery(dialog).dialog('open'); start();
 			});
 		});

@@ -201,12 +201,13 @@ class LmdbVehicleAgenda
 	 */
 	private static function getEventData($object, $langs)
 	{
-		$identifier = self::firstPropertyValue($object, array('ref', 'registration_number', 'label'));
+		$identifier = self::firstPropertyValue($object, array('ref', 'registration_number', 'snapshot_vehicle_label', 'label'));
 		if ($identifier === '') {
 			$identifier = self::fallbackIdentifier($object);
 		}
 
 		$objectLabels = array(
+			'lmdbvehiclequartix' => 'QxData',
 			'lmdbvehicle' => 'Vehicle',
 			'lmdbvehicleassignment' => 'VehicleAssignment',
 			'lmdbvehicleodometerreading' => 'OdometerReading',
@@ -219,10 +220,10 @@ class LmdbVehicleAgenda
 		$element = (string) $object->element;
 		$objectLabel = self::translate($langs, isset($objectLabels[$element]) ? $objectLabels[$element] : 'Record');
 		$vehicleRef = $element === 'lmdbvehicle' ? self::firstPropertyValue($object, array('registration_number', 'ref')) : '';
-		if ($vehicleRef === '' && property_exists($object, 'fk_vehicle') && (int) $object->fk_vehicle > 0) {
+		if ($element !== 'lmdbvehiclequartix' && $vehicleRef === '' && property_exists($object, 'fk_vehicle') && (int) $object->fk_vehicle > 0) {
 			$vehicleRef = self::fetchVehicleRef($object, (int) $object->fk_vehicle);
 		}
-		if ($vehicleRef === '') {
+		if ($element !== 'lmdbvehiclequartix' && $vehicleRef === '') {
 			$vehicleRef = self::fallbackLinkedIdentifier($object, 'fk_vehicle');
 		}
 
@@ -496,6 +497,12 @@ class LmdbVehicleAgenda
 	public static function getObjectDefinitions()
 	{
 		return array(
+			'quartix' => array(
+				'elementtype' => 'lmdbvehiclequartix@lmdbvehiclemanagement',
+				'class_file' => 'class/lmdbvehiclequartix.class.php',
+				'class_name' => 'LmdbVehicleQuartix',
+				'trigger_prefix' => 'LMDBVEHICLEMANAGEMENT_QUARTIX',
+			),
 			'vehicle' => array(
 				'elementtype' => 'lmdbvehicle@lmdbvehiclemanagement',
 				'class_file' => 'class/lmdbvehicle.class.php',
@@ -548,7 +555,7 @@ class LmdbVehicleAgenda
 	}
 
 	/**
-	 * Expand the object matrix into the 24 CRUD triggers.
+	 * Expand the object matrix into its supported CRUD triggers.
 	 *
 	 * @return array<string,array{elementtype:string,class_file:string,class_name:string,trigger_prefix:string,operation:string}>
 	 */
@@ -557,6 +564,7 @@ class LmdbVehicleAgenda
 		$definitions = array();
 		foreach (self::getObjectDefinitions() as $objectDefinition) {
 			foreach (array('CREATE', 'UPDATE', 'DELETE') as $operation) {
+				if ($objectDefinition['class_name'] === 'LmdbVehicleQuartix' && $operation === 'DELETE') continue;
 				$code = $objectDefinition['trigger_prefix'].'_'.$operation;
 				$definitions[$code] = $objectDefinition + array('operation' => $operation);
 			}

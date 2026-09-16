@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -18,7 +19,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'insurance', 'write') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')) || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
@@ -38,10 +39,10 @@ if ($cancel) {
 
 $contracts = array();
 $contractObjects = array();
-$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract';
-$sql .= ' WHERE entity = '.((int) $vehicle->entity).' AND status IN ('.LmdbVehicleInsuranceContract::STATUS_DRAFT.', '.LmdbVehicleInsuranceContract::STATUS_ACTIVE.')';
+$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract c';
+$sql .= ' WHERE '.LmdbVehicleSharing::sql($db, 'lmdbinsurancecontract', 'c').' AND status IN ('.LmdbVehicleInsuranceContract::STATUS_DRAFT.', '.LmdbVehicleInsuranceContract::STATUS_ACTIVE.')';
 $sql .= ' AND rowid NOT IN (SELECT fk_contract FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle';
-$sql .= ' WHERE entity = '.((int) $vehicle->entity).' AND fk_vehicle = '.$id.') ORDER BY ref';
+$sql .= ' WHERE entity = c.entity AND fk_vehicle = '.$id.') ORDER BY ref';
 $resql = $db->query($sql);
 if ($resql) {
 	while (is_object($row = $db->fetch_object($resql))) {

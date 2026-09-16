@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementobject.class.php');
@@ -189,11 +190,11 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	{
 		global $user, $conf;
 		require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
-		if (!$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write')) || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
 		$models = getListOfModels($this->db, 'lmdbvehicle');
 		if ($modele === '') $modele = getDolGlobalString('LMDBVEHICLEMANAGEMENT_DOSSIER_MODEL');
 		if ($modele !== 'lmdb_vehicle_dossier' || !is_array($models) || !isset($models[$modele])) { $this->error = $outputlangs->trans('LmdbDossierModelInactive'); return -1; }
-		if (!in_array((int) $this->entity, array_map('intval', explode(',', getEntity('lmdbvehicle'))), true)) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && LmdbVehicleSharing::visible($this->db, (string) $this->element, (int) $this->id))) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
 		return $this->commonGenerateDocument('core/modules/lmdbvehiclemanagement/doc/', $modele, $outputlangs, $hidedetails, $hidedesc, $hideref, $moreparams);
 	}
 
@@ -209,8 +210,8 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		global $conf, $user;
 		if (!preg_match('/^lmdb-dossier-[0-9]+\.(pdf|zip)$/i', basename($destfull))) return parent::indexFile($destfull, $update_main_doc_field);
 		$directory = getMultidirOutput($this, 'lmdbvehiclemanagement', 1);
-		if (!$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)
-			|| !in_array((int) $this->entity, array_map('intval', explode(',', getEntity('lmdbvehicle'))), true)
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write')) || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)
+			|| !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && LmdbVehicleSharing::visible($this->db, (string) $this->element, (int) $this->id))
 			|| !is_string($directory) || realpath(dirname($destfull)) !== realpath($directory)
 			|| pathinfo($destfull, PATHINFO_FILENAME) !== 'lmdb-dossier-'.((int) $this->id)) { $this->error = 'NotEnoughPermissions'; return -1; }
 		$consultationEntity = $conf->entity;
@@ -340,11 +341,12 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	 */
 	public function delete(User $user, $notrigger = 0)
 	{
+		global $conf;
 		require_once __DIR__.'/lmdbvehiclequartixservice.class.php';
 		$quartix = new LmdbVehicleQuartixService($this->db);
 		try { $owner = $quartix->vehicle((int) $this->id); }
 		catch (Exception $e) { $this->error = 'QxAccessDenied'; return -1; }
-		if ((int) $owner->entity !== (int) $this->entity || !LmdbVehicleQuartixConfig::can($user, 'configure') && !$user->hasRight('lmdbvehiclemanagement', 'delete')) { $this->error = 'QxAccessDenied'; return -1; }
+		if ((int) $owner->entity !== (int) $this->entity || (int) $owner->entity !== (int) $conf->entity || !$user->hasRight('lmdbvehiclemanagement', 'delete')) { $this->error = 'QxAccessDenied'; return -1; }
 		if (!$quartix->lock((int) $this->entity)) { $this->error = 'QxBusy'; return -1; }
 		try {
 			$tables = array(
@@ -459,8 +461,8 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		}
 
 		$this->db->begin();
-		$sql = 'SELECT status, commissioning_date FROM '.MAIN_DB_PREFIX.$this->table_element;
-		$sql .= ' WHERE rowid = '.((int) $this->id).' AND entity IN ('.getEntity('lmdbvehicle').') FOR UPDATE';
+		$sql = 'SELECT status, commissioning_date FROM '.MAIN_DB_PREFIX.$this->table_element.' AS t';
+		$sql .= ' WHERE t.rowid = '.((int) $this->id).' AND '.LmdbVehicleSharing::sql($this->db, $this->element).' FOR UPDATE';
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			$this->error = $this->db->lasterror();
@@ -766,8 +768,7 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		}
 		$sql = 'DELETE cap FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity AS cap';
 		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce';
-		$sql .= ' ON ce.fk_consumable = cap.fk_consumable AND ce.fk_energy = '.((int) $this->fk_energy);
-		$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
+		$sql .= ' ON ce.fk_consumable = cap.fk_consumable AND ce.fk_energy IN (SELECT energy.rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy energy INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy vehicle_energy ON vehicle_energy.code = energy.code WHERE vehicle_energy.rowid = '.((int) $this->fk_energy).')';
 		$sql .= ' WHERE cap.entity = '.((int) $this->entity).' AND cap.fk_vehicle = '.((int) $this->id).' AND ce.rowid IS NULL';
 		if (!$this->db->query($sql)) {
 			$this->error = $this->db->lasterror();
@@ -784,7 +785,7 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 			$sql = 'SELECT c.rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c';
 			$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_consumable = c.rowid AND ce.entity = c.entity';
 			$sql .= ' WHERE c.rowid = '.((int) $consumableId).' AND c.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
-			$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') AND ce.fk_energy = '.((int) $this->fk_energy);
+			$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') AND ce.fk_energy IN (SELECT energy.rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy energy INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy vehicle_energy ON vehicle_energy.code = energy.code WHERE vehicle_energy.rowid = '.((int) $this->fk_energy).')';
 			$resql = $this->db->query($sql);
 			if (!$resql || $this->db->num_rows($resql) !== 1) {
 				if ($resql) $this->db->free($resql);

@@ -1,9 +1,11 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 require_once __DIR__.'/lmdbvehiclesupplierinvoicehooks.trait.php';
 require_once __DIR__.'/lmdbvehicledossierhooks.trait.php';
+require_once __DIR__.'/lmdbvehiclesharinghooks.trait.php';
 
 /**
  * Hooks for the vehicle management module.
@@ -12,6 +14,7 @@ class ActionsLmdbVehicleManagement
 {
 	use LmdbVehicleSupplierInvoiceHooks;
 	use LmdbVehicleDossierHooks;
+	use LmdbVehicleSharingHooks;
 	/** @var string Multicompany payload root key */
 	public const MULTICOMPANY_SHARING_ROOT_KEY = 'lmdbvehiclemanagement';
 
@@ -59,7 +62,7 @@ class ActionsLmdbVehicleManagement
 			return 0;
 		}
 
-		if ($user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')) {
+		if ((isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write'))) {
 			$this->results[] = array(
 				'url' => dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement&token='.newToken(),
 				'title' => 'NewConsumption@lmdbvehiclemanagement',
@@ -69,7 +72,7 @@ class ActionsLmdbVehicleManagement
 				'position' => 450,
 			);
 		}
-		if ($user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write')) {
+		if ((isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write'))) {
 			$this->results[] = array(
 				'url' => dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement&token='.newToken(),
 				'title' => 'NewRegulatoryControl@lmdbvehiclemanagement',
@@ -100,12 +103,12 @@ class ActionsLmdbVehicleManagement
 		global $langs, $user;
 
 		$dataset = isset($parameters['datatoimport']) ? (string) $parameters['datatoimport'] : '';
-		if (!in_array($dataset, array('lmdbvehiclemanagement_vehicles', 'lmdbvehiclemanagement_regulatory_controls'), true)) {
+		if (!in_array($dataset, array('lmdbvehiclemanagement_vehicles', 'lmdbvehiclemanagement_regulatory_controls', 'lmdbvehiclemanagement_consumptions'), true)) {
 			return 0;
 		}
-		$rightObject = $dataset === 'lmdbvehiclemanagement_vehicles' ? 'lmdbvehicle' : 'regulatorycontrol';
+		$rightObject = $dataset === 'lmdbvehiclemanagement_vehicles' ? 'lmdbvehicle' : ($dataset === 'lmdbvehiclemanagement_consumptions' ? 'consumption' : 'regulatorycontrol');
 		$langs->loadLangs(array('main', 'errors', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-		if (!isModEnabled('lmdbvehiclemanagement') || !empty($user->socid) || (empty($user->admin) && !$user->hasRight('lmdbvehiclemanagement', $rightObject, 'import'))) {
+		if (!isModEnabled('lmdbvehiclemanagement') || !empty($user->socid) || !$user->hasRight('lmdbvehiclemanagement', $rightObject, 'import') || ($rightObject === 'consumption' && !$user->hasRight('lmdbvehiclemanagement', 'read'))) {
 			$this->error = $langs->trans('NotEnoughPermissions');
 			$this->errors = array();
 			return -1;
@@ -132,6 +135,10 @@ class ActionsLmdbVehicleManagement
 			dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleimport.class.php');
 			$import = new LmdbVehicleImport($this->db);
 			$result = $import->createVehicleFromNativeRow($parameters['arrayrecord'], $parameters['array_match_file_to_database'], $importId, $user, $runTriggers, isset($parameters['updatekeys']) && is_array($parameters['updatekeys']) ? $parameters['updatekeys'] : array());
+		} elseif ($dataset === 'lmdbvehiclemanagement_consumptions') {
+			require_once __DIR__.'/lmdbvehicleconsumptionimport.class.php';
+			$import = new LmdbVehicleConsumptionImport($this->db);
+			$result = $import->importNativeRow($parameters['arrayrecord'], $parameters['array_match_file_to_database'], $importId, $user, $runTriggers, isset($parameters['updatekeys']) && is_array($parameters['updatekeys']) ? $parameters['updatekeys'] : array());
 		} else {
 			dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycontrolimport.class.php');
 			$import = new LmdbVehicleRegulatoryControlImport($this->db);
@@ -146,7 +153,10 @@ class ActionsLmdbVehicleManagement
 		}
 
 		// Native summaries read the driver's counter, separately from successful rows.
-		$counter = $dataset === 'lmdbvehiclemanagement_vehicles' && $import->updated ? 'nbupdate' : 'nbinsert';
+		if ($dataset === 'lmdbvehiclemanagement_consumptions' && $import->unchanged) {
+			return 1;
+		}
+		$counter = in_array($dataset, array('lmdbvehiclemanagement_vehicles', 'lmdbvehiclemanagement_consumptions'), true) && $import->updated ? 'nbupdate' : 'nbinsert';
 		if (isset($parameters['obj']) && is_object($parameters['obj']) && property_exists($parameters['obj'], $counter)) {
 			$parameters['obj']->{$counter} = (int) $parameters['obj']->{$counter} + 1;
 		}
@@ -165,7 +175,7 @@ class ActionsLmdbVehicleManagement
 	 */
 	public static function getMulticompanySharingDefinition()
 	{
-		return array(
+		$definition = array(
 			self::MULTICOMPANY_SHARING_ROOT_KEY => array(
 				'sharingelements' => array(
 					'lmdbvehicle' => array(
@@ -261,6 +271,19 @@ class ActionsLmdbVehicleManagement
 				),
 			),
 		);
+		foreach (LmdbVehicleSharing::definitions() as $element => $item) {
+			if (!isset($definition[self::MULTICOMPANY_SHARING_ROOT_KEY]['sharingelements'][$element])) {
+				$definition[self::MULTICOMPANY_SHARING_ROOT_KEY]['sharingelements'][$element] = array(
+					'type' => 'element', 'icon' => 'car', 'lang' => 'lmdbvehiclemanagement@lmdbvehiclemanagement',
+					'tooltip' => 'LmdbSharingInfo', 'enable' => 'isModEnabled("lmdbvehiclemanagement")',
+					'input' => array('global' => array('showhide' => true, 'hide' => true, 'del' => true)),
+				);
+			}
+			// Native discovery only; guarded module forms own single-record writes.
+			if ($item['mode'] === 'individual' && LmdbVehicleSharing::available()) $definition[self::MULTICOMPANY_SHARING_ROOT_KEY]['sharingelements'][$element]['sharebyelement'] = array('context' => array());
+			$definition[self::MULTICOMPANY_SHARING_ROOT_KEY]['sharingmodulename'][$element] = 'lmdbvehiclemanagement';
+		}
+		return $definition;
 	}
 
 	/** @return void */
@@ -361,6 +384,10 @@ class ActionsLmdbVehicleManagement
 	public function getElementProperties($parameters, &$object, &$action, $hookmanager)
 	{
 		$elementType = isset($parameters['elementType']) ? (string) $parameters['elementType'] : '';
+		if (in_array($elementType, array('lmdbvehiclequartix', 'lmdbvehiclequartix@lmdbvehiclemanagement', 'lmdbvehiclemanagement_lmdbvehiclequartix'), true)) {
+			$this->results = array_replace($this->results, array('module' => 'lmdbvehiclemanagement', 'element' => 'lmdbvehiclequartix', 'table_element' => 'lmdbvehiclemanagement_qx_dataset', 'subelement' => 'lmdbvehiclequartix', 'classpath' => 'lmdbvehiclemanagement/class', 'classfile' => 'lmdbvehiclequartix', 'classname' => 'LmdbVehicleQuartix'));
+			return 0;
+		}
 		$vehicleDefinition = array(
 			'module' => 'lmdbvehiclemanagement',
 			'element' => 'lmdbvehicle',

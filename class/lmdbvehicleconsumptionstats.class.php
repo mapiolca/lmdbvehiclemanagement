@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 /** Aggregated consumption statistics produced without per-row SQL queries. */
@@ -29,10 +30,10 @@ class LmdbVehicleConsumptionStats
 		$sql .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumption AS t';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading AS r ON r.rowid = t.fk_odometer_reading AND r.entity = t.entity';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c ON c.rowid = t.fk_consumable';
-		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND v.entity = t.entity';
-		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity AS cap ON cap.entity = t.entity AND cap.fk_vehicle = t.fk_vehicle AND cap.fk_consumable = t.fk_consumable';
+		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'v').'';
+		$sql .= ' LEFT JOIN (SELECT ca.entity, ca.fk_vehicle, cc.code, cc.unit, cc.category, MAX(ca.capacity) AS capacity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity ca INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable cc ON cc.rowid = ca.fk_consumable GROUP BY ca.entity, ca.fk_vehicle, cc.code, cc.unit, cc.category HAVING COUNT(*) = 1) AS cap ON cap.entity = v.entity AND cap.fk_vehicle = v.rowid AND cap.code = c.code AND cap.unit = c.unit AND cap.category = c.category';
 		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user AS u ON u.rowid = COALESCE(t.fk_user_driver, t.fk_user_creat)';
-		$sql .= ' WHERE t.entity IN ('.getEntity('lmdbvehicleconsumption').')';
+		$sql .= ' WHERE '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicleconsumption', 't').' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicleodometerreading', 'r');
 		if (isset($filters['vehicle_id']) && (int) $filters['vehicle_id'] > 0) $sql .= ' AND t.fk_vehicle = '.((int) $filters['vehicle_id']);
 		if (isset($filters['user_id']) && (int) $filters['user_id'] > 0) $sql .= ' AND COALESCE(t.fk_user_driver, t.fk_user_creat) = '.((int) $filters['user_id']);
 		if (isset($filters['consumable_id']) && (int) $filters['consumable_id'] > 0) $sql .= ' AND t.fk_consumable = '.((int) $filters['consumable_id']);

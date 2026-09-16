@@ -1,6 +1,7 @@
 CREATE TABLE llx_lmdbvehiclemanagement_qx_link (
 	rowid integer AUTO_INCREMENT PRIMARY KEY,
 	entity integer DEFAULT 1 NOT NULL,
+	fk_quartix integer DEFAULT NULL,
 	fk_vehicle integer NOT NULL,
 	remote_id integer NOT NULL,
 	active integer DEFAULT 1 NOT NULL,

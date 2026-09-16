@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -23,12 +24,35 @@ $confirm = GETPOST('confirm', 'alpha');
 $permissionToManage = $user->hasRight('lmdbvehiclemanagement', 'odometer', 'write');
 $vehicle = new LmdbVehicle($db);
 if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
-if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
+if ($id <= 0) accessforbidden($langs->trans('RecordNotFound'));
+$vehicleReadable = $vehicle->fetch($id) > 0;
+if (!$vehicleReadable) {
+	// Retain only local history; never populate a stand-in with live vehicle data.
+	$resHistory = $db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading WHERE fk_vehicle = '.$id.' AND entity = '.((int) $conf->entity).' LIMIT 1');
+	$hasHistory = $resHistory && is_object($db->fetch_object($resHistory));
+	if ($resHistory) $db->free($resHistory);
+	if (!$hasHistory || !in_array($action, array('', 'list'), true)) accessforbidden($langs->trans('RecordNotFound'));
+	$permissionToManage = false;
+	$vehicle = new LmdbVehicle($db);
+}
 
+
+require_once __DIR__.'/lib/lmdbvehiclequartix.lib.php';
+$quartixService = new LmdbVehicleQuartixService($db);
+$quartixId = 0;
+try { $quartixId = (int) $quartixService->dataset($id, GETPOSTINT('quartix_id'))->id; }
+catch (RuntimeException $e) { if (!in_array($e->getMessage(), array('QxNoData', 'QxChooseSource'), true)) accessforbidden(); }
+$entityOptions = lmdbVehicleManagementGetEntityOptions(LmdbVehicleSharing::scopeElement('lmdbvehicleodometerreading')) + lmdbQuartixSourceEntities($quartixService);
+$showEntityColumn = isModEnabled('multicompany') && count($entityOptions) > 1;
+$searchEntities = array_values(array_intersect(array_keys($entityOptions), array_map('intval', (array) GETPOST('search_entity', 'array'))));
 $reading = new LmdbVehicleOdometerReading($db);
 if ($readingId > 0) {
-	if ($reading->fetch($readingId) <= 0 || (int) $reading->fk_vehicle !== $id || (int) $reading->entity !== (int) $vehicle->entity) {
+	if ($reading->fetch($readingId) <= 0 || (int) $reading->fk_vehicle !== $id) {
 		accessforbidden($langs->trans('RecordNotFound'));
+	}
+	if (!empty($reading->fk_quartix)) {
+		if (GETPOSTINT('quartix_id') > 0 && GETPOSTINT('quartix_id') !== (int) $reading->fk_quartix) accessforbidden();
+		$quartixId = (int) $reading->fk_quartix;
 	}
 }
 
@@ -48,6 +72,8 @@ function lmdbVehicleOdometerPopulateFromPost($target, $vehicleId)
 	$target->reading_kind = GETPOST('reading_kind', 'alpha');
 	$target->reason = GETPOST('reason', 'alphanohtml') ?: null;
 }
+
+if ($readingId > 0) lmdbSharingAction($reading);
 
 if ($action === 'add') {
 	if (!$permissionToManage) accessforbidden();
@@ -82,9 +108,12 @@ llxHeader('', $vehicle->ref.' - '.$langs->trans('OdometerReadings'), '', '', 0, 
 if ($action === 'delete' && $readingId > 0) {
 	print $form->formconfirm($_SERVER['PHP_SELF'].'?id='.$id.'&reading_id='.$readingId, $langs->trans('Delete'), $langs->trans('ConfirmDeleteOdometerReading'), 'confirm_delete', '', 0, 1);
 }
-$head = lmdbVehiclePrepareHead($vehicle);
+$head = $vehicleReadable ? lmdbVehiclePrepareHead($vehicle) : array(array($_SERVER['PHP_SELF'].'?id='.$id, $langs->trans('OdometerReadings'), 'odometer'));
 print dol_get_fiche_head($head, 'odometer', $langs->trans('Vehicle'), -1, $vehicle->picto);
-lmdbVehiclePrintBanner($vehicle);
+if ($vehicleReadable) lmdbVehiclePrintBanner($vehicle);
+else print '<div class="info">'.$langs->trans('LmdbLocalHistoryVehicleUnavailable').'</div>';
+lmdbQuartixSourceSelector($quartixService, $id, $quartixId);
+if ($readingId > 0) lmdbSharingRender($reading);
 
 if ($permissionToManage && !$reading->is_estimate && ($action === 'create' || $action === 'edit')) {
 	print '<form class="lmdb-responsive-form" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
@@ -102,19 +131,21 @@ if ($permissionToManage && !$reading->is_estimate && ($action === 'create' || $a
 	if ($permissionToManage) print '<div class="tabsAction">'.dolGetButtonAction('', $langs->trans('AddOdometerReading'), 'default', $_SERVER['PHP_SELF'].'?id='.$id.'&action=create').'</div>';
 	$limit = max(1, min(1000, GETPOSTINT('limit') ?: (int) $conf->liste_limit));
 	$page = max(0, GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page'));
-	$total = $reading->countByVehicle($id);
+	$total = $reading->countByVehicle($id, null, $quartixId, $searchEntities);
 	if ($total < 0) lmdbVehicleManagementSetObjectErrors($reading);
-	if ($readingId > 0 && !GETPOSTISSET('page') && !GETPOSTISSET('pageplusone')) $page = (int) floor(max(0, $reading->countByVehicle($id, $reading)) / $limit);
+	if ($readingId > 0 && !GETPOSTISSET('page') && !GETPOSTISSET('pageplusone')) $page = (int) floor(max(0, $reading->countByVehicle($id, $reading, $quartixId, $searchEntities)) / $limit);
 	if ($page * $limit >= $total) $page = 0;
-	$records = $reading->fetchAllByVehicle($id, $limit, $page * $limit);
+	$records = $reading->fetchAllByVehicle($id, $limit, $page * $limit, $quartixId, $searchEntities);
 	if (!is_array($records)) {
 		lmdbVehicleManagementSetObjectErrors($reading);
 		$records = array();
 	}
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
-	print_barre_liste($langs->trans('OdometerReadings'), $page, $_SERVER['PHP_SELF'], '&id='.$id.'&limit='.$limit, '', '', '', count($records), max(0, $total), 'car', 0, '', '', $limit);
+	print '<input type="hidden" name="quartix_id" value="'.$quartixId.'">';
+	if ($showEntityColumn) print $form->multiselectarray('search_entity', $entityOptions, $searchEntities, 0, 0, 'minwidth150', 1).' <input type="submit" class="button" value="'.$langs->trans('Search').'">';
+	print_barre_liste($langs->trans('OdometerReadings'), $page, $_SERVER['PHP_SELF'], '&id='.$id.'&quartix_id='.$quartixId.'&limit='.$limit.($searchEntities ? '&'.http_build_query(array('search_entity' => $searchEntities)) : ''), '', '', '', count($records), max(0, $total), 'car', 0, '', '', $limit);
 	print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
-	print '<tr class="liste_titre"><th>'.$langs->trans('ReadingDate').'</th><th class="right">'.$langs->trans('OdometerKm').'</th><th class="right">'.$langs->trans('OdometerDifference').'</th><th>'.$langs->trans('ReadingSource').'</th><th>'.$langs->trans('ReadingKind').'</th><th>'.$langs->trans('ReadingReason').'</th><th></th></tr>';
+	print '<tr class="liste_titre"><th>'.$langs->trans('ReadingDate').'</th><th class="right">'.$langs->trans('OdometerKm').'</th><th class="right">'.$langs->trans('OdometerDifference').'</th><th>'.$langs->trans('ReadingSource').'</th><th>'.$langs->trans('ReadingKind').'</th><th>'.$langs->trans('ReadingReason').'</th>'.($showEntityColumn ? '<th class="center">'.$langs->trans('Entity').'</th>' : '').'<th></th></tr>';
 	foreach ($records as $record) {
 		$differenceHtml = '<span class="opacitymedium">&mdash;</span>';
 		if (!$record->is_estimate && $record->previous_actual_km !== null) {
@@ -131,7 +162,8 @@ if ($permissionToManage && !$reading->is_estimate && ($action === 'create' || $a
 			$differenceHtml = '<span'.($differenceClass !== '' ? ' class="'.$differenceClass.'"' : '').'>'.$differenceSign.price(abs($difference), 0, $langs, 1, -1, -1).' km</span>';
 		}
 		print '<tr class="oddeven" id="odometer-'.((int) $record->id).'"><td>'.dol_print_date($record->reading_date, 'dayhour').'</td><td class="right">'.price($record->odometer_km, 0, $langs, 1, -1, -1).' km</td><td class="right nowraponall">'.$differenceHtml.'</td>';
-		print '<td>'.($record->is_estimate ? dolGetStatus($langs->trans($record->estimate_conflict ? 'QxEstimateConflict' : 'QxEstimate'), '', '', $record->estimate_conflict ? 'status8' : 'status1', 5) : $langs->trans($record->fields['source']['arrayofkeyval'][$record->source])).'</td><td>'.$langs->trans($record->fields['reading_kind']['arrayofkeyval'][$record->reading_kind]).'</td><td>'.dol_htmlentitiesbr((string) $record->reason).'</td><td class="nowraponall">';
+		print '<td>'.($record->is_estimate ? dolGetStatus($langs->trans($record->estimate_conflict ? 'QxEstimateConflict' : 'QxEstimate'), '', '', $record->estimate_conflict ? 'status8' : 'status1', 5) : $langs->trans($record->fields['source']['arrayofkeyval'][$record->source])).'</td><td>'.$langs->trans($record->fields['reading_kind']['arrayofkeyval'][$record->reading_kind]).'</td><td>'.dol_htmlentitiesbr((string) $record->reason).'</td>'.($showEntityColumn ? '<td class="center">'.lmdbVehicleManagementEntityBadge((int) $record->entity, $entityOptions).'</td>' : '').'<td class="nowraponall">';
+		print lmdbSharingLink($record);
 		if ($permissionToManage && !$record->is_estimate && $record->source !== 'consumption') {
 			print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&reading_id='.$record->id.'&action=edit">'.img_edit().'</a> ';
 			print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&reading_id='.$record->id.'&action=delete&token='.newToken().'">'.img_delete().'</a>';
@@ -140,7 +172,7 @@ if ($permissionToManage && !$reading->is_estimate && ($action === 'create' || $a
 		}
 		print '</td></tr>';
 	}
-	if (empty($records)) print '<tr class="oddeven"><td colspan="7"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
+	if (empty($records)) print '<tr class="oddeven"><td colspan="'.($showEntityColumn ? 8 : 7).'"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
 	print '</table></div></form>';
 }
 print dol_get_fiche_end();

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/class/lmdbvehiclesharing.class.php';
 /* Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr> */
 
 $res = 0;
@@ -20,9 +21,9 @@ $langs->loadLangs(array('companies', 'lmdbvehiclemanagement@lmdbvehiclemanagemen
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
 $object = new LmdbVehicleConsumption($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
-$permissionnote = $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write');
+$permissionnote = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write'));
 $hookmanager->initHooks(array('lmdbvehicleconsumptionnote', 'globalcard'));
 $parameters = array('id' => $id);
 $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action);

@@ -108,8 +108,8 @@ function lmdbInsuranceGetVehicleOptions($db, $entity)
 	}
 
 	$options = array();
-	$sql = 'SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle';
-	$sql .= ' WHERE entity = '.((int) $entity).' ORDER BY ref';
+	$sql = 'SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v';
+	$sql .= ' WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').' ORDER BY ref';
 	$resql = $db->query($sql);
 	if (!$resql) {
 		return array();
@@ -173,7 +173,7 @@ function lmdbInsurancePrintContractForm($contract, $form, $vehicleOptions, $link
 	print '<tr><td>'.$langs->trans('InsuranceCoverageType').'</td><td>'.$form->selectarray('coverage_type', array(LmdbVehicleInsuranceContract::COVERAGE_PRIMARY => $langs->trans('InsuranceCoveragePrimary'), LmdbVehicleInsuranceContract::COVERAGE_COMPLEMENTARY => $langs->trans('InsuranceCoverageComplementary')), $coverageType, 0, 0, 0, '', 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('InsuranceCoveragePeriod').'</td><td>'.$form->selectDate($coverageStart ?: -1, 'coverage_start', 0, 0, 1, '', 1, 1).' '.$form->selectDate($coverageEnd ?: -1, 'coverage_end', 0, 0, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>';
-	$contractEditor = new DolEditor('contract_description', (string) $contract->description, '', 100, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '100%');
+	$contractEditor = new DolEditor('contract_description', (string) $contract->description, '90%', 100, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '90%');
 	print $contractEditor->Create(1);
 	print '</td></tr>';
 	print '</table></div><div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'">';

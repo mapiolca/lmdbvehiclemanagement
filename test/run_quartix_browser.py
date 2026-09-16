@@ -21,6 +21,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("core", type=Path)
 parser.add_argument("--port", type=int, default=8765)
 parser.add_argument("--revision")
+parser.add_argument("--cross-origin-tiles", action="store_true", help="Serve tiles through localhost to exercise the browser referrer policy")
 args = parser.parse_args()
 leaflet = args.core / "includes/leaflet"
 if not (leaflet / "leaflet.js").is_file():
@@ -28,16 +29,18 @@ if not (leaflet / "leaflet.js").is_file():
 source = subprocess.check_output(["git", "show", args.revision + ":js/quartix_route.js"], cwd=ROOT) if args.revision else None
 loaded = set()
 requests = []
+tile_requests = []
 ui_images = {"/images/" + path.name: path for path in (args.core / "includes/jquery/css/base/images").glob("*.png")}
 
 
 def page(day, dialog):
-    tiles = f"http://127.0.0.1:{args.port}/" + ("bad-tiles" if day == "5" else "tiles") + "/{z}/{x}/{y}"
+    tile_host = "localhost" if args.cross_origin_tiles else "127.0.0.1"
+    tiles = f"http://{tile_host}:{args.port}/" + ("bad-tiles" if day == "5" else "tiles") + "/{z}/{x}/{y}"
     content = subprocess.check_output([
         "php", str(ROOT / "test/render_quartix_route.php"), str(args.core),
         "dialog" if dialog else "direct", day, tiles,
     ]).decode("utf-8")
-    links = " | ".join(f'<a class="qx-route-open" href="{ENDPOINT}?day={i}&amp;trip=public-fixture">{label}</a>'
+    links = " | ".join(f'<a class="qx-route-open" href="{ENDPOINT}?day={i}&amp;trip=public-fixture&amp;quartix_id=35">{label}</a>'
                        for i, label in enumerate(["Cached route", "Missing route / POST", "Privacy denial",
                            "Expired session / HTML", "Tile failure", "Leaflet failure", "Slow response",
                            "Privacy revoked", "Trip completed on refresh"], 1))
@@ -63,6 +66,9 @@ class Fixture(BaseHTTPRequestHandler):
         body = body.encode() if isinstance(body, str) else body
         self.send_response(status)
         self.send_header("Content-Type", mime)
+        if mime.startswith("text/html"):
+            # Match the native policy emitted by llxHeader()/top_httphead().
+            self.send_header("Referrer-Policy", "same-origin")
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -98,8 +104,12 @@ class Fixture(BaseHTTPRequestHandler):
             mime = "application/javascript" if url.path.endswith(".js") else "text/css" if url.path.endswith(".css") else "image/png"
             self.reply((leaflet / url.path.lstrip("/")).read_bytes(), mime)
         elif url.path.startswith("/tiles/"):
+            tile_requests.append({"path": url.path, "referer": self.headers.get("Referer", "")})
             self.reply('<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#eef3ee"/><path d="M0 128H256M128 0V256" stroke="#ccc"/><text x="20" y="30">Synthetic tile</text></svg>', "image/svg+xml")
         elif url.path == ENDPOINT and query.get("format") == ["json"]:
+            if query.get("quartix_id") != ["35"]:
+                self.reply(json.dumps({"data": None, "error": "QUARTIX source missing"}), "application/json", 403)
+                return
             requests.append(self.command + " " + url.path + " day=" + day)
             visits = sum(entry.endswith(" day=" + day) for entry in requests)
             if day == "7":
@@ -125,6 +135,8 @@ class Fixture(BaseHTTPRequestHandler):
             self.reply(page(day, False))
         elif url.path == "/requests":
             self.reply(html.escape("\n".join(requests)), "text/plain")
+        elif url.path == "/tile-requests":
+            self.reply(json.dumps(tile_requests), "application/json")
         else:
             if "HTMLInputElement" in url.path:
                 requests.append(self.command + " " + url.path + " WRONG ENDPOINT")

@@ -111,3 +111,11 @@ WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMA
 INSERT INTO llx_c_actioncomm (code, type, libelle, module, active, color, picto, position)
 SELECT 'AC_LMDB_REGDUE', 'systemauto', 'RegulatoryControlDueAgendaType', 'lmdbvehiclemanagement', 1, '#bc9526', 'clipboard-check', 1250
 WHERE NOT EXISTS (SELECT 1 FROM llx_c_actioncomm WHERE code = 'AC_LMDB_REGDUE');
+
+INSERT INTO llx_c_action_trigger (elementtype, code, label, description, rang)
+SELECT 'lmdbvehiclequartix@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_QUARTIX_CREATE', 'Create QUARTIX data', 'QUARTIX data owner event; context describes association, sharing or import changes', 1080
+WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_QUARTIX_CREATE');
+
+INSERT INTO llx_c_action_trigger (elementtype, code, label, description, rang)
+SELECT 'lmdbvehiclequartix@lmdbvehiclemanagement', 'LMDBVEHICLEMANAGEMENT_QUARTIX_UPDATE', 'Update QUARTIX data', 'QUARTIX data owner event; context describes association, sharing or import changes', 1081
+WHERE NOT EXISTS (SELECT 1 FROM llx_c_action_trigger WHERE code = 'LMDBVEHICLEMANAGEMENT_QUARTIX_UPDATE');

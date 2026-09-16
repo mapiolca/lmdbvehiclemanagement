@@ -70,6 +70,29 @@ $consumptionSql = readModuleSource('sql/llx_lmdbvehiclemanagement_consumption.sq
 $frLang = readModuleSource('langs/fr_FR/lmdbvehiclemanagement.lang');
 $enLang = readModuleSource('langs/en_US/lmdbvehiclemanagement.lang');
 $checks = array();
+$vehicleEditStart = strpos($vehicleCard, "if (\$action === 'create' || \$action === 'edit') {");
+$vehicleReadStart = strpos($vehicleCard, '} elseif ($id > 0) {', $vehicleEditStart);
+$vehicleSharingPosition = strpos($vehicleCard, 'lmdbSharingRender($object, true);');
+$checks['vehicle_sharing_only_at_form_end'] = $vehicleSharingPosition > $vehicleEditStart
+	&& $vehicleSharingPosition < $vehicleReadStart
+	&& strpos($vehicleCard, "new DolEditor('description'", $vehicleEditStart) < $vehicleSharingPosition
+	&& strpos($vehicleCard, 'button-save', $vehicleEditStart) > $vehicleSharingPosition
+	&& substr_count($vehicleCard, 'lmdbSharingRender(') === 1;
+$checks['vehicle_sharing_saved_with_create_and_update'] = substr_count($vehicleCard, 'lmdbSharingSavePosted($object, true)') === 2;
+$quartixPage = readModuleSource('vehicle_quartix.php');
+$checks['quartix_sharing_dedicated_modal'] = strpos($quartixPage, "'/tpl/quartix_sharing.tpl.php'") !== false
+	&& strpos($quartixPage, 'lmdbSharingRender($dataset)') === false;
+
+$sharingClass = readModuleSource('class/lmdbvehiclesharing.class.php');
+$checks['sharing_keeps_native_permissions_separate'] = strpos($sharingClass, 'function can(') === false && strpos($vehicleCard, "\$user->hasRight('lmdbvehiclemanagement'") !== false;
+foreach (array('vehicle_assignment.php', 'vehicle_odometer.php', 'insurancecontract_certificate.php') as $card) {
+	$source = readModuleSource($card);
+	$checks['sharing_inline_entry_'.$card] = strpos($source, 'lmdbSharingLink(') !== false && strpos($source, 'lmdbSharingAction(') !== false && strpos($source, 'lmdbSharingRender(') !== false;
+}
+foreach (array('linked_vehicle_source.tpl.php', 'linkedobjectblock.tpl.php', 'supplier_invoice_link.tpl.php') as $template) {
+	$checks['sharing_template_include_'.$template] = strpos(readModuleSource('tpl/'.$template), "__DIR__.'/../class/lmdbvehiclesharing.class.php'") !== false;
+}
+
 
 $orderedTabs = array(
 	'vehicle_card.php',
@@ -112,7 +135,7 @@ $checks['environment_display_uses_actual_sharing_scope'] = strpos($library, 'fun
 	&& strpos($library, 'function lmdbVehicleManagementEntityBadge($entityId, $entityOptions)') !== false
 	&& strpos($library, 'multicompany-entity-card-container') !== false;
 $checks['card_banners_hide_environment_without_sharing'] = substr_count($library, 'lmdbVehicleManagementGetEntityOptions(') >= 4
-	&& strpos($vehicleEventCard, "lmdbVehicleManagementGetEntityOptions('lmdbvehicle')") !== false;
+	&& strpos($vehicleEventCard, "lmdbVehicleManagementGetEntityOptions(LmdbVehicleSharing::scopeElement('lmdbvehicleevent'))") !== false;
 $checks['registration_numbering_model_is_native'] = strpos($vehicleRegistrationNumbering, 'extends ModeleNumRefLmdbVehicle') !== false
 	&& strpos($vehicleRegistrationNumbering, 'normalizeRegistrationNumber') !== false;
 $checks['vehicle_ref_is_synchronized_on_create_and_update'] = substr_count($vehicleClass, 'usesRegistrationAsReference()') >= 2
@@ -247,7 +270,7 @@ $checks['odometer_list_calculates_difference_at_render_time'] = strpos($vehicleO
 	&& strpos($vehicleOdometer, '!$record->is_estimate') !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-success';") !== false
 	&& strpos($vehicleOdometer, "\$differenceClass = 'text-danger';") !== false
-	&& strpos($vehicleOdometer, "colspan=\"7\"") !== false;
+	&& strpos($vehicleOdometer, '$showEntityColumn ? 8 : 7') !== false;
 $checks['consumption_uses_native_quick_add_hook'] = strpos($descriptor, "'main',") !== false
 	&& strpos($actionsHooks, 'function menuDropdownQuickaddItems(') !== false
 	&& strpos($actionsHooks, "dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1)") !== false
@@ -435,6 +458,10 @@ $checks['consumption_synchronizes_odometer_transactionally'] = strpos($consumpti
 $checks['consumption_form_uses_native_required_style'] = strpos($consumptionCard, 'titlefieldcreate fieldrequired') !== false
 	&& substr_count($consumptionCard, 'fieldrequired') >= 6
 	&& strpos($consumptionCard, ' required') === false;
+$checks['local_history_hides_withdrawn_vehicle_links'] = strpos($consumptionList, '$row->vehicle_ref !== null ? $vehicle->getNomUrl(1)') !== false
+	&& strpos(readModuleSource('regulatorycontrol_list.php'), '$row->vehicle_ref !== null ? $vehicle->getNomUrl(1)') !== false
+	&& strpos(readModuleSource('vehicleevent_list.php'), '$row->vehicle_ref !== null ?') !== false
+	&& strpos(readModuleSource('consumption_index.php'), "\$linkedVehicle->ref !== '' ?") !== false;
 $checks['consumption_pages_use_native_rights'] = strpos($consumptionCard, "\$user->hasRight('lmdbvehiclemanagement', 'consumption', 'write')") !== false
 	&& strpos($consumptionList, "\$user->hasRight('lmdbvehiclemanagement', 'read')") !== false;
 $checks['consumption_creator_is_default_driver'] = strpos($consumptionClass, 'if (empty($this->fk_user_driver))') !== false
@@ -546,7 +573,7 @@ $checks['vehicle_capacities_follow_selected_energy'] = strpos($vehicleCard, 'dat
 	&& strpos($moduleJavascript, 'input.disabled = !visible') !== false
 	&& substr_count($vehicleCard, 'getCapacityOptions((int) $object->fk_energy)') >= 3
 	&& strpos($vehicleClass, 'DELETE cap FROM') !== false
-	&& strpos($vehicleClass, "AND ce.fk_energy = '.((int) \$this->fk_energy)") !== false;
+	&& strpos($vehicleClass, "AND ce.fk_energy IN (SELECT energy.rowid") !== false;
 
 $failed = array_keys(array_filter($checks, static function ($result) {
 	return !$result;
