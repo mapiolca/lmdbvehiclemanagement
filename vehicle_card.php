@@ -247,7 +247,7 @@ if ($action === 'create' || $action === 'edit') {
 		print '<tr><td>'.$langs->trans('LinkedResource').'</td><td>'.$formResource->select_resource_list($object->fk_resource ?: 0, 'fk_resource', array(), 1, 1, 0, array(), array(), 2, 0, 'minwidth300').'</td></tr>';
 	}
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>';
-	$doleditor = new DolEditor('description', (string) $object->description, '', 160, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '100%');
+	$doleditor = new DolEditor('description', (string) $object->description, '90%', 160, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '90%');
 	print $doleditor->Create(1);
 	print '</td></tr>';
 	print '</table></div>';

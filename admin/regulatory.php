@@ -160,7 +160,7 @@ $overrideQuestions = array(
 );
 $customRuleQuestions = array(
 	array('type' => 'text', 'name' => 'custom_label', 'label' => '<span class="fieldrequired">'.$langs->trans('Label').'</span>', 'value' => dol_escape_htmltag(GETPOST('custom_label', 'alphanohtml')), 'morecss' => 'minwidth500', 'tdclass' => 'titlefieldcreate'),
-	array('type' => 'textarea', 'name' => 'custom_description', 'label' => $langs->trans('Description'), 'value' => dol_escape_htmltag(GETPOST('custom_description', 'restricthtml')), 'morecss' => 'flat centpercent', 'moreattr' => 'rows="2"'),
+	array('type' => 'textarea', 'name' => 'custom_description', 'label' => $langs->trans('Description'), 'value' => dol_escape_htmltag(GETPOST('custom_description', 'restricthtml')), 'morecss' => 'flat quatrevingtpercent', 'moreattr' => 'rows="2"'),
 	array(
 		'type' => 'other',
 		'name' => 'custom_profile_ids',

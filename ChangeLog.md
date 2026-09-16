@@ -2,6 +2,9 @@
 
 ## À publier
 
+- Saisie des contrôles : les exigences proposées suivent uniquement le véhicule sélectionné, y compris après un changement de véhicule ou une erreur de saisie. Une sélection devenue incompatible est effacée. Aucune migration ni réactivation nécessaire.
+- Descriptions : largeur réduite avec les paramètres de l’éditeur et les classes natives Dolibarr, dans les fiches véhicule, plein/recharge, contrat, événement et la création de règle réglementaire.
+
 - Partages Multicompany simplifiés : sélection individuelle conservée pour les véhicules ; huit autres familles globales indépendantes, avec accès au véhicule requis pour les données étrangères. Contrats accessibles avec au moins un véhicule couvert autorisé ; véhicules et attestations masqués exclus des vues, liaisons invisibles conservées lors des modifications.
 - Saisies sur véhicules partagés rétablies : propriété dans l’entité de saisie, kilométrage du plein dans la même entité, compatibilités et capacités résolues par codes de référence. Historique local conservé après retrait d’accès, sans données actuelles ni nouvelles opérations sur le véhicule inaccessible. Permissions natives exigées aussi pour les administrateurs.
 - Échéances calculées dès la création et l’import à partir des profils déduits, sans confirmation artificielle du questionnaire. Qualification incomplète ou ligne « À qualifier » si nécessaire, retard conservé. Échéance commune recalculée après contrôle validé ou annulé, tout en protégeant le détail d’un contrôle privé.

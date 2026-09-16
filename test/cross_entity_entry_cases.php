@@ -16,6 +16,11 @@ foreach (array('LmdbVehicleEvent','LmdbVehicleAssignment','LmdbVehicleOdometerRe
 $control=new LmdbVehicleRegulatoryControl($db); $control->entity=3; $control->fk_vehicle=$vehicleId; $control->fk_requirement=(int)$req->rowid; $control->control_date=dol_now();
 $validate=new ReflectionMethod($control,'validateBusinessRules'); $validate->setAccessible(true);
 checkSharing($validate->invoke($control)>0 && $control->entity===2 && $control->fk_rule===1, 'New control uses input entity and vehicle-owned rule');
+$control->fk_vehicle = $missing->id;
+checkSharing($validate->invoke($control)<0 && $control->error==='InvalidRegulatoryRequirement', 'Requirement from another vehicle is rejected on the server');
+$control->fk_vehicle = $vehicleId;
+$control->fk_requirement = 0;
+checkSharing($validate->invoke($control)<0 && $control->error==='RegulatoryRequirementRequired', 'Empty dependent selection is rejected on the server');
 
 // The same code uses different dictionary rowids in each entity.
 $db->query('INSERT INTO '.MAIN_DB_PREFIX."c_lmdbvehiclemanagement_energy (rowid,entity,code,label,active,date_creation) VALUES (101,1,'GO','Diesel',1,'2026-09-16'),(201,2,'GO','Diesel',1,'2026-09-16')");

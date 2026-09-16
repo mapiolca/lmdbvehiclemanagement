@@ -109,14 +109,41 @@ $requirementOptions = array();
 $requirementRules = array();
 $sql = 'SELECT req.rowid, req.fk_vehicle, req.fk_rule, v.ref AS vehicle_ref, v.registration_number, r.label AS rule_label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS req INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = req.fk_vehicle AND v.entity = req.entity INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r ON r.rowid = req.fk_rule AND r.entity = req.entity WHERE req.active = 1 AND '.LmdbVehicleSharing::requirementSql($db).' ORDER BY v.ref, r.label';
 $resql = $db->query($sql);
-if ($resql) { while (is_object($row = $db->fetch_object($resql))) { $vehicleLabel = trim((string) $row->registration_number) !== '' ? (string) $row->registration_number : (string) $row->vehicle_ref; $requirementOptions[(int) $row->rowid] = $vehicleLabel.' — '.$langs->trans((string) $row->rule_label); $requirementRules[(int) $row->rowid] = array('vehicle' => (int) $row->fk_vehicle, 'rule' => (int) $row->fk_rule); } $db->free($resql); }
+if ($resql) {
+	while (is_object($row = $db->fetch_object($resql))) {
+		$vehicleLabel = trim((string) $row->registration_number) !== '' ? (string) $row->registration_number : (string) $row->vehicle_ref;
+		$requirementRules[(int) $row->rowid] = array(
+			'vehicle' => (int) $row->fk_vehicle,
+			'rule' => (int) $row->fk_rule,
+			'label' => $vehicleLabel.' — '.$langs->trans((string) $row->rule_label),
+		);
+	}
+	$db->free($resql);
+}
 $resultOptions = array();
 $resql = $db->query('SELECT code, label FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_control_result WHERE entity IN ('.getEntity('c_lmdbvehiclemanagement_control_result').') AND active = 1 ORDER BY position, label');
 if ($resql) { while (is_object($row = $db->fetch_object($resql))) $resultOptions[(string) $row->code] = $langs->trans((string) $row->label); $db->free($resql); }
 
-if ($action === 'create' && empty($object->fk_vehicle)) $object->fk_vehicle = GETPOSTINT('vehicle_id');
-if ($action === 'create' && empty($object->fk_requirement)) $object->fk_requirement = GETPOSTINT('requirement_id');
-if ($action === 'create' && !empty($object->fk_requirement) && isset($requirementRules[(int) $object->fk_requirement])) { $object->fk_vehicle = $requirementRules[(int) $object->fk_requirement]['vehicle']; $object->fk_rule = $requirementRules[(int) $object->fk_requirement]['rule']; }
+if ($action === 'create' && !GETPOSTISSET('fk_vehicle')) {
+	if (empty($object->fk_vehicle)) $object->fk_vehicle = GETPOSTINT('vehicle_id');
+	if (empty($object->fk_requirement)) $object->fk_requirement = GETPOSTINT('requirement_id');
+	if (empty($object->fk_vehicle) && isset($requirementRules[(int) $object->fk_requirement])) {
+		$object->fk_vehicle = $requirementRules[(int) $object->fk_requirement]['vehicle'];
+	}
+}
+foreach ($requirementRules as $requirementId => $requirement) {
+	if ($requirement['vehicle'] === (int) $object->fk_vehicle) {
+		$requirementOptions[$requirementId] = $requirement['label'];
+	}
+}
+if ($action === 'create' || $action === 'edit') {
+	if (isset($requirementOptions[(int) $object->fk_requirement])) {
+		$object->fk_rule = $requirementRules[(int) $object->fk_requirement]['rule'];
+	} else {
+		$object->fk_requirement = 0;
+		$object->fk_rule = 0;
+	}
+}
 if ($action === 'create' && empty($object->fk_previous_control)) $object->fk_previous_control = GETPOSTINT('previous_id') ?: null;
 if ($action === 'create' && $object->control_date <= 0) $object->control_date = dol_now();
 
@@ -147,7 +174,23 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('DueDateOverrideReason').'</td><td><textarea class="flat centpercent" rows="2" name="due_override_reason">'.dol_escape_htmltag((string) $object->due_override_reason).'</textarea></td></tr>';
 	print '<tr><td class="tdtop">'.$langs->trans('Observations').'</td><td><textarea class="flat centpercent" rows="5" name="observations">'.dol_escape_htmltag((string) $object->observations).'</textarea></td></tr>';
 	print '</table></div><div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'" formnovalidate></div></form>';
-	print '<script nonce="'.getNonce().'">jQuery(function($){function syncRequirement(){var v=parseInt($("#fk_vehicle").val()||0,10); $("#fk_requirement option").each(function(){var id=parseInt(this.value||0,10), map='.json_encode($requirementRules).'; if(!id){this.hidden=false;return;} this.hidden=v>0&&map[id]&&parseInt(map[id].vehicle,10)!==v;}); if($("#fk_requirement option:selected").prop("hidden")) $("#fk_requirement").val("").trigger("change.select2");} $("#fk_vehicle").on("change",syncRequirement); $("#fk_requirement").on("change",function(){var map='.json_encode($requirementRules).', id=parseInt(this.value||0,10); if(map[id]) $("#fk_vehicle").val(map[id].vehicle).trigger("change.select2");}); syncRequirement();});</script>';
+	// Prepare native dependencies (available in v20); selectarray() v20 does not emit parent attributes.
+	print '<script nonce="'.getNonce().'">
+jQuery(function($) {
+	var requirements = '.json_encode($requirementRules, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT).';
+	var select = $("#fk_requirement");
+	select.empty().append(new Option("", "-1"));
+	$.each(requirements, function(id, requirement) {
+		select.append($(new Option(requirement.label, id)).attr("parent", "fk_vehicle:" + requirement.vehicle));
+	});
+});</script>';
+	print $object->getJSListDependancies('_regulatory_control');
+	// Apply the initial filter after native handlers are bound, then restore the validated selection.
+	print '<script nonce="'.getNonce().'">
+jQuery(function($) {
+	$("#fk_vehicle").trigger("change");
+	$("#fk_requirement").val("'.((int) $object->fk_requirement > 0 ? (int) $object->fk_requirement : -1).'").trigger("change");
+});</script>';
 } elseif ($id > 0) {
 	$head = lmdbVehicleRegulatoryControlPrepareHead($object);
 	print dol_get_fiche_head($head, 'card', $langs->trans('RegulatoryControl'), -1, $object->picto);

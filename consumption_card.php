@@ -283,7 +283,7 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('ReadingKind').'</td><td>'.$form->selectarray('reading_kind', array('standard' => $langs->trans('ReadingKindStandard'), 'correction' => $langs->trans('ReadingKindCorrection'), 'replacement' => $langs->trans('ReadingKindReplacement')), $object->reading_kind, 0, 0, 0, '', 1, 0, 0, '', 'minwidth200', 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('ReadingReason').'</td><td><input class="flat minwidth500" name="reading_reason" value="'.dol_escape_htmltag((string) $object->reading_reason).'"></td></tr>';
 	print '<tr><td class="tdtop">'.$langs->trans('Description').'</td><td>';
-	$editor = new DolEditor('description', (string) $object->description, '', 160, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '100%');
+	$editor = new DolEditor('description', (string) $object->description, '90%', 160, 'dolibarr_notes', 'In', true, false, isModEnabled('fckeditor'), ROWS_5, '90%');
 	print $editor->Create(1).'</td></tr></table></div>';
 	if ($financialLocked) print '<div class="warning">'.$langs->trans('ConsumptionOdLockedFieldsInfo').'</div>';
 	print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('Save').'"> &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans('Cancel').'" formnovalidate></div></form>';
