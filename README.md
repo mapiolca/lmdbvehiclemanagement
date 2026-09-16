@@ -2,6 +2,8 @@
 
 `lmdbvehiclemanagement` fournit un parc multientité intégré à Dolibarr. La version `1.0.0` couvre les véhicules routiers, utilitaires et engins, leurs affectations, kilométrages, consommations, assurances et contrôles réglementaires, ainsi que les factures fournisseurs liées et le dossier véhicule PDF/ZIP.
 
+La [notice utilisateur](https://wiki.dolibarr.org/index.php/Module_Gestion_des_v%C3%A9hicules) est disponible sur le wiki Dolibarr. Les sources wiki, captures, illustrations, descriptions Dolistore et vidéos sont centralisées dans [le dossier du module sur dolibarr_wiki](https://github.com/mapiolca/dolibarr_wiki/tree/main/lmdbvehiclemanagement/1.0.0). Les [guides techniques](https://github.com/mapiolca/dolibarr_wiki/blob/main/lmdbvehiclemanagement/1.0.0/guides/README.md) sont également maintenus dans ce dépôt documentaire.
+
 ## Compatibilité
 
 - Dolibarr 20 ou supérieur
@@ -91,7 +93,7 @@ Le pied de page suit le cycle PDF natif, avec une mesure séparée pour les cont
 - Listes avec colonnes personnalisables, filtres, badges de statut et tooltips Ajax ; formulaires adaptés aux écrans mobiles.
 - Partages Multicompany configurables, documents dans l’entité propriétaire, filtres Environnement lorsqu’un partage est actif et conservation des réglages à la réactivation.
 
-Le [guide du partage individuel](doc/multicompany-sharing.md) décrit la sélection des entités bénéficiaires pour les véhicules, contrats, attestations, contrôles, consommations, événements, affectations et relevés. Multicompany 21+ est nécessaire pour ce mode ; chaque famille conserve un périmètre indépendant. Les infobulles, téléchargements et dossiers respectent aussi les retraits de partage. Les sources QUARTIX appartiennent à l’entité collectrice, même sur un véhicule partagé. Elles sont privées par défaut et disposent de leur propre partage explicite ; voir le [guide de propriété QUARTIX](doc/quartix-ownership.md).
+Le [guide des partages Multicompany](https://github.com/mapiolca/dolibarr_wiki/blob/main/lmdbvehiclemanagement/1.0.0/guides/multicompany-sharing.md) décrit le partage individuel des véhicules et les huit familles globales indépendantes, conditionnées par l’accès au véhicule. Les saisies interentités appartiennent à l’entité de saisie ; les historiques locaux restent consultables après retrait du véhicule. Le guide précise la migration et la reprise des échéances des véhicules déjà importés. Les sources QUARTIX appartiennent à l’entité collectrice et suivent leur propre partage global ; voir le [guide de propriété QUARTIX](https://github.com/mapiolca/dolibarr_wiki/blob/main/lmdbvehiclemanagement/1.0.0/guides/quartix-ownership.md).
 
 ## Installation et mise à jour
 
@@ -103,7 +105,7 @@ Pour une mise à jour depuis une version de développement, consulter [ChangeLog
 
 ## Vérification locale
 
-L'intégration QUARTIX est documentée dans [le guide de configuration et de validation](doc/quartix.md) : connexion par environnement, kilométrage estimé quotidien, dernière position protégée par un droit GPS, utilisation par véhicule, journal des trajets, tracés en modale et tableau de bord QUARTIX du parc. Les associations peuvent être suspendues ou dissociées, avec suppression des imports en cas d'erreur ou conservation lors d'une réaffectation du boîtier. La date d'installation borne les nouveaux imports. Elle nécessite une réactivation du module après déploiement et l'activation des quatre travaux planifiés natifs (le nouveau journal est installé désactivé). La version reste 1.0.0 pendant ce développement.
+L'intégration QUARTIX est documentée dans [le guide de configuration et de validation](https://github.com/mapiolca/dolibarr_wiki/blob/main/lmdbvehiclemanagement/1.0.0/guides/quartix.md) : connexion par environnement, kilométrage estimé quotidien, dernière position protégée par un droit GPS, utilisation par véhicule, journal des trajets, tracés en modale et tableau de bord QUARTIX du parc. Les associations peuvent être suspendues ou dissociées, avec suppression des imports en cas d'erreur ou conservation lors d'une réaffectation du boîtier. La date d'installation borne les nouveaux imports. Elle nécessite une réactivation du module après déploiement et l'activation des quatre travaux planifiés natifs (le nouveau journal est installé désactivé). La version reste 1.0.0 pendant ce développement.
 
 Pour toute création ou modification de tableau, utiliser comme référence la [documentation native Dolibarr des tableaux avec filtres](https://develop.lesmetiersdubatiment.fr/admin/tools/ui/content/tables.php#tablesection-withfilters) : filtres dans le formulaire de liste, commandes natives, tris et alignements cohérents entre filtres, en-têtes et cellules. Vérifier aussi la conservation des filtres, la sélection des colonnes et la pagination sur le code déployé.
 
@@ -111,11 +113,11 @@ Ses tests hors ligne utilisent les objets Dolibarr et une base en mémoire, sans
 
     php test/run_quartix.php /chemin/vers/dolibarr/htdocs
 
-Les accès individuels, parents, modes de sélection/exclusion, transactions et migrations sont vérifiés avec SQLite et des doubles des API natives :
+Les accès individuels des véhicules, familles globales, parents, transactions et migrations sont vérifiés avec SQLite et des doubles des API natives :
 
     php test/run_sharing.php /chemin/vers/dolibarr/htdocs
 
-Un second argument facultatif désignant une archive officielle Multicompany 21 ou 22 charge en lecture seule sa classe de rendu native pour vérifier le sélecteur. Il n’installe pas Multicompany et ne remplace pas une validation sur trois entités MySQL/MariaDB. La matrice de validation est détaillée dans le guide du partage individuel.
+Un second argument facultatif désignant une archive officielle Multicompany 21 ou 22 charge en lecture seule sa classe de rendu native pour vérifier le sélecteur. Il n’installe pas Multicompany et ne remplace pas une validation sur trois entités MySQL/MariaDB. La matrice de validation est détaillée dans le guide des partages Multicompany.
 
 Les règles indépendantes de la base peuvent être vérifiées avec la commande suivante :
 

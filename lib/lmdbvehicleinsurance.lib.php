@@ -109,7 +109,7 @@ function lmdbInsuranceGetVehicleOptions($db, $entity)
 
 	$options = array();
 	$sql = 'SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v';
-	$sql .= ' WHERE entity = '.((int) $entity).' AND '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').' ORDER BY ref';
+	$sql .= ' WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').' ORDER BY ref';
 	$resql = $db->query($sql);
 	if (!$resql) {
 		return array();

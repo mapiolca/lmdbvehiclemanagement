@@ -63,6 +63,8 @@ function lmdbQuartixPageSource($service, $id)
 {
 	global $langs, $db;
 	header('Cache-Control: private, no-store');
+	// An explicit dataset identifies an archive; the vehicle entry requires a current association.
+	if (GETPOSTINT('quartix_id') <= 0 && !LmdbVehicleQuartixService::hasAccessibleAssociation($db, $id)) accessforbidden($langs->trans('QxNoData'));
 	try { return $service->dataset($id, GETPOSTINT('quartix_id')); }
 	catch (RuntimeException $e) {
 		if (!in_array($e->getMessage(), array('QxChooseSource', 'QxNoData'), true)) accessforbidden($langs->trans('QxDataUnavailable'));

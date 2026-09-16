@@ -152,7 +152,7 @@ class LmdbVehicleDossier
 	{
 		global $user;
 		if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)
-			|| !LmdbVehicleSharing::canReadObject($this->db, $user, $vehicle)) throw new RuntimeException('NotEnoughPermissions');
+			|| !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && LmdbVehicleSharing::visible($this->db, (string) $vehicle->element, (int) $vehicle->id))) throw new RuntimeException('NotEnoughPermissions');
 		$langs->loadLangs(array('main', 'bills', 'suppliers', 'companies', 'users', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 		$this->sharingObjects = array();
 		$this->sharingInvoices = array();

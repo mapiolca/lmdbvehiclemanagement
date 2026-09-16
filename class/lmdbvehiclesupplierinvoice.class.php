@@ -54,7 +54,7 @@ class LmdbVehicleSupplierInvoice
 		if (!LmdbVehicleManagementCompatibility::isFeatureAvailable('supplier_invoice_links') || !isModEnabled('lmdbvehiclemanagement')) throw new RuntimeException('LmdbRequiresSupplierInvoices');
 		$source = $this->fetchSource($type, $sourceId);
 		$right = $source instanceof LmdbVehicleEvent ? 'event' : 'regulatorycontrol';
-		if (!empty($user->socid) || !LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, $right, 'write')
+		if (!empty($user->socid) || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', $right, 'write'))
 			|| !$user->hasRight('fournisseur', 'facture', 'lire') || !$user->hasRight('fournisseur', 'facture', 'creer')) throw new RuntimeException('NotEnoughPermissions');
 		$invoice = new FactureFournisseur($this->db);
 		if ($invoice->fetch($invoiceId) <= 0) throw new RuntimeException('ErrorRecordNotFound');

@@ -62,7 +62,7 @@ class ActionsLmdbVehicleManagement
 			return 0;
 		}
 
-		if (LmdbVehicleSharing::can($user, 'consumption', 'write')) {
+		if ((isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write'))) {
 			$this->results[] = array(
 				'url' => dol_buildpath('/lmdbvehiclemanagement/consumption_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement&token='.newToken(),
 				'title' => 'NewConsumption@lmdbvehiclemanagement',
@@ -72,7 +72,7 @@ class ActionsLmdbVehicleManagement
 				'position' => 450,
 			);
 		}
-		if (LmdbVehicleSharing::can($user, 'regulatorycontrol', 'write')) {
+		if ((isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write'))) {
 			$this->results[] = array(
 				'url' => dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&mainmenu=lmdbvehiclemanagement&token='.newToken(),
 				'title' => 'NewRegulatoryControl@lmdbvehiclemanagement',
@@ -280,7 +280,7 @@ class ActionsLmdbVehicleManagement
 				);
 			}
 			// Native discovery only; guarded module forms own single-record writes.
-			if (LmdbVehicleSharing::available()) $definition[self::MULTICOMPANY_SHARING_ROOT_KEY]['sharingelements'][$element]['sharebyelement'] = array('context' => array());
+			if ($item['mode'] === 'individual' && LmdbVehicleSharing::available()) $definition[self::MULTICOMPANY_SHARING_ROOT_KEY]['sharingelements'][$element]['sharebyelement'] = array('context' => array());
 			$definition[self::MULTICOMPANY_SHARING_ROOT_KEY]['sharingmodulename'][$element] = 'lmdbvehiclemanagement';
 		}
 		return $definition;

@@ -422,7 +422,7 @@ abstract class LmdbVehicleManagementObject extends CommonObject
 	public function getTooltipContent($params)
 	{
 		global $user, $langs;
-		if (!LmdbVehicleSharing::canReadObject($this->db, $user, $this)) return $langs->trans('NotEnoughPermissions');
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && LmdbVehicleSharing::visible($this->db, (string) $this->element, (int) $this->id))) return $langs->trans('NotEnoughPermissions');
 		return parent::getTooltipContent($params);
 	}
 

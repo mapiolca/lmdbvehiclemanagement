@@ -18,7 +18,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 
 $limit = GETPOSTINT('limit') ?: (int) $conf->liste_limit;
 $page = GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page');
@@ -99,7 +99,7 @@ if ($offset > $total) {
 	$offset = 0;
 }
 
-$vehicleCountSql = '(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle AS cv WHERE cv.fk_contract = c.rowid AND cv.entity = c.entity)';
+$vehicleCountSql = '(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle AS cv WHERE cv.fk_contract = c.rowid AND cv.entity = c.entity AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle cvv WHERE cvv.rowid = cv.fk_vehicle AND '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'cvv').'))';
 $sql = 'SELECT c.rowid, c.entity, c.ref, c.policy_number, c.label, c.fk_soc, c.date_start, c.date_end, c.status, s.nom AS company_name, '.$vehicleCountSql.' AS vehicle_count';
 $sql .= $sqlFrom;
 $sql .= $where.$db->order($sortfield, $sortorder).$db->plimit($limit + 1, $offset);
@@ -128,7 +128,7 @@ print '<input type="hidden" name="action" value="list">';
 print '<input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'">';
 print '<input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'">';
 print '<input type="hidden" name="page" value="'.((int) $page).'">';
-$newButton = dolGetButtonTitle($langs->trans('NewInsuranceContract'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'?action=create&token='.newToken(), '', LmdbVehicleSharing::can($user, 'insurance', 'write'));
+$newButton = dolGetButtonTitle($langs->trans('NewInsuranceContract'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'?action=create&token='.newToken(), '', (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write')));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'shield-alt', 0, $newButton, '', $limit, 0, 0, 1);
 
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;

@@ -197,6 +197,8 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 	/** @inheritdoc */
 	public function create(User $user, $notrigger = 0)
 	{
+		global $conf;
+		$this->entity = (int) $conf->entity;
 		$this->status = self::STATUS_DRAFT;
 
 		return parent::create($user, $notrigger);
@@ -312,7 +314,7 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 		}
 
 		foreach ($vehicleIds as $vehicleId) {
-			if ($this->vehicleBelongsToContractEntity($vehicleId) <= 0) {
+			if ($this->vehicleIsAccessible($vehicleId) <= 0) {
 				$this->error = 'InvalidVehicle';
 				$this->errors[] = $this->error;
 				return -1;
@@ -328,7 +330,8 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 
 		$sql = 'DELETE FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle';
 		$sql .= ' WHERE fk_contract = '.((int) $this->id).' AND entity = '.((int) $this->entity);
-		$sql .= ' AND fk_vehicle NOT IN ('.implode(',', $vehicleIds).')';
+		$sql .= ' AND fk_vehicle NOT IN ('.implode(',', $vehicleIds).')'
+			.' AND fk_vehicle IN (SELECT sv.rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle sv WHERE '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'sv').')';
 		if (!$this->db->query($sql)) {
 			$this->error = $this->db->lasterror();
 			return -1;
@@ -395,7 +398,7 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 		}
 		$this->db->free($resql);
 
-		if ($this->vehicleBelongsToContractEntity($vehicleId) <= 0) {
+		if ($this->vehicleIsAccessible($vehicleId) <= 0) {
 			$this->error = $this->error !== '' ? $this->error : 'InvalidVehicle';
 			$this->errors[] = $this->error;
 			$this->db->rollback();
@@ -535,7 +538,7 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 	public function getVehicleIds()
 	{
 		$sql = 'SELECT fk_vehicle FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle';
-		$sql .= ' WHERE fk_contract = '.((int) $this->id).' AND entity = '.((int) $this->entity).' ORDER BY fk_vehicle';
+		$sql .= ' WHERE fk_contract = '.((int) $this->id).' AND entity = '.((int) $this->entity).' AND fk_vehicle IN (SELECT sv.rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle sv WHERE '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'sv').') ORDER BY fk_vehicle';
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			return array();
@@ -780,10 +783,10 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 	}
 
 	/** @return int<-1,1> */
-	private function vehicleBelongsToContractEntity($vehicleId)
+	private function vehicleIsAccessible($vehicleId)
 	{
 		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS sv';
-		$sql .= ' WHERE rowid = '.((int) $vehicleId).' AND entity = '.((int) $this->entity).' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'sv');
+		$sql .= ' WHERE rowid = '.((int) $vehicleId).' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'sv');
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			$this->error = $this->db->lasterror();
@@ -800,7 +803,9 @@ class LmdbVehicleInsuranceContract extends LmdbVehicleManagementObject
 	{
 		$sql = 'SELECT cv.rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle AS cv';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract AS c ON c.rowid = cv.fk_contract AND c.entity = cv.entity';
-		$sql .= ' WHERE cv.entity = '.((int) $this->entity).' AND cv.fk_vehicle = '.((int) $vehicleId);
+		// One physical vehicle cannot have overlapping primary coverage across owners.
+		$sql .= ' WHERE cv.fk_vehicle = '.((int) $vehicleId);
+		$sql .= ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle sv WHERE sv.rowid = cv.fk_vehicle AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'sv').')';
 		$sql .= " AND cv.coverage_type = 'primary' AND c.status = ".self::STATUS_ACTIVE;
 		$sql .= ' AND cv.fk_contract <> '.((int) $this->id);
 		$sql .= " AND cv.date_start <= '".$this->db->idate($dateEnd !== null ? $dateEnd : 253402214399)."'";

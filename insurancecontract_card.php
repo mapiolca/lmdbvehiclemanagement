@@ -32,15 +32,15 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'companies', 'contacts', 'other', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $preselectedVehicleId = GETPOSTINT('vehicle_id');
 $action = GETPOST('action', 'aZ09') ?: ($id > 0 ? 'view' : 'create');
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionWrite = LmdbVehicleSharing::can($user, 'insurance', 'write');
-$permissionDelete = LmdbVehicleSharing::can($user, 'insurance', 'delete');
+$permissionWrite = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write'));
+$permissionDelete = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'insurance', 'delete'));
 $object = new LmdbVehicleInsuranceContract($db);
 $coverage = array(
 	'vehicle_ids' => array(),
@@ -111,7 +111,7 @@ if ($id > 0 && empty($coverage['vehicle_ids'])) {
 }
 if ($id <= 0 && empty($coverage['vehicle_ids']) && $preselectedVehicleId > 0) {
 	$preselectedVehicle = new LmdbVehicle($db);
-	if ($preselectedVehicle->fetch($preselectedVehicleId) > 0 && (int) $preselectedVehicle->entity === (int) $conf->entity) {
+	if ($preselectedVehicle->fetch($preselectedVehicleId) > 0) {
 		$coverage['vehicle_ids'] = array($preselectedVehicleId);
 	}
 }
@@ -179,7 +179,7 @@ if ($id > 0 && !in_array($action, array('create', 'edit'), true)) lmdbSharingRen
 	$sqlVehicles = 'SELECT v.rowid, v.ref, v.registration_number, v.label, cv.coverage_type, cv.date_start, cv.date_end';
 	$sqlVehicles .= ', CASE WHEN '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').' THEN 1 ELSE 0 END AS vehicle_visible';
 	$sqlVehicles .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle AS cv';
-	$sqlVehicles .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = cv.fk_vehicle AND v.entity = cv.entity';
+	$sqlVehicles .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = cv.fk_vehicle AND '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').'';
 	$sqlVehicles .= ' WHERE cv.fk_contract = '.((int) $object->id).' AND cv.entity = '.((int) $object->entity).' ORDER BY v.ref';
 	$resVehicles = $db->query($sqlVehicles);
 	$vehicleCount = 0;

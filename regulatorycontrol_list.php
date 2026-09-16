@@ -15,7 +15,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 
 /** @var Conf $conf */ /** @var DoliDB $db */ /** @var HookManager $hookmanager */ /** @var Translate $langs */ /** @var User $user */
 $langs->loadLangs(array('main', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 
 $limit = GETPOSTINT('limit') ?: (int) $conf->liste_limit;
 $page = GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page');
@@ -72,7 +72,7 @@ if ($searchProvider !== '') $where .= natural_search('s.nom', $searchProvider);
 if ($searchResult !== '') $where .= " AND t.result_code = '".$db->escape($searchResult)."'";
 if ($searchStatus >= 0) $where .= ' AND t.status = '.$searchStatus;
 if ($showEntityColumn && !empty($searchEntities)) { $filtered = array_values(array_intersect($allowedEntityIds, array_map('intval', $searchEntities))); if (!empty($filtered)) $where .= ' AND t.entity IN ('.implode(',', $filtered).')'; }
-$from = ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control AS t INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND v.entity = t.entity INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r ON r.rowid = t.fk_rule AND r.entity = t.entity LEFT JOIN '.MAIN_DB_PREFIX.'societe AS s ON s.rowid = t.fk_soc_provider';
+$from = ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control AS t LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = t.fk_vehicle AND '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r ON r.rowid = t.fk_rule LEFT JOIN '.MAIN_DB_PREFIX.'societe AS s ON s.rowid = t.fk_soc_provider';
 $resCount = $db->query('SELECT COUNT(*) AS total'.$from.$where);
 if (!$resCount) { dol_print_error($db); exit; }
 $countRow = $db->fetch_object($resCount); $total = is_object($countRow) ? (int) $countRow->total : 0; $db->free($resCount);
@@ -87,7 +87,7 @@ foreach (array('search_ref' => $searchRef, 'search_vehicle' => $searchVehicle, '
 if ($searchStatus >= 0) $param .= '&search_status='.$searchStatus;
 foreach ($searchEntities as $entityId) $param .= '&search_entity[]='.((int) $entityId);
 print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="formfilteraction" id="formfilteraction" value="list"><input type="hidden" name="action" value="list"><input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'"><input type="hidden" name="page" value="'.$page.'">';
-$newButton = dolGetButtonTitle($langs->trans('NewRegulatoryControl'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&token='.newToken(), '', LmdbVehicleSharing::can($user, 'regulatorycontrol', 'write'));
+$newButton = dolGetButtonTitle($langs->trans('NewRegulatoryControl'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&token='.newToken(), '', (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write')));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'clipboard-check', 0, $newButton, '', $limit, 0, 0, 1);
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, $conf->main_checkbox_left_column);
@@ -115,7 +115,7 @@ $i = 0; while ($i < min($num, $limit) && is_object($row = $db->fetch_object($res
 	print '<tr class="oddeven">'; if ($conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn"></td>';
 	if (!empty($arrayfields['t.ref']['checked'])) print '<td>'.$object->getNomUrl(1).'</td>';
 	if (!empty($arrayfields['t.control_date']['checked'])) print '<td>'.dol_print_date($db->jdate($row->control_date), 'dayhour').'</td>';
-	if (!empty($arrayfields['v.ref']['checked'])) print '<td>'.$vehicle->getNomUrl(1).'</td>';
+	if (!empty($arrayfields['v.ref']['checked'])) print '<td>'.($row->vehicle_ref !== null ? $vehicle->getNomUrl(1) : '').'</td>';
 	if (!empty($arrayfields['r.label']['checked'])) print '<td>'.dol_escape_htmltag($langs->trans((string) $row->rule_label)).'</td>';
 	if (!empty($arrayfields['t.control_kind']['checked'])) print '<td>'.$langs->trans(isset($object->fields['control_kind']['arrayofkeyval'][$row->control_kind]) ? $object->fields['control_kind']['arrayofkeyval'][$row->control_kind] : 'Unknown').'</td>';
 	if (!empty($arrayfields['s.nom']['checked'])) print '<td>'.(!empty($provider->id) ? $provider->getNomUrl(1) : '').'</td>';

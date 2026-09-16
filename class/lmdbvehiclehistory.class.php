@@ -143,7 +143,7 @@ class LmdbVehicleHistory
 	public function getTimeline($vehicleId, $sources = array(), $limit = 100, $offset = 0, $filters = array(), $sortfield = 'event_timestamp', $sortorder = 'DESC')
 	{
 		global $langs, $user;
-		if (!LmdbVehicleSharing::can($user) || !LmdbVehicleSharing::visible($this->db, 'lmdbvehicle', (int) $vehicleId)) return array();
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !LmdbVehicleSharing::visible($this->db, 'lmdbvehicle', (int) $vehicleId)) return array();
 
 		$sources = $this->normalizeSources($sources);
 		$queries = $this->buildTimelineQueries((int) $vehicleId, $sources);
@@ -204,7 +204,7 @@ class LmdbVehicleHistory
 	public function countTimeline($vehicleId, $sources = array(), $filters = array())
 	{
 		global $user;
-		if (!LmdbVehicleSharing::can($user) || !LmdbVehicleSharing::visible($this->db, 'lmdbvehicle', (int) $vehicleId)) return 0;
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !LmdbVehicleSharing::visible($this->db, 'lmdbvehicle', (int) $vehicleId)) return 0;
 		$sources = $this->normalizeSources($sources);
 		$queries = $this->buildTimelineQueries((int) $vehicleId, $sources);
 		$sql = 'SELECT COUNT(*) AS total FROM ('.implode(' UNION ALL ', $queries).') AS timeline WHERE 1 = 1';

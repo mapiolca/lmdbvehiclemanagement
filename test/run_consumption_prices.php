@@ -154,7 +154,7 @@ foreach (array(null, '0', '25') as $amount) {
 		'capacity' => null, 'driver_firstname' => null, 'driver_lastname' => null, 'driver_login' => null);
 }
 // A requested entity filter is intersected with the accessible scope, never substituted for it.
-$db->expect('/^SELECT .*r.entity = t.entity.*v.entity = t.entity.*cap.entity = t.entity.*WHERE \(t.entity IN \(1\).*r.entity IN \(1\).* AND t.fk_vehicle = 1 AND t.category_snapshot = \'additive\' AND t.entity IN \(1,2\) ORDER BY /', $fetchedRows);
+$db->expect('/^SELECT .*r.entity = t.entity.*v.entity IN \(1\).*cap.entity = v.entity.*WHERE \(t.entity = 1 OR \(t.entity IN \(1\).*r.entity IN \(1\).* AND t.fk_vehicle = 1 AND t.category_snapshot = \'additive\' AND t.entity IN \(1,2\) ORDER BY /', $fetchedRows);
 $loaded = $stats->fetchRows(array('vehicle_id' => 1, 'category' => 'additive', 'entity_ids' => array(1, 2)));
 checkPrice(is_array($loaded) && $loaded[0]['total_ttc'] === null && $loaded[1]['total_ttc'] === 0.0 && $loaded[2]['total_ttc'] === 25.0, 'SQL loading preserves unknown, zero and positive price');
 
@@ -190,7 +190,7 @@ foreach (array('additive', 'fuel') as $category) {
 		$consumable->category = $category;
 		$db->expect('/^SELECT entity .*WHERE rowid = 1 AND \(sv.entity IN \(1\)\)$/', array((object) array('entity' => 1)));
 		$db->expect('/^SELECT rowid, entity, code, label, category, unit, requires_oil_reference, active .*WHERE rowid = 2 AND entity IN \(1\)$/', array(clone $consumable));
-		if ($category === 'fuel') $db->expect('/^SELECT 1 .*v.entity = 1.*ce.entity IN \(1\) LIMIT 1$/', array((object) array('found' => 1)));
+		if ($category === 'fuel') $db->expect('/^SELECT 1 .*energy.code = vehicle_energy.code.*ce.entity IN \(1\) LIMIT 1$/', array((object) array('found' => 1)));
 		$result = $validate->invoke($object);
 		checkPrice($db->expected === array(), 'All validation queries checked for entity');
 		if ($input === -2.0) {
@@ -212,8 +212,8 @@ foreach (array('additive', 'fuel') as $category) {
 $object = new LmdbVehicleConsumption($db);
 $object->entity = 1;
 $object->fk_vehicle = 1;
-$db->expect('/^SELECT entity .*\(sv.entity IN \(1\)\)$/', array((object) array('entity' => 2)));
-checkPrice($validate->invoke($object) === -1 && $object->error === 'CannotMoveObjectBetweenEntities', 'Cross-entity consumption refused before price handling');
+$db->expect('/^SELECT entity .*\(sv.entity IN \(1\)\)$/', array());
+checkPrice($validate->invoke($object) === -1 && $object->error === 'InvalidVehicle', 'Inaccessible vehicle refused before price handling');
 
 $conf->global->MAIN_MAX_DECIMALS_TOT = 3;
 $conf->global->MAIN_MAX_DECIMALS_UNIT = 2;

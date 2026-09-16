@@ -28,6 +28,10 @@ if (!LmdbVehicleSharing::available()) {
 	print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
 	print '<tr class="liste_titre"><th>'.$langs->trans('Type').'</th><th>'.$langs->trans('LmdbIndividualSharing').'</th><th>'.$langs->trans('LmdbSharingAllByDefault').'</th></tr>';
 	foreach (LmdbVehicleSharing::definitions() as $element => $definition) {
+		if ($definition['mode'] !== 'individual') {
+			print '<tr class="oddeven"><td>'.$langs->trans($definition['label']).'</td><td colspan="2">'.$langs->trans('LmdbGlobalSharingVehicleRequired').'</td></tr>';
+			continue;
+		}
 		print '<tr class="oddeven"><td>'.$langs->trans($definition['label']).'</td><td>';
 		// Same global flags/endpoint as native Multicompany granularity, including CSRF.
 		print ajax_mcconstantonoff('MULTICOMPANY_'.strtoupper($element).'_SHARING_BYELEMENT_ENABLED', array(), 0, 0, 0, 1);

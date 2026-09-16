@@ -190,11 +190,11 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 	{
 		global $user, $conf;
 		require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
-		if (!LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write')) || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
 		$models = getListOfModels($this->db, 'lmdbvehicle');
 		if ($modele === '') $modele = getDolGlobalString('LMDBVEHICLEMANAGEMENT_DOSSIER_MODEL');
 		if ($modele !== 'lmdb_vehicle_dossier' || !is_array($models) || !isset($models[$modele])) { $this->error = $outputlangs->trans('LmdbDossierModelInactive'); return -1; }
-		if (!LmdbVehicleSharing::canReadObject($this->db, $user, $this)) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && LmdbVehicleSharing::visible($this->db, (string) $this->element, (int) $this->id))) { $this->error = $outputlangs->trans('NotEnoughPermissions'); return -1; }
 		return $this->commonGenerateDocument('core/modules/lmdbvehiclemanagement/doc/', $modele, $outputlangs, $hidedetails, $hidedesc, $hideref, $moreparams);
 	}
 
@@ -210,8 +210,8 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		global $conf, $user;
 		if (!preg_match('/^lmdb-dossier-[0-9]+\.(pdf|zip)$/i', basename($destfull))) return parent::indexFile($destfull, $update_main_doc_field);
 		$directory = getMultidirOutput($this, 'lmdbvehiclemanagement', 1);
-		if (!LmdbVehicleSharing::can($user, '', 'read') || !LmdbVehicleSharing::can($user, 'lmdbvehicle', 'write') || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)
-			|| !LmdbVehicleSharing::canReadObject($this->db, $user, $this)
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write')) || !$user->hasRight('fournisseur', 'facture', 'lire') || !empty($user->socid)
+			|| !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && LmdbVehicleSharing::visible($this->db, (string) $this->element, (int) $this->id))
 			|| !is_string($directory) || realpath(dirname($destfull)) !== realpath($directory)
 			|| pathinfo($destfull, PATHINFO_FILENAME) !== 'lmdb-dossier-'.((int) $this->id)) { $this->error = 'NotEnoughPermissions'; return -1; }
 		$consultationEntity = $conf->entity;
@@ -768,8 +768,7 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 		}
 		$sql = 'DELETE cap FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity AS cap';
 		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce';
-		$sql .= ' ON ce.fk_consumable = cap.fk_consumable AND ce.fk_energy = '.((int) $this->fk_energy);
-		$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
+		$sql .= ' ON ce.fk_consumable = cap.fk_consumable AND ce.fk_energy IN (SELECT energy.rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy energy INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy vehicle_energy ON vehicle_energy.code = energy.code WHERE vehicle_energy.rowid = '.((int) $this->fk_energy).')';
 		$sql .= ' WHERE cap.entity = '.((int) $this->entity).' AND cap.fk_vehicle = '.((int) $this->id).' AND ce.rowid IS NULL';
 		if (!$this->db->query($sql)) {
 			$this->error = $this->db->lasterror();
@@ -786,7 +785,7 @@ class LmdbVehicle extends LmdbVehicleManagementObject
 			$sql = 'SELECT c.rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c';
 			$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_consumable = c.rowid AND ce.entity = c.entity';
 			$sql .= ' WHERE c.rowid = '.((int) $consumableId).' AND c.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
-			$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') AND ce.fk_energy = '.((int) $this->fk_energy);
+			$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') AND ce.fk_energy IN (SELECT energy.rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy energy INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy vehicle_energy ON vehicle_energy.code = energy.code WHERE vehicle_energy.rowid = '.((int) $this->fk_energy).')';
 			$resql = $this->db->query($sql);
 			if (!$resql || $this->db->num_rows($resql) !== 1) {
 				if ($resql) $this->db->free($resql);

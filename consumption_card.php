@@ -26,15 +26,15 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'users', 'agenda', 'currencies', 'banks', 'projects', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $vehicleIdFromUrl = GETPOSTINT('vehicle_id');
 $action = GETPOST('action', 'aZ09') ?: ($id > 0 ? 'view' : 'create');
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionWrite = LmdbVehicleSharing::can($user, 'consumption', 'write');
-$permissionDelete = LmdbVehicleSharing::can($user, 'consumption', 'delete');
+$permissionWrite = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write'));
+$permissionDelete = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'delete'));
 $object = new LmdbVehicleConsumption($db);
 if ($id > 0 && $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $consumptionPayment = new LmdbVehicleConsumptionPayment($db);
@@ -54,8 +54,8 @@ function lmdbConsumptionVehicleOptions($db)
 	global $conf;
 
 	$options = array();
-	$sql = 'SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle';
-	$sql .= ' WHERE entity = '.((int) $conf->entity).' AND status <> '.LmdbVehicle::STATUS_SOLD.' ORDER BY ref';
+	$sql = 'SELECT rowid, ref, registration_number, label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v';
+	$sql .= ' WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').' AND status <> '.LmdbVehicle::STATUS_SOLD.' ORDER BY ref';
 	$resql = $db->query($sql);
 	if ($resql) {
 		while (is_object($row = $db->fetch_object($resql))) {
@@ -74,8 +74,10 @@ function lmdbConsumptionCompatibilityByVehicle($db)
 	$map = array();
 	$sql = 'SELECT DISTINCT v.rowid AS vehicle_id, ce.fk_consumable';
 	$sql .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v';
-	$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_energy = v.fk_energy';
-	$sql .= ' WHERE v.entity = '.((int) $conf->entity);
+	$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy ve ON ve.rowid = v.fk_energy'
+		.' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy e ON e.code = ve.code'
+		.' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_energy = e.rowid';
+	$sql .= ' WHERE '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v');
 	$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
 	$resql = $db->query($sql);
 	if ($resql) {

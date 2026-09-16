@@ -25,7 +25,7 @@ function dol_include_once($path) { if (strpos($path, '/lmdbvehiclemanagement/') 
 function dol_syslog($message, $level = 0) {}
 function GETPOST($name, $type = 'alpha', $method = 0) { $value = $method === 2 ? ($_POST[$name] ?? null) : ($_POST[$name] ?? $_GET[$name] ?? null); return $value ?? ($type === 'array' ? array() : ''); }
 function GETPOSTISSET($name) { return isset($_POST[$name]) || isset($_GET[$name]); }
-function accessforbidden() { throw new RuntimeException('CSRF denied'); }
+if (!defined('LMDB_SHARING_FIXTURE_ONLY')) { function accessforbidden() { throw new RuntimeException('CSRF denied'); } }
 function currentToken() { return 'fixture'; }
 function newToken() { return 'fixture'; }
 function getNonce() { return 'fixture'; }
@@ -33,7 +33,7 @@ function dol_escape_htmltag($value) { return htmlspecialchars((string) $value, E
 function isSharingAllByDefault($element) { return getDolGlobalInt('MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT'); }
 function dolGetButtonAction($label, $text, $type, $url, $id) { return '<a class="butAction" id="'.$id.'" href="'.dol_escape_htmltag($url).'">'.dol_escape_htmltag($text).'</a>'; }
 
-function dolibarr_set_const($db, $name, $value, $type, $visible, $note, $entity) { return $db->query("INSERT INTO ".MAIN_DB_PREFIX."const (name,value,entity) VALUES ('".$db->escape($name)."','".$db->escape($value)."',".(int) $entity.")") ? 1 : -1; }
+function dolibarr_set_const($db, $name, $value, $type, $visible, $note, $entity) { $db->query("DELETE FROM ".MAIN_DB_PREFIX."const WHERE name='".$db->escape($name)."' AND entity=".(int) $entity); return $db->query("INSERT INTO ".MAIN_DB_PREFIX."const (name,value,entity) VALUES ('".$db->escape($name)."','".$db->escape($value)."',".(int) $entity.")") ? 1 : -1; }
 class User {
 	public $id = 1, $admin = 1, $entity = 0, $socid = 0, $login = 'test';
 	public $rights = array();
@@ -109,6 +109,7 @@ class SharingRecord extends LmdbVehicleManagementObject {
 }
 function checkSharing($ok, $message) { global $checks; $checks++; if (!$ok) throw new RuntimeException($message); }
 class SharingHooksProbe { use LmdbVehicleSharingHooks; public $db, $results = array(), $resprints = ''; public function __construct($db) { $this->db = $db; } }
+if (defined('LMDB_SHARING_FIXTURE_ONLY')) return;
 $checks = 0; $db = new SharingDb(); $user = new User(); $user->rights['lmdbvehiclemanagement.read'] = 1;
 $hooks = new SharingHooksProbe($db); $hookmanager = null; $action = '';
 $db->query('CREATE TABLE '.MAIN_DB_PREFIX.'entity_element_sharing (entity integer, element text, fk_element integer, UNIQUE(entity,element,fk_element))');
@@ -123,23 +124,25 @@ foreach ($definitions as $element => $definition) {
 	$conf->global->{'MULTICOMPANY_'.strtoupper($element).'_SHARING_BYELEMENT_ENABLED'} = 1;
 	foreach (array(1, 2, 3) as $entity) DaoMulticompany::$fixtures[$entity]['sharings'][$element] = $entity === 1 ? array() : array(1);
 }
+$db->query('CREATE TABLE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle (entity integer, fk_contract integer, fk_vehicle integer)');
+$db->query('INSERT INTO '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle VALUES (1,10,10),(1,10,11),(1,11,10)');
 $dao = new DaoMulticompany($db);
 foreach ($definitions as $element => $definition) $dao->setSharingsByElement($element, 10, array(2));
 foreach (array(1, 2, 3) as $entity) {
 	$conf->entity = $entity;
 	foreach ($definitions as $element => $definition) {
 		checkSharing(LmdbVehicleSharing::visible($db, $element, 10) === ($entity !== 3), $element.' shared to entity 2 only');
-		checkSharing(LmdbVehicleSharing::visible($db, $element, 11) === ($entity === 1), $element.' second record stays private');
+		checkSharing(LmdbVehicleSharing::visible($db, $element, 11) === ($entity === 1 || ($entity === 2 && $element !== 'lmdbvehicle')), $element.' global family ignores individual rows');
 		$count = $db->query('SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.$definition['table'].' t WHERE '.LmdbVehicleSharing::sql($db, $element))->fetchColumn();
-		checkSharing((int) $count === ($entity === 1 ? 2 : ($entity === 2 ? 1 : 0)), $element.' SQL counts match access');
+		checkSharing((int) $count === ($entity === 1 ? 2 : ($entity === 2 ? ($element === 'lmdbvehicle' ? 1 : 2) : 0)), $element.' SQL counts match access');
 		$record = new SharingRecord($db); $record->element = $element; $record->table_element = $definition['table'];
-		checkSharing(($record->fetch(11) > 0) === ($entity === 1), $element.' old direct URL denied');
+		checkSharing(($record->fetch(11) > 0) === ($entity === 1 || ($entity === 2 && $element !== 'lmdbvehicle')), $element.' direct URL follows family and parent access');
 		$hooks->printFieldListWhere(array('showrefnav' => true), $record, $action, $hookmanager);
 		$matches = array();
 		checkSharing(preg_match('/^ AND \(te\.rowid:in:([0-9,]+)\)$/D', $hooks->resprints, $matches) === 1, $element.' navigation provides native USF on '.DOL_VERSION);
 		$navigationIds = array_values(array_filter(array_map('intval', explode(',', $matches[1]))));
 		sort($navigationIds);
-		checkSharing($navigationIds === ($entity === 1 ? array(10, 11) : ($entity === 2 ? array(10) : array())), $element.' navigation excludes unshared records and unauthorized entities');
+		checkSharing($navigationIds === ($entity === 1 ? array(10, 11) : ($entity === 2 ? ($element === 'lmdbvehicle' ? array(10) : array(10, 11)) : array())), $element.' navigation excludes unshared records and unauthorized entities');
 	}
 }
 $db->fail = 'SELECT te.rowid';
@@ -150,28 +153,30 @@ $hooks->printFieldListWhere(array(), $record, $action, $hookmanager);
 checkSharing($hooks->resprints === '', 'Navigation filter does not alter ordinary list hooks');
 $conf->entity = 2;
 $dao->setSharingsByElement('lmdbvehicle', 10, array());
-foreach ($definitions as $element => $definition) checkSharing(LmdbVehicleSharing::visible($db, $element, 10) === ($element === 'lmdbinsurancecontract'), $element.' requires its vehicle except fleet contract');
+foreach ($definitions as $element => $definition) checkSharing(!LmdbVehicleSharing::visible($db, $element, 10), $element.' requires an accessible vehicle for foreign data');
 $db->query('UPDATE '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_certificate SET fk_vehicle = NULL WHERE rowid = 10');
-checkSharing(LmdbVehicleSharing::visible($db, 'lmdbinsurancecertificate', 10), 'Fleet certificate requires contract only');
-$dao->setSharingsByElement('lmdbinsurancecontract', 10, array());
-checkSharing(!LmdbVehicleSharing::visible($db, 'lmdbinsurancecertificate', 10), 'Certificate cannot grant access to private contract');
-$dao->setSharingsByElement('lmdbinsurancecontract', 10, array(2));
-$dao->setSharingsByElement('lmdbinsurancecertificate', 10, array());
-checkSharing(!LmdbVehicleSharing::visible($db, 'lmdbinsurancecertificate', 10), 'Shared contract does not share certificates');
+checkSharing(!LmdbVehicleSharing::visible($db, 'lmdbinsurancecertificate', 10), 'Fleet certificate requires an accessible contract');
 $dao->setSharingsByElement('lmdbvehicle', 10, array(2));
+checkSharing(LmdbVehicleSharing::visible($db, 'lmdbinsurancecertificate', 10), 'Fleet certificate follows contract when one covered vehicle is accessible');
 foreach ($definitions as $element => $definition) {
-	$dao->setSharingsByElement($element, 10, array(2));
-	checkSharing(LmdbVehicleSharing::visible($db, $element, 10), $element.' restored');
-	$dao->setSharingsByElement($element, 10, array());
-	checkSharing(!LmdbVehicleSharing::visible($db, $element, 10), $element.' revoked on next query');
-	$dao->setSharingsByElement($element, 10, array(2));
-	$conf->global->{'MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT'} = 1;
-	checkSharing(LmdbVehicleSharing::visible($db, $element, 10) === ($element === 'lmdbvehiclequartix'), $element.' exclusion mode never broadens QUARTIX');
-	$conf->global->{'MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT'} = 0;
+	$flag = 'MULTICOMPANY_'.strtoupper($element).'_SHARING_ENABLED';
+	$conf->global->$flag = 0;
+	checkSharing(!LmdbVehicleSharing::visible($db, $element, 10), $element.' disabled family is private');
+	$conf->global->$flag = 1;
+	checkSharing(LmdbVehicleSharing::visible($db, $element, 10), $element.' restored family');
+	if ($element !== 'lmdbvehicle') {
+		$dao->setSharingsByElement($element, 10, array());
+		checkSharing(LmdbVehicleSharing::visible($db, $element, 10), $element.' obsolete individual grants ignored');
+		$conf->global->{'MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT'} = 1;
+		checkSharing(LmdbVehicleSharing::visible($db, $element, 10), $element.' obsolete exclusion mode ignored');
+		$conf->global->{'MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT'} = 0;
+		$dao->setSharingsByElement($element, 10, array(2));
+	}
 }
 $conf->entity = 1;
 foreach ($definitions as $element => $definition) {
 	$record = new SharingRecord($db); $record->element = $element; $record->table_element = $definition['table']; $record->TRIGGER_PREFIX = strtoupper($element); $record->fetch(10);
+	if ($element !== 'lmdbvehicle') { checkSharing($record->setSharingEntities($user, array(2)) < 0, $element.' individual mutation retired'); continue; }
 	checkSharing($record->setSharingEntities($user, array(2)) > 0 && $record->triggers === 0, $element.' unchanged grants do not trigger');
 	checkSharing($record->setSharingEntities($user, array(99)) < 0, $element.' forged destination rejected');
 	$record->failTrigger = true;
@@ -200,23 +205,31 @@ foreach ($definitions as $element => $definition) {
 }
 $record->element = 'lmdbvehicleevent'; $record->table_element = $definitions['lmdbvehicleevent']['table'];
 checkSharing($record->setSharingEntities($user, array(3)) < 0 && LmdbVehicleSharing::stored($db, 'lmdbvehicleevent', 10) === array(2), 'Parent absent at destination rolls back entire grant');
-foreach (array(0, 1, 2) as $admin) {
-	$user->admin = $admin; $user->rights = array();
-	checkSharing(!LmdbVehicleSharing::can($user), 'No implicit administrative elevation');
-	$user->socid = 42; checkSharing(!LmdbVehicleSharing::can($user), 'External users never elevated'); $user->socid = 0;
-}
-$user->admin = 0; $user->rights['lmdbvehiclemanagement.read'] = 1;
-checkSharing(LmdbVehicleSharing::can($user) && !LmdbVehicleSharing::can($user, 'consumption', 'write'), 'Read permission does not grant write');
-$user->admin = 1;
+$user->admin = 1; $user->rights['lmdbvehiclemanagement.read'] = 1;
 DaoMulticompany::$fixtures[2]['sharings']['lmdbvehicleevent'] = array();
 unset(DaoMulticompany::$fixtures[3]['sharings']['lmdbvehicleevent']);
 $db->query("INSERT INTO ".MAIN_DB_PREFIX."const (entity,name,value) VALUES (0,'MULTICOMPANY_LMDBVEHICLE_SHARING_ENABLED','1'),(0,'MULTICOMPANY_LMDBVEHICLEEVENT_SHARING_ENABLED','0')");
 $db->query("INSERT INTO ".MAIN_DB_PREFIX."const (entity,name,value) VALUES (0,'MULTICOMPANY_LMDBVEHICLEASSIGNMENT_SHARING_ENABLED','')");
+$legacyPayload = array('lmdbvehiclemanagement' => array('sharingelements' => array()));
+foreach ($definitions as $element => $definition) {
+	$legacyPayload['lmdbvehiclemanagement']['sharingelements'][$element] = array('sharebyelement' => true, 'type' => 'element');
+	$db->query("INSERT INTO ".MAIN_DB_PREFIX."const (entity,name,value) VALUES (0,'MULTICOMPANY_".strtoupper($element)."_SHARING_BYELEMENT_ENABLED','1')");
+}
+foreach (array(1, 2) as $owner) dolibarr_set_const($db, 'MULTICOMPANY_EXTERNAL_MODULES_SHARING', json_encode($legacyPayload), 'chaine', 0, '', $owner);
 checkSharing(LmdbVehicleSharingMigration::run($db) > 0 && LmdbVehicleSharingMigration::run($db) > 0, 'Configuration migration replay');
 checkSharing(DaoMulticompany::$fixtures[2]['sharings']['lmdbvehicleevent'] === array() && DaoMulticompany::$fixtures[3]['sharings']['lmdbvehicleevent'] === array(1), 'Empty scope preserved and missing scope inherited');
 checkSharing($db->query("SELECT value FROM ".MAIN_DB_PREFIX."const WHERE name='MULTICOMPANY_LMDBVEHICLEEVENT_SHARING_ENABLED'")->fetchColumn() === '0', 'Disabled constant preserved');
 checkSharing($db->query("SELECT value FROM ".MAIN_DB_PREFIX."const WHERE name='MULTICOMPANY_LMDBVEHICLEASSIGNMENT_SHARING_ENABLED'")->fetchColumn() === '', 'Empty constant preserved');
 checkSharing((int) $db->query("SELECT COUNT(*) FROM ".MAIN_DB_PREFIX."const WHERE name='MULTICOMPANY_LMDBINSURANCECONTRACT_SHARING_ENABLED'")->fetchColumn() === 1, 'Migration does not duplicate constants');
+foreach ($definitions as $element => $definition) {
+	$mode = $db->query("SELECT value FROM ".MAIN_DB_PREFIX."const WHERE name='MULTICOMPANY_".strtoupper($element)."_SHARING_BYELEMENT_ENABLED'")->fetchColumn();
+	checkSharing($mode === ($element === 'lmdbvehicle' ? '1' : '0'), 'Migration retires only global record-level modes '.$element);
+}
+foreach (array(1, 2) as $owner) {
+	$payload = json_decode($db->query("SELECT value FROM ".MAIN_DB_PREFIX."const WHERE name='MULTICOMPANY_EXTERNAL_MODULES_SHARING' AND entity=".$owner)->fetchColumn(), true);
+	foreach ($definitions as $element => $definition) checkSharing(isset($payload['lmdbvehiclemanagement']['sharingelements'][$element]['sharebyelement']) === ($element === 'lmdbvehicle'), 'Persisted definition retired in entity '.$owner.' for '.$element);
+}
+checkSharing(LmdbVehicleSharing::stored($db, 'lmdbvehicleevent', 10) === array(2), 'Migration preserves obsolete native rows without using them');
 require_once dirname(__DIR__).'/lib/lmdbvehiclesharing.lib.php';
 $_SESSION['token'] = 'valid';
 foreach (array(array('GET', 'valid'), array('POST', ''), array('POST', 'forged')) as $request) {
@@ -243,6 +256,7 @@ if (!empty($argv[2])) {
 	require_once dirname(__DIR__).'/class/lmdbvehiclesharingform.class.php';
 	$langs = new class { public function trans($key) { return $key; } public function loadLangs($files) {} };
 	foreach ($definitions as $element => $definition) {
+		if ($element !== 'lmdbvehicle') continue;
 		foreach (array(0, 1) as $exclusion) {
 			$conf->global->{'MULTICOMPANY_'.strtoupper($element).'_SHARE_ALL_BY_DEFAULT'} = $exclusion;
 			$dao->setSharingsByElement($element, 10, array(2));

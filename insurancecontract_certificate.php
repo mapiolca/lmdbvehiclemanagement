@@ -21,16 +21,16 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
 $certificateId = GETPOSTINT('certificate_id');
 $downloadCertificate = GETPOSTINT('download_certificate');
-$permissionWrite = LmdbVehicleSharing::can($user, 'insurance', 'write');
-$permissionUpload = LmdbVehicleSharing::can($user, 'insurance', 'upload');
-$permissionValidate = LmdbVehicleSharing::can($user, 'insurance', 'validate');
-$permissionDelete = LmdbVehicleSharing::can($user, 'insurance', 'delete');
+$permissionWrite = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write'));
+$permissionUpload = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'insurance', 'upload'));
+$permissionValidate = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'insurance', 'validate'));
+$permissionDelete = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'insurance', 'delete'));
 $contract = new LmdbVehicleInsuranceContract($db);
 if ($id <= 0 || $contract->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 
@@ -46,7 +46,7 @@ $eligibleVehicleIds = array();
 $insuranceConfig = new LmdbVehicleInsuranceConfig($db);
 foreach ($vehicleIds as $vehicleId) {
 	$vehicle = new LmdbVehicle($db);
-	if ($vehicle->fetch($vehicleId) > 0 && (int) $vehicle->entity === (int) $contract->entity) {
+	if ($vehicle->fetch($vehicleId) > 0) {
 		$vehicleOptions[$vehicleId] = lmdbVehicleDisplayIdentifier($vehicle->ref, $vehicle->registration_number, $vehicle->label);
 		if ($permissionWrite || $insuranceConfig->userIsEligibleForVehicle($user, $vehicleId, (int) $vehicle->entity)) $eligibleVehicleIds[] = $vehicleId;
 	}

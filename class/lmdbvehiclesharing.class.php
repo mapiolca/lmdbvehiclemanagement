@@ -4,11 +4,11 @@
 /** Native Multicompany scopes and record access, shared by SQL and object entry points. */
 class LmdbVehicleSharing
 {
-	/** @return array<string,array{table:string,label:string,legacy:string,vehicle:bool,contract:bool}> */
+	/** @return array<string,array{table:string,label:string,legacy:string,vehicle:bool,contract:bool,mode:string}> */
 	public static function definitions()
 	{
-		return array(
-			'lmdbvehiclequartix' => array('table' => 'lmdbvehiclemanagement_qx_dataset', 'label' => 'QxData', 'legacy' => 'lmdbvehiclequartix', 'vehicle' => false, 'contract' => false),
+		$definitions = array(
+			'lmdbvehiclequartix' => array('table' => 'lmdbvehiclemanagement_qx_dataset', 'label' => 'QxData', 'legacy' => 'lmdbvehiclequartix', 'vehicle' => true, 'contract' => false),
 			'lmdbvehicle' => array('table' => 'lmdbvehiclemanagement_vehicle', 'label' => 'Vehicle', 'legacy' => 'lmdbvehicle', 'vehicle' => false, 'contract' => false),
 			'lmdbinsurancecontract' => array('table' => 'lmdbvehiclemanagement_insurance_contract', 'label' => 'InsuranceContract', 'legacy' => 'lmdbvehicle', 'vehicle' => false, 'contract' => false),
 			'lmdbinsurancecertificate' => array('table' => 'lmdbvehiclemanagement_insurance_certificate', 'label' => 'InsuranceCertificate', 'legacy' => 'lmdbvehicle', 'vehicle' => true, 'contract' => true),
@@ -18,6 +18,9 @@ class LmdbVehicleSharing
 			'lmdbvehicleassignment' => array('table' => 'lmdbvehiclemanagement_vehicle_assignment', 'label' => 'VehicleAssignment', 'legacy' => 'lmdbvehicle', 'vehicle' => true, 'contract' => false),
 			'lmdbvehicleodometerreading' => array('table' => 'lmdbvehiclemanagement_odometer_reading', 'label' => 'OdometerReading', 'legacy' => 'lmdbvehicle', 'vehicle' => true, 'contract' => false),
 		);
+		foreach ($definitions as $element => &$definition) $definition['mode'] = $element === 'lmdbvehicle' ? 'individual' : 'global';
+		unset($definition);
+		return $definitions;
 	}
 
 	/** @param string $element Element, table or native tooltip alias @return string Empty for unrelated objects */
@@ -37,12 +40,6 @@ class LmdbVehicleSharing
 		return is_object($user) && empty($user->socid) && !empty($user->admin);
 	}
 
-	/** @param User $user User @param string $object Permission object (empty for module) @param string $action Action @return bool */
-	public static function can($user, $object = '', $action = 'read')
-	{
-		if (!is_object($user) || !empty($user->socid) || !isModEnabled('lmdbvehiclemanagement')) return false;
-		return $object === '' ? $user->hasRight('lmdbvehiclemanagement', $action) : $user->hasRight('lmdbvehiclemanagement', $object, $action);
-	}
 
 	/** @param bool $requireEnabled False only for cleaning native associations on deletion. @return bool Native UI/DAO contract supported from Multicompany 21 on Dolibarr 20/PHP 8. */
 	public static function available($requireEnabled = true)
@@ -77,7 +74,7 @@ class LmdbVehicleSharing
 	/** @param string $element Canonical element @return bool */
 	public static function individual($element)
 	{
-		return isModEnabled('multicompany') && getDolGlobalInt('MULTICOMPANY_SHARINGS_ENABLED')
+		return $element === 'lmdbvehicle' && isModEnabled('multicompany') && getDolGlobalInt('MULTICOMPANY_SHARINGS_ENABLED')
 			&& getDolGlobalInt('MULTICOMPANY_SHARING_BYELEMENT_ENABLED')
 			&& getDolGlobalInt('MULTICOMPANY_'.strtoupper($element).'_SHARING_BYELEMENT_ENABLED');
 	}
@@ -109,13 +106,6 @@ class LmdbVehicleSharing
 			if (getDolGlobalInt('MULTICOMPANY_SHARINGS_ENABLED') && getDolGlobalInt('MULTICOMPANY_'.strtoupper($scopeElement).'_SHARING_ENABLED') && isset($dao->options['sharings'][$scopeElement]) && is_array($dao->options['sharings'][$scopeElement])) $ids = array_merge($ids, array_map('intval', $dao->options['sharings'][$scopeElement]));
 			$scope = implode(',', array_unique($ids));
 		}
-		if ($element === 'lmdbvehiclequartix') {
-			// Owner history survives vehicle withdrawal. Recipients always need BOTH grants.
-			$own = $alias.'.entity = '.$viewEntity;
-			if (!self::available() || !self::individual($element)) return '('.$own.')';
-			$vehicleAlias = $alias.'_qxv';
-			return '('.$own.' OR ('.$alias.'.entity IN ('.$scope.') AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX."entity_element_sharing qgrant WHERE qgrant.element='lmdbvehiclequartix' AND qgrant.fk_element=".$alias.'.rowid AND qgrant.entity='.$viewEntity.') AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle '.$vehicleAlias.' WHERE '.$vehicleAlias.'.rowid='.$alias.'.fk_vehicle AND '.self::sql($db, 'lmdbvehicle', $vehicleAlias, true, $viewEntity).')))';
-		}
 		$where = $alias.'.entity IN ('.$scope.')';
 		if (self::individual($element) && !self::available()) {
 			// Do not broaden a saved individual policy on an unsupported installation.
@@ -134,10 +124,17 @@ class LmdbVehicleSharing
 			$parentAlias = $alias.'_contract';
 			$where .= ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.$definitions['lmdbinsurancecontract']['table'].' '.$parentAlias.' WHERE '.$parentAlias.'.rowid = '.$alias.'.fk_contract AND '.self::sql($db, 'lmdbinsurancecontract', $parentAlias, true, $viewEntity).')';
 		}
+		if ($parents && $element === 'lmdbinsurancecontract') {
+			$vehicleAlias = $alias.'_covered';
+			$where .= ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_insurance_contract_vehicle cv INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle '.$vehicleAlias.' ON '.$vehicleAlias.'.rowid = cv.fk_vehicle WHERE cv.fk_contract = '.$alias.'.rowid AND cv.entity = '.$alias.'.entity AND '.self::sql($db, 'lmdbvehicle', $vehicleAlias, true, $viewEntity).')';
+		}
+		// Local records remain readable after vehicle access is withdrawn. Callers
+		// must still authorize linked data and all mutations separately.
+		if ($element !== 'lmdbvehicle') $where = $alias.'.entity = '.$viewEntity.' OR ('.$where.')';
 		if ($element === 'lmdbvehicleodometerreading') {
 			$dataset = $alias.'_qx';
 			// Ordinary odometer sharing never authorizes provider observations, including unmigrated rows.
-			$where = '(' . $where.' AND '.$alias.'.fk_quartix IS NULL AND '.$alias.'.is_estimate=0) OR EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_dataset '.$dataset.' WHERE '.$dataset.'.rowid='.$alias.'.fk_quartix AND '.$dataset.'.entity='.$alias.'.entity AND '.$dataset.'.fk_vehicle='.$alias.'.fk_vehicle AND '.self::sql($db, 'lmdbvehiclequartix', $dataset, true, $viewEntity).')';
+			$where = '((' . $where.') AND '.$alias.'.fk_quartix IS NULL AND '.$alias.'.is_estimate=0) OR EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_dataset '.$dataset.' WHERE '.$dataset.'.rowid='.$alias.'.fk_quartix AND '.$dataset.'.entity='.$alias.'.entity AND '.$dataset.'.fk_vehicle='.$alias.'.fk_vehicle AND '.self::sql($db, 'lmdbvehiclequartix', $dataset, true, $viewEntity).')';
 		}
 		return '('.$where.')';
 	}
@@ -155,11 +152,6 @@ class LmdbVehicleSharing
 		return $found;
 	}
 
-	/** @param DoliDB $db Database @param User $user User @param CommonObject $object Object @return bool */
-	public static function canReadObject($db, $user, $object)
-	{
-		return isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && is_object($object) && self::visible($db, (string) $object->element, (int) $object->id);
-	}
 
 	/** Native destination cohort, limited to active entities the administrator may enter. @param DoliDB $db Database @param User $user Administrator @param CommonObject $object Object @return array<int,string> */
 	public static function destinations($db, $user, $object)
@@ -190,14 +182,30 @@ class LmdbVehicleSharing
 		return array_values(array_unique($ids));
 	}
 
-	/** A cached regulatory requirement must not reveal a hidden source control.
+	/** The common deadline follows the vehicle; source control details remain private.
 	 * @param DoliDB $db @param string $alias Requirement SQL alias @return string
 	 */
 	public static function requirementSql($db, $alias = 'req')
 	{
 		if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/D', $alias)) throw new InvalidArgumentException('Invalid alias');
-		return 'EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle rqv WHERE rqv.rowid = '.$alias.'.fk_vehicle AND '.self::sql($db, 'lmdbvehicle', 'rqv').')'
-			.' AND NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control rqc WHERE rqc.entity = '.$alias.'.entity AND rqc.fk_vehicle = '.$alias.'.fk_vehicle AND rqc.fk_rule = '.$alias.'.fk_rule AND NOT '.self::sql($db, 'lmdbvehicleregulatorycontrol', 'rqc').')';
+		return 'EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle rqv WHERE rqv.rowid = '.$alias.'.fk_vehicle AND rqv.entity = '.$alias.'.entity AND '.self::sql($db, 'lmdbvehicle', 'rqv').')';
+	}
+
+	/** Status safe for vehicle readers when the source control is private.
+	 * The joined control alias must itself be filtered by the control sharing predicate.
+	 * @param DoliDB $db @param string $requirement Requirement alias @param string $control Visible control alias @return string
+	 */
+	public static function requirementStatusSql($db, $requirement = 'req', $control = 'c')
+	{
+		foreach (array($requirement, $control) as $alias) {
+			if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/D', $alias)) throw new InvalidArgumentException('Invalid alias');
+		}
+		$soon = dol_time_plus_duree(dol_now(), getDolGlobalInt('LMDBVEHICLEMANAGEMENT_CONTROL_DUE_SOON_DAYS', 90), 'd');
+		return 'CASE WHEN '.$requirement.'.rowid IS NULL THEN \'incomplete\''
+			.' WHEN '.$requirement.'.fk_last_control IS NULL OR '.$control.'.rowid IS NOT NULL THEN '.$requirement.'.status'
+			.' WHEN '.$requirement.'.retained_due_date IS NULL THEN \'incomplete\''
+			.' WHEN '.$requirement.'.retained_due_date < CURRENT_DATE THEN \'overdue\''
+			.' WHEN '.$requirement.'.retained_due_date <= \''.$db->idate($soon).'\' THEN \'due_soon\' ELSE \'up_to_date\' END';
 	}
 
 	/** Explain a possibly partial view without revealing existence/counts of private rows. @return bool */

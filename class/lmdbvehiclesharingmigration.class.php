@@ -12,6 +12,32 @@ class LmdbVehicleSharingMigration
 		if (!LmdbVehicleSharing::available()) return 1;
 		$db->begin();
 		try {
+			// Retire only record-level modes. Family scopes and native rows are kept.
+			foreach (LmdbVehicleSharing::definitions() as $element => $definition) {
+				if ($definition['mode'] !== 'global') continue;
+				$name = 'MULTICOMPANY_'.strtoupper($element).'_SHARING_BYELEMENT_ENABLED';
+				if (!$db->query("UPDATE ".MAIN_DB_PREFIX."const SET value = '0' WHERE name = '".$db->escape($name)."'")) throw new RuntimeException('LmdbSharingDatabaseError');
+			}
+			$res = $db->query("SELECT value, entity FROM ".MAIN_DB_PREFIX."const WHERE name = 'MULTICOMPANY_EXTERNAL_MODULES_SHARING'");
+			if (!$res) throw new RuntimeException('LmdbSharingDatabaseError');
+			$payloads = array();
+			while (is_object($row = $db->fetch_object($res))) $payloads[(int) $row->entity] = (string) $row->value;
+			$db->free($res);
+			foreach ($payloads as $entity => $value) {
+				$payload = json_decode($value, true);
+				if (!is_array($payload)) continue;
+				$changed = false;
+				foreach (LmdbVehicleSharing::definitions() as $element => $definition) {
+					if ($definition['mode'] === 'global' && isset($payload['lmdbvehiclemanagement']['sharingelements'][$element]['sharebyelement'])) {
+						unset($payload['lmdbvehiclemanagement']['sharingelements'][$element]['sharebyelement']);
+						$changed = true;
+					}
+				}
+				if ($changed) {
+					$json = json_encode($payload);
+					if (!is_string($json) || dolibarr_set_const($db, 'MULTICOMPANY_EXTERNAL_MODULES_SHARING', $json, 'chaine', 0, '', $entity) <= 0) throw new RuntimeException('LmdbSharingDatabaseError');
+				}
+			}
 			foreach (LmdbVehicleSharing::definitions() as $element => $definition) {
 				if ($element === $definition['legacy']) continue;
 				$oldName = 'MULTICOMPANY_'.strtoupper($definition['legacy']).'_SHARING_ENABLED';

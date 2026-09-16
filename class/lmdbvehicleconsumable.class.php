@@ -198,7 +198,9 @@ class LmdbVehicleConsumable extends CommonObject
 		$sql .= ' FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c';
 		if ($category === 'fuel' && $vehicleId > 0) {
 			$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_consumable = c.rowid AND ce.entity = c.entity';
-			$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.fk_energy = ce.fk_energy';
+			$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy AS energy ON energy.rowid = ce.fk_energy'
+				.' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy AS vehicle_energy ON vehicle_energy.code = energy.code'
+				.' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.fk_energy = vehicle_energy.rowid';
 		}
 		$sql .= ' WHERE c.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') AND c.active = 1';
 		if (in_array($category, array('fuel', 'additive'), true)) {
@@ -230,13 +232,15 @@ class LmdbVehicleConsumable extends CommonObject
 	 */
 	public function getCapacityOptions($energyId = 0)
 	{
-		$sql = 'SELECT c.rowid, c.code, c.label, c.unit, GROUP_CONCAT(DISTINCT ce.fk_energy ORDER BY ce.fk_energy SEPARATOR \',\') AS energy_ids';
+		$sql = 'SELECT c.rowid, c.code, c.label, c.unit, GROUP_CONCAT(DISTINCT energy_alias.rowid ORDER BY energy_alias.rowid SEPARATOR \',\') AS energy_ids';
 		$sql .= ' FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable AS c';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_consumable = c.rowid AND ce.entity = c.entity';
+		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy energy ON energy.rowid = ce.fk_energy';
+		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy energy_alias ON energy_alias.code = energy.code';
 		$sql .= ' WHERE c.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') AND c.active = 1';
 		$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').')';
 		if ($energyId > 0) {
-			$sql .= ' AND ce.fk_energy = '.((int) $energyId);
+			$sql .= ' AND ce.fk_energy IN (SELECT compatible_energy.rowid FROM '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy compatible_energy INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy selected_energy ON selected_energy.code = compatible_energy.code WHERE selected_energy.rowid = '.((int) $energyId).')';
 		}
 		$sql .= ' GROUP BY c.rowid, c.label, c.unit, c.position, c.code';
 		$sql .= ' ORDER BY c.position, c.code';

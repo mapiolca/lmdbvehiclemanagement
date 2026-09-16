@@ -64,6 +64,7 @@ final class QxTestDb
 	/** @param string $sql SQL @return object|false */
 	public function query($sql)
 	{
+		$sql = str_replace("GROUP_CONCAT(DISTINCT energy_alias.rowid ORDER BY energy_alias.rowid SEPARATOR ',')", 'GROUP_CONCAT(DISTINCT energy_alias.rowid)', $sql);
 		$this->queries[] = $sql;
 		if ($this->failPattern !== '' && strpos($sql, $this->failPattern) !== false) { $this->error = 'Injected failure'; return false; }
 		if (strpos($sql, 'GET_LOCK(') !== false) { $acquired = !$this->locked; $this->locked = true; return (object) array('rows' => array((object) array('acquired' => (int) $acquired)), 'pos' => 0); }
@@ -185,6 +186,7 @@ function qxReject($call, $code) { try { $call(); } catch (RuntimeException $e) {
 function qxResponse($data, $status = 200, $retry = 900) { return array('status' => $status, 'body' => json_encode(array('Meta' => array('Code' => 0), 'Data' => $data)), 'retry' => $retry); }
 
 $db = new QxTestDb();
+$db->query('CREATE TABLE '.MAIN_DB_PREFIX.'entity_element_sharing (rowid integer PRIMARY KEY, element text, fk_element integer, entity integer)');
 $user = new User($db); $user->id = 1; $user->admin = 1; $user->socid = 0;
 $user->rights = (object) array('lmdbvehiclemanagement' => (object) array('read' => 1, 'delete' => 1, 'odometer' => (object) array('write' => 1), 'quartix' => (object) array('location' => 1, 'sync' => 1)));
 $extrafields = (object) array('attributes' => array('lmdbvehiclemanagement_qx_dataset' => array('loaded' => 1), 'lmdbvehiclemanagement_odometer_reading' => array('loaded' => 1), 'lmdbvehiclemanagement_vehicle' => array('loaded' => 1)));
@@ -388,7 +390,7 @@ $foreignReading = new QxTestReading($db);
 qxCheck($foreignReading->saveQuartix($user, 1, 10, $estimateDate, '2026-08-30', 1200.0) < 0, 'Owner-only imports');
 qxCheck($foreignReading->saveQuartix($user, 2, 10, $estimateDate, '2026-08-30', 500.0) > 0, 'Same remote id isolated in second entity');
 $mc = new class {
-	public function getEntity($element, $shared = 1, $object = null) { return '1,2'; }
+	public function getEntity($element, $shared = 1, $object = null) { global $conf; return $element === 'lmdbvehiclequartix' ? (string) $conf->entity : '1,2'; }
 };
 qxReject(static function () use ($service) { $service->position(1); }, 'QxNoData');
 qxReject(static function () use ($service) { $service->usage(1, '2026-08-01', '2026-08-31', 'month'); }, 'QxNoData');

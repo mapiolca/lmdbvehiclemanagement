@@ -233,10 +233,7 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		if (!is_object($vehicle)) {
 			return $this->businessError('InvalidVehicle');
 		}
-		if (!empty($this->entity) && (int) $this->entity !== (int) $vehicle->entity) {
-			return $this->businessError('CannotMoveObjectBetweenEntities');
-		}
-		$this->entity = (int) $vehicle->entity;
+		if (empty($this->id)) $this->entity = (int) $conf->entity;
 
 		$consumable = new LmdbVehicleConsumable($this->db);
 		if ($consumable->fetch((int) $this->fk_consumable) <= 0 || !$consumable->active) {
@@ -249,8 +246,10 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		}
 		if ($this->category_snapshot === 'fuel') {
 			$sql = 'SELECT 1 FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v';
-			$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_energy = v.fk_energy';
-			$sql .= ' WHERE v.rowid = '.((int) $this->fk_vehicle).' AND v.entity = '.((int) $this->entity);
+			$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy AS vehicle_energy ON vehicle_energy.rowid = v.fk_energy'
+				.' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_energy AS energy ON energy.code = vehicle_energy.code'
+				.' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_consumable_energy AS ce ON ce.fk_energy = energy.rowid';
+			$sql .= ' WHERE v.rowid = '.((int) $this->fk_vehicle).' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'v');
 			$sql .= ' AND ce.fk_consumable = '.((int) $this->fk_consumable);
 			$sql .= ' AND ce.entity IN ('.getEntity('c_lmdbvehiclemanagement_consumable').') LIMIT 1';
 			$resql = $this->db->query($sql);
@@ -412,14 +411,17 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 	/** @return float|null */
 	public function getConfiguredCapacity()
 	{
-		$sql = 'SELECT capacity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity';
-		$sql .= ' WHERE entity = '.((int) $this->entity).' AND fk_vehicle = '.((int) $this->fk_vehicle);
-		$sql .= ' AND fk_consumable = '.((int) $this->fk_consumable).' LIMIT 1';
+		$sql = 'SELECT cap.capacity FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_capacity cap';
+		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle v ON v.rowid = cap.fk_vehicle AND v.entity = cap.entity';
+		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable source ON source.rowid = cap.fk_consumable';
+		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_consumable selected ON selected.code = source.code AND selected.unit = source.unit AND selected.category = source.category';
+		$sql .= ' WHERE v.rowid = '.((int) $this->fk_vehicle).' AND selected.rowid = '.((int) $this->fk_consumable);
+		$sql .= ' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'v').' LIMIT 2';
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			return null;
 		}
-		$row = $this->db->fetch_object($resql);
+		$row = $this->db->num_rows($resql) === 1 ? $this->db->fetch_object($resql) : null;
 		$this->db->free($resql);
 		return is_object($row) ? (float) $row->capacity : null;
 	}
@@ -442,7 +444,10 @@ class LmdbVehicleConsumption extends LmdbVehicleManagementObject
 		if ($resql && is_object($row = $db->fetch_object($resql))) {
 			$id = (int) $row->fk_consumable;
 			$db->free($resql);
-			return $id;
+			$dictionary = new LmdbVehicleConsumable($db);
+			$options = $dictionary->getOptions('fuel', $vehicleId);
+			if (isset($options[$id])) return $id;
+			return count($options) === 1 ? (int) array_key_first($options) : 0;
 		}
 		if ($resql) {
 			$db->free($resql);

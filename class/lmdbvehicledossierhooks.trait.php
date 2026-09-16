@@ -60,7 +60,7 @@ trait LmdbVehicleDossierHooks
 		if (!preg_match('~(?:^|/)lmdb-dossier-([0-9]+)(?:[./-]|$)~i', $path, $match)) return $sharing === true ? 1 : 0;
 		$actor = $parameters['fuser'] ?? null;
 		// The core ignores accessallowed=0 from this hook: denial must stop output.
-		if (!is_object($actor) || empty($actor->id) || !empty($actor->socid) || !LmdbVehicleSharing::can($actor, '', 'read') || !$actor->hasRight('fournisseur', 'facture', 'lire') || GETPOST('hashp', 'aZ09') !== '') httponly_accessforbidden('', 403);
+		if (!is_object($actor) || empty($actor->id) || !empty($actor->socid) || !(isModEnabled('lmdbvehiclemanagement') && empty($actor->socid) && $actor->hasRight('lmdbvehiclemanagement', 'read')) || !$actor->hasRight('fournisseur', 'facture', 'lire') || GETPOST('hashp', 'aZ09') !== '') httponly_accessforbidden('', 403);
 		require_once __DIR__.'/lmdbvehicle.class.php';
 		$vehicle = new LmdbVehicle($this->db);
 		if ($vehicle->fetch((int) $match[1]) <= 0 || (int) $vehicle->entity !== (int) ($parameters['entity'] ?? 0)) httponly_accessforbidden('', 403);
@@ -84,7 +84,7 @@ trait LmdbVehicleDossierHooks
 		header('Cache-Control: private, no-store');
 		header('Pragma: no-cache');
 		header('Expires: 0');
-		if (empty($user->id) || !empty($user->socid) || !LmdbVehicleSharing::can($user, '', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || GETPOST('hashp', 'aZ09') !== '') httponly_accessforbidden('', 403);
+		if (empty($user->id) || !empty($user->socid) || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !$user->hasRight('fournisseur', 'facture', 'lire') || GETPOST('hashp', 'aZ09') !== '') httponly_accessforbidden('', 403);
 		require_once __DIR__.'/lmdbvehicle.class.php';
 		$vehicle = new LmdbVehicle($this->db);
 		if ($vehicle->fetch((int) $match[1]) <= 0) httponly_accessforbidden('', 403);
@@ -112,7 +112,7 @@ trait LmdbVehicleDossierHooks
 		header('Cache-Control: private, no-store');
 		header('Pragma: no-cache');
 		header('Expires: 0');
-		if (empty($user->id) || !empty($user->socid) || !LmdbVehicleSharing::can($user, '', 'read') || !$user->hasRight('fournisseur', 'facture', 'lire') || GETPOST('hashp', 'aZ09') !== '') {
+		if (empty($user->id) || !empty($user->socid) || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !$user->hasRight('fournisseur', 'facture', 'lire') || GETPOST('hashp', 'aZ09') !== '') {
 			// Do not call top_httphead()/accessforbidden() recursively from its hook.
 			http_response_code(403); header('Content-Length: 0'); exit;
 		}

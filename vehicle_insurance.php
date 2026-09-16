@@ -18,7 +18,7 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleinsurancecertificate.c
 
 $langs->loadLangs(array('main', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $contractId = GETPOSTINT('contract_id');

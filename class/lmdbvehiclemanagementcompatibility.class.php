@@ -31,8 +31,8 @@ class LmdbVehicleManagementCompatibility
 			'quartix_independent_sharing' => array(
 				'label' => 'QxData', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',
 				'description' => 'QxIndependentSharingCompatibility',
-				'available' => LmdbVehicleSharing::available(),
-				'reason' => LmdbVehicleSharing::available() ? '' : 'LmdbSharingRequiresMulticompany21',
+				'available' => $dolibarr20 && $php80 && isModEnabled('multicompany'),
+				'reason' => !$dolibarr20 ? 'RequiresDolibarr20' : (!$php80 ? 'RequiresPhp80' : (!isModEnabled('multicompany') ? 'LmdbSharingRequiresMulticompany' : '')),
 			),
 			'multicompany_individual_sharing' => array(
 				'label' => 'LmdbIndividualSharing', 'min_dolibarr' => '20.0.0', 'min_php' => '8.0.0',

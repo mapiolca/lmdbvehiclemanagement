@@ -16,7 +16,7 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleconsumptionpayment.cla
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) {
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) {
 	accessforbidden();
 }
 

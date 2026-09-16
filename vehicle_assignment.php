@@ -21,14 +21,25 @@ $id = GETPOSTINT('id');
 $assignmentId = GETPOSTINT('assignment_id');
 $action = GETPOST('action', 'aZ09');
 $confirm = GETPOST('confirm', 'alpha');
-$permissionToManage = LmdbVehicleSharing::can($user, 'assignment', 'write');
+$permissionToManage = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'assignment', 'write'));
 $vehicle = new LmdbVehicle($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
-if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
+if ($id <= 0) accessforbidden($langs->trans('RecordNotFound'));
+$vehicleReadable = $vehicle->fetch($id) > 0;
+if (!$vehicleReadable) {
+	// Retain only local history; never populate a stand-in with live vehicle data.
+	$resHistory = $db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_assignment WHERE fk_vehicle = '.$id.' AND entity = '.((int) $conf->entity).' LIMIT 1');
+	$hasHistory = $resHistory && is_object($db->fetch_object($resHistory));
+	if ($resHistory) $db->free($resHistory);
+	if (!$hasHistory || !in_array($action, array('', 'list'), true)) accessforbidden($langs->trans('RecordNotFound'));
+	$permissionToManage = false;
+	$vehicle = new LmdbVehicle($db);
+}
+
 
 $assignment = new LmdbVehicleAssignment($db);
 if ($assignmentId > 0) {
-	if ($assignment->fetch($assignmentId) <= 0 || (int) $assignment->fk_vehicle !== $id || (int) $assignment->entity !== (int) $vehicle->entity) {
+	if ($assignment->fetch($assignmentId) <= 0 || (int) $assignment->fk_vehicle !== $id) {
 		accessforbidden($langs->trans('RecordNotFound'));
 	}
 }
@@ -88,16 +99,17 @@ llxHeader('', $vehicle->ref.' - '.$langs->trans('VehicleAssignments'), '', '', 0
 if ($action === 'delete' && $assignmentId > 0) {
 	print $form->formconfirm($_SERVER['PHP_SELF'].'?id='.$id.'&assignment_id='.$assignmentId, $langs->trans('Delete'), $langs->trans('ConfirmDeleteAssignment'), 'confirm_delete', '', 0, 1);
 }
-$head = lmdbVehiclePrepareHead($vehicle);
+$head = $vehicleReadable ? lmdbVehiclePrepareHead($vehicle) : array(array($_SERVER['PHP_SELF'].'?id='.$id, $langs->trans('VehicleAssignments'), 'assignments'));
 print dol_get_fiche_head($head, 'assignments', $langs->trans('Vehicle'), -1, $vehicle->picto);
-lmdbVehiclePrintBanner($vehicle);
+if ($vehicleReadable) lmdbVehiclePrintBanner($vehicle);
+else print '<div class="info">'.$langs->trans('LmdbLocalHistoryVehicleUnavailable').'</div>';
 if ($assignmentId > 0) lmdbSharingRender($assignment);
 
 if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
 	print '<form class="lmdb-responsive-form" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
 	print '<input type="hidden" name="assignment_id" value="'.((int) $assignment->id).'"><input type="hidden" name="action" value="'.($action === 'edit' ? 'update' : 'add').'">';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
-	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('Driver').'</td><td>'.$form->select_dolusers($assignment->fk_user_driver, 'fk_user_driver', 1, null, 0, '', '', $vehicle->entity, 0, 1, '', 0, '', 'minwidth300', 0, 0, false, 1).'</td></tr>';
+	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('Driver').'</td><td>'.$form->select_dolusers($assignment->fk_user_driver, 'fk_user_driver', 1, null, 0, '', '', $conf->entity, 0, 1, '', 0, '', 'minwidth300', 0, 0, false, 1).'</td></tr>';
 	print '<tr><td class="fieldrequired">'.$langs->trans('AssignmentStart').'</td><td>'.$form->selectDate($assignment->date_start ?: dol_now(), 'date_start', 1, 1, 0, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('AssignmentEnd').'</td><td>'.$form->selectDate($assignment->date_end ?: -1, 'date_end', 1, 1, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('AssignmentType').'</td><td>'.$form->selectarray('assignment_type', $assignment->fields['assignment_type']['arrayofkeyval'], $assignment->assignment_type, 0, 0, 0, '', 1, 0, 0, '', 'minwidth200', 1).'</td></tr>';

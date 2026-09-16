@@ -10,6 +10,20 @@ dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleodometerreading.class.
 /** QUARTIX persistence. Every write belongs to the current, owning entity. */
 class LmdbVehicleQuartixService
 {
+	/** Association availability for vehicle tabs. Never contacts the provider.
+	 * @param DoliDB $db Database @param int $vehicleId Vehicle @return bool
+	 */
+	public static function hasAccessibleAssociation($db, $vehicleId)
+	{
+		$sql = 'SELECT l.fk_vehicle FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_link l';
+		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_qx_dataset q ON q.rowid = l.fk_quartix AND q.entity = l.entity AND q.fk_vehicle = l.fk_vehicle';
+		$sql .= ' WHERE l.fk_vehicle = '.((int) $vehicleId).' AND '.LmdbVehicleSharing::sql($db, 'lmdbvehiclequartix', 'q').' LIMIT 1';
+		$res = $db->query($sql);
+		if (!$res) return false;
+		$found = is_object($db->fetch_object($res));
+		$db->free($res);
+		return $found;
+	}
 	/** @var DoliDB */ public $db;
 	/** @param DoliDB $db Database */
 	public function __construct($db) { $this->db = $db; }

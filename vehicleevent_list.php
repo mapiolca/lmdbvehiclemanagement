@@ -19,7 +19,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var User $user */
 
 $langs->loadLangs(array('main', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 
 $limit = GETPOSTINT('limit') ?: (int) $conf->liste_limit;
 $page = GETPOSTISSET('pageplusone') ? GETPOSTINT('pageplusone') - 1 : GETPOSTINT('page');
@@ -110,7 +110,7 @@ if ($offset > $total) {
 }
 $sql = 'SELECT e.*, v.ref AS vehicle_ref, v.registration_number';
 $sql .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle_event AS e';
-$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = e.fk_vehicle AND v.entity = e.entity';
+$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = e.fk_vehicle AND '.LmdbVehicleSharing::sql($db, 'lmdbvehicle', 'v').'';
 $sql .= $where.$db->order($sortfield, $sortorder).$db->plimit($limit + 1, $offset);
 $resql = $db->query($sql);
 if (!$resql) {
@@ -134,7 +134,7 @@ print '<form method="POST" id="searchFormList" action="'.$_SERVER['PHP_SELF'].'"
 print '<input type="hidden" name="token" value="'.newToken().'">';
 print '<input type="hidden" name="formfilteraction" id="formfilteraction" value="list">';
 print '<input type="hidden" name="action" value="list"><input type="hidden" name="sortfield" value="'.dol_escape_htmltag($sortfield).'"><input type="hidden" name="sortorder" value="'.dol_escape_htmltag($sortorder).'"><input type="hidden" name="page" value="'.((int) $page).'">';
-$newButton = dolGetButtonTitle($langs->trans('NewVehicleEvent'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create&token='.newToken(), '', LmdbVehicleSharing::can($user, 'event', 'write'));
+$newButton = dolGetButtonTitle($langs->trans('NewVehicleEvent'), '', 'fa fa-plus-circle', dol_buildpath('/lmdbvehiclemanagement/vehicleevent_card.php', 1).'?action=create&token='.newToken(), '', (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'event', 'write')));
 print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $param, $sortfield, $sortorder, '', $num, $total, 'calendar-day', 0, $newButton, '', $limit, 0, 0, 1);
 $varpage = empty($contextpage) ? $_SERVER['PHP_SELF'] : $contextpage;
 $selectedfields = $form->multiSelectArrayWithCheckbox('selectedfields', $arrayfields, $varpage, $conf->main_checkbox_left_column);
@@ -175,7 +175,7 @@ while ($i < min($num, $limit) && is_object($row = $db->fetch_object($resql))) {
 	print '<tr class="oddeven">';
 	if ($conf->main_checkbox_left_column) print '<td class="center nowraponall actioncolumn"></td>';
 	if (!empty($arrayfields['e.ref']['checked'])) print '<td>'.$object->getNomUrl(1).'</td>';
-	if (!empty($arrayfields['e.fk_vehicle']['checked'])) print '<td><a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?id='.((int) $row->fk_vehicle).'">'.dol_escape_htmltag(lmdbVehicleDisplayIdentifier((string) $row->vehicle_ref, (string) $row->registration_number)).'</a></td>';
+	if (!empty($arrayfields['e.fk_vehicle']['checked'])) print '<td>'.($row->vehicle_ref !== null ? '<a href="'.dol_buildpath('/lmdbvehiclemanagement/vehicle_card.php', 1).'?id='.((int) $row->fk_vehicle).'">'.dol_escape_htmltag(lmdbVehicleDisplayIdentifier((string) $row->vehicle_ref, (string) $row->registration_number)).'</a>' : '').'</td>';
 	if (!empty($arrayfields['e.label']['checked'])) print '<td>'.dol_escape_htmltag($object->label).'</td>';
 	if (!empty($arrayfields['e.event_type']['checked'])) print '<td>'.$langs->trans($object->fields['event_type']['arrayofkeyval'][$object->event_type]).'</td>';
 	if (!empty($arrayfields['e.event_date']['checked'])) print '<td class="center">'.dol_print_date($object->event_date, 'dayhour').'</td>';

@@ -72,7 +72,7 @@ function lmdbVehicleManagementAdminPrepareHead()
  */
 function lmdbVehiclePrepareHead($object)
 {
-	global $langs, $user;
+	global $db, $langs, $user;
 
 	$langs->loadLangs(array('companies', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 	$id = (int) $object->id;
@@ -91,7 +91,8 @@ function lmdbVehiclePrepareHead($object)
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_regulatory.php', 1).'?id='.$id, $langs->trans('RegulatoryControls'), 'regulatory');
 	$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_history.php', 1).'?id='.$id, $langs->trans('VehicleHistory'), 'history');
 	require_once __DIR__.'/../class/lmdbvehiclequartixconfig.class.php';
-	if (LmdbVehicleQuartixConfig::supported() && (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read'))) {
+	require_once __DIR__.'/../class/lmdbvehiclequartixservice.class.php';
+	if (LmdbVehicleQuartixConfig::supported() && isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && LmdbVehicleQuartixService::hasAccessibleAssociation($db, $id)) {
 		$head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_quartix.php', 1).'?id='.$id, $langs->trans('QxUsage'), 'quartix');
 		if ($user->hasRight('lmdbvehiclemanagement', 'quartix', 'location')) $head[$h++] = array(dol_buildpath('/lmdbvehiclemanagement/vehicle_trips.php', 1).'?id='.$id, $langs->trans('QxJournal'), 'trips');
 	}
@@ -523,7 +524,7 @@ function lmdbVehiclePrintInsuranceBlock($object)
 		$headerActions = $contract->getNomUrl(1);
 	} elseif (!empty($allContracts)) {
 		$headerActions = $allContracts[0]['contract']->getNomUrl(1);
-	} elseif (LmdbVehicleSharing::can($user, 'insurance', 'write')) {
+	} elseif ((isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'insurance', 'write'))) {
 		$linkUrl = dol_buildpath('/lmdbvehiclemanagement/vehicle_insurance_link.php', 1).'?id='.((int) $object->id);
 		$createUrl = dol_buildpath('/lmdbvehiclemanagement/insurancecontract_card.php', 1).'?action=create&vehicle_id='.((int) $object->id);
 		$headerActions = dolGetButtonTitle($langs->trans('LinkInsuranceContract'), '', 'fa fa-link', $linkUrl);

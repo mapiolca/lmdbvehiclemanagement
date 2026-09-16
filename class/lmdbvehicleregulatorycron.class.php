@@ -59,11 +59,12 @@ class LmdbVehicleRegulatoryCron
 			}
 			if ($this->removeObsoleteAgendaEvents($entity, $user) < 0) return -1;
 
-			$sql = 'SELECT req.rowid, req.entity, req.fk_vehicle, req.fk_actioncomm, req.retained_due_date, req.status, rr.label AS rule_label,';
+			$sql = 'SELECT req.rowid, req.entity, req.fk_vehicle, req.fk_actioncomm, req.retained_due_date, '.LmdbVehicleSharing::requirementStatusSql($this->db).' AS status, rr.label AS rule_label,';
 			$sql .= ' v.ref AS vehicle_ref, v.registration_number, v.label AS vehicle_label';
 			$sql .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS req';
 			$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS rr ON rr.rowid = req.fk_rule';
 			$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = req.fk_vehicle AND v.entity = req.entity';
+			$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control c ON c.rowid = req.fk_last_control AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicleregulatorycontrol', 'c');
 			$sql .= ' WHERE req.entity = '.$entity.' AND req.active = 1 AND req.retained_due_date IS NOT NULL AND v.status <> 4';
 			$resql = $this->db->query($sql);
 			if (!$resql) {

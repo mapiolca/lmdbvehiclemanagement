@@ -133,7 +133,7 @@ class LmdbVehicleConsumptionPayment
 	{
 		global $conf;
 
-		if (!LmdbVehicleSharing::can($user, 'consumption', 'write')) {
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write'))) {
 			return $this->businessError('NotEnoughPermissions');
 		}
 		$fuelResult = self::isEnabled() ? $this->consumableIsFuel((int) $consumption->fk_consumable) : 0;
@@ -232,7 +232,7 @@ class LmdbVehicleConsumptionPayment
 	 */
 	public function updateConsumption($consumption, User $user)
 	{
-		if (!LmdbVehicleSharing::can($user, 'consumption', 'write')) {
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write'))) {
 			return $this->businessError('NotEnoughPermissions');
 		}
 		$current = new LmdbVehicleConsumption($this->db);
@@ -292,7 +292,7 @@ class LmdbVehicleConsumptionPayment
 	 */
 	public function deleteConsumption($consumption, User $user)
 	{
-		if (!LmdbVehicleSharing::can($user, 'consumption', 'delete')) {
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'delete'))) {
 			return $this->businessError('NotEnoughPermissions');
 		}
 		if (empty($consumption->fk_payment_various)) {
@@ -350,7 +350,7 @@ class LmdbVehicleConsumptionPayment
 	 */
 	public function replaceReceipt($consumption, $upload, User $user)
 	{
-		if (!LmdbVehicleSharing::can($user, 'consumption', 'write')) {
+		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'consumption', 'write'))) {
 			return $this->businessError('NotEnoughPermissions');
 		}
 		$locked = $this->isLocked($consumption);

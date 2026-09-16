@@ -228,12 +228,10 @@ class LmdbVehicleEvent extends LmdbVehicleManagementObject
 			$this->errors[] = $this->error;
 			return -1;
 		}
-		if (is_object($this->oldcopy) && !empty($this->oldcopy->entity) && (int) $this->oldcopy->entity !== (int) $obj->entity) {
-			$this->error = 'CannotMoveObjectBetweenEntities';
-			$this->errors[] = $this->error;
-			return -1;
-		}
-		$this->entity = (int) $obj->entity;
+		global $conf;
+		// The vehicle grants access, but does not own this entity's new record.
+		$this->entity = !empty($this->id) && is_object($this->oldcopy)
+			? (int) $this->oldcopy->entity : (int) $conf->entity;
 		return 1;
 	}
 

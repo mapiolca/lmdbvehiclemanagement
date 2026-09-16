@@ -22,15 +22,15 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var Translate $langs */
 /** @var User $user */
 $langs->loadLangs(array('main', 'companies', 'agenda', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09') ?: 'view';
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionWrite = LmdbVehicleSharing::can($user, 'regulatorycontrol', 'write');
-$permissionValidate = LmdbVehicleSharing::can($user, 'regulatorycontrol', 'validate');
-$permissionDelete = LmdbVehicleSharing::can($user, 'regulatorycontrol', 'delete');
+$permissionWrite = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write'));
+$permissionValidate = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'validate'));
+$permissionDelete = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'delete'));
 $object = new LmdbVehicleRegulatoryControl($db);
 if ($id > 0 && $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 
@@ -107,7 +107,7 @@ $resql = $db->query($sql);
 if ($resql) { while (is_object($row = $db->fetch_object($resql))) $vehicleOptions[(int) $row->rowid] = trim((string) $row->registration_number) !== '' ? (string) $row->registration_number.' — '.(string) $row->label : (string) $row->ref.' — '.(string) $row->label; $db->free($resql); }
 $requirementOptions = array();
 $requirementRules = array();
-$sql = 'SELECT req.rowid, req.fk_vehicle, req.fk_rule, v.ref AS vehicle_ref, v.registration_number, r.label AS rule_label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS req INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = req.fk_vehicle AND v.entity = req.entity INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r ON r.rowid = req.fk_rule AND r.entity = req.entity WHERE req.active = 1 AND req.entity IN ('.getEntity('lmdbvehicleregulatorycontrol').') AND '.LmdbVehicleSharing::requirementSql($db).' ORDER BY v.ref, r.label';
+$sql = 'SELECT req.rowid, req.fk_vehicle, req.fk_rule, v.ref AS vehicle_ref, v.registration_number, r.label AS rule_label FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS req INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = req.fk_vehicle AND v.entity = req.entity INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r ON r.rowid = req.fk_rule AND r.entity = req.entity WHERE req.active = 1 AND '.LmdbVehicleSharing::requirementSql($db).' ORDER BY v.ref, r.label';
 $resql = $db->query($sql);
 if ($resql) { while (is_object($row = $db->fetch_object($resql))) { $vehicleLabel = trim((string) $row->registration_number) !== '' ? (string) $row->registration_number : (string) $row->vehicle_ref; $requirementOptions[(int) $row->rowid] = $vehicleLabel.' — '.$langs->trans((string) $row->rule_label); $requirementRules[(int) $row->rowid] = array('vehicle' => (int) $row->fk_vehicle, 'rule' => (int) $row->fk_rule); } $db->free($resql); }
 $resultOptions = array();

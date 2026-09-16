@@ -29,7 +29,7 @@ trait LmdbVehicleSharingHooks
 			|| ($parameters['features'] ?? '') !== 'lmdbvehiclemanagement' || GETPOST('action', 'aZ09') !== '') return 0;
 		$target = isset($parameters['object']) && is_object($parameters['object']) ? $parameters['object'] : $object;
 		if (!($target instanceof LmdbVehicleManagementObject) || (int) $target->id !== (int) ($parameters['objectid'] ?? 0)) return 0;
-		$this->results['result'] = LmdbVehicleSharing::canReadObject($this->db, $user, $target) ? 1 : 0;
+		$this->results['result'] = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && LmdbVehicleSharing::visible($this->db, (string) $target->element, (int) $target->id)) ? 1 : 0;
 		return $this->results['result'] === 1 ? 1 : 0;
 	}
 

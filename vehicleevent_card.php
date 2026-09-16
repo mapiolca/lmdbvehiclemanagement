@@ -24,9 +24,9 @@ $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09') ?: 'view';
 $confirm = GETPOST('confirm', 'alpha');
 $cancel = GETPOST('cancel', 'alpha');
-$permissionToWrite = LmdbVehicleSharing::can($user, 'event', 'write');
+$permissionToWrite = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'event', 'write'));
 $object = new LmdbVehicleEvent($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 if ($id > 0 && $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $hookmanager->initHooks(array('lmdbvehicleeventcard', 'globalcard'));
 

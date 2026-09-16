@@ -24,7 +24,18 @@ $confirm = GETPOST('confirm', 'alpha');
 $permissionToManage = $user->hasRight('lmdbvehiclemanagement', 'odometer', 'write');
 $vehicle = new LmdbVehicle($db);
 if (!isModEnabled('lmdbvehiclemanagement') || !$user->hasRight('lmdbvehiclemanagement', 'read') || !empty($user->socid)) accessforbidden();
-if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
+if ($id <= 0) accessforbidden($langs->trans('RecordNotFound'));
+$vehicleReadable = $vehicle->fetch($id) > 0;
+if (!$vehicleReadable) {
+	// Retain only local history; never populate a stand-in with live vehicle data.
+	$resHistory = $db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_odometer_reading WHERE fk_vehicle = '.$id.' AND entity = '.((int) $conf->entity).' LIMIT 1');
+	$hasHistory = $resHistory && is_object($db->fetch_object($resHistory));
+	if ($resHistory) $db->free($resHistory);
+	if (!$hasHistory || !in_array($action, array('', 'list'), true)) accessforbidden($langs->trans('RecordNotFound'));
+	$permissionToManage = false;
+	$vehicle = new LmdbVehicle($db);
+}
+
 
 require_once __DIR__.'/lib/lmdbvehiclequartix.lib.php';
 $quartixService = new LmdbVehicleQuartixService($db);
@@ -36,7 +47,7 @@ $showEntityColumn = isModEnabled('multicompany') && count($entityOptions) > 1;
 $searchEntities = array_values(array_intersect(array_keys($entityOptions), array_map('intval', (array) GETPOST('search_entity', 'array'))));
 $reading = new LmdbVehicleOdometerReading($db);
 if ($readingId > 0) {
-	if ($reading->fetch($readingId) <= 0 || (int) $reading->fk_vehicle !== $id || (empty($reading->fk_quartix) && (int) $reading->entity !== (int) $vehicle->entity)) {
+	if ($reading->fetch($readingId) <= 0 || (int) $reading->fk_vehicle !== $id) {
 		accessforbidden($langs->trans('RecordNotFound'));
 	}
 	if (!empty($reading->fk_quartix)) {
@@ -97,9 +108,10 @@ llxHeader('', $vehicle->ref.' - '.$langs->trans('OdometerReadings'), '', '', 0, 
 if ($action === 'delete' && $readingId > 0) {
 	print $form->formconfirm($_SERVER['PHP_SELF'].'?id='.$id.'&reading_id='.$readingId, $langs->trans('Delete'), $langs->trans('ConfirmDeleteOdometerReading'), 'confirm_delete', '', 0, 1);
 }
-$head = lmdbVehiclePrepareHead($vehicle);
+$head = $vehicleReadable ? lmdbVehiclePrepareHead($vehicle) : array(array($_SERVER['PHP_SELF'].'?id='.$id, $langs->trans('OdometerReadings'), 'odometer'));
 print dol_get_fiche_head($head, 'odometer', $langs->trans('Vehicle'), -1, $vehicle->picto);
-lmdbVehiclePrintBanner($vehicle);
+if ($vehicleReadable) lmdbVehiclePrintBanner($vehicle);
+else print '<div class="info">'.$langs->trans('LmdbLocalHistoryVehicleUnavailable').'</div>';
 lmdbQuartixSourceSelector($quartixService, $id, $quartixId);
 if ($readingId > 0) lmdbSharingRender($reading);
 

@@ -190,7 +190,7 @@ $checks = array(
 		&& strpos($vehicleRegulatory, 'selectDate(') !== false,
 	'qualification_status_uses_native_badge' => strpos($vehicleRegulatory, "dolGetStatus(\$langs->trans('QualificationToConfirm'), '', '', 'status3', 5)") !== false && strpos($vehicleRegulatory, "dolGetStatus(\$langs->trans('QualificationConfirmed'), '', '', 'status4', 5)") !== false,
 	'control_form_uses_native_buttons' => strpos($card, '<input type="submit" class="button button-save"') !== false && strpos($card, '<input type="submit" class="button button-cancel" name="cancel"') !== false && strpos($card, 'formnovalidate') !== false && strpos($vehicleRegulatory, '<input type="submit" class="button button-save"') !== false,
-	'schedule_status_is_centered_native_badge' => strpos($schedule, "if (!empty(\$arrayfields['req.status']['checked'])) print '<td class=\"center\">'.\$form->selectarray('search_status'") !== false && strpos($schedule, "\$statusTypes[\$row->status] ?? 'status0', 5") !== false,
+	'schedule_status_is_centered_native_badge' => strpos($schedule, "if (!empty(\$arrayfields['req.status']['checked'])) print '<td class=\"center\">'.\$form->selectarray('search_status'") !== false && strpos($schedule, "\$statusTypes[\$row->visible_status] ?? 'status0', 5") !== false,
 	'overdue_requirement_uses_native_danger_badge' => strpos($schedule, "'overdue' => 'status8'") !== false && strpos($vehicleRegulatory, "'overdue' => 'status8'") !== false,
 	'validated_controls_archive_only_after_replacement' => strpos($control, 'fk_previous_control = '."'.((int) \$current->id)") !== false
 		&& strpos($control, 'status = '."'.self::STATUS_VALIDATED") !== false

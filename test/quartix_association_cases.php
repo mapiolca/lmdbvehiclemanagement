@@ -28,7 +28,7 @@ qxCheck($transferReading->deleteQuartix($user) < 0, 'Import purge requires confi
 $user->admin = 1;
 $conf->entity = 2;
 $mc = new class { public function getEntity($element, $shared = 1, $object = null) { return '1,2'; } };
-qxReject(static function () use ($associationService, $user, $transferLink) { $associationService->disassociate($user, 3, (int) $transferLink->rowid, 'error'); }, 'QxNoData');
+qxReject(static function () use ($associationService, $user, $transferLink) { $associationService->disassociate($user, 3, (int) $transferLink->rowid, 'error'); }, 'QxAccessDenied');
 qxCheck($transferReading->deleteQuartix($user) < 0, 'Shared vehicle cannot be purged from the consulting entity');
 $conf->entity = 1; $mc = null;
 QxTestDataset::$failTrigger = true;

@@ -68,7 +68,7 @@ class LmdbVehicleConsumptionImport
 		if (isset($values['fk_vehicle'])) {
 			$identifier = $this->db->escape($values['fk_vehicle']);
 			$registration = $this->db->escape(LmdbVehicle::normalizeRegistrationNumber($values['fk_vehicle']));
-			$vehicleId = $this->findUnique('lmdbvehiclemanagement_vehicle', "(ref = '".$identifier."' OR registration_number = '".$registration."') AND entity = ".$entity);
+			$vehicleId = $this->findUnique('lmdbvehiclemanagement_vehicle', "(ref = '".$identifier."' OR registration_number = '".$registration."') AND ".LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle'));
 			if ($vehicleId <= 0) return -1;
 		}
 		if ($vehicleId <= 0) return $this->fail('InvalidVehicle');
@@ -104,7 +104,7 @@ class LmdbVehicleConsumptionImport
 			$vehicles = array_unique(array_filter(array($oldVehicle, $vehicleId)));
 			sort($vehicles, SORT_NUMERIC);
 			foreach ($vehicles as $id) {
-				if ($this->findUnique('lmdbvehiclemanagement_vehicle', 'rowid = '.((int) $id).' AND entity = '.$entity, true, true) <= 0) throw new RuntimeException($this->error);
+				if ($this->findUnique('lmdbvehiclemanagement_vehicle', 'rowid = '.((int) $id).' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle'), true, true) <= 0) throw new RuntimeException($this->error);
 			}
 			if ($referenceWhere !== '') {
 				$lockedId = $this->findUnique('lmdbvehiclemanagement_consumption', $referenceWhere.' AND entity = '.$entity, false, true);

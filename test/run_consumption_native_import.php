@@ -5,7 +5,7 @@
 define('MAIN_DB_PREFIX', 'test_');
 function dol_include_once($path) {}
 function isModEnabled($module) { return $GLOBALS['enabled']; }
-function getEntity($element) { return '2'; }
+function getEntity($element) { return (string) $GLOBALS['conf']->entity; }
 function getDolGlobalString($key, $default = '') { return $default; }
 function getDolGlobalInt($key, $default = 0) { return $GLOBALS['conf']->global->{$key} ?? $default; }
 function price2num($value, $mode = '') { $v = (float) str_replace(',', '.', (string) $value); return $mode === 'MT' ? round($v, $GLOBALS['precision']) : $v; }
@@ -117,7 +117,7 @@ class ImportDb {
 			foreach (array('DIESEL' => 1, 'ADBLUE' => 2, 'ELECTRICITY' => 3) as $code => $id) if (strpos($sql, "code = '".$code."'") !== false) $rows[] = (object) array('rowid' => $id);
 			if ($this->ambiguous && $rows) $rows[] = (object) array('rowid' => 4);
 		} elseif (strpos($sql, 'FROM test_lmdbvehiclemanagement_vehicle') !== false) {
-			if (strpos($sql, "'UNKNOWN'") === false && strpos($sql, 'entity = 3') === false) $rows[] = (object) array('rowid' => 1, 'entity' => 2);
+			if (strpos($sql, "'UNKNOWN'") === false && strpos($sql, 'entity = 3') === false && strpos($sql, 'entity IN (3)') === false) $rows[] = (object) array('rowid' => 1, 'entity' => 2);
 		} elseif (strpos($sql, 'FROM test_user') !== false) {
 			if (strpos($sql, "'UNKNOWN'") === false) $rows[] = (object) array('rowid' => 7);
 		} else throw new RuntimeException('Unexpected SQL '.$sql);

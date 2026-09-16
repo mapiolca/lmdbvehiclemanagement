@@ -79,7 +79,6 @@ function lmdbSharingRender($object, $embedded = false)
 		if (empty($object->id)) $object->entity = (int) $conf->entity;
 		if ((int) $object->entity !== (int) $conf->entity || !LmdbVehicleSharing::isAdmin($user)) return;
 	}
-	if ($object->element === 'lmdbvehicleodometerreading' && !empty($object->fk_quartix)) { print '<p>'.$langs->trans('QxSharingOnDataset').'</p>'; return; }
 	$element = LmdbVehicleSharing::element((string) $object->element);
 	if (!LmdbVehicleSharing::individual($element)) return;
 	$langs->loadLangs(array('multicompany@multicompany', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));

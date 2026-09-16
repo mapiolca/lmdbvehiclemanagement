@@ -129,7 +129,7 @@ $rawRoute['InProgress'] = false; $routeReply[0]['Trips'] = array($rawRoute);
 $trips->saveDay($tripLink,array($trip),$tripDay,'qws');
 $conf->entity = 2;
 qxReject(static function () use ($routes,$routeDayId,$routeKey) { $routes->view($routeDayId,$routeKey); }, 'QxAccessDenied');
-$mc = new class { public function getEntity($element,$shared=1,$object=null) { return '1,2'; } };
+$mc = new class { public function getEntity($element,$shared=1,$object=null) { global $conf; return $element === 'lmdbvehiclequartix' ? (string) $conf->entity : '1,2'; } };
 foreach (array('ROUTES_ENABLED'=>'1','ENABLED'=>'1','TRIP_RETENTION_DAYS'=>'30') as $k=>$v) $db->query("INSERT INTO ".MAIN_DB_PREFIX."const (entity,name,value) VALUES (1,'LMDBVEHICLEMANAGEMENT_QX_".$k."','".$v."')");
 $calls = count($routes->client->calls);
 qxReject(static function () use ($routes,$routeDayId,$routeKey) { $routes->requestRoute($routeDayId,$routeKey); }, 'QxAccessDenied');

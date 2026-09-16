@@ -21,10 +21,10 @@ $langs->loadLangs(array('companies', 'lmdbvehiclemanagement@lmdbvehiclemanagemen
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
 $object = new LmdbVehicle($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 
-$permissionnote = LmdbVehicleSharing::can($user, 'lmdbvehicle', 'write');
+$permissionnote = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write'));
 $hookmanager->initHooks(array('lmdbvehiclenote', 'globalcard'));
 $parameters = array('id' => $id);
 $reshook = $hookmanager->executeHooks('doActions', $parameters, $object, $action);

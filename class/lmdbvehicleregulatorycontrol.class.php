@@ -218,12 +218,14 @@ class LmdbVehicleRegulatoryControl extends LmdbVehicleManagementObject
 	protected function validateBusinessRules()
 	{
 		if ($this->fk_vehicle <= 0 || $this->fk_requirement <= 0) return $this->businessError('RegulatoryRequirementRequired');
-		$sql = 'SELECT req.entity, req.fk_vehicle, req.fk_rule FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS req WHERE req.rowid = '.((int) $this->fk_requirement).' AND req.active = 1 AND req.entity IN ('.getEntity('lmdbvehicleregulatorycontrol').') AND '.LmdbVehicleSharing::requirementSql($this->db);
+		$sql = 'SELECT req.entity, req.fk_vehicle, req.fk_rule FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS req WHERE req.rowid = '.((int) $this->fk_requirement).' AND req.active = 1 AND '.LmdbVehicleSharing::requirementSql($this->db);
 		$resql = $this->db->query($sql);
 		if (!$resql) { $this->error = $this->db->lasterror(); return -1; }
 		$row = $this->db->fetch_object($resql); $this->db->free($resql);
 		if (!is_object($row) || (int) $row->fk_vehicle !== (int) $this->fk_vehicle) return $this->businessError('InvalidRegulatoryRequirement');
-		$this->entity = (int) $row->entity; $this->fk_rule = (int) $row->fk_rule;
+		global $conf;
+		if (empty($this->id)) $this->entity = (int) $conf->entity;
+		$this->fk_rule = (int) $row->fk_rule;
 		if (!in_array($this->control_kind, array('periodic', 'initial', 'recommissioning', 'recheck'), true)) return $this->businessError('InvalidControlKind');
 		if ($this->control_date <= 0) return $this->businessError('ControlDateRequired');
 		if (!empty($this->result_code)) {
@@ -239,9 +241,9 @@ class LmdbVehicleRegulatoryControl extends LmdbVehicleManagementObject
 			if (!$valid) return $this->businessError('InvalidControlBody');
 		}
 		if (!empty($this->fk_previous_control)) {
-			$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control';
-			$sql .= ' WHERE rowid = '.((int) $this->fk_previous_control).' AND entity = '.((int) $this->entity);
-			$sql .= ' AND fk_vehicle = '.((int) $this->fk_vehicle).' AND status = '.self::STATUS_CANCELLED;
+			$sql = 'SELECT previous_control.rowid FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control AS previous_control';
+			$sql .= ' WHERE previous_control.rowid = '.((int) $this->fk_previous_control).' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicleregulatorycontrol', 'previous_control');
+			$sql .= ' AND previous_control.fk_vehicle = '.((int) $this->fk_vehicle).' AND previous_control.fk_rule = '.((int) $this->fk_rule).' AND previous_control.status = '.self::STATUS_CANCELLED;
 			$resql = $this->db->query($sql);
 			if (!$resql) { $this->error = $this->db->lasterror(); return -1; }
 			$valid = $this->db->num_rows($resql) === 1; $this->db->free($resql);
@@ -263,7 +265,7 @@ class LmdbVehicleRegulatoryControl extends LmdbVehicleManagementObject
 	{
 		$sql = 'SELECT r.code, r.recurrence_months, r.recurrence_days, r.recheck_days, v.regulatory_territory, v.eu_category FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r';
 		$sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS v ON v.rowid = '.((int) $this->fk_vehicle).' AND v.entity = r.entity';
-		$sql .= ' WHERE r.rowid = '.((int) $this->fk_rule).' AND r.entity = '.((int) $this->entity);
+		$sql .= ' WHERE r.rowid = '.((int) $this->fk_rule);
 		$resql = $this->db->query($sql);
 		if (!$resql) return null;
 		$row = $this->db->fetch_object($resql); $this->db->free($resql);

@@ -16,14 +16,14 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var Translate $langs */
 /** @var User $user */
 $langs->loadLangs(array('main', 'companies', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
 $vehicle = new LmdbVehicle($db);
 if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
-$permissionWrite = LmdbVehicleSharing::can($user, 'lmdbvehicle', 'write');
-$permissionDerogation = LmdbVehicleSharing::can($user, 'regulatorycontrol', 'derogation');
+$permissionWrite = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'lmdbvehicle', 'write'));
+$permissionDerogation = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'derogation'));
 $regulatoryService = new LmdbVehicleRegulatoryService($db);
 $questionnaire = $regulatoryService->getQualificationQuestionnaire((int) $vehicle->id, (int) $vehicle->entity);
 
@@ -78,11 +78,11 @@ $selectedProfiles = array();
 foreach ($profileMeta as $profileId => $meta) if ($meta['origin'] === 'manual') $selectedProfiles[] = (int) $profileId;
 
 $requirements = array();
-$sql = 'SELECT req.*, r.label AS rule_label, r.source_title, r.source_url, ct.label AS control_type_label, c.ref AS control_ref';
+$sql = 'SELECT req.*, '.LmdbVehicleSharing::requirementStatusSql($db).' AS status, c.rowid AS visible_control_id, r.label AS rule_label, r.source_title, r.source_url, ct.label AS control_type_label, c.ref AS control_ref';
 $sql .= ' FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_control_requirement AS req';
 $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_rule AS r ON r.rowid = req.fk_rule AND r.entity = req.entity';
 $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'c_lmdbvehiclemanagement_control_type AS ct ON ct.rowid = r.fk_control_type AND ct.entity = r.entity';
-$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control AS c ON c.rowid = req.fk_last_control AND c.entity = req.entity';
+$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_regulatory_control AS c ON c.rowid = req.fk_last_control AND '.LmdbVehicleSharing::sql($db, 'lmdbvehicleregulatorycontrol', 'c').'';
 $sql .= ' WHERE req.entity = '.((int) $vehicle->entity).' AND req.fk_vehicle = '.((int) $vehicle->id).' AND '.LmdbVehicleSharing::requirementSql($db).' AND req.active = 1 ORDER BY req.retained_due_date IS NULL, req.retained_due_date, r.label';
 $resql = $db->query($sql);
 if ($resql) { while (is_object($row = $db->fetch_object($resql))) $requirements[] = $row; $db->free($resql); }
@@ -119,7 +119,7 @@ if ($permissionWrite) {
 }
 
 print '<div class="tabsAction">';
-if (LmdbVehicleSharing::can($user, 'regulatorycontrol', 'write')) print dolGetButtonAction('', $langs->trans('NewRegulatoryControl'), 'default', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&vehicle_id='.$id.'&token='.newToken());
+if ((isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write'))) print dolGetButtonAction('', $langs->trans('NewRegulatoryControl'), 'default', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&vehicle_id='.$id.'&token='.newToken());
 print '</div>';
 print load_fiche_titre($langs->trans('RegulatoryRequirements'), '', 'clipboard-check');
 print '<div class="div-table-responsive-no-min"><table class="noborder centpercent">';
@@ -129,10 +129,10 @@ foreach ($requirements as $requirement) {
 	$statusTypes = array('incomplete' => 'status3', 'up_to_date' => 'status4', 'due_soon' => 'status1', 'overdue' => 'status8', 'recheck_required' => 'status6', 'non_compliant_blocking' => 'status8', 'derogation_active' => 'status1');
 	$status = (string) $requirement->status;
 	print '<tr class="oddeven"><td>'.(!empty($requirement->source_url) ? '<a href="'.dol_escape_htmltag((string) $requirement->source_url).'" target="_blank" rel="noopener">' : '').dol_escape_htmltag($langs->trans((string) $requirement->rule_label)).(!empty($requirement->source_url) ? '</a>' : '').'</td>';
-	$requirementKindKey = (string) $requirement->requirement_kind === 'recheck' ? 'ControlKindRecheck' : 'ControlKindPeriodic';
+	$requirementKindKey = empty($requirement->visible_control_id) && !empty($requirement->fk_last_control) ? 'Control' : ((string) $requirement->requirement_kind === 'recheck' ? 'ControlKindRecheck' : 'ControlKindPeriodic');
 	print '<td>'.$langs->trans($requirementKindKey).'</td>';
 	print '<td>'.$langs->trans((string) $requirement->qualification_status === 'complete' ? 'QualificationComplete' : 'QualificationIncomplete').'</td>';
-	print '<td>'; if (!empty($requirement->fk_last_control)) { $control = new LmdbVehicleRegulatoryControl($db); $control->id = (int) $requirement->fk_last_control; $control->ref = (string) $requirement->control_ref; print $control->getNomUrl(1); } print '</td>';
+	print '<td>'; if (!empty($requirement->visible_control_id)) { $control = new LmdbVehicleRegulatoryControl($db); $control->id = (int) $requirement->fk_last_control; $control->ref = (string) $requirement->control_ref; print $control->getNomUrl(1); } print '</td>';
 	print '<td>'.(!empty($requirement->calculated_due_date) ? dol_print_date($db->jdate($requirement->calculated_due_date), 'day') : '').'</td>';
 	print '<td>'.(!empty($requirement->retained_due_date) ? dol_print_date($db->jdate($requirement->retained_due_date), 'day') : '').'</td>';
 	print '<td class="center">'.dolGetStatus($langs->trans(isset($statusLabels[$status]) ? $statusLabels[$status] : 'Unknown'), '', '', isset($statusTypes[$status]) ? $statusTypes[$status] : 'status0', 5).'</td>';

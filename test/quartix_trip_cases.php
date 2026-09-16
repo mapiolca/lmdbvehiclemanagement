@@ -99,7 +99,7 @@ qxReject(static function () use ($trips, $tripDay) { $trips->journal(1, $tripDay
 $user->socid = 0; $user->rights->lmdbvehiclemanagement->quartix = (object) array('location' => 1, 'sync' => 1);
 $conf->entity = 2;
 qxReject(static function () use ($trips, $tripLink, $tripDay, $trip) { $trips->saveDay($tripLink, array($trip), $tripDay, 'qws'); }, 'QxAccessDenied');
-$mc = new class { public function getEntity($element, $shared = 1, $object = null) { return '1,2'; } };
+$mc = new class { public function getEntity($element, $shared = 1, $object = null) { global $conf; return $element === 'lmdbvehiclequartix' ? (string) $conf->entity : '1,2'; } };
 qxReject(static function () use ($trips, $tripDay) { $trips->journal(1, $tripDay, $tripDay); }, 'QxNoData');
 $mc = null; $conf->entity = 1;
 foreach (array('', '0', '-1', '1.5', '2e2', ' 30', '9999999999') as $invalid) qxReject(static function () use ($invalid) { LmdbVehicleQuartixTrips::retention($invalid); }, 'QxInvalidRetention');
@@ -150,7 +150,7 @@ $user->socid = 3;
 qxReject(static function () use ($fleet) { $fleet->report('2026-07-01', '2026-07-31'); }, 'QxAccessDenied');
 $user->socid = 0; $user->admin = 1; $user->rights->lmdbvehiclemanagement->quartix->location = 1;
 qxCheck($fleet->report('2026-07-01', '2026-07-31', '', '', array(2))['total'] === 0, 'Forged entity filter cannot broaden scope');
-$mc = new class { public function getEntity($element, $shared = 1, $object = null) { return '1,2'; } };
+$mc = new class { public function getEntity($element, $shared = 1, $object = null) { global $conf; return $element === 'lmdbvehiclequartix' ? (string) $conf->entity : '1,2'; } };
 qxCheck($fleet->report('2026-07-01', '2026-07-31', '', '', array(2))['total'] === 0, 'Vehicle scope alone never enables QUARTIX data');
 $mc = null;
 

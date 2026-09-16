@@ -64,7 +64,7 @@ $filters = array(
 if ($searchStatus !== null) $filters['status'] = $searchStatus;
 
 $vehicle = new LmdbVehicle($db);
-if (!isModEnabled('lmdbvehiclemanagement') || !LmdbVehicleSharing::can($user, '', 'read') || !empty($user->socid)) accessforbidden();
+if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden();
 if ($id <= 0 || $vehicle->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));
 $history = new LmdbVehicleHistory($db);
 $total = $history->countTimeline($id, $sourceFilter, $filters);
@@ -113,8 +113,8 @@ $odometerStatusObject = new LmdbVehicleOdometerReading($db);
 $consumptionStatusObject = new LmdbVehicleConsumption($db);
 $insuranceContractStatusObject = new LmdbVehicleInsuranceContract($db);
 $insuranceCertificateStatusObject = new LmdbVehicleInsuranceCertificate($db);
-$canManageAssignments = LmdbVehicleSharing::can($user, 'assignment', 'write');
-$canManageOdometer = LmdbVehicleSharing::can($user, 'odometer', 'write');
+$canManageAssignments = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'assignment', 'write'));
+$canManageOdometer = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'odometer', 'write'));
 $typeTranslations = array(
 	'maintenance' => 'EventTypeMaintenance',
 	'breakdown' => 'EventTypeBreakdown',
