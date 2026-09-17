@@ -6,7 +6,7 @@ define('LMDB_SHARING_FIXTURE_ONLY', true);
 require __DIR__.'/run_sharing.php';
 function dol_now() { return strtotime('2026-09-16 12:00:00 UTC'); }
 function dol_mktime($h, $m, $s, $month, $day, $year) { return gmmktime($h, $m, $s, $month, $day, $year); }
-function dol_time_plus_duree($date, $amount, $unit) { return strtotime('+'.$amount.($unit === 'm' ? ' months' : ' days'), $date); }
+require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
 function dol_print_date($date, $format) { return gmdate(strtr($format, array('%Y'=>'Y','%m'=>'m','%d'=>'d')), $date); }
 function price2num($value, $mode = '') { return (float) $value; }
 class WorkflowDb extends SharingDb {

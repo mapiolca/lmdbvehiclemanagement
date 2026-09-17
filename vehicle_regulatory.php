@@ -107,7 +107,7 @@ if ($permissionWrite) {
 		if ($selectedChoiceRequiresDate && empty($question['applicable_since'])) $qualificationComplete = false;
 		print '<tr class="oddeven"><td><strong>'.$langs->trans($question['label']).'</strong><br><span class="opacitymedium">'.$langs->trans($question['description']).'</span></td>';
 		print '<td>'.$form->selectarray('answer_choice_'.$question['id'], $choiceOptions, $question['answer_choice_id'], 0, 0, 0, '', 0, 0, 0, '', 'minwidth300', 1).'</td>';
-		print '<td>'.($question['date_label'] !== '' ? '<span class="fieldrequired">'.$langs->trans($question['date_label']).'</span><br>'.$form->selectDate($question['applicable_since'] ?: -1, 'answer_date_'.$question['id'], 0, 0, 1, '', 1, 1) : '<span class="opacitymedium">'.$langs->trans('NotApplicable').'</span>').'</td></tr>';
+		print '<td>'.($question['date_label'] !== '' ? '<span class="fieldrequired">'.$langs->trans($question['date_label']).'</span><br>'.$form->selectDate($question['applicable_since'] ?: -1, 'answer_date_'.$question['id'], 0, 0, 1, '', 1, 1) : '<span class="opacitymedium">'.$langs->trans('ActionNotApplicable').'</span>').'</td></tr>';
 	}
 	if (empty($questionnaire)) print '<tr class="oddeven"><td colspan="3"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
 	if (!empty($profileOptions)) print '<tr class="oddeven"><td>'.$langs->trans('AdditionalManualRegulatoryProfiles').'</td><td colspan="2">'.$form->multiselectarray('manual_profile_ids', $profileOptions, $selectedProfiles, 0, 0, 'minwidth500').'</td></tr>';

@@ -10,6 +10,7 @@ if (!$res) die('Include of main fails');
 
 require_once __DIR__.'/class/lmdbvehiclequartixcron.class.php';
 require_once __DIR__.'/lib/lmdbvehiclemanagement.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
 
 /** @var Conf $conf */
 /** @var DoliDB $db */
@@ -27,6 +28,7 @@ $object = null;
 if (LmdbVehicleSharing::visible($db, 'lmdbvehicle', $id)) $object = $service->vehicle($id);
 $link = $service->link($id, $quartixId);
 $cfg = (new LmdbVehicleQuartixConfig($db))->load((int) $dataset->entity);
+$durationUnit = LmdbVehicleQuartixConfig::DURATION_UNITS[$cfg['DURATION_UNIT']] ?? null;
 $retention = LmdbVehicleQuartixTrips::retention($cfg['TRIP_RETENTION_DAYS']);
 require_once __DIR__.'/lib/lmdbvehiclesharing.lib.php';
 lmdbSharingAction($dataset);
@@ -58,9 +60,9 @@ $arrayfields = array(
 	'private_distance' => array('label' => 'QxPrivateDistance', 'checked' => 0, 'align' => 'right'),
 	'status' => array('label' => 'Status', 'checked' => 1, 'align' => 'center'),
 );
-if ($cfg['DURATION_UNIT'] !== '') {
-	$arrayfields['travel'] = array('label' => 'QxDriving', 'checked' => 0, 'align' => 'right');
-	$arrayfields['idling'] = array('label' => 'QxIdling', 'checked' => 0, 'align' => 'right');
+if ($durationUnit !== null) {
+	$arrayfields['travel'] = array('label' => 'QxDrivingDuration', 'checked' => 0, 'align' => 'right');
+	$arrayfields['idling'] = array('label' => 'QxIdlingDuration', 'checked' => 0, 'align' => 'right');
 }
 $contextpage = 'lmdbvehicletrips';
 $parameters = array('arrayfields' => &$arrayfields);
@@ -86,7 +88,7 @@ print '<p>'.$langs->trans('QxJournalHelp').'</p><p class="opacitymedium">'.$lang
 if ($link === null) print '<div class="warning">'.$langs->trans('QxNotAssociated').'</div>';
 elseif (!(int) $link->active || $cfg['ENABLED'] !== '1') print '<div class="warning">'.$langs->trans('QxPaused').'</div>';
 if ($link) print '<p>'.$langs->trans('QxReportingZone', dol_escape_htmltag($link->timezone), dol_escape_htmltag($link->shift_start)).'</p>';
-if ($cfg['DURATION_UNIT'] === '') print '<p class="opacitymedium">'.$langs->trans('QxDurationUnconfirmed').'</p>';
+if ($durationUnit === null) print '<p class="opacitymedium">'.$langs->trans('QxDurationUnconfirmed').'</p>';
 if ($valid) {
 	$expected = $result['start'] > $result['end'] ? 0 : 1 + (int) LmdbVehicleQuartixRules::day($result['start'])->diff(LmdbVehicleQuartixRules::day($result['end']))->days;
 	print '<p>'.$langs->trans('QxJournalCoverage', count($result['days']), $expected).'</p>';
@@ -139,8 +141,13 @@ foreach ($result['rows'] as $row) {
 		elseif (in_array($key, array('distance', 'private_distance', 'travel', 'idling'), true)) {
 			$column = $key === 'travel' ? 'travel_time' : ($key === 'idling' ? 'idling_time' : $key);
 			$value = $row->{$column} === null ? null : (float) $row->{$column};
-			if ($key === 'travel' || $key === 'idling') $value = LmdbVehicleQuartixRules::hours($value, $cfg['DURATION_UNIT']);
-			print $value === null ? '<span class="opacitymedium">—</span>' : price($value, 0, $langs, 1, -1, -1);
+			if ($key === 'travel' || $key === 'idling') {
+				if ($value === null || $durationUnit === null) print '<span class="opacitymedium">—</span>';
+				else {
+					$durationSeconds = (int) round(convertDurationtoHour($value, $durationUnit) * 3600);
+					print $durationSeconds === 0 ? '00:00' : convertSecondToTime($durationSeconds, 'allhourmin');
+				}
+			} else print $value === null ? '<span class="opacitymedium">—</span>' : price($value, 0, $langs, 1, -1, -1);
 		}
 		print '</td>';
 	}

@@ -2,6 +2,9 @@
 
 ## À publier
 
+- Affectations : sélecteur conducteur Select2 limité aux utilisateurs actifs ayant accès à l’entité de saisie, avec validation native Multicompany côté serveur. Enregistrement des affectations historiques sur les véhicules possédés ou partagés, même encore en cours, sans leur appliquer un blocage réglementaire actuel ; blocage conservé pour les débuts aujourd’hui ou futurs. Aucun changement des exigences réglementaires, de la propriété des données ni des permissions ; aucune migration ou réactivation nécessaire.
+- Qualification réglementaire : remplacement de la clé brute `NotApplicable` par la traduction native « Non applicable » en français et son équivalent anglais.
+
 - Carte QUARTIX : référent limité au domaine de l’instance sur les images du fond de carte, afin de respecter l’identification demandée par OpenStreetMap même avec la politique de sécurité native Dolibarr. Aucun identifiant de véhicule, trajet ou token dans ce référent ; aucune modification de configuration ni migration nécessaire.
 
 - Saisie des contrôles : les exigences proposées suivent uniquement le véhicule sélectionné, y compris après un changement de véhicule ou une erreur de saisie. Une sélection devenue incompatible est effacée. Aucune migration ni réactivation nécessaire.

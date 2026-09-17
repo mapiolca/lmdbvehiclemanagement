@@ -11,6 +11,7 @@ require_once __DIR__.'/class/lmdbvehiclequartixcron.class.php';
 require_once __DIR__.'/lib/lmdbvehiclemanagement.lib.php';
 require_once __DIR__.'/lib/lmdbvehiclequartix.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/dolgraph.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
 
 /** @var Conf $conf */
 /** @var DoliDB $db */
@@ -26,6 +27,7 @@ $object = null;
 if (LmdbVehicleSharing::visible($db, 'lmdbvehicle', $id)) $object = $service->vehicle($id);
 $link = $service->link($id, $quartixId);
 $cfg = (new LmdbVehicleQuartixConfig($db))->load((int) $dataset->entity);
+$durationUnit = LmdbVehicleQuartixConfig::DURATION_UNITS[$cfg['DURATION_UNIT']] ?? null;
 $retention = LmdbVehicleQuartixTrips::retention($cfg['TRIP_RETENTION_DAYS']);
 require_once __DIR__.'/lib/lmdbvehiclesharing.lib.php';
 lmdbSharingAction($dataset, false);
@@ -66,8 +68,8 @@ $arrayfields = array(
 	'known_days' => array('label' => 'QxCoverage', 'checked' => 1, 'align' => 'center'),
 	'distance' => array('label' => 'QxDistance', 'checked' => 1, 'align' => 'right'),
 	'trips' => array('label' => 'QxTrips', 'checked' => 1, 'align' => 'right'),
-	'travel' => array('label' => 'QxDriving', 'checked' => 1, 'align' => 'right'),
-	'idling' => array('label' => 'QxIdling', 'checked' => 1, 'align' => 'right'),
+	'travel' => array('label' => 'QxDrivingDuration', 'checked' => 1, 'align' => 'right'),
+	'idling' => array('label' => 'QxIdlingDuration', 'checked' => 1, 'align' => 'right'),
 );
 $contextpage = 'lmdbvehiclequartix';
 $action = GETPOST('action', 'aZ09');
@@ -104,7 +106,7 @@ if ($link === null) print '<div class="warning">'.$langs->trans('QxNotAssociated
 elseif (!(int) $link->active || $cfg['ENABLED'] !== '1') print '<div class="warning">'.$langs->trans('QxPaused').'</div>';
 else print '<p class="opacitymedium">'.$langs->trans('QxReportingZone', dol_escape_htmltag($link->timezone), dol_escape_htmltag($link->shift_start)).'</p>';
 if ($link !== null && !empty($link->sync_from)) print '<p>'.$langs->trans('QxSyncFrom').': '.dol_print_date($db->jdate($link->sync_from), 'dayhour').'</p>';
-if ($cfg['DURATION_UNIT'] === '') print '<div class="warning">'.$langs->trans('QxDurationUnconfirmed').'</div>';
+if ($durationUnit === null) print '<div class="warning">'.$langs->trans('QxDurationUnconfirmed').'</div>';
 if ($link !== null) print '<p>'.$langs->trans('QxBackfill').': '.(!empty($link->usage_cursor) ? dol_print_date($db->jdate($link->usage_cursor), 'day') : $langs->trans('QxPending')).'</p>';
 
 $param = '&id='.$id.'&quartix_id='.$quartixId.'&group='.$group.'&limit='.$limit;
@@ -150,8 +152,13 @@ foreach ($rows as $row) {
 		elseif ($key === 'trips') print $row->trips === null ? '<span class="opacitymedium">—</span>' : (string) (int) $row->trips;
 		else {
 			$value = $row->{$key} !== null ? (float) $row->{$key} : null;
-			if ($key === 'travel' || $key === 'idling') $value = LmdbVehicleQuartixRules::hours($value, $cfg['DURATION_UNIT']);
-			print $value === null ? '<span class="opacitymedium">—</span>' : price($value, 0, $langs, 1, -1, -1).(in_array($key, array('travel', 'idling'), true) ? ' h' : ($key === 'distance' ? ' km' : ''));
+			if ($key === 'travel' || $key === 'idling') {
+				if ($value === null || $durationUnit === null) print '<span class="opacitymedium">—</span>';
+				else {
+					$durationSeconds = (int) round(convertDurationtoHour($value, $durationUnit) * 3600);
+					print $durationSeconds === 0 ? '00:00' : convertSecondToTime($durationSeconds, 'allhourmin');
+				}
+			} else print $value === null ? '<span class="opacitymedium">—</span>' : price($value, 0, $langs, 1, -1, -1).' km';
 		}
 		print '</td>';
 	}
@@ -168,8 +175,8 @@ $chartSeries = array(
 foreach ($allRows as $row) {
 	$label = dol_print_date(LmdbVehicleQuartixRules::day($row->period.($group === 'month' ? '-01' : ''))->getTimestamp(), $group === 'month' ? '%b %Y' : 'day', 'gmt');
 	if ($row->distance !== null) $chartSeries['distance']['data'][] = array($label, (float) $row->distance);
-	if ($row->travel !== null && $row->idling !== null && in_array($cfg['DURATION_UNIT'], array('seconds', 'minutes', 'hours'), true)) {
-		$chartSeries['duration']['data'][] = array($label, LmdbVehicleQuartixRules::hours((float) $row->travel, $cfg['DURATION_UNIT']), LmdbVehicleQuartixRules::hours((float) $row->idling, $cfg['DURATION_UNIT']));
+	if ($row->travel !== null && $row->idling !== null && $durationUnit !== null) {
+		$chartSeries['duration']['data'][] = array($label, convertDurationtoHour((float) $row->travel, $durationUnit), convertDurationtoHour((float) $row->idling, $durationUnit));
 	}
 }
 foreach ($chartSeries as $key => $series) {

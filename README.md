@@ -60,6 +60,7 @@ Le pied de page suit le cycle PDF natif, avec une mesure séparée pour les cont
 
 - Véhicules routiers, utilitaires et engins avec immatriculation facultative, caractéristiques techniques, énergie, capacités et autonomie WLTP.
 - Cycle de vie du brouillon à la cession, affectations simultanées avec une seule affectation principale par période, relevés kilométriques et gestion explicite des corrections ou remplacements de compteur.
+- Affectations : conducteur choisi par le sélecteur natif Select2 parmi les utilisateurs actifs ayant accès à l’entité courante de saisie, y compris par les groupes Multicompany. Une date de début antérieure à aujourd’hui (jour du serveur) permet de consigner une affectation historique, même encore en cours, malgré un blocage réglementaire actuel. Cette saisie ne valide pas la conformité passée et ne modifie aucun contrôle ni l’état du véhicule. Les affectations actives débutant aujourd’hui ou plus tard restent soumises au blocage. Droits, accès au véhicule, période et chevauchement des affectations principales restent contrôlés en création comme en modification.
 - Événements d’entretien, panne et incident ; chronologie consolidée incluant contrôles et consommations, avec filtres SQL, tri et pagination.
 - Références par modèles de numérotation, dont un modèle par immatriculation avec migration contrôlée des références et documents.
 
@@ -118,6 +119,13 @@ Les accès individuels des véhicules, familles globales, parents, transactions 
     php test/run_sharing.php /chemin/vers/dolibarr/htdocs
 
 Un second argument facultatif désignant une archive officielle Multicompany 21 ou 22 charge en lecture seule sa classe de rendu native pour vérifier le sélecteur. Il n’installe pas Multicompany et ne remplace pas une validation sur trois entités MySQL/MariaDB. La matrice de validation est détaillée dans le guide des partages Multicompany.
+
+Les affectations disposent d’une suite ciblée utilisant les méthodes métier, le sélecteur `Form::select_dolusers()`, les dates Dolibarr et `DaoMulticompany::verifyRight()` natifs, avec une base SQLite en mémoire et des doubles pour le chargement utilisateur et la persistance :
+
+    php -d extension=pdo_sqlite test/run_assignments.php /chemin/vers/dolibarr/htdocs /chemin/vers/multicompany
+    node test/run_assignments_browser.cjs /chemin/vers/dolibarr/htdocs /chemin/vers/multicompany
+
+Le second test nécessite Playwright, PHP dans le PATH et Chromium (ou `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`). Il vérifie sur une page locale le Select2 natif, sa recherche, les utilisateurs autorisés, une liste vide et le repli sans JavaScript. Aucun accès à une instance ni effet métier externe. Le 17 septembre 2026, les 35 contrôles PHP et les 5 scénarios navigateur ont réussi avec les sources Dolibarr 20.0.0 / Multicompany 21.0.2 et Dolibarr 23.0.2 / Multicompany 22.0.1, sous PHP 8.4.22 et Edge sans interface. Il s’agit de tests simulés, pas d’une validation complète de ces couples en production ni d’un essai sous PHP 8.0. Après déploiement, vérifier sur l’instance le conducteur autorisé/refusé, l’affectation historique d’un véhicule partagé, le blocage d’une affectation démarrant aujourd’hui et la protection CSRF.
 
 Les règles indépendantes de la base peuvent être vérifiées avec la commande suivante :
 
