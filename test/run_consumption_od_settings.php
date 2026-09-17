@@ -27,17 +27,21 @@ $conf = (object) array(
 	'file' => (object) array('dol_document_root' => array('main' => DOL_DOCUMENT_ROOT, 'alt0' => dirname(__DIR__, 2))),
 );
 require_once DOL_DOCUMENT_ROOT.'/core/lib/functions.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/core/db/mysqli.class.php';
 require_once dirname(__DIR__).'/class/lmdbvehicleconsumptionpayment.class.php';
 require_once dirname(__DIR__).'/class/lmdbvehiclemanagementcompatibility.class.php';
 
 /** Read-only database double: unexpected queries, including writes, fail immediately. */
-final class ConsumptionOdSettingsDb
+final class ConsumptionOdSettingsDb extends DoliDBMysqli
 {
+	/** No database connection is opened by this read-only double. */
+	public function __construct() {}
+
 	/** @var list<array{pattern:string,count:int|false}> */
 	public $expected = array();
 
 	/** @param string $sql Query @return object|false */
-	public function query($sql)
+	public function query($sql, $usesavepoint = 0, $type = 'auto', $result_mode = 0)
 	{
 		$expected = array_shift($this->expected);
 		if ($expected === null || preg_match($expected['pattern'], $sql) !== 1) {
@@ -49,7 +53,7 @@ final class ConsumptionOdSettingsDb
 	/** @param object $result Result @return int */
 	public function num_rows($result) { return $result->count; }
 	/** @param object $result Result @return void */
-	public function free($result) {}
+	public function free($result = null) {}
 	/** @param string $value Value @return string */
 	public function escape($value) { return str_replace("'", "''", $value); }
 	/** @return string */
@@ -217,5 +221,29 @@ foreach (array(array('bank' => 1), array('bank' => 1, 'comptabilite' => 1), arra
 $conf->entity = 2;
 checkOdSettings($lockService->isLocked($consumption) === 1, 'Other owner entity remains locked');
 checkOdSettings($db->expected === array(), 'No unexpected remaining reads');
+
+// Exercise the actual native directory helper, not the workflow suite's file boundary double.
+$directoryMethod = new ReflectionMethod(LmdbVehicleConsumptionPayment::class, 'getPaymentDirectory');
+$directoryMethod->setAccessible(true);
+$documentRoot = str_replace('\\', '/', __DIR__).'/od-native-directory-fixture';
+$conf->bank->multidir_output = array(1 => $documentRoot.'/A', 2 => $documentRoot.'/B');
+$conf->bank->dir_output = $documentRoot.'/fallback';
+foreach (array(1, 2) as $viewer) {
+	$conf->entity = $viewer;
+	foreach (array(1 => 'A', 2 => 'B') as $owner => $suffix) {
+		checkOdSettings($directoryMethod->invoke($service, 30, $owner) === $documentRoot.'/'.$suffix.'/30', 'Native directory uses payment owner '.$owner.' from viewer '.$viewer);
+	}
+}
+foreach (array(null, '', '   ', 'error-diroutput-unavailable', array(), 42) as $invalidRoot) {
+	$conf->bank->multidir_output[2] = $invalidRoot;
+	checkOdSettings($directoryMethod->invoke($service, 30, 2) === '', 'Invalid owner root refused without current-entity fallback');
+}
+unset($conf->bank->multidir_output);
+checkOdSettings($directoryMethod->invoke($service, 30, 2) === '', 'Missing multidir_output refused despite dir_output');
+$conf->bank->multidir_output = array(2 => $documentRoot.'/B');
+checkOdSettings($directoryMethod->invoke($service, 30, 1) === '', 'Missing other owner root refused');
+checkOdSettings($directoryMethod->invoke($service, 0, 2) === '', 'Invalid payment id refused');
+checkOdSettings($directoryMethod->invoke($service, 30, 0) === '', 'Invalid owner entity refused');
+checkOdSettings(!is_dir($documentRoot), 'Directory checks are read-only');
 
 print $checks.' consumption OD settings checks passed (native classes '.DOL_VERSION.')'.PHP_EOL;

@@ -147,12 +147,9 @@ class LmdbVehicleConsumptionPayment
 		if (!$requiresOd) {
 			return $consumption->create($user);
 		}
-		$vehicleEntity = $this->getVehicleEntity((int) $consumption->fk_vehicle);
-		if ($vehicleEntity < 0) {
+		// A shared vehicle is allowed; the consumption and OD belong to the input entity.
+		if ($this->getVehicleEntity((int) $consumption->fk_vehicle) < 0) {
 			return -1;
-		}
-		if ($vehicleEntity !== (int) $conf->entity) {
-			return $this->businessError('CannotMoveObjectBetweenEntities');
 		}
 		if ((float) price2num($consumption->total_ttc, 'MT') <= 0) {
 			return $this->businessError('ConsumptionOdAmountMustBePositive');
@@ -524,7 +521,7 @@ class LmdbVehicleConsumptionPayment
 		$registration = '';
 		$consumableLabel = '';
 		$sql = 'SELECT registration_number, ref FROM '.MAIN_DB_PREFIX.'lmdbvehiclemanagement_vehicle AS sv';
-		$sql .= ' WHERE rowid = '.((int) $consumption->fk_vehicle).' AND entity = '.((int) $consumption->entity);
+		$sql .= ' WHERE rowid = '.((int) $consumption->fk_vehicle).' AND '.LmdbVehicleSharing::sql($this->db, 'lmdbvehicle', 'sv');
 		$resql = $this->db->query($sql);
 		if ($resql && is_object($row = $this->db->fetch_object($resql))) {
 			$registration = trim((string) $row->registration_number) !== '' ? (string) $row->registration_number : (string) $row->ref;
@@ -664,18 +661,22 @@ class LmdbVehicleConsumptionPayment
 	{
 		global $conf;
 
-		if ($paymentId <= 0 || !isset($conf->bank) || !is_object($conf->bank)) {
+		if ($paymentId <= 0 || $entity <= 0 || !isset($conf->bank) || !is_object($conf->bank)
+			|| !isset($conf->bank->multidir_output) || !is_array($conf->bank->multidir_output)
+			|| !isset($conf->bank->multidir_output[$entity]) || !is_string($conf->bank->multidir_output[$entity])
+			|| trim($conf->bank->multidir_output[$entity]) === ''
+			|| strpos($conf->bank->multidir_output[$entity], 'error-') === 0) {
 			$this->businessError('ErrorInvalidDirectory');
 			return '';
 		}
-		$root = '';
-		if (isset($conf->bank->multidir_output) && is_array($conf->bank->multidir_output) && !empty($conf->bank->multidir_output[$entity])) {
-			$root = (string) $conf->bank->multidir_output[$entity];
-		} elseif ((int) $conf->entity === $entity && !empty($conf->bank->dir_output)) {
-			$root = (string) $conf->bank->dir_output;
-		}
-		$directory = rtrim($root, '/\\').'/'.dol_sanitizeFileName((string) $paymentId);
-		if ($root === '' || basename($directory) !== (string) $paymentId) {
+		$payment = new PaymentVarious($this->db);
+		$payment->id = $paymentId;
+		$payment->ref = (string) $paymentId;
+		$payment->entity = $entity;
+		$directory = getMultidirOutput($payment, 'bank', 1);
+		if (is_string($directory)) $directory = rtrim($directory, '/\\');
+		if (!is_string($directory) || $directory === '' || strpos($directory, 'error-') === 0
+			|| basename($directory) !== (string) $paymentId) {
 			$this->businessError('ErrorInvalidDirectory');
 			return '';
 		}

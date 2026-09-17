@@ -2,6 +2,8 @@
 
 ## À publier
 
+- Pleins/recharges : création avec OD autorisée sur les véhicules accessibles par partage Multicompany. Consommation, relevé, règlement et justificatif restent dans l’entité de saisie, avec ses réglages ; immatriculation conservée dans le libellé du règlement en création et modification. Répertoire bancaire propriétaire obligatoire, sans repli documentaire ; droits, refus des véhicules inaccessibles et protections comptables conservés. Aucune migration ni réactivation nécessaire.
+
 - Interface : qualification réglementaire confirmée réduite à une ligne « État » avec son badge et un bouton « Visualiser / éditer » ouvrant le questionnaire dans une modale native. Consultation en lecture seule selon les droits, saisies conservées en cas d’échec d’enregistrement et accès au détail sans JavaScript. Menu haut renommé « Véhicules | Engins ».
 
 - QUARTIX : ajout de l’unité « Jours (1 = 24 h) » pour les durées exprimées en fractions de journée, et affichage `hh:mm` dans les tableaux d’utilisation et de trajets. Les graphiques utilisent la même conversion et conservent leur échelle en heures. Après déploiement, sélectionner cette unité dans l’entité collectrice concernée ; aucune migration, réactivation ni reprise des imports n’est nécessaire. Les unités déjà configurées dans les autres entités sont conservées.

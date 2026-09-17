@@ -70,6 +70,7 @@ Le pied de page suit le cycle PDF natif, avec une mesure séparée pour les cont
 - Synchronisation transactionnelle avec les relevés kilométriques ; synthèses par véhicule, consommable et unité, coûts, distances et graphiques natifs DolGraph.
 - Prix facultatif des additifs : une valeur absente est exclue des statistiques de prix, tandis qu’un zéro reste un prix connu. Les quantités et fréquences restent comptabilisées.
 - Option par entité de création d’opérations diverses avec compte bancaire, règlement, projet et ticket PDF/JPEG/PNG obligatoire. Les images sont nettoyées de leurs métadonnées.
+- Un plein avec OD peut concerner un véhicule accessible par partage Multicompany : consommation, relevé kilométrique, OD et justificatif appartiennent à l’entité de saisie, avec ses réglages bancaires et comptables. Le véhicule conserve son propriétaire et son immatriculation figure dans le libellé de l’OD. Un véhicule inaccessible reste refusé. Le justificatif utilise exclusivement le répertoire bancaire de l’entité propriétaire de la consommation ; une configuration documentaire absente ou invalide bloque l’opération sans repli. Les protections des OD rapprochées, comptabilisées et consultées depuis une autre entité sont conservées. Ce correctif ne nécessite ni migration ni réactivation.
 - Comptabilité facultative : comptes libres sans comptabilité ou en mode simplifié ; compte général du plan actif obligatoire en partie double. Données financières et ticket verrouillés après rapprochement ou transfert comptable.
 - Import et export natifs ; reprise historique des consommations sans OD, même lorsque la gestion des OD est active.
 
@@ -145,14 +146,18 @@ Les règles indépendantes de la base peuvent être vérifiées avec la commande
     php test/run_regulatory_contracts.php
     php test/run_ui_contracts.php
     php test/run_consumption_od_contracts.php
+    php -d extension=pdo_sqlite test/run_consumption_od_sharing.php
     php test/run_native_import.php
+    php test/run_consumption_native_import.php
     php test/run_capacity_import_transactions.php
 
-Le workflow GitHub Actions `PHP checks` exécute ces sept suites autonomes et vérifie la syntaxe de tous les fichiers PHP versionnés sur PHP 8.0 et 8.5. Le module n’a pas de dépendances Composer propres : le workflow ne lance donc ni validation ni installation Composer. Ces contrôles n’installent pas une instance Dolibarr et ne remplacent pas les tests d’intégration ci-dessous. PHPStan n’est pas exécuté par ce workflow, en l’absence de configuration d’analyse du module.
+Le workflow GitHub Actions `PHP checks` exécute ces neuf suites autonomes et vérifie la syntaxe de tous les fichiers PHP versionnés sur PHP 8.0 et 8.5. La suite OD/partages utilise SQLite en mémoire ; l’extension `pdo_sqlite` est activée dans le workflow. Le module n’a pas de dépendances Composer propres : le workflow ne lance donc ni validation ni installation Composer. Ces contrôles n’installent pas une instance Dolibarr et ne remplacent pas les tests d’intégration ci-dessous. PHPStan n’est pas exécuté par ce workflow, en l’absence de configuration d’analyse du module.
 
 Les tests comportementaux des réglages OD utilisent les classes natives depuis une installation ou un checkout Dolibarr, sans connexion à la base ni écriture métier :
 
-    php test/run_consumption_od_settings.php /chemin/vers/dolibarr/htdocs
+    php -d extension=mysqli test/run_consumption_od_settings.php /chemin/vers/dolibarr/htdocs
+
+Validation OD/partages du 17 septembre 2026 sous PHP 8.4.22 : 304 contrôles exécutent le service de règlement, les méthodes de consommation et les requêtes de partage réels, avec SQLite et des doubles explicites pour la persistance native, l’upload et l’index ECM. Ils couvrent les véhicules locaux et partagés, la propriété des données et du justificatif, les libellés, les refus de droits ou de partage, les annulations après échec et les verrouillages comptables. L’ancienne version reproduit le refus `CannotMoveObjectBetweenEntities` avec cette suite. Les 183 contrôles de réglages, verrouillages et résolution documentaire native passent séparément avec les classes Dolibarr 20.0.0, 21.0.0, 22.0.0, 23.0.2, 24.0.0 et le checkout 25.0.0-alpha `5dedd84c6c1db18a8f864e5a7ac168a842afbc95`. Il ne s’agit pas de tests d’instances complètes ni d’essais sous PHP 8.0 ; le chargement du pilote `mysqli` n’ouvre aucune connexion. Après déploiement, vérifier le formulaire avec un vrai ticket, le compte bancaire retenu et la consultation du justificatif. Aucun test navigateur du correctif déployé ni PHPStan n’a été réalisé.
 
 Les prix facultatifs disposent de tests comportementaux utilisant les classes natives de normalisation, stockage et export CSV, ainsi que des doubles de base et de graphique sans écriture métier :
 
