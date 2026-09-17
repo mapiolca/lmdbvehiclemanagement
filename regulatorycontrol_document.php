@@ -6,7 +6,10 @@ if (!$res && !empty($_SERVER['CONTEXT_DOCUMENT_ROOT'])) $res = @include str_repl
 if (!$res && file_exists('../../main.inc.php')) $res = @include '../../main.inc.php';
 if (!$res && file_exists('../main.inc.php')) $res = @include '../main.inc.php';
 if (!$res) die('Include of main fails');
-require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php'; require_once DOL_DOCUMENT_ROOT.'/core/class/html.formfile.class.php'; dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycontrol.class.php'); dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
+require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/core/class/html.formfile.class.php';
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycontrol.class.php');
+dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var DoliDB $db */ /** @var HookManager $hookmanager */ /** @var Translate $langs */ /** @var User $user */
 $langs->loadLangs(array('other', 'mails', 'lmdbvehiclemanagement@lmdbvehiclemanagement')); $id = GETPOSTINT('id'); $action = GETPOST('action', 'aZ09'); $confirm = GETPOST('confirm', 'alpha'); $backtopage = GETPOST('backtopage', 'alphanohtml'); $sortfield = GETPOST('sortfield', 'aZ09comma') ?: 'name'; $sortorder = strtoupper(GETPOST('sortorder', 'alpha')) === 'DESC' ? 'DESC' : 'ASC'; $object = new LmdbVehicleRegulatoryControl($db);
 if (!isModEnabled('lmdbvehiclemanagement') || !(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read')) || !empty($user->socid)) accessforbidden(); if ($id <= 0 || $object->fetch($id) <= 0) accessforbidden($langs->trans('RecordNotFound'));

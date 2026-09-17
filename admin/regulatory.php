@@ -5,7 +5,10 @@ if (!$res && !empty($_SERVER['CONTEXT_DOCUMENT_ROOT'])) $res = @include str_repl
 if (!$res && file_exists('../../../main.inc.php')) $res = @include '../../../main.inc.php';
 if (!$res && file_exists('../../main.inc.php')) $res = @include '../../main.inc.php';
 if (!$res) die('Include of main fails');
-require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php'; dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php'); dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycatalog.class.php'); dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatoryservice.class.php');
+require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
+dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatorycatalog.class.php');
+dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatoryservice.class.php');
 /** @var Conf $conf */ /** @var DoliDB $db */ /** @var Translate $langs */ /** @var User $user */
 $langs->loadLangs(array('admin', 'users', 'mails', 'lmdbvehiclemanagement@lmdbvehiclemanagement')); if (empty($user->admin)) accessforbidden(); $action = GETPOST('action', 'aZ09');
 $overrideEffectiveFrom = GETPOSTINT('override_effective_fromyear') > 0 ? dol_mktime(12, 0, 0, GETPOSTINT('override_effective_frommonth'), GETPOSTINT('override_effective_fromday'), GETPOSTINT('override_effective_fromyear')) : null;
