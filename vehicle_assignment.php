@@ -15,6 +15,7 @@ dol_include_once('/lmdbvehiclemanagement/lib/lmdbvehiclemanagement.lib.php');
 /** @var DoliDB $db */
 /** @var Translate $langs */
 /** @var User $user */
+/** @var Conf $conf */
 
 $langs->loadLangs(array('users', 'lmdbvehiclemanagement@lmdbvehiclemanagement'));
 $id = GETPOSTINT('id');
@@ -106,11 +107,29 @@ else print '<div class="info">'.$langs->trans('LmdbLocalHistoryVehicleUnavailabl
 if ($assignmentId > 0) lmdbSharingRender($assignment);
 
 if ($permissionToManage && ($action === 'create' || $action === 'edit')) {
+	// Keep native user discovery, then restrict it to actual entity access.
+	// An empty include array means "all" to select_dolusers(): retain the sentinel.
+	$driverIds = array(0);
+	$driverOptions = $form->select_dolusers(-1, 'fk_user_driver', 0, null, 0, '', '', (string) $conf->entity, 0, 1, '', 0, '', '', 1, 1);
+	$multicompany = null;
+	if (isModEnabled('multicompany')) {
+		dol_include_once('/multicompany/class/dao_multicompany.class.php');
+		if (class_exists('DaoMulticompany')) $multicompany = new DaoMulticompany($db);
+	}
+	if (is_array($driverOptions)) {
+		foreach (array_keys($driverOptions) as $driverId) {
+			if ((int) $driverId <= 0) continue;
+			if (!isModEnabled('multicompany') || ($multicompany !== null && $multicompany->verifyRight((int) $conf->entity, (int) $driverId) > 0)) {
+				$driverIds[] = (int) $driverId;
+			}
+		}
+	}
 	print '<form class="lmdb-responsive-form" method="POST" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'">';
 	print '<input type="hidden" name="assignment_id" value="'.((int) $assignment->id).'"><input type="hidden" name="action" value="'.($action === 'edit' ? 'update' : 'add').'">';
 	print '<div class="div-table-responsive-no-min"><table class="border centpercent tableforfield">';
-	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('Driver').'</td><td>'.$form->select_dolusers($assignment->fk_user_driver, 'fk_user_driver', 1, null, 0, '', '', $conf->entity, 0, 1, '', 0, '', 'minwidth300', 0, 0, false, 1).'</td></tr>';
+	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans('Driver').'</td><td>'.$form->select_dolusers($assignment->fk_user_driver > 0 ? $assignment->fk_user_driver : -1, 'fk_user_driver', 1, null, 0, $driverIds, '', (string) $conf->entity, 0, 1, '', 0, '', 'minwidth300', 1).'</td></tr>';
 	print '<tr><td class="fieldrequired">'.$langs->trans('AssignmentStart').'</td><td>'.$form->selectDate($assignment->date_start ?: dol_now(), 'date_start', 1, 1, 0, '', 1, 1).'</td></tr>';
+	print '<tr><td></td><td class="opacitymedium">'.$langs->trans('AssignmentHistoricalHelp').'</td></tr>';
 	print '<tr><td>'.$langs->trans('AssignmentEnd').'</td><td>'.$form->selectDate($assignment->date_end ?: -1, 'date_end', 1, 1, 1, '', 1, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('AssignmentType').'</td><td>'.$form->selectarray('assignment_type', $assignment->fields['assignment_type']['arrayofkeyval'], $assignment->assignment_type, 0, 0, 0, '', 1, 0, 0, '', 'minwidth200', 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('PrimaryAssignment').'</td><td>'.$form->selectyesno('is_primary', $assignment->is_primary, 1, false, 0, 1).'</td></tr>';

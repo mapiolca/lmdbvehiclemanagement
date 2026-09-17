@@ -124,9 +124,11 @@ foreach (array('CUSTOMER' => 'QxCustomer', 'USERNAME' => 'Login', 'PASSWORD' => 
 	print '</td></tr>';
 }
 $timeOptions = array('' => $langs->trans('QxUnconfirmed'), 'qws' => $langs->trans('QxTimeQws'), 'offset' => $langs->trans('QxTimeOffset'), 'local' => $langs->trans('QxTimeLocal'));
-$unitOptions = array('' => $langs->trans('QxUnconfirmed'), 'seconds' => $langs->trans('Seconds'), 'minutes' => $langs->trans('Minutes'), 'hours' => $langs->trans('Hours'));
+$unitOptions = array('' => $langs->trans('QxUnconfirmed'), 'seconds' => $langs->trans('Seconds'), 'minutes' => $langs->trans('Minutes'), 'hours' => $langs->trans('Hours'), 'days' => $langs->trans('QxDurationDays'));
 foreach (array('TIME_MODE' => array('QxTimeMode', $timeOptions), 'DURATION_UNIT' => array('QxDurationUnit', $unitOptions)) as $key => $definition) {
-	print '<tr><td>'.$langs->trans($definition[0]).'</td><td>'.$form->selectarray('qx_'.$key, $definition[1], $settings[$key], 0, 0, 0, '', 0, 0, 0, '', 'minwidth200', 1).'</td></tr>';
+	print '<tr><td>'.$langs->trans($definition[0]).'</td><td>'.$form->selectarray('qx_'.$key, $definition[1], $settings[$key], 0, 0, 0, '', 0, 0, 0, '', 'minwidth200', 1);
+	if ($key === 'DURATION_UNIT') print '<br><span class="opacitymedium">'.$langs->trans('QxDurationUnitHelp').'</span>';
+	print '</td></tr>';
 }
 print '<tr><td><label for="qx_TRIP_RETENTION_DAYS">'.$langs->trans('QxTripRetention').'</label></td><td><input class="flat width75" type="number" min="1" step="1" required id="qx_TRIP_RETENTION_DAYS" name="qx_TRIP_RETENTION_DAYS" value="'.dol_escape_htmltag($settings['TRIP_RETENTION_DAYS']).'"></td></tr>';
 foreach (array('TILE_URL' => 'QxTileUrl', 'TILE_ATTRIBUTION' => 'QxTileAttribution') as $key => $label) print '<tr><td><label for="qx_'.$key.'">'.$langs->trans($label).'</label></td><td><input class="flat minwidth300" type="text" id="qx_'.$key.'" name="qx_'.$key.'" value="'.dol_escape_htmltag($settings[$key]).'" required></td></tr>';

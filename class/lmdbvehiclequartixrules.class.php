@@ -77,13 +77,6 @@ class LmdbVehicleQuartixRules
 		return $date->getTimestamp();
 	}
 
-	/** @param float|null $value Raw duration @param string $unit Confirmed API unit @return float|null Hours */
-	public static function hours($value, $unit)
-	{
-		$factors = array('seconds' => 3600, 'minutes' => 60, 'hours' => 1);
-		return $value !== null && isset($factors[$unit]) ? $value / $factors[$unit] : null;
-	}
-
 	/**
 	 * Missing days remain absent, never fabricated zero activity. One vehicle per request.
 	 * @param array<int,mixed> $data Rows @param int $vehicleId Remote id @param string $start First day @param string $end Last day

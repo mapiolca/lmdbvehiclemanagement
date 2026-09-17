@@ -30,6 +30,7 @@ $testConf = new Conf();
 foreach (get_object_vars($conf) as $key => $value) $testConf->{$key} = $value;
 $conf = $testConf;
 require_once $coreRoot.'/core/lib/functions.lib.php';
+require_once $coreRoot.'/core/lib/date.lib.php';
 if (is_file($coreRoot.'/core/lib/html.lib.php')) require_once $coreRoot.'/core/lib/html.lib.php';
 require_once $coreRoot.'/core/class/translate.class.php';
 require_once $coreRoot.'/user/class/user.class.php';
@@ -216,7 +217,7 @@ qxReject(static function () { LmdbVehicleQuartixRules::timestamp('2026-09-01T10:
 qxCheck(LmdbVehicleQuartixRules::timestamp('2026-09-01T10:00:00Z', 'offset', 'Europe/Paris') - LmdbVehicleQuartixRules::timestamp('2026-09-01T10:00:00Z', 'local', 'Europe/Paris') === 7200, 'Local and offset contracts remain distinct');
 qxReject(static function () { LmdbVehicleQuartixRules::timestamp('2026-10-25T02:30:00Z', 'local', 'Europe/Paris'); }, 'QxAmbiguousTime');
 qxReject(static function () { LmdbVehicleQuartixRules::timestamp('2026-03-29T02:30:00Z', 'local', 'Europe/Paris'); }, 'QxInvalidResponse');
-qxCheck(LmdbVehicleQuartixRules::hours(60.0, '') === null && LmdbVehicleQuartixRules::hours(60.0, 'minutes') === 1.0 && LmdbVehicleQuartixRules::hours(3600.0, 'seconds') === 1.0, 'Duration confirmation is mandatory');
+qxCheck(!isset(LmdbVehicleQuartixConfig::DURATION_UNITS['']) && convertDurationtoHour(60.0, LmdbVehicleQuartixConfig::DURATION_UNITS['minutes']) == 1.0 && convertDurationtoHour(3600.0, LmdbVehicleQuartixConfig::DURATION_UNITS['seconds']) == 1.0, 'Duration confirmation is mandatory');
 qxCheck(LmdbVehicleQuartixRules::timestamp('2026-09-01T10:00:00', 'qws', 'Europe/Paris') === strtotime('2026-09-01T08:00:00Z'), 'Unsuffixed QWS odometer uses the vehicle timezone');
 qxCheck(LmdbVehicleQuartixRules::timestamp('2026-09-01T10:00:00+01:00', 'qws', 'Europe/Paris') === strtotime('2026-09-01T09:00:00Z'), 'Explicit live event offset is authoritative');
 qxReject(static function () { LmdbVehicleQuartixRules::timestamp('2026-10-25T02:30:00', 'qws', 'Europe/Paris'); }, 'QxAmbiguousTime');
@@ -480,6 +481,7 @@ qxCheck(strpos($storedPassword, 'dolcrypt:') === 0 && dolDecrypt($storedPassword
 $settings['PASSWORD'] = '';
 $configuration->save($user, $settings);
 qxCheck($configuration->load(1, true)['PASSWORD'] === 'test-password' && $configuration->load(1)['DURATION_UNIT'] === '', 'Empty password preserves secret, empty unit stays unconfirmed');
+require __DIR__.'/quartix_duration_cases.php';
 $beforeMissing = count($db->queries);
 $missingApplicationSettings = $settings;
 unset($missingApplicationSettings['APPLICATION']);

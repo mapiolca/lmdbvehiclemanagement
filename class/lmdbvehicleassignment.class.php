@@ -4,6 +4,7 @@ require_once __DIR__.'/lmdbvehiclesharing.class.php';
 
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehiclemanagementobject.class.php');
 dol_include_once('/lmdbvehiclemanagement/class/lmdbvehicleregulatoryservice.class.php');
+require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
 
 /**
  * Driver assignment for a vehicle.
@@ -79,16 +80,6 @@ class LmdbVehicleAssignment extends LmdbVehicleManagementObject
 			$this->db->rollback();
 			return -1;
 		}
-		if ((int) $this->status === self::STATUS_ACTIVE) {
-			$regulatory = new LmdbVehicleRegulatoryService($this->db);
-			$allowed = $regulatory->vehicleActionIsAllowed((int) $this->fk_vehicle, 'assignment');
-			if ($allowed <= 0) {
-				$this->error = $regulatory->error;
-				$this->errors = $regulatory->errors;
-				$this->db->rollback();
-				return $allowed < 0 ? -1 : 0;
-			}
-		}
 		$result = parent::create($user, $notrigger);
 		if ($result < 0) {
 			$this->db->rollback();
@@ -106,16 +97,6 @@ class LmdbVehicleAssignment extends LmdbVehicleManagementObject
 		if ($this->lockVehicleRow((int) $this->fk_vehicle) < 0) {
 			$this->db->rollback();
 			return -1;
-		}
-		if ((int) $this->status === self::STATUS_ACTIVE) {
-			$regulatory = new LmdbVehicleRegulatoryService($this->db);
-			$allowed = $regulatory->vehicleActionIsAllowed((int) $this->fk_vehicle, 'assignment');
-			if ($allowed <= 0) {
-				$this->error = $regulatory->error;
-				$this->errors = $regulatory->errors;
-				$this->db->rollback();
-				return $allowed < 0 ? -1 : 0;
-			}
 		}
 		$result = parent::update($user, $notrigger);
 		if ($result < 0) {
@@ -164,6 +145,17 @@ class LmdbVehicleAssignment extends LmdbVehicleManagementObject
 			$this->errors[] = $this->error;
 			return -1;
 		}
+		// A past start date records history, including an assignment still ongoing.
+		// Today's regulatory state cannot establish compliance at that past date.
+		// Use the server's calendar day so a normal form submission remains checked.
+		if ((int) $this->status === self::STATUS_ACTIVE && $this->date_start >= dol_get_first_hour(dol_now())) {
+			$regulatory = new LmdbVehicleRegulatoryService($this->db);
+			if ($regulatory->vehicleActionIsAllowed((int) $this->fk_vehicle, 'assignment') <= 0) {
+				$this->error = $regulatory->error;
+				$this->errors = $regulatory->errors;
+				return -1;
+			}
+		}
 		if ((int) $this->is_primary === 1 && (int) $this->status === self::STATUS_ACTIVE) {
 			$overlap = $this->hasPrimaryOverlap();
 			if ($overlap < 0) {
@@ -207,19 +199,34 @@ class LmdbVehicleAssignment extends LmdbVehicleManagementObject
 	/** @return int<-1,1> -1 on SQL error, 0 when absent, 1 when present */
 	private function driverExists()
 	{
-		$sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'user';
-		$sql .= ' WHERE rowid = '.((int) $this->fk_user_driver);
-		$sql .= ' AND entity IN ('.getEntity('user').') AND statut = 1';
-		$resql = $this->db->query($sql);
-		if (!$resql) {
-			$this->error = $this->db->lasterror();
+		global $conf;
+
+		$driver = new User($this->db);
+		$result = $driver->fetch((int) $this->fk_user_driver);
+		if ($result < 0) {
+			$this->error = $driver->error;
 			$this->errors[] = $this->error;
 			return -1;
 		}
-		$exists = $this->db->num_rows($resql) > 0;
-		$this->db->free($resql);
-
-		return $exists ? 1 : 0;
+		if ($result === 0 || (int) $driver->statut !== 1) return 0;
+		if (!isModEnabled('multicompany')) {
+			return in_array((int) $driver->entity, array(0, (int) $conf->entity), true) ? 1 : 0;
+		}
+		dol_include_once('/multicompany/class/dao_multicompany.class.php');
+		if (!class_exists('DaoMulticompany')) {
+			$this->error = 'InvalidDriver';
+			$this->errors[] = $this->error;
+			return -1;
+		}
+		// Entity access is distinct from the author's functional assignment right.
+		$multicompany = new DaoMulticompany($this->db);
+		$result = $multicompany->verifyRight((int) $conf->entity, (int) $driver->id);
+		if ($result < 0) {
+			$this->error = $multicompany->error;
+			$this->errors[] = $this->error;
+			return -1;
+		}
+		return $result > 0 ? 1 : 0;
 	}
 
 	/** @return int<-1,1> -1 on SQL error, 0 without overlap, 1 with overlap */

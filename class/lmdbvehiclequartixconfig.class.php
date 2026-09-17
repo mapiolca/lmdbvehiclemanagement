@@ -8,6 +8,8 @@ require_once DOL_DOCUMENT_ROOT.'/core/lib/security.lib.php';
 class LmdbVehicleQuartixConfig
 {
 	public const PREFIX = 'LMDBVEHICLEMANAGEMENT_QX_';
+	/** Persisted QWS unit choices mapped to native Dolibarr duration codes. */
+	public const DURATION_UNITS = array('seconds' => 's', 'minutes' => 'i', 'hours' => 'h', 'days' => 'd');
 	public const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 	public const TILE_ATTRIBUTION = '© OpenStreetMap contributors';
 	/** @var DoliDB */ private $db;
@@ -44,7 +46,7 @@ class LmdbVehicleQuartixConfig
 			catch (RuntimeException $e) { return $e->getMessage(); }
 		} elseif ($feature === 'timestamps' && !in_array(getDolGlobalString(self::PREFIX.'TIME_MODE'), array('local', 'offset', 'qws'), true)) {
 			return 'QxTimeUnconfirmed';
-		} elseif ($feature === 'durations' && !in_array(getDolGlobalString(self::PREFIX.'DURATION_UNIT'), array('seconds', 'minutes', 'hours'), true)) {
+		} elseif ($feature === 'durations' && !isset(self::DURATION_UNITS[getDolGlobalString(self::PREFIX.'DURATION_UNIT')])) {
 			return 'QxDurationUnconfirmed';
 		}
 		return '';
@@ -114,7 +116,8 @@ class LmdbVehicleQuartixConfig
 		global $conf;
 		if (!(isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'read') && !empty($user->admin))) throw new RuntimeException('QxAccessDenied');
 		self::validateApplication($values['APPLICATION'] ?? '');
-		if (!in_array($values['TIME_MODE'], array('', 'offset', 'local', 'qws'), true) || !in_array($values['DURATION_UNIT'], array('', 'seconds', 'minutes', 'hours'), true)) throw new RuntimeException('QxInvalidSettings');
+		if (!in_array($values['TIME_MODE'], array('', 'offset', 'local', 'qws'), true)
+			|| ($values['DURATION_UNIT'] !== '' && !isset(self::DURATION_UNITS[$values['DURATION_UNIT']]))) throw new RuntimeException('QxInvalidSettings');
 		foreach (array('CUSTOMER', 'USERNAME') as $key) {
 			if ($values[$key] === '' || strlen($values[$key]) > 128 || preg_match('/[\x00-\x1f]/', $values[$key])) throw new RuntimeException('QxInvalidSettings');
 		}
