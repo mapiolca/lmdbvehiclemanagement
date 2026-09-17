@@ -82,6 +82,7 @@ Le pied de page suit le cycle PDF natif, avec une mesure séparée pour les cont
 ### Contrôles réglementaires
 
 - Questionnaire guidé et historisé, profils réglementaires, catalogue français versionné, surcharges d’entité auditées et règles personnalisées.
+- Une qualification confirmée est résumée par une ligne **État**, son badge et **Visualiser / éditer**. Le détail s’ouvre dans une modale jQuery UI native ; sans droit d’écriture, **Visualiser** ouvre les réponses en lecture seule. Un questionnaire incomplet reste affiché. La sauvegarde utilise le formulaire POST et le token natifs, conserve les saisies sur échec et recharge la fiche après succès. Sans JavaScript, le lien ouvre le détail dans la page.
 - Contrôles routiers, pollution, catégorie L, usages spécialisés, VGP, mise ou remise en service, tachygraphe, ADR et ATP ; aucune échéance inventée lorsqu’une donnée indispensable manque.
 - Contrôles numérotés avec organisme, résultat, dates et justificatif obligatoire ; validation immuable, annulation motivée, remplacement, contre-visite et archivage encadré.
 - Échéancier, registre de sécurité, export et import en brouillon ; blocage configurable des nouvelles affectations et mises en service.
@@ -102,9 +103,13 @@ Copier le répertoire `lmdbvehiclemanagement` dans le répertoire des modules ex
 
 Les réglages, la compatibilité détectée et les métadonnées du module sont accessibles depuis l'unique roue dentée du module.
 
+Le menu haut s’intitule **Véhicules | Engins** (**Vehicles | Equipment** en anglais). Le renommage utilise la clé de traduction du menu existant ; ces changements d’interface ne nécessitent pas de migration SQL ni de réactivation.
+
 Pour une mise à jour depuis une version de développement, consulter [ChangeLog.md](ChangeLog.md), puis désactiver et réactiver le module pour appliquer la migration idempotente de `total_ttc` vers une colonne nullable. Les montants historiques, y compris les zéros, et les réglages sont conservés. Une ancienne recharge peut ensuite être corrigée en vidant son montant. Les imports gardent la colonne `total_ttc`, avec cellule vide autorisée pour les additifs ; les exports natifs distinguent une cellule vide d’un zéro. Les carburants et leurs OD conservent leurs règles existantes.
 
 ## Vérification locale
+
+La qualification compacte et sa modale sont vérifiées sans instance ERP avec `php test/run_qualification_modal.php /chemin/vers/dolibarr/htdocs` et `node test/run_qualification_modal_browser.cjs /chemin/vers/dolibarr/htdocs` (Playwright/Chromium, ou `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`). Sept scénarios utilisent le rendu PHP de la page, les composants natifs Form/Select2/calendrier et des réponses synthétiques : qualification confirmée, lecture seule, réponse inconnue, date requise absente, questionnaire vide, accès sans JavaScript et échec simulé de sauvegarde. Le navigateur vérifie aussi la soumission des dates, profils et token, la fermeture et les dimensions tablette/téléphone. Exécutés le 17 septembre 2026 sous PHP 8.4.22 avec les sources Dolibarr `25.0.0-alpha` (`5dedd84c6c1db18a8f864e5a7ac168a842afbc95`) ; ils ne constituent pas une validation sur une instance déployée.
 
 L'intégration QUARTIX est documentée dans [le guide de configuration et de validation](https://github.com/mapiolca/dolibarr_wiki/blob/main/lmdbvehiclemanagement/1.0.0/guides/quartix.md) : connexion par environnement, kilométrage estimé quotidien, dernière position protégée par un droit GPS, utilisation par véhicule, journal des trajets, tracés en modale et tableau de bord QUARTIX du parc. Les associations peuvent être suspendues ou dissociées, avec suppression des imports en cas d'erreur ou conservation lors d'une réaffectation du boîtier. La date d'installation borne les nouveaux imports. Elle nécessite une réactivation du module après déploiement et l'activation des quatre travaux planifiés natifs (le nouveau journal est installé désactivé). La version reste 1.0.0 pendant ce développement.
 
@@ -113,6 +118,12 @@ Pour toute création ou modification de tableau, utiliser comme référence la [
 Ses tests hors ligne utilisent les objets Dolibarr et une base en mémoire, sans accès à QUARTIX :
 
     php test/run_quartix.php /chemin/vers/dolibarr/htdocs
+
+Les durées QUARTIX se règlent dans l’entité collectrice, selon l’unité des valeurs reçues. Le cas signalé le 17 septembre 2026 a été confirmé par l’utilisateur et son rapport QUARTIX : `0,019120…` représente une fraction de journée, soit environ 27 min 32 s, et non une durée en heures. Après déploiement, sélectionner **Jours (1 = 24 h)** dans **Réglages → QUARTIX → Unité des durées** pour cette source. Les tableaux Utilisation et Trajets affichent alors **00:27** de conduite et **00:02** de ralenti au format `hh:mm`. Les secondes sont conservées pour les sommes, puis masquées à l’affichage ; un cumul de 60 heures reste **60:00**. Les graphiques gardent des valeurs numériques en heures avec la même conversion.
+
+Les valeurs brutes en cache ne changent pas : aucun réimport, migration SQL ni changement automatique d’unité n’est effectué. La source partagée utilise toujours le réglage de son collecteur. L’unité vide ou inconnue et les durées absentes restent indisponibles ; un zéro connu s’affiche **00:00**. Cette confirmation porte sur l’échantillon fourni, pas sur tous les comptes QUARTIX.
+
+Validation du 17 septembre 2026 : 480 contrôles QUARTIX hors ligne sous PHP 8.4.22 avec les sources Dolibarr `25.0.0-alpha` du checkout `5dedd84c6c1db18a8f864e5a7ac168a842afbc95`. La suite exécute les rendus PHP des deux tableaux et la préparation des données du graphique, les réglages par entité, les unités existantes, les valeurs absentes et les cumuls supérieurs à 24 h. Les helpers natifs `convertDurationtoHour()` et `convertSecondToTime()` ont aussi passé six cas isolés chacun avec les sources [Dolibarr 20.0.0](https://github.com/Dolibarr/dolibarr/blob/697bf01970740a3339cd99cf055b4428fc5e051c/htdocs/core/lib/date.lib.php) et [23.0.2](https://github.com/Dolibarr/dolibarr/blob/ccef1102e6850b7545be7bad91cf0cc4c74ac6ea/htdocs/core/lib/date.lib.php). Le code minute `i` est utilisé pour rester compatible avec v20. Aucun essai QWS authentifié ni validation du correctif déployé n’a été réalisé ; le navigateur de développement demandait une connexion.
 
 Les accès individuels des véhicules, familles globales, parents, transactions et migrations sont vérifiés avec SQLite et des doubles des API natives :
 

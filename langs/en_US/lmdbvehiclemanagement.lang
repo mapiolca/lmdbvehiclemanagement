@@ -279,7 +279,7 @@ NoTimelineEntry=No history entry found
 
 # Insurance
 Insurance=Insurance
-VehicleManagementTopMenu=Vehicle and equipment management
+VehicleManagementTopMenu=Vehicles | Equipment
 VehicleMenuSection=Vehicles and equipment
 InsuranceContract=Insurance contract
 InsuranceContracts=Insurance contracts
@@ -650,6 +650,8 @@ RegulatoryProfiles=Regulatory profiles
 RegulatoryControlTypes=Regulatory control types
 RegulatoryControlResults=Regulatory control results
 RegulatoryQualification=Regulatory qualification
+RegulatoryQualificationViewEdit=View / edit
+RegulatoryQualificationView=View
 RegulatoryQualificationSaved=The regulatory qualification and applicable requirements were updated.
 ConfirmRegulatoryProfiles=Confirm regulatory profiles
 NoRegulatoryProfileSelected=No regulatory profile selected

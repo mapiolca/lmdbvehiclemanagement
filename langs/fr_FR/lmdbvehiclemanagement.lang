@@ -279,7 +279,7 @@ NoTimelineEntry=Aucune entrée d'historique trouvée
 
 # Assurance
 Insurance=Assurance
-VehicleManagementTopMenu=Gestion des véhicules et engins
+VehicleManagementTopMenu=Véhicules | Engins
 VehicleMenuSection=Véhicules et engins
 InsuranceContract=Contrat d’assurance
 InsuranceContracts=Contrats d’assurance
@@ -650,6 +650,8 @@ RegulatoryProfiles=Profils réglementaires
 RegulatoryControlTypes=Types de contrôles réglementaires
 RegulatoryControlResults=Résultats de contrôles réglementaires
 RegulatoryQualification=Qualification réglementaire
+RegulatoryQualificationViewEdit=Visualiser / éditer
+RegulatoryQualificationView=Visualiser
 RegulatoryQualificationSaved=La qualification réglementaire et les exigences applicables ont été mises à jour.
 ConfirmRegulatoryProfiles=Confirmer les profils réglementaires
 NoRegulatoryProfileSelected=Aucun profil réglementaire sélectionné

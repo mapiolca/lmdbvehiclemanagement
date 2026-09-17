@@ -9,7 +9,7 @@ class LmdbVehicleQuartixConfig
 {
 	public const PREFIX = 'LMDBVEHICLEMANAGEMENT_QX_';
 	/** Persisted QWS unit choices mapped to native Dolibarr duration codes. */
-	public const DURATION_UNITS = array('seconds' => 's', 'minutes' => 'min', 'hours' => 'h', 'days' => 'd');
+	public const DURATION_UNITS = array('seconds' => 's', 'minutes' => 'i', 'hours' => 'h', 'days' => 'd');
 	public const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 	public const TILE_ATTRIBUTION = '© OpenStreetMap contributors';
 	/** @var DoliDB */ private $db;

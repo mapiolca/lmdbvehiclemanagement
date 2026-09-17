@@ -2,6 +2,10 @@
 
 ## À publier
 
+- Interface : qualification réglementaire confirmée réduite à une ligne « État » avec son badge et un bouton « Visualiser / éditer » ouvrant le questionnaire dans une modale native. Consultation en lecture seule selon les droits, saisies conservées en cas d’échec d’enregistrement et accès au détail sans JavaScript. Menu haut renommé « Véhicules | Engins ».
+
+- QUARTIX : ajout de l’unité « Jours (1 = 24 h) » pour les durées exprimées en fractions de journée, et affichage `hh:mm` dans les tableaux d’utilisation et de trajets. Les graphiques utilisent la même conversion et conservent leur échelle en heures. Après déploiement, sélectionner cette unité dans l’entité collectrice concernée ; aucune migration, réactivation ni reprise des imports n’est nécessaire. Les unités déjà configurées dans les autres entités sont conservées.
+
 - Affectations : sélecteur conducteur Select2 limité aux utilisateurs actifs ayant accès à l’entité de saisie, avec validation native Multicompany côté serveur. Enregistrement des affectations historiques sur les véhicules possédés ou partagés, même encore en cours, sans leur appliquer un blocage réglementaire actuel ; blocage conservé pour les débuts aujourd’hui ou futurs. Aucun changement des exigences réglementaires, de la propriété des données ni des permissions ; aucune migration ou réactivation nécessaire.
 - Qualification réglementaire : remplacement de la clé brute `NotApplicable` par la traduction native « Non applicable » en français et son équivalent anglais.
 

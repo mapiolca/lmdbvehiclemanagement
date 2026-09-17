@@ -26,6 +26,16 @@ $permissionWrite = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid)
 $permissionDerogation = (isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'derogation'));
 $regulatoryService = new LmdbVehicleRegulatoryService($db);
 $questionnaire = $regulatoryService->getQualificationQuestionnaire((int) $vehicle->id, (int) $vehicle->entity);
+$qualificationComplete = !empty($questionnaire);
+foreach ($questionnaire as $question) {
+	if ($question['answer_code'] === '' || $question['answer_code'] === 'unknown'
+		|| !isset($question['choices'][$question['answer_choice_id']])
+		|| (!empty($question['choices'][$question['answer_choice_id']]['requires_date']) && empty($question['applicable_since']))) {
+		$qualificationComplete = false;
+	}
+}
+$qualificationSaveFailed = false;
+$submittedProfileIds = array();
 
 if ($action === 'save_qualification') {
 	if (!$permissionWrite) accessforbidden();
@@ -36,11 +46,20 @@ if ($action === 'save_qualification') {
 		$answers[$questionId] = array('choice_id' => GETPOSTINT('answer_choice_'.$questionId), 'applicable_since' => $answerDate);
 	}
 	$profileIds = GETPOST('manual_profile_ids', 'array:int');
-	$result = $vehicle->saveRegulatoryQualification($answers, is_array($profileIds) ? array_map('intval', $profileIds) : array(), $user);
-	if ($result > 0) setEventMessages($langs->trans('RegulatoryQualificationSaved'), null, 'mesgs');
-	else lmdbVehicleManagementSetObjectErrors($vehicle);
-	header('Location: '.$_SERVER['PHP_SELF'].'?id='.$id);
-	exit;
+	$submittedProfileIds = is_array($profileIds) ? array_map('intval', $profileIds) : array();
+	$result = $vehicle->saveRegulatoryQualification($answers, $submittedProfileIds, $user);
+	if ($result > 0) {
+		setEventMessages($langs->trans('RegulatoryQualificationSaved'), null, 'mesgs');
+		header('Location: '.$_SERVER['PHP_SELF'].'?id='.$id);
+		exit;
+	}
+	lmdbVehicleManagementSetObjectErrors($vehicle);
+	$qualificationSaveFailed = true;
+	// Keep submitted fields on failure; the summary still describes the saved qualification.
+	foreach ($answers as $questionId => $answer) {
+		$questionnaire[$questionId]['answer_choice_id'] = $answer['choice_id'];
+		$questionnaire[$questionId]['applicable_since'] = (int) $answer['applicable_since'];
+	}
 }
 if ($action === 'grant_derogation') {
 	if (!$permissionDerogation) accessforbidden();
@@ -76,6 +95,7 @@ if ($resql) {
 }
 $selectedProfiles = array();
 foreach ($profileMeta as $profileId => $meta) if ($meta['origin'] === 'manual') $selectedProfiles[] = (int) $profileId;
+if ($qualificationSaveFailed) $selectedProfiles = array_values(array_intersect($submittedProfileIds, array_keys($profileOptions)));
 
 $requirements = array();
 $sql = 'SELECT req.*, '.LmdbVehicleSharing::requirementStatusSql($db).' AS status, c.rowid AS visible_control_id, r.label AS rule_label, r.source_title, r.source_url, ct.label AS control_type_label, c.ref AS control_ref';
@@ -87,36 +107,46 @@ $sql .= ' WHERE req.entity = '.((int) $vehicle->entity).' AND req.fk_vehicle = '
 $resql = $db->query($sql);
 if ($resql) { while (is_object($row = $db->fetch_object($resql))) $requirements[] = $row; $db->free($resql); }
 
-llxHeader('', $vehicle->ref.' - '.$langs->trans('RegulatoryControls'), '', '', 0, 0, '', '', '', 'mod-lmdbvehiclemanagement page-card');
+llxHeader('', $vehicle->ref.' - '.$langs->trans('RegulatoryControls'), '', '', 0, 0, array('/lmdbvehiclemanagement/js/regulatory_qualification.js'), '', '', 'mod-lmdbvehiclemanagement page-card');
 $head = lmdbVehiclePrepareHead($vehicle);
 print dol_get_fiche_head($head, 'regulatory', $langs->trans('VehicleOrEquipment'), -1, $vehicle->picto);
 lmdbVehiclePrintBanner($vehicle);
 lmdbSharingPartialNotice();
 
 print load_fiche_titre($langs->trans('RegulatoryQualification'), '', 'tags');
+$qualificationStatus = $qualificationComplete ? dolGetStatus($langs->trans('QualificationConfirmed'), '', '', 'status4', 5) : dolGetStatus($langs->trans('QualificationToConfirm'), '', '', 'status3', 5);
+$showQualification = GETPOSTINT('show_qualification') === 1 || $qualificationSaveFailed;
+if ($qualificationComplete) {
+	print '<div class="div-table-responsive-no-min"><table class="noborder centpercent"><tr class="oddeven"><td>'.$langs->trans('Status').'</td><td>'.$qualificationStatus.'</td>';
+	print '<td class="right"><a id="regulatory-qualification-open" class="button small" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&show_qualification=1#regulatory-qualification">'.$langs->trans($permissionWrite ? 'RegulatoryQualificationViewEdit' : 'RegulatoryQualificationView').'</a></td></tr></table></div>';
+}
+print '<div id="regulatory-qualification" title="'.dol_escape_htmltag($langs->trans('RegulatoryQualification')).'" data-modal="'.((int) $qualificationComplete).'" data-auto-open="'.((int) $showQualification).'"'.($qualificationComplete && !$showQualification ? ' hidden' : '').'>';
 if ($permissionWrite) {
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'" class="lmdb-responsive-form">';
 	print '<input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="save_qualification"><input type="hidden" name="id" value="'.$id.'">';
-	print '<div class="div-table-responsive-no-min"><table class="noborder centpercent"><tr class="liste_titre"><th>'.$langs->trans('RegulatoryQualificationQuestion').'</th><th>'.$langs->trans('RegulatoryQualificationAnswer').'</th><th>'.$langs->trans('RegulatoryApplicableSince').'</th></tr>';
-	$qualificationComplete = !empty($questionnaire);
-	foreach ($questionnaire as $question) {
-		$choiceOptions = array();
-		foreach ($question['choices'] as $choiceId => $choice) $choiceOptions[(int) $choiceId] = $langs->trans($choice['label']);
-		if ($question['answer_code'] === '' || $question['answer_code'] === 'unknown') $qualificationComplete = false;
-		$selectedChoiceRequiresDate = !empty($question['answer_choice_id']) && !empty($question['choices'][$question['answer_choice_id']]['requires_date']);
-		if ($selectedChoiceRequiresDate && empty($question['applicable_since'])) $qualificationComplete = false;
-		print '<tr class="oddeven"><td><strong>'.$langs->trans($question['label']).'</strong><br><span class="opacitymedium">'.$langs->trans($question['description']).'</span></td>';
-		print '<td>'.$form->selectarray('answer_choice_'.$question['id'], $choiceOptions, $question['answer_choice_id'], 0, 0, 0, '', 0, 0, 0, '', 'minwidth300', 1).'</td>';
-		print '<td>'.($question['date_label'] !== '' ? '<span class="fieldrequired">'.$langs->trans($question['date_label']).'</span><br>'.$form->selectDate($question['applicable_since'] ?: -1, 'answer_date_'.$question['id'], 0, 0, 1, '', 1, 1) : '<span class="opacitymedium">'.$langs->trans('ActionNotApplicable').'</span>').'</td></tr>';
-	}
-	if (empty($questionnaire)) print '<tr class="oddeven"><td colspan="3"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
-	if (!empty($profileOptions)) print '<tr class="oddeven"><td>'.$langs->trans('AdditionalManualRegulatoryProfiles').'</td><td colspan="2">'.$form->multiselectarray('manual_profile_ids', $profileOptions, $selectedProfiles, 0, 0, 'minwidth500').'</td></tr>';
-	print '<tr class="oddeven"><td>'.$langs->trans('Status').'</td><td colspan="2">'.($qualificationComplete ? dolGetStatus($langs->trans('QualificationConfirmed'), '', '', 'status4', 5) : dolGetStatus($langs->trans('QualificationToConfirm'), '', '', 'status3', 5)).'</td></tr>';
-	print '</table></div><div class="center"><input type="submit" class="button button-save" value="'.$langs->trans('SaveQualification').'"></div></form>';
-} else {
-	$labels = array(); foreach ($selectedProfiles as $profileId) if (isset($profileOptions[$profileId])) $labels[] = $profileOptions[$profileId];
-	print '<div class="info">'.dol_escape_htmltag(!empty($labels) ? implode(', ', $labels) : $langs->trans('NoRegulatoryProfileSelected')).'</div>';
 }
+print '<div class="div-table-responsive-no-min"><table class="noborder centpercent"><tr class="liste_titre"><th>'.$langs->trans('RegulatoryQualificationQuestion').'</th><th>'.$langs->trans('RegulatoryQualificationAnswer').'</th><th>'.$langs->trans('RegulatoryApplicableSince').'</th></tr>';
+foreach ($questionnaire as $question) {
+	$choiceOptions = array();
+	foreach ($question['choices'] as $choiceId => $choice) $choiceOptions[(int) $choiceId] = $langs->trans($choice['label']);
+	print '<tr class="oddeven"><td><strong>'.$langs->trans($question['label']).'</strong><br><span class="opacitymedium">'.$langs->trans($question['description']).'</span></td>';
+	print '<td>'.($permissionWrite ? $form->selectarray('answer_choice_'.$question['id'], $choiceOptions, $question['answer_choice_id'], 0, 0, 0, '', 0, 0, 0, '', 'minwidth200', 1) : dol_escape_htmltag($choiceOptions[$question['answer_choice_id']] ?? $langs->trans('Unknown'))).'</td>';
+	print '<td>';
+	if ($question['date_label'] === '') print '<span class="opacitymedium">'.$langs->trans('ActionNotApplicable').'</span>';
+	elseif ($permissionWrite) print '<span class="fieldrequired">'.$langs->trans($question['date_label']).'</span><br>'.$form->selectDate($question['applicable_since'] ?: -1, 'answer_date_'.$question['id'], 0, 0, 1, '', 1, 1);
+	else print !empty($question['applicable_since']) ? dol_print_date($question['applicable_since'], 'day') : '<span class="opacitymedium">'.$langs->trans(!empty($question['choices'][$question['answer_choice_id']]['requires_date']) ? 'NotDefined' : 'ActionNotApplicable').'</span>';
+	print '</td></tr>';
+}
+if (empty($questionnaire)) print '<tr class="oddeven"><td colspan="3"><span class="opacitymedium">'.$langs->trans('NoRecordFound').'</span></td></tr>';
+if (!empty($profileOptions)) {
+	$labels = array(); foreach ($selectedProfiles as $profileId) if (isset($profileOptions[$profileId])) $labels[] = $profileOptions[$profileId];
+	print '<tr class="oddeven"><td>'.$langs->trans('AdditionalManualRegulatoryProfiles').'</td><td colspan="2">'.($permissionWrite ? $form->multiselectarray('manual_profile_ids', $profileOptions, $selectedProfiles, 0, 0, 'minwidth200') : dol_escape_htmltag(!empty($labels) ? implode(', ', $labels) : $langs->trans('NoRegulatoryProfileSelected'))).'</td></tr>';
+}
+print '<tr class="oddeven"><td>'.$langs->trans('Status').'</td><td colspan="2">'.$qualificationStatus.'</td></tr></table></div>';
+print '<div class="center">';
+if ($permissionWrite) print '<input type="submit" class="button button-save" value="'.$langs->trans('SaveQualification').'">';
+if ($qualificationComplete) print '<a id="regulatory-qualification-close" class="button button-cancel" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'">'.$langs->trans('CloseWindowShort').'</a>';
+print '</div>'.($permissionWrite ? '</form>' : '').'</div>';
 
 print '<div class="tabsAction">';
 if ((isModEnabled('lmdbvehiclemanagement') && empty($user->socid) && $user->hasRight('lmdbvehiclemanagement', 'regulatorycontrol', 'write'))) print dolGetButtonAction('', $langs->trans('NewRegulatoryControl'), 'default', dol_buildpath('/lmdbvehiclemanagement/regulatorycontrol_card.php', 1).'?action=create&vehicle_id='.$id.'&token='.newToken());
